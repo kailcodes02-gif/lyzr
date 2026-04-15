@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Week 1 — GSI Marketing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #1a1a1a;
+    --ink2: #4a4a4a;
+    --ink3: #888;
+    --rule: #e8e4df;
+    --bg: #faf8f5;
+    --card: #ffffff;
+    --accent: #c8563a;
+    --accent2: #2a5f8f;
+    --serif: 'Instrument Serif', Georgia, serif;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: rgba(250,248,245,0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--rule);
+    z-index: 100;
+    padding: 0 48px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .nav-label {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink3);
+  }
+  .nav-links {
+    display: flex;
+    gap: 32px;
+    list-style: none;
+  }
+  .nav-links a {
+    font-size: 13px;
+    color: var(--ink2);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--accent); }
+
+  /* LAYOUT */
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 32px;
+  }
+
+  section {
+    padding: 96px 0 64px;
+    border-bottom: 1px solid var(--rule);
+  }
+  section:last-of-type { border-bottom: none; }
+
+  /* HERO */
+  #hero {
+    padding-top: 140px;
+    padding-bottom: 80px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-size: clamp(36px, 5vw, 54px);
+    font-weight: 400;
+    line-height: 1.18;
+    color: var(--ink);
+    margin-bottom: 24px;
+  }
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  .hero-sub {
+    font-size: 17px;
+    color: var(--ink2);
+    max-width: 580px;
+    line-height: 1.75;
+  }
+  .hero-meta {
+    margin-top: 40px;
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+  .hero-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .hero-stat-num {
+    font-family: var(--serif);
+    font-size: 32px;
+    color: var(--ink);
+    line-height: 1;
+  }
+  .hero-stat-label {
+    font-size: 12px;
+    color: var(--ink3);
+    letter-spacing: 0.05em;
+  }
+
+  /* SECTION HEADERS */
+  .section-num {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink3);
+    margin-bottom: 8px;
+  }
+  h2 {
+    font-family: var(--serif);
+    font-size: clamp(24px, 3vw, 32px);
+    font-weight: 400;
+    color: var(--ink);
+    margin-bottom: 12px;
+    line-height: 1.3;
+  }
+  .section-desc {
+    font-size: 15px;
+    color: var(--ink2);
+    max-width: 600px;
+    margin-bottom: 40px;
+    line-height: 1.7;
+  }
+
+  /* PEOPLE GRID */
+  .people-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .person-card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 20px 22px;
+  }
+  .person-name {
+    font-weight: 500;
+    font-size: 15px;
+    margin-bottom: 4px;
+  }
+  .person-role {
+    font-size: 12px;
+    color: var(--ink3);
+    margin-bottom: 10px;
+  }
+  .person-note {
+    font-size: 13px;
+    color: var(--ink2);
+    line-height: 1.55;
+  }
+  .person-card.pending {
+    border-style: dashed;
+    opacity: 0.7;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-top: 8px;
+  }
+  .badge-done { background: #eaf4ec; color: #2a7a3b; }
+  .badge-soon { background: #fef3ec; color: #c8563a; }
+
+  /* TOPICS LEARNED */
+  .topics-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .topic-item {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 16px 20px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .topic-icon {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    background: #f0ece8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+  }
+  .topic-text { font-size: 14px; color: var(--ink2); line-height: 1.6; }
+  .topic-text strong { color: var(--ink); font-weight: 500; }
+
+  /* PIPELINE */
+  .pipeline-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .pipe-card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 18px 16px;
+    text-align: center;
+  }
+  .pipe-num {
+    font-family: var(--serif);
+    font-size: 28px;
+    color: var(--ink);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .pipe-stage {
+    font-size: 11px;
+    color: var(--ink3);
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .pipe-card.highlight { border-color: var(--accent2); background: #f0f6fc; }
+  .pipe-card.highlight .pipe-num { color: var(--accent2); }
+  .pipe-card.warn { border-color: #e8c8a0; background: #fdf6ee; }
+  .pipe-card.warn .pipe-num { color: #b86a1a; }
+
+  .use-case-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .uc-pill {
+    font-size: 12px;
+    color: var(--ink2);
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 20px;
+    padding: 4px 14px;
+  }
+  .uc-pill span {
+    font-weight: 500;
+    color: var(--ink);
+    margin-left: 4px;
+  }
+
+  /* SHEET EMBED */
+  .sheet-embed-block {
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .sheet-embed-label {
+    background: #f2ede8;
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink2);
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .sheet-embed-label svg { flex-shrink: 0; }
+  .sheet-embed-block iframe {
+    width: 100%;
+    height: 380px;
+    border: none;
+    display: block;
+  }
+  .sheet-open-link {
+    font-size: 12px;
+    color: var(--accent2);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .sheet-open-link:hover { text-decoration: underline; }
+
+  /* EVENTS */
+  .event-insight {
+    background: #fdf6ee;
+    border: 1px solid #e8c8a0;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 28px;
+    font-size: 14px;
+    color: var(--ink2);
+    line-height: 1.65;
+  }
+  .event-insight strong { color: var(--ink); }
+
+  /* ACCENTURE NEW */
+  .methodology-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: 28px;
+  }
+  .method-step {
+    display: flex;
+    gap: 20px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .method-step:last-child { border-bottom: none; }
+  .step-num {
+    font-family: var(--serif);
+    font-size: 20px;
+    color: var(--rule);
+    flex-shrink: 0;
+    width: 28px;
+    padding-top: 2px;
+  }
+  .step-body {}
+  .step-title { font-weight: 500; font-size: 15px; margin-bottom: 4px; }
+  .step-desc { font-size: 14px; color: var(--ink2); line-height: 1.6; }
+
+  .geo-pills {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .geo-pill {
+    font-size: 13px;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  .geo-us { background: #e8f0fa; color: #1a4a80; }
+  .geo-in { background: #eaf4ec; color: #1a5c2a; }
+  .geo-eu { background: #f3eefa; color: #4a2a80; }
+
+  /* INSIGHT CALLOUT */
+  .insight-box {
+    border-left: 3px solid var(--accent);
+    padding: 16px 24px;
+    margin: 28px 0;
+    background: #fdf6f4;
+    border-radius: 0 8px 8px 0;
+  }
+  .insight-box p {
+    font-size: 14px;
+    color: var(--ink2);
+    line-height: 1.7;
+  }
+  .insight-box p strong { color: var(--ink); }
+
+  /* THOUGHTS */
+  .thought-block {
+    padding: 24px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .thought-block:last-child { border-bottom: none; }
+  .thought-title {
+    font-weight: 500;
+    font-size: 15px;
+    margin-bottom: 8px;
+    color: var(--ink);
+  }
+  .thought-body {
+    font-size: 14px;
+    color: var(--ink2);
+    line-height: 1.75;
+    max-width: 680px;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 16px;
+  }
+  .mini-card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 16px 18px;
+  }
+  .mini-card-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink3);
+    margin-bottom: 8px;
+  }
+  .mini-card-text {
+    font-size: 13px;
+    color: var(--ink2);
+    line-height: 1.6;
+  }
+
+  /* FOOTER */
+  footer {
+    padding: 48px 0;
+    text-align: center;
+  }
+  .footer-text {
+    font-size: 13px;
+    color: var(--ink3);
+  }
+
+  /* ANIMATIONS */
+  .fade-in {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  .fade-in.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (max-width: 600px) {
+    nav { padding: 0 20px; }
+    .nav-links { display: none; }
+    .container { padding: 0 20px; }
+    section { padding: 64px 0 48px; }
+    .two-col { grid-template-columns: 1fr; }
+    .people-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-label">Week 1 · GSI Marketing</span>
+  <ul class="nav-links">
+    <li><a href="#conversations">Conversations</a></li>
+    <li><a href="#pipeline">Pipeline</a></li>
+    <li><a href="#events">Events</a></li>
+    <li><a href="#new-accounts">New Accounts</a></li>
+    <li><a href="#thoughts">Thoughts</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<div class="container">
+  <section id="hero" class="fade-in">
+    <p class="eyebrow">April 2025 · Week 1</p>
+    <h1>Getting up to speed on<br><em>GSI marketing</em> at Lyzr</h1>
+    <p class="hero-sub">
+      First week was about building context — speaking to the right people, reading through what already exists, and identifying where we can move fast.
+      Here's a clean summary of what I did and where my head is at.
+    </p>
+    <div class="hero-meta">
+      <div class="hero-stat">
+        <span class="hero-stat-num">4</span>
+        <span class="hero-stat-label">Stakeholders spoken to</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-num">44</span>
+        <span class="hero-stat-label">Accenture deals mapped</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-num">~300</span>
+        <span class="hero-stat-label">New potential accounts identified</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-num">10+</span>
+        <span class="hero-stat-label">Upcoming events shortlisted</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONVERSATIONS -->
+  <section id="conversations" class="fade-in">
+    <p class="section-num">01 — Conversations</p>
+    <h2>Who I spoke to this week</h2>
+    <p class="section-desc">Started by understanding the lay of the land — who owns what, how the GSI relationships work, and what's already in motion.</p>
+
+    <div class="people-grid">
+      <div class="person-card">
+        <div class="person-name">Anju</div>
+        <div class="person-role">Marketing</div>
+        <div class="person-note">Understood Lyzr's GSI marketing structure, what's being tracked, and what Anju wanted me to focus on first — events and Accenture.</div>
+        <span class="badge badge-done">Done</span>
+      </div>
+      <div class="person-card">
+        <div class="person-name">Vaibhav</div>
+        <div class="person-role">Marketing</div>
+        <div class="person-note">Got deep context on the pod structure, how the team used to work vs. now, and a very sharp insight on how to use internal Accenture references as a sales opener.</div>
+        <span class="badge badge-done">Done</span>
+      </div>
+      <div class="person-card">
+        <div class="person-name">Ankita</div>
+        <div class="person-role">Marketing</div>
+        <div class="person-note">Understood what's already running — campaigns, content, and existing Accenture case studies. Got context on how the marketing team collaborates day-to-day.</div>
+        <span class="badge badge-done">Done</span>
+      </div>
+      <div class="person-card pending">
+        <div class="person-name">Praveen</div>
+        <div class="person-role">Marketing</div>
+        <div class="person-note">Scheduled for today. Will build on the conversations above and fill in any remaining gaps.</div>
+        <span class="badge badge-soon">Scheduled today</span>
+      </div>
+    </div>
+
+    <div class="topics-list" style="margin-top: 24px;">
+      <p style="font-size: 13px; font-weight: 500; color: var(--ink3); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px;">What I was trying to understand</p>
+      <div class="topic-item">
+        <div class="topic-icon">🏢</div>
+        <div class="topic-text"><strong>What Accenture means for Lyzr</strong> — Not just a client, but a GSI relationship. The difference between sell-to vs. sell-with, and how pipeline gets built through their partner network.</div>
+      </div>
+      <div class="topic-item">
+        <div class="topic-icon">🔗</div>
+        <div class="topic-text"><strong>GSA and NSI context</strong> — What's actively happening in those accounts, what stage conversations are at, and what role marketing plays vs. sales.</div>
+      </div>
+      <div class="topic-item">
+        <div class="topic-icon">📢</div>
+        <div class="topic-text"><strong>Deccan marketing initiatives</strong> — What's already been launched or is in planning, and how it fits with the broader GSI push.</div>
+      </div>
+      <div class="topic-item">
+        <div class="topic-icon">⚙️</div>
+        <div class="topic-text"><strong>How the structure works</strong> — Who owns what, how the pod model works today, how decisions move from marketing to sales, and where the handoffs happen.</div>
+      </div>
+      <div class="topic-item">
+        <div class="topic-icon">📋</div>
+        <div class="topic-text"><strong>What's already running</strong> — Existing campaigns, content assets, case studies, and anything that shouldn't be rebuilt from scratch.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PIPELINE -->
+  <section id="pipeline" class="fade-in">
+    <p class="section-num">02 — Accenture Pipeline</p>
+    <h2>Existing deal pipeline — 44 accounts</h2>
+    <p class="section-desc">Went through the full Accenture accounts sheet. Here's what the pipeline looks like across stages and use cases.</p>
+
+    <div class="pipeline-grid">
+      <div class="pipe-card highlight">
+        <div class="pipe-num">10</div>
+        <div class="pipe-stage">Discovery</div>
+      </div>
+      <div class="pipe-card">
+        <div class="pipe-num">7</div>
+        <div class="pipe-stage">Solution Validation</div>
+      </div>
+      <div class="pipe-card">
+        <div class="pipe-num">4</div>
+        <div class="pipe-stage">Proposal Stage</div>
+      </div>
+      <div class="pipe-card">
+        <div class="pipe-num">2</div>
+        <div class="pipe-stage">POC</div>
+      </div>
+      <div class="pipe-card">
+        <div class="pipe-num">2</div>
+        <div class="pipe-stage">Legal & Procurement</div>
+      </div>
+      <div class="pipe-card">
+        <div class="pipe-num">1</div>
+        <div class="pipe-stage">Won Deal</div>
+      </div>
+      <div class="pipe-card warn">
+        <div class="pipe-num">14</div>
+        <div class="pipe-stage">No stage mapped</div>
+      </div>
+      <div class="pipe-card warn">
+        <div class="pipe-num">4</div>
+        <div class="pipe-stage">Lost / Stalled / Dropped</div>
+      </div>
+    </div>
+
+    <p style="font-size: 13px; font-weight: 500; color: var(--ink3); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 12px;">Top use cases in pipeline</p>
+    <div class="use-case-row">
+      <span class="uc-pill">Insurance / Underwriting <span>5</span></span>
+      <span class="uc-pill">Procurement <span>4</span></span>
+      <span class="uc-pill">Banking <span>3</span></span>
+      <span class="uc-pill">Telecom <span>3</span></span>
+      <span class="uc-pill">Credit Dispute Mgmt <span>2</span></span>
+      <span class="uc-pill">Media & Entertainment <span>2</span></span>
+      <span class="uc-pill">HR / Sales / Support <span>1</span></span>
+      <span class="uc-pill">Banking Onboarding <span>1</span></span>
+      <span class="uc-pill">Loan Orientation <span>1</span></span>
+    </div>
+
+    <div class="sheet-embed-block">
+      <div class="sheet-embed-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        Accenture Accounts List × Lyzr Marketing
+      </div>
+      <iframe
+        src="https://docs.google.com/spreadsheets/d/12g9pYOwN0kBhimeIGSekEaWt6MNATniJPvnrMfEVgzo/preview"
+        loading="lazy"
+        title="Accenture pipeline spreadsheet">
+      </iframe>
+    </div>
+    <a class="sheet-open-link" href="https://docs.google.com/spreadsheets/d/12g9pYOwN0kBhimeIGSekEaWt6MNATniJPvnrMfEVgzo/edit?usp=sharing" target="_blank">
+      ↗ Open full sheet
+    </a>
+  </section>
+
+  <!-- EVENTS -->
+  <section id="events" class="fade-in">
+    <p class="section-num">03 — Events Research</p>
+    <h2>Where GSIs will be — and where we can show up</h2>
+    <p class="section-desc">Anju asked me to look into events where GSIs and GCCs are attending, sponsoring, or speaking — so we can find the right ones for Lyzr to participate or get a panelist seat.</p>
+
+    <div class="insight-box">
+      <p><strong>How I approached this:</strong> Went to the event repositories of our target GSI accounts — Accenture, Wipro, TCS, Infosys, and others — cross-referenced with their public event calendars, and shortlisted events where they had confirmed presence. Then filtered for ones where Lyzr could realistically participate, sponsor, or speak.</p>
+    </div>
+
+    <div class="event-insight">
+      <strong>Key finding:</strong> About 50% of the events I found are already over — most of the big GCC and GSI events happened in January, February, March, or early April. The remaining 10+ events are the actionable window for now. <br><br>
+      <strong>What this means:</strong> We're at the tail end of the current events calendar. The next meaningful wave will come in ~2 months when Q3 calendars start getting published. That's the right time to revisit this list and plan ahead — not reactively like this round.
+    </div>
+
+    <div class="sheet-embed-block">
+      <div class="sheet-embed-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        GSI Events Tracker — Shortlisted Events
+      </div>
+      <iframe
+        src="https://docs.google.com/spreadsheets/d/1fMUSze_ZJ85txy2NhoZpkqzNrBM2Xy7gY0E8RKtz21c/preview"
+        loading="lazy"
+        title="Events tracker spreadsheet">
+      </iframe>
+    </div>
+    <a class="sheet-open-link" href="https://docs.google.com/spreadsheets/d/1fMUSze_ZJ85txy2NhoZpkqzNrBM2Xy7gY0E8RKtz21c/edit?usp=sharing" target="_blank">
+      ↗ Open full sheet
+    </a>
+  </section>
+
+  <!-- NEW ACCOUNTS -->
+  <section id="new-accounts" class="fade-in">
+    <p class="section-num">04 — New Potential Accounts</p>
+    <h2>~300 new accounts mapped to Lyzr use cases</h2>
+    <p class="section-desc">Beyond the existing pipeline, I built a fresh list of companies that Accenture is actively collaborating with globally — and mapped each one to a Lyzr use case or agent.</p>
+
+    <div class="methodology-steps">
+      <div class="method-step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Found Accenture's global collaboration network</div>
+          <div class="step-desc">Used Accenture's public partner and project repositories, cross-referenced with GPT, Gemini, and Perplexity to build a comprehensive list of companies they've actively collaborated with or built joint projects for — across the US, India, and Europe.</div>
+          <div class="geo-pills">
+            <span class="geo-pill geo-us">🇺🇸 US — ~60%</span>
+            <span class="geo-pill geo-in">🇮🇳 India — ~20%</span>
+            <span class="geo-pill geo-eu">🇪🇺 Europe — ~20%</span>
+          </div>
+        </div>
+      </div>
+      <div class="method-step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Mapped each company to a Lyzr agent or case study</div>
+          <div class="step-desc">For each company, looked at what they're building or have built with Accenture, then matched it to what Lyzr already does — existing agents, proof-of-works, or case studies. If there's a fit, it goes on the list.</div>
+        </div>
+      </div>
+      <div class="method-step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Output: ~300 warm potential accounts</div>
+          <div class="step-desc">These aren't cold companies. They're already working with Accenture on problems Lyzr can solve. The outreach becomes much easier because the context is already there.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="insight-box">
+      <p><strong>The Vaibhav playbook:</strong> When you speak to an Indian MD running a project similar to what a US Accenture partner is already using Lyzr for — you lead with that. <em>"Your US counterpart is doing exactly this with us."</em> It's not a cold pitch. It's a warm internal reference. Trust comes built-in, and the conversion barrier drops significantly. This is the opener for every outreach in this list.</p>
+    </div>
+
+    <p style="font-size: 13px; font-weight: 500; color: var(--ink3); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 12px; margin-top: 8px;">What the outreach looks like</p>
+    <div class="two-col">
+      <div class="mini-card">
+        <div class="mini-card-label">Channels</div>
+        <div class="mini-card-text">Email, LinkedIn, targeted ads, and WhatsApp where relevant. Multi-touch, not one-and-done.</div>
+      </div>
+      <div class="mini-card">
+        <div class="mini-card-label">Assets</div>
+        <div class="mini-card-text">Personalised case studies, creatives, and potentially dedicated landing pages specific to each MD's project context.</div>
+      </div>
+    </div>
+
+    <div class="sheet-embed-block" style="margin-top: 24px;">
+      <div class="sheet-embed-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        Accenture New Potential Conversations
+      </div>
+      <iframe
+        src="https://docs.google.com/spreadsheets/d/12g9pYOwN0kBhimeIGSekEaWt6MNATniJPvnrMfEVgzo/preview"
+        loading="lazy"
+        title="New Accenture potential accounts">
+      </iframe>
+    </div>
+    <a class="sheet-open-link" href="https://docs.google.com/spreadsheets/d/12g9pYOwN0kBhimeIGSekEaWt6MNATniJPvnrMfEVgzo/edit?usp=sharing" target="_blank">
+      ↗ Open full sheet
+    </a>
+  </section>
+
+  <!-- THOUGHTS -->
+  <section id="thoughts" class="fade-in">
+    <p class="section-num">05 — My Thinking</p>
+    <h2>A few things I think we should talk about</h2>
+    <p class="section-desc">Observations from week 1 — not complaints, just patterns I noticed and a suggestion on how to think about the team structure.</p>
+
+    <div class="thought-block">
+      <div class="thought-title">Inbound has dropped — and I think I know why</div>
+      <div class="thought-body">
+        We went from about 84 weekly inbounds to somewhere around 40–45 today. From what I've understood, the pod model is solid for ownership — but it means that cross-cutting work like SEO, social hygiene, email conversion, and domain authority can fall through the cracks. Nobody is owning the channel layer. Each pod is doing its own thing, and the shared infrastructure isn't being maintained consistently.
+      </div>
+    </div>
+
+    <div class="thought-block">
+      <div class="thought-title">We don't have a real target list</div>
+      <div class="thought-body">
+        What we're calling ABM today is mostly people who've already interacted with us — downloaded a playbook, come through a partnership, or come through an inbound. That's a re-engagement list, not a target list. My suggestion: let's build a proper outbound-first target list of 400–500 accounts a week and work it systematically. Call it whatever you want — ABM or just a target list — but let's make it real and make it weekly.
+      </div>
+    </div>
+
+    <div class="thought-block">
+      <div class="thought-title">A pod structure that actually works for marketing</div>
+      <div class="thought-body">
+        Here's what I think could work: product marketers own specific domains — I own GSI/SI, someone owns hyperscaler partners, someone owns Architect, and so on. They set the requirements. Then there's a shared execution layer — SEO, design, email, social, events — that serves all product marketers with clear channel-level KPIs. On top of that, a general hygiene pod that owns Lyzr-wide metrics regardless of which product is being pushed.
+      </div>
+      <div class="two-col" style="margin-top: 16px;">
+        <div class="mini-card">
+          <div class="mini-card-label">Product marketers own</div>
+          <div class="mini-card-text">GSI/SI, hyperscalers, Architect, emerging partners — each with their own pipeline and requirements.</div>
+        </div>
+        <div class="mini-card">
+          <div class="mini-card-label">Shared execution layer owns</div>
+          <div class="mini-card-text">SEO, social, email, design, events — common resources with channel KPIs, serving all product marketers.</div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <footer>
+    <p class="footer-text">Week 1 wrap-up · Prepared for internal review · April 2025</p>
+  </footer>
+</div>
+
+<script>
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.08 });
+
+  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
