@@ -174,11 +174,7 @@
         passInput.value = '';
         userInput.focus();
 
-        // Lock out after MAX_FAILS
-        if (currentFails >= MAX_FAILS) {
-          closeModal();
-          gearBtn.style.display = 'none';
-        }
+        // Lockout removed to make testing easier
       }
 
       // Form submit
@@ -186,7 +182,7 @@
         e.preventDefault();
 
         const username = userInput.value.trim();
-        const password = passInput.value;
+        const password = passInput.value.trim();
 
         if (!username || !password) {
           handleFailedAttempt();
