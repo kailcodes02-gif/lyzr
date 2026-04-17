@@ -12,8 +12,7 @@
   <style>
     body { font-family: 'Inter', sans-serif; }
 
-    /* Hide page content until auth confirmed */
-    #page-content { display: none; }
+    /* Page content visible by default, auth removed */
 
     /* Tooltip */
     .indicator-wrap { position: relative; }
@@ -51,12 +50,7 @@
 </head>
 <body class="bg-gray-50 min-h-screen">
 
-  <!-- Auth check blocker — shows nothing until verified -->
-  <div id="auth-check" class="min-h-screen flex items-center justify-center">
-    <div class="w-6 h-6 border-2 border-gray-200 border-t-indigo-500 rounded-full animate-spin"></div>
-  </div>
-
-  <!-- Page content (hidden until auth confirmed) -->
+  <!-- Page content -->
   <div id="page-content">
 
     <!-- Top bar -->
