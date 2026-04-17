@@ -410,15 +410,16 @@
     // ── Auth check ────────────────────────────────────────────────────────────
     (async function checkAuth() {
       try {
-        const res = await fetch('/auth/verify', { credentials: 'include' });
-        if (res.ok) {
+        // TEMP BYPASS FOR TESTING
+        // const res = await fetch('/auth/verify', { credentials: 'include' });
+        // if (res.ok) {
           document.getElementById('auth-check').style.display  = 'none';
           document.getElementById('page-content').style.display = 'block';
-        } else {
-          window.location.href = '/';
-        }
+        // } else {
+        //   window.location.href = '/';
+        // }
       } catch (_) {
-        window.location.href = '/';
+        // window.location.href = '/';
       }
     })();
 
