@@ -407,14 +407,10 @@
   </div>
 
   <script>
-    // ── Auth check ────────────────────────────────────────────────────────────
-    (function checkAuth() {
-      if (sessionStorage.getItem('wos_auth') === 'true') {
-        document.getElementById('auth-check').style.display  = 'none';
-        document.getElementById('page-content').style.display = 'block';
-      } else {
-        window.location.href = '/';
-      }
+    // ── Auth Check Disabled per User Request ────────────────────────────────
+    (function disableAuthCheck() {
+      document.getElementById('auth-check').style.display  = 'none';
+      document.getElementById('page-content').style.display = 'block';
     })();
 
     // ── System health auto-refresh (placeholder) ──────────────────────────────
