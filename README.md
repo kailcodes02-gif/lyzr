@@ -1,6 +1,6 @@
 # Work OS — Kailash
 Personal Agentic Work Operating System  
-Site: lyzr.gm-kailash.com
+Site: lyzr.kailash-gm.com
 
 ## Architecture
 - Agents output { html_page, notion_payload }
