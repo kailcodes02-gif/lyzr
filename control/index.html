@@ -71,7 +71,7 @@
           </a>
           <h1 class="text-lg font-semibold text-gray-900">Control Panel</h1>
         </div>
-        <a href="/auth/logout" id="logout-link"
+        <a href="#" onclick="sessionStorage.removeItem('wos_auth'); window.location.href='/'; return false;" id="logout-link"
            class="text-xs text-gray-400 hover:text-red-500 transition-colors">Logout</a>
       </div>
     </header>
@@ -408,18 +408,12 @@
 
   <script>
     // ── Auth check ────────────────────────────────────────────────────────────
-    (async function checkAuth() {
-      try {
-        // TEMP BYPASS FOR TESTING
-        // const res = await fetch('/auth/verify', { credentials: 'include' });
-        // if (res.ok) {
-          document.getElementById('auth-check').style.display  = 'none';
-          document.getElementById('page-content').style.display = 'block';
-        // } else {
-        //   window.location.href = '/';
-        // }
-      } catch (_) {
-        // window.location.href = '/';
+    (function checkAuth() {
+      if (sessionStorage.getItem('wos_auth') === 'true') {
+        document.getElementById('auth-check').style.display  = 'none';
+        document.getElementById('page-content').style.display = 'block';
+      } else {
+        window.location.href = '/';
       }
     })();
 

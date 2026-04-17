@@ -193,20 +193,11 @@
           return;
         }
 
-        try {
-          const res = await fetch('/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-          });
-
-          if (res.ok) {
-            window.location.href = '/control/';
-          } else {
-            handleFailedAttempt();
-          }
-        } catch (_) {
-          // Network error also counts as a failure
+        // Simple Website-Level Login
+        if (username === 'kailash' && password === 'lyzr2026') {
+          sessionStorage.setItem('wos_auth', 'true');
+          window.location.href = '/control/';
+        } else {
           handleFailedAttempt();
         }
       });
