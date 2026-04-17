@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Work OS — Kailash</title>
+  <meta name="description" content="Personal Agentic Work Operating System for Kailash — centralized task tracking and weekly performance reports." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+
+    @keyframes shake {
+      0%   { transform: translateX(0); }
+      15%  { transform: translateX(-8px); }
+      30%  { transform: translateX(8px); }
+      45%  { transform: translateX(-8px); }
+      60%  { transform: translateX(8px); }
+      75%  { transform: translateX(-4px); }
+      90%  { transform: translateX(4px); }
+      100% { transform: translateX(0); }
+    }
+    .shake { animation: shake 0.5s ease-in-out; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeIn 0.25s ease-out forwards; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+
+  <!-- Main content -->
+  <main class="flex-1 flex flex-col items-center justify-center px-4 py-16">
+    <h1 class="text-3xl font-bold text-gray-900 mb-1 tracking-tight">Work OS — Kailash</h1>
+    <p class="text-gray-500 text-base mb-12">Personal Agentic Work Operating System</p>
+
+    <!-- Two cards -->
+    <div class="flex flex-col sm:flex-row gap-6 w-full max-w-2xl">
+
+      <!-- Tasks card -->
+      <a href="/tasks/"
+         id="card-tasks"
+         class="flex-1 flex flex-col items-center justify-center gap-3 bg-white border border-gray-200 rounded-2xl p-10 shadow-sm
+                hover:shadow-md hover:border-indigo-200 transition-all duration-200 cursor-pointer group">
+        <span class="text-4xl" aria-hidden="true">📋</span>
+        <span class="text-xl font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">TASKS</span>
+        <span class="text-sm text-gray-500 text-center">Weekly task tracking from meetings</span>
+      </a>
+
+      <!-- Reports card -->
+      <a href="/reports/"
+         id="card-reports"
+         class="flex-1 flex flex-col items-center justify-center gap-3 bg-white border border-gray-200 rounded-2xl p-10 shadow-sm
+                hover:shadow-md hover:border-indigo-200 transition-all duration-200 cursor-pointer group">
+        <span class="text-4xl" aria-hidden="true">📊</span>
+        <span class="text-xl font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">REPORTS</span>
+        <span class="text-sm text-gray-500 text-center">Weekly performance reports</span>
+      </a>
+
+    </div>
+  </main>
+
+  <!-- Gear icon (bottom-right) -->
+  <button id="gear-btn"
+          aria-label="Admin login"
+          class="fixed bottom-5 right-5 text-gray-400 text-xl leading-none
+                 opacity-30 hover:opacity-60 transition-opacity duration-200 focus:outline-none"
+          style="font-size:20px; background:none; border:none; cursor:pointer;">
+    ⚙️
+  </button>
+
+  <!-- Modal backdrop -->
+  <div id="modal-backdrop"
+       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 hidden"
+       aria-modal="true" role="dialog">
+
+    <!-- Modal box -->
+    <div id="modal-box"
+         class="bg-white rounded-2xl shadow-xl p-8 w-full fade-in"
+         style="max-width:360px">
+
+      <form id="login-form" novalidate autocomplete="off">
+        <div class="flex flex-col gap-4">
+          <input id="input-username"
+                 type="text"
+                 placeholder="Username"
+                 autocomplete="off"
+                 class="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg
+                        focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent
+                        placeholder-gray-400 text-gray-800" />
+
+          <input id="input-password"
+                 type="password"
+                 placeholder="Password"
+                 autocomplete="off"
+                 class="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg
+                        focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent
+                        placeholder-gray-400 text-gray-800" />
+
+          <button id="login-btn"
+                  type="submit"
+                  class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800
+                         text-white text-sm font-medium py-2.5 rounded-lg
+                         transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            Enter
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const FAIL_KEY = 'wos_fails';
+      const MAX_FAILS = 3;
+
+      // On load: hide gear if already locked out
+      const fails = parseInt(sessionStorage.getItem(FAIL_KEY) || '0', 10);
+      const gearBtn = document.getElementById('gear-btn');
+      if (fails >= MAX_FAILS) {
+        gearBtn.style.display = 'none';
+      }
+
+      const backdrop  = document.getElementById('modal-backdrop');
+      const modalBox  = document.getElementById('modal-box');
+      const loginForm = document.getElementById('login-form');
+      const userInput = document.getElementById('input-username');
+      const passInput = document.getElementById('input-password');
+
+      function openModal() {
+        backdrop.classList.remove('hidden');
+        // re-trigger fade-in each open
+        modalBox.classList.remove('fade-in');
+        void modalBox.offsetWidth; // reflow
+        modalBox.classList.add('fade-in');
+        userInput.focus();
+      }
+
+      function closeModal() {
+        backdrop.classList.add('hidden');
+      }
+
+      // Gear click → open modal
+      gearBtn.addEventListener('click', openModal);
+
+      // Backdrop click → close (does NOT reset fail count)
+      backdrop.addEventListener('click', function (e) {
+        if (e.target === backdrop) closeModal();
+      });
+
+      // Escape key → close
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeModal();
+      });
+
+      // Shake + clear + increment fails
+      function handleFailedAttempt() {
+        let currentFails = parseInt(sessionStorage.getItem(FAIL_KEY) || '0', 10) + 1;
+        sessionStorage.setItem(FAIL_KEY, currentFails);
+
+        // Shake animation
+        modalBox.classList.remove('shake');
+        void modalBox.offsetWidth;
+        modalBox.classList.add('shake');
+        modalBox.addEventListener('animationend', () => modalBox.classList.remove('shake'), { once: true });
+
+        // Clear fields
+        userInput.value = '';
+        passInput.value = '';
+        userInput.focus();
+
+        // Lock out after MAX_FAILS
+        if (currentFails >= MAX_FAILS) {
+          closeModal();
+          gearBtn.style.display = 'none';
+        }
+      }
+
+      // Form submit
+      loginForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const username = userInput.value.trim();
+        const password = passInput.value;
+
+        if (!username || !password) {
+          handleFailedAttempt();
+          return;
+        }
+
+        try {
+          const res = await fetch('/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+          });
+
+          if (res.ok) {
+            window.location.href = '/control/';
+          } else {
+            handleFailedAttempt();
+          }
+        } catch (_) {
+          // Network error also counts as a failure
+          handleFailedAttempt();
+        }
+      });
+
+    })();
+  </script>
+
+</body>
+</html>

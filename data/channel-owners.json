@@ -1,0 +1,135 @@
+{
+  "channels": [
+    {
+      "team": "Marketing",
+      "category": "Design & Creatives",
+      "channel": "Design",
+      "owners": ["Anand", "Skanda"],
+      "pod": ["GSI/SI", "common"],
+      "sheet_name": "Design Weekly Metrics",
+      "form_url": "TBD",
+      "metrics": ["TBD"],
+      "nudge_cadence_days": "N"
+    },
+    {
+      "team": "Marketing",
+      "channel": "Video",
+      "owners": ["Ayush Raj", "Arnav"],
+      "notes": ["Ad/Tutorial Videos", "Growth Videos"]
+    },
+    {
+      "team": "Marketing",
+      "channel": "SEO/GEO",
+      "owners": ["Vaibhav", "Deepyanti"],
+      "notes": ["Lead", ""]
+    },
+    {
+      "team": "Marketing",
+      "channel": "Blogs/Content",
+      "owners": ["Shreya"],
+      "notes": ["Case Studies, Dev Blogs"]
+    },
+    {
+      "team": "Marketing",
+      "channel": "Script/Content",
+      "owners": ["Shifa", "Alma"],
+      "notes": ["LinkedIn, Webinar", "Brand, Playbooks"]
+    },
+    {
+      "team": "Marketing",
+      "channel": "Community",
+      "owners": ["Faraaz", "Vaibhavi Pai"]
+    },
+    {
+      "team": "Marketing",
+      "channel": "Social",
+      "owners": ["Prince"],
+      "notes": ["Social Media & Influencers"]
+    },
+    {
+      "team": "Marketing",
+      "channel": "Twitter Social",
+      "owners": ["Shifa"]
+    },
+    {
+      "team": "Marketing",
+      "channel": "G2",
+      "owners": ["Pranamya"]
+    },
+    {
+      "team": "Marketing",
+      "channel": "Podcast",
+      "owners": ["Pranamya"]
+    },
+    {
+      "team": "Marketing",
+      "channel": "CRM (HubSpot)",
+      "owners": ["Nirupam"],
+      "pod": "GSI/SI"
+    },
+    {
+      "team": "Marketing",
+      "channel": "Email Outreach",
+      "owners": ["Ridha"],
+      "pod": "GSI/SI"
+    },
+    {
+      "team": "Marketing",
+      "channel": "Website/LP",
+      "owners": ["Kiran Thomas", "Vineeth", "Leanord"],
+      "notes": ["WordPress", "WordPress", "UI/UX"]
+    },
+    {
+      "team": "Marketing",
+      "channel": "Events",
+      "owners": ["Ankita", "Prasad Sawant"],
+      "notes": ["", "DevRel events"]
+    },
+    {
+      "team": "Marketing",
+      "channel": "Partnerships",
+      "owners": ["Ankita", "Sarah", "KG"],
+      "notes": ["GSI/SI", "HyperScale", "Channel Lead"]
+    },
+    {
+      "team": "Marketing",
+      "channel": "LinkedIn Ads",
+      "owners": ["Rishabh"],
+      "notes": ["All Ads"]
+    },
+    {
+      "team": "Marketing",
+      "channel": "Performance",
+      "owners": ["Yukta", "Keerthi"],
+      "notes": ["All Ads", "All Ads"]
+    },
+    {
+      "team": "Sales",
+      "channel": "AE",
+      "owners": ["Praveen Sukumar"],
+      "notes": ["Accenture"]
+    },
+    {
+      "team": "Sales",
+      "channel": "SDR",
+      "owners": ["Pooja", "Vedant"]
+    },
+    {
+      "team": "Sales",
+      "channel": "Partnerships SDR",
+      "owners": ["Anju Chaudhary"],
+      "notes": ["Lead"]
+    },
+    {
+      "team": "Solution",
+      "channel": "DevRel",
+      "owners": ["Vaibhavi Pai"]
+    },
+    {
+      "team": "Product",
+      "channel": "Product",
+      "owners": ["Vidur", "Pavan"],
+      "notes": ["Architect", "LyzrGPT"]
+    }
+  ]
+}
