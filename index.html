@@ -194,7 +194,7 @@
         }
 
         // Simple Website-Level Login
-        if (username === 'kailash' && password === 'lyzr2026') {
+        if (username.toLowerCase() === 'kailash' && password === 'Kail@lyzr') {
           sessionStorage.setItem('wos_auth', 'true');
           window.location.href = '/control/';
         } else {
