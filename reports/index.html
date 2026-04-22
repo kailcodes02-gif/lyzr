@@ -64,7 +64,7 @@
 
         sorted.forEach(function (week) {
           const card = document.createElement('a');
-          card.href = '/reports/week-' + week.number + '/';
+          card.href = week.path ? '/reports/' + week.path + '/' : '/reports/week-' + week.number + '/';
           card.id  = 'report-card-' + week.number;
           card.className = [
             'block bg-white border border-gray-200 rounded-xl p-5',

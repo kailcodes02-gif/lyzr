@@ -1,7 +1,15 @@
 {
-  "current_week": 0,
-  "start_date": null,
+  "current_week": 1,
+  "start_date": "2026-04-18",
   "timezone": "Asia/Kolkata",
-  "weeks": [],
-  "last_updated": null
+  "weeks": [
+    {
+      "number": 1,
+      "date_range": "April 18 to April 22",
+      "path": "week_April_18to22",
+      "status": "complete",
+      "meetings_processed": 55
+    }
+  ],
+  "last_updated": "2026-04-22"
 }
