@@ -89,7 +89,7 @@
 
       async function init() {
         try {
-          const res  = await fetch('/data/weeks.json');
+          const res  = await fetch('/data/weeks.json?t=' + new Date().getTime());
           const data = await res.json();
 
           document.getElementById('loading-state').classList.add('hidden');
