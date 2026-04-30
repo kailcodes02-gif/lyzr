@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tasks — Work OS</title>
-  <meta name="description" content="Weekly task tracking from meetings — Work OS by Kailash." />
+  <meta name="description" content="Weekly task tracking from meetings for Lyzr AI — centralized view of action items, follow-ups, and deliverables extracted from team meetings." />
+  <meta name="robots" content="index, follow" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -44,6 +45,18 @@
 
     <!-- Week cards container (hidden until data loads) -->
     <div id="weeks-container" class="hidden flex flex-col gap-4"></div>
+
+    <!-- Static fallback for AI scrapers and no-JS environments -->
+    <noscript>
+      <div class="flex flex-col gap-4">
+        <p class="text-sm text-gray-500">Task data is loaded dynamically. Please enable JavaScript to view tasks, or visit the <a href="/reports/" class="text-indigo-600">Reports</a> section for weekly summaries.</p>
+      </div>
+    </noscript>
+
+    <!-- AI-readable content summary (visually hidden, accessible to scrapers) -->
+    <div aria-label="Tasks listing for AI scrapers" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap;">
+      Lyzr AI Work OS — Weekly Tasks Index. This page lists weekly task tracking derived from team meetings. Tasks are organized by week and extracted from meeting transcripts. The system processes meetings and generates actionable task items. For detailed marketing activity reports, see /reports/. Current active week data is loaded from /data/weeks.json.
+    </div>
 
   </main>
 
