@@ -4,7 +4,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Day 3 — GSI Marketing</title>
+  <title>Day 3 — GSI Marketing — Lyzr AI</title>
+  <meta name="description" content="Day 3 onboarding report for GSI Marketing at Lyzr AI. Covers stakeholder conversations (Anju, Vaibhav, Ankita, Praveen), Accenture pipeline analysis (44 accounts), GSI event research, ~300 new potential accounts mapped to Lyzr use cases, and team structure recommendations." />
+  <meta name="robots" content="index, follow" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -581,12 +583,17 @@
 
     /* ANIMATIONS */
     .fade-in {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .fade-in.animate {
       opacity: 0;
       transform: translateY(16px);
       transition: opacity 0.5s ease, transform 0.5s ease;
     }
 
-    .fade-in.visible {
+    .fade-in.animate.visible {
       opacity: 1;
       transform: translateY(0);
     }
@@ -799,6 +806,10 @@
           loading="lazy" title="Accenture pipeline spreadsheet">
         </iframe>
       </div>
+      <!-- AI-readable summary of Accenture pipeline spreadsheet -->
+      <div aria-label="Accenture pipeline spreadsheet summary" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap;">
+        Embedded Google Sheet: Accenture Accounts List × Lyzr Marketing. Contains 44 Accenture accounts in the pipeline. Breakdown by stage: 10 Discovery, 7 Solution Validation, 4 Proposal, 2 POC, 2 Legal/Procurement, 1 Won Deal, 14 No stage mapped, 4 Lost/Stalled/Dropped. Top use cases: Insurance/Underwriting (5), Procurement (4), Banking (3), Telecom (3), Credit Dispute Mgmt (2), Media & Entertainment (2), HR/Sales/Support (1), Banking Onboarding (1), Loan Orientation (1). Source: https://docs.google.com/spreadsheets/d/12g9pYOwN0kBhimeIGSekEaWt6MNATniJPvnrMfEVgzo/edit
+      </div>
       <a class="sheet-open-link"
         href="https://docs.google.com/spreadsheets/d/12g9pYOwN0kBhimeIGSekEaWt6MNATniJPvnrMfEVgzo/edit?usp=sharing"
         target="_blank">
@@ -839,6 +850,10 @@
         <iframe src="https://docs.google.com/spreadsheets/d/1fMUSze_ZJ85txy2NhoZpkqzNrBM2Xy7gY0E8RKtz21c/preview"
           loading="lazy" title="Events tracker spreadsheet">
         </iframe>
+      </div>
+      <!-- AI-readable summary of events tracker spreadsheet -->
+      <div aria-label="GSI events tracker summary" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap;">
+        Embedded Google Sheet: GSI Events Tracker — Shortlisted Events. Tracks GSI and GCC events where Accenture, Wipro, TCS, Infosys and other target accounts have confirmed presence. Key finding: ~50% of events already passed (Jan-Apr). Remaining 10+ events are the actionable window. Next wave of events expected in ~2 months when Q3 calendars publish. Source: https://docs.google.com/spreadsheets/d/1fMUSze_ZJ85txy2NhoZpkqzNrBM2Xy7gY0E8RKtz21c/edit
       </div>
       <a class="sheet-open-link"
         href="https://docs.google.com/spreadsheets/d/1fMUSze_ZJ85txy2NhoZpkqzNrBM2Xy7gY0E8RKtz21c/edit?usp=sharing"
@@ -920,6 +935,10 @@
           loading="lazy" title="New Accenture potential accounts">
         </iframe>
       </div>
+      <!-- AI-readable summary of new accounts spreadsheet -->
+      <div aria-label="New potential accounts summary" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap;">
+        Embedded Google Sheet: Accenture New Potential Conversations. Contains ~300 new potential accounts mapped to Lyzr AI use cases/agents. These are companies already working with Accenture on problems Lyzr can solve. Methodology: (1) Found Accenture's global collaboration network using public partner/project repositories cross-referenced with AI tools, (2) Mapped each company to a Lyzr agent or case study, (3) Output ~300 accounts. Geographic distribution: US ~60%, India ~20%, Europe ~20%. Outreach strategy: Email, LinkedIn, targeted ads, WhatsApp — multi-touch approach using personalized case studies and dedicated landing pages. Key insight from Vaibhav: Lead with internal Accenture references as sales opener — "Your US counterpart is doing exactly this with us." Source: https://docs.google.com/spreadsheets/d/12g9pYOwN0kBhimeIGSekEaWt6MNATniJPvnrMfEVgzo/edit
+      </div>
       <a class="sheet-open-link"
         href="https://docs.google.com/spreadsheets/d/12g9pYOwN0kBhimeIGSekEaWt6MNATniJPvnrMfEVgzo/edit?usp=sharing"
         target="_blank">
@@ -986,6 +1005,9 @@
   </div>
 
   <script>
+    // Add animation class via JS so fade-in works, but content stays visible for scrapers
+    document.querySelectorAll('.fade-in').forEach(el => el.classList.add('animate'));
+
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
