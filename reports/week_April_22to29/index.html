@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GSI Marketing Report — 22–30 April 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;0,600;1,300&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0a08;
+    --surface: #141210;
+    --card: #1c1814;
+    --card-2: #211d19;
+    --border: #2e2822;
+    --border-light: #3a332c;
+    --rose: #c96a5a;
+    --rose-dim: rgba(201,106,90,0.12);
+    --amber: #d9a84c;
+    --amber-dim: rgba(217,168,76,0.12);
+    --green: #5aab8a;
+    --green-dim: rgba(90,171,138,0.12);
+    --blue: #5a8bc9;
+    --blue-dim: rgba(90,139,201,0.12);
+    --purple: #a07bc8;
+    --purple-dim: rgba(160,123,200,0.12);
+    --muted: #706458;
+    --muted-dim: rgba(112,100,88,0.18);
+    --text: #f0ebe4;
+    --text-2: #9e9188;
+    --text-3: #635a52;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* TOPBAR */
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 16px; }
+  .logo-mark {
+    width: 28px; height: 28px;
+    background: var(--rose); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 14px; color: #fff; font-weight: 600;
+  }
+  .report-title { font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: 0.02em; text-transform: uppercase; }
+  .report-sub { font-size: 11.5px; color: var(--text-2); letter-spacing: 0.03em; }
+  .topbar-nav { display: flex; gap: 6px; }
+  .nav-pill {
+    padding: 5px 14px; border-radius: 20px;
+    border: 1px solid var(--border-light);
+    font-size: 11.5px; font-weight: 500; color: var(--text-2);
+    text-decoration: none; cursor: pointer; background: none; transition: all 0.15s;
+  }
+  .nav-pill:hover { border-color: var(--rose); color: var(--rose); }
+
+  /* MAIN */
+  .main { max-width: 1160px; margin: 0 auto; padding: 40px 40px 80px; }
+
+  /* WEEK HEADER */
+  .week-header {
+    display: flex; align-items: center; gap: 20px;
+    margin-bottom: 28px; margin-top: 52px;
+    padding-bottom: 16px; border-bottom: 1px solid var(--border);
+  }
+  .week-header:first-child { margin-top: 0; }
+  .week-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 16px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .week-badge.past    { background: var(--muted-dim);  color: var(--text-2);  border: 1px solid var(--border-light); }
+  .week-badge.current { background: var(--rose-dim);   color: var(--rose);    border: 1px solid rgba(201,106,90,0.3); }
+  .week-badge.pipeline{ background: var(--blue-dim);   color: var(--blue);    border: 1px solid rgba(90,139,201,0.3); }
+  .week-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .week-title { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 400; color: var(--text); letter-spacing: -0.02em; }
+  .week-dates { font-size: 12px; color: var(--text-3); margin-left: auto; letter-spacing: 0.02em; }
+
+  /* BADGES */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 9px; border-radius: 3px;
+    font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+  .badge.live    { background: var(--green-dim);  color: var(--green); }
+  .badge.active  { background: var(--green-dim);  color: var(--green); }
+  .badge.wip     { background: var(--amber-dim);  color: var(--amber); }
+  .badge.paused  { background: var(--muted-dim);  color: var(--muted); }
+  .badge.inactive{ background: var(--muted-dim);  color: var(--muted); }
+  .badge.today   { background: var(--rose-dim);   color: var(--rose);  }
+  .badge.blocked { background: rgba(200,80,80,0.12); color: #d46a6a; }
+  .badge.pending { background: var(--blue-dim);   color: var(--blue);  }
+  .badge.next-wk { background: var(--amber-dim);  color: var(--amber); }
+  .badge.done    { background: var(--green-dim);  color: var(--green); }
+
+  /* CHANNEL BLOCK */
+  .channel-block { background: var(--card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+  .channel-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--card-2);
+  }
+  .channel-icon {
+    width: 30px; height: 30px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0;
+  }
+  .ch-linkedin { background: rgba(10,102,194,0.18); color: #4a9fd4; }
+  .ch-email    { background: rgba(90,171,138,0.15); color: var(--green); }
+  .ch-co-mkt   { background: rgba(201,106,90,0.15); color: var(--rose); }
+  .ch-ads      { background: rgba(217,168,76,0.15); color: var(--amber); }
+  .ch-events   { background: rgba(90,139,201,0.15); color: var(--blue); }
+  .ch-auto     { background: rgba(160,123,200,0.15); color: var(--purple); }
+  .ch-accounts { background: rgba(201,106,90,0.12); color: #d4956a; }
+  .ch-social   { background: rgba(90,171,138,0.12); color: var(--green); }
+  .ch-content  { background: rgba(217,168,76,0.12); color: var(--amber); }
+  .ch-internal { background: rgba(160,123,200,0.12); color: var(--purple); }
+  .ch-crm      { background: rgba(90,139,201,0.12); color: var(--blue); }
+
+  .channel-name { font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: 0.01em; }
+  .channel-status-row { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .channel-body { padding: 16px 20px; }
+
+  /* ITEMS */
+  .item-list { display: flex; flex-direction: column; gap: 10px; }
+  .item { display: flex; align-items: flex-start; gap: 12px; }
+  .item-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--border-light); margin-top: 7px; flex-shrink: 0; }
+  .item-text { flex: 1; font-size: 13px; color: var(--text); line-height: 1.5; }
+  .item-sub  { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+  .item-badge-row { display: flex; gap: 6px; flex-shrink: 0; align-items: flex-start; padding-top: 1px; }
+
+  /* METRICS */
+  .metrics-grid {
+    display: grid; gap: 1px;
+    background: var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 14px;
+  }
+  .metrics-grid.col4 { grid-template-columns: repeat(4,1fr); }
+  .metrics-grid.col3 { grid-template-columns: repeat(3,1fr); }
+  .metrics-grid.col5 { grid-template-columns: repeat(5,1fr); }
+  .metric-cell { background: var(--card); padding: 14px 16px; }
+  .metric-val {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px; font-weight: 400; color: var(--text);
+    letter-spacing: -0.02em; line-height: 1.1;
+  }
+  .metric-val.rose  { color: var(--rose); }
+  .metric-val.green { color: var(--green); }
+  .metric-val.amber { color: var(--amber); }
+  .metric-val.blue  { color: var(--blue); }
+  .metric-label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; }
+
+  /* REGION GRID */
+  .region-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 14px; }
+  .region-card { background: var(--card-2); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; }
+  .region-label { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+  .region-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+  .region-row:last-child { border-bottom: none; }
+  .region-key { color: var(--text-2); }
+  .region-val { font-weight: 500; color: var(--text); }
+  .region-val.g { color: var(--green); }
+  .region-val.a { color: var(--amber); }
+  .region-val.r { color: var(--rose); }
+
+  /* INSIGHT BOX */
+  .insight-box { border-radius: 6px; padding: 12px 16px; margin-top: 12px; }
+  .insight-box.rose   { background: rgba(201,106,90,0.07);  border: 1px solid rgba(201,106,90,0.2); }
+  .insight-box.blue   { background: rgba(90,139,201,0.07);  border: 1px solid rgba(90,139,201,0.2); }
+  .insight-box.amber  { background: rgba(217,168,76,0.07);  border: 1px solid rgba(217,168,76,0.2); }
+  .insight-box.green  { background: rgba(90,171,138,0.07);  border: 1px solid rgba(90,171,138,0.2); }
+  .insight-box.blocked{ background: rgba(200,80,80,0.07);   border: 1px solid rgba(200,80,80,0.2); }
+  .insight-label { font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
+  .insight-label.rose   { color: var(--rose); }
+  .insight-label.blue   { color: var(--blue); }
+  .insight-label.amber  { color: var(--amber); }
+  .insight-label.green  { color: var(--green); }
+  .insight-label.blocked{ color: #d46a6a; }
+  .insight-text { font-size: 12.5px; color: var(--text-2); line-height: 1.6; }
+  .insight-text li { margin-left: 14px; margin-top: 4px; }
+
+  /* MINI TABLE */
+  .mini-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .mini-table th { text-align: left; padding: 7px 10px; color: var(--text-3); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); }
+  .mini-table td { padding: 8px 10px; color: var(--text); border-bottom: 1px solid var(--border); }
+  .mini-table tr:last-child td { border-bottom: none; }
+  .mini-table tr:hover td { background: rgba(255,255,255,0.015); }
+  .val-hi { color: var(--green); font-weight: 500; }
+  .val-lo { color: var(--amber); font-weight: 500; }
+  .val-red{ color: #d46a6a; font-weight: 500; }
+
+  /* IFRAME */
+  .iframe-wrap { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-top: 14px; background: #fff; }
+  .iframe-label {
+    background: var(--card-2); border-bottom: 1px solid var(--border);
+    padding: 7px 14px; font-size: 11px; color: var(--text-3);
+    display: flex; align-items: center; gap: 8px; letter-spacing: 0.04em;
+  }
+  .iframe-label .dot-ind { width: 8px; height: 8px; background: var(--border-light); border-radius: 50%; flex-shrink: 0; }
+  .iframe-open-btn {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 3px; border: 1px solid var(--border-light);
+    background: transparent; color: var(--text-2); font-size: 10.5px; font-weight: 500;
+    font-family: 'DM Sans', sans-serif; letter-spacing: 0.04em; text-decoration: none;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .iframe-open-btn:hover { border-color: var(--rose); color: var(--rose); }
+  .iframe-wrap iframe { display: block; width: 100%; border: none; }
+
+  /* DECK BUTTON */
+  .deck-btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--card-2); border: 1px solid var(--border-light); border-radius: 6px;
+    padding: 11px 20px; color: var(--text); text-decoration: none;
+    font-size: 13px; font-weight: 500; transition: all 0.15s; margin-bottom: 20px;
+  }
+  .deck-btn:hover { border-color: var(--rose); color: var(--rose); }
+
+  /* DIVIDER */
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+  /* SECTION EYEBROW */
+  .section-eyebrow { font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; }
+
+  /* EVENTS TABLE */
+  .events-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; }
+  .event-card {
+    background: var(--card-2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .event-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .event-meta { display: flex; gap: 10px; flex-wrap: wrap; }
+  .event-tag { font-size: 11px; color: var(--text-3); display: flex; align-items: center; gap: 4px; }
+  .event-tag strong { color: var(--text-2); }
+  .event-partner { font-size: 11.5px; color: var(--text-2); }
+
+  /* PIPELINE */
+  .pipeline-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; }
+  .pipeline-item {
+    background: var(--card-2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px 16px; display: flex; align-items: flex-start; gap: 12px;
+  }
+  .pipeline-num { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--text-3); font-weight: 300; flex-shrink: 0; width: 20px; line-height: 1.3; }
+  .pipeline-name { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.4; }
+  .pipeline-detail { font-size: 11.5px; color: var(--text-3); margin-top: 3px; }
+
+  /* WEBINAR STATS */
+  .webinar-stats { display: flex; gap: 10px; margin-bottom: 14px; }
+  .stat-pill {
+    flex: 1; background: var(--card-2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 14px 16px; text-align: center;
+  }
+  .stat-pill-val { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 300; color: var(--text); letter-spacing: -0.03em; }
+  .stat-pill-val.g { color: var(--green); }
+  .stat-pill-val.a { color: var(--amber); }
+  .stat-pill-label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; }
+
+  a.inline-link { color: var(--rose); text-decoration: none; }
+  a.inline-link:hover { text-decoration: underline; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 2px; }
+
+  @media (max-width: 768px) {
+    .main { padding: 24px 16px; }
+    .topbar { padding: 12px 16px; }
+    .region-grid, .events-grid, .pipeline-grid { grid-template-columns: 1fr; }
+    .metrics-grid.col4, .metrics-grid.col5 { grid-template-columns: repeat(2,1fr); }
+    .webinar-stats { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo-mark">L</div>
+    <div>
+      <div class="report-title">GSI & Partner Marketing</div>
+      <div class="report-sub">Weekly Report · Lyzr AI</div>
+    </div>
+  </div>
+  <nav class="topbar-nav">
+    <a class="nav-pill" href="#prev-week">← 15–22 Apr</a>
+    <a class="nav-pill" href="#this-week">This Week</a>
+    <a class="nav-pill" href="#pipeline">To-Do</a>
+  </nav>
+</div>
+
+<div class="main">
+
+<!-- ─────────────────────────────────── -->
+<!-- SECTION 1: PREV WEEK SUMMARY       -->
+<!-- ─────────────────────────────────── -->
+<div id="prev-week" class="week-header">
+  <span class="week-badge past"><span class="week-dot"></span>Previous · 15–22 Apr</span>
+  <h2 class="week-title">Week Summary</h2>
+  <span class="week-dates">Reference</span>
+</div>
+
+<a href="#" class="deck-btn" style="opacity:0.7; cursor:default;">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+  Previous Report — 15–22 April 2026 (uploaded)
+</a>
+
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-ads">◈</div>
+    <span class="channel-name">Recap Snapshot</span>
+  </div>
+  <div class="channel-body">
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text">LinkedIn Ads went live (Fri) — Accenture creative outperforming at 1.93% CTR vs 0.4%</div><div class="item-badge-row"><span class="badge done">Done</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Conversation Ad launched for Accenture (India + US)</div><div class="item-badge-row"><span class="badge done">Done</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">7K Accenture leads updated for LinkedIn Ads targeting</div><div class="item-badge-row"><span class="badge done">Done</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Anju Post 1 live — Campaign Agents case study</div><div class="item-badge-row"><span class="badge done">Done</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">GSI event micro-audit done — gap identified (mostly hiring events, not practice events)</div><div class="item-badge-row"><span class="badge done">Done</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Accenture MD × Use Case target list ready — 150+ accounts mapped</div><div class="item-badge-row"><span class="badge done">Done</span></div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ─────────────────────────────────── -->
+<!-- SECTION 2: THIS WEEK 22–30 APR     -->
+<!-- ─────────────────────────────────── -->
+<div id="this-week" class="week-header">
+  <span class="week-badge current"><span class="week-dot"></span>Current · 22–30 Apr</span>
+  <h2 class="week-title">22 – 30 April 2026</h2>
+  <span class="week-dates">What happened this week</span>
+</div>
+
+
+<!-- ── LINKEDIN ADS: CONVERSATION ADS ── -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-linkedin">in</div>
+    <span class="channel-name">LinkedIn Ads — Conversation Ads · GSI & SI</span>
+    <div class="channel-status-row">
+      <span class="badge active">Live</span>
+    </div>
+  </div>
+  <div class="channel-body">
+
+    <!-- Combined total -->
+    <div class="section-eyebrow">Combined — India & US</div>
+    <div class="metrics-grid col5" style="margin-bottom:14px;">
+      <div class="metric-cell">
+        <div class="metric-val rose">$800.60</div>
+        <div class="metric-label">Total Spend</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-val green">3</div>
+        <div class="metric-label">Leads</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-val amber">$266.87</div>
+        <div class="metric-label">Blended CPL</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-val">468</div>
+        <div class="metric-label">Sends</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-val">32.3%</div>
+        <div class="metric-label">Avg Open Rate</div>
+      </div>
+    </div>
+
+    <!-- Region breakdown -->
+    <div class="section-eyebrow">Region Breakdown</div>
+    <div class="region-grid">
+      <div class="region-card">
+        <div class="region-label">🇮🇳 India <span class="badge live" style="font-size:9.5px;">Top Performer</span></div>
+        <div class="region-row"><span class="region-key">Spend</span><span class="region-val a">$403.12</span></div>
+        <div class="region-row"><span class="region-key">Leads</span><span class="region-val g">2</span></div>
+        <div class="region-row"><span class="region-key">CPL</span><span class="region-val g">$201.56</span></div>
+        <div class="region-row"><span class="region-key">Sends / Opens</span><span class="region-val">255 / 79</span></div>
+        <div class="region-row"><span class="region-key">Open Rate</span><span class="region-val">31.0%</span></div>
+        <div class="region-row"><span class="region-key">Clicks</span><span class="region-val g">3</span></div>
+      </div>
+      <div class="region-card">
+        <div class="region-label">🇺🇸 United States</div>
+        <div class="region-row"><span class="region-key">Spend</span><span class="region-val a">$397.48</span></div>
+        <div class="region-row"><span class="region-key">Leads</span><span class="region-val a">1</span></div>
+        <div class="region-row"><span class="region-key">CPL</span><span class="region-val r">$397.48</span></div>
+        <div class="region-row"><span class="region-key">Sends / Opens</span><span class="region-val">213 / 72</span></div>
+        <div class="region-row"><span class="region-key">Open Rate</span><span class="region-val">33.8%</span></div>
+        <div class="region-row"><span class="region-key">Clicks</span><span class="region-val a">1</span></div>
+      </div>
+      <div class="region-card" style="border-color: rgba(201,106,90,0.3);">
+        <div class="region-label" style="color: var(--rose);">Total · 22–28 Apr</div>
+        <div class="region-row"><span class="region-key">Total Sends</span><span class="region-val">468</span></div>
+        <div class="region-row"><span class="region-key">Total Opens</span><span class="region-val">151</span></div>
+        <div class="region-row"><span class="region-key">Total Clicks</span><span class="region-val">4</span></div>
+        <div class="region-row"><span class="region-key">Total Leads</span><span class="region-val g">3</span></div>
+        <div class="region-row"><span class="region-key">Total Spend</span><span class="region-val r">$800.60</span></div>
+        <div class="region-row"><span class="region-key">Blended CPL</span><span class="region-val a">$266.87</span></div>
+      </div>
+    </div>
+
+    <div class="insight-box rose">
+      <div class="insight-label rose">💡 Key Takeaways</div>
+      <div class="insight-text"><ul>
+        <li>India is top-performing — 3 of 4 total leads and 2× better CPL than US</li>
+        <li>Older messaging angle in India generating more leads than the newer version</li>
+        <li>Open rates consistent (~31–32%) across both — targeting and hook are working</li>
+        <li>US funnel needs messaging refinement — open rate is solid but conversion isn't following</li>
+      </ul></div>
+    </div>
+
+    <!-- Post Amplification -->
+    <div class="divider"></div>
+    <div class="section-eyebrow">Post Amplification — Anju Chaudhary · GSI & SI</div>
+    <div class="metrics-grid col4" style="margin-bottom:1px;">
+      <div class="metric-cell">
+        <div class="metric-val rose">$61.84</div>
+        <div class="metric-label">Total Spend</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-val">114</div>
+        <div class="metric-label">Impressions</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-val green">13</div>
+        <div class="metric-label">Total Clicks</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-val amber">11.4%</div>
+        <div class="metric-label">Avg CTR</div>
+      </div>
+    </div>
+    <div class="metrics-grid col4" style="margin-top: 1px;">
+      <div class="metric-cell" style="opacity:0.5;">
+        <div class="metric-val" style="font-size:15px;">Post 1</div>
+        <div class="metric-label">$4.40 · 10 impr · 0 clicks · 0% CTR</div>
+      </div>
+      <div class="metric-cell" style="grid-column: span 3;">
+        <div class="metric-val green" style="font-size:15px;">Post 2 — "You know you're winning the Enterprise game…"</div>
+        <div class="metric-label">$57.44 · 104 impr · 13 clicks · 12.5% CTR · $4.42 CPE</div>
+      </div>
+    </div>
+    <div class="insight-box green">
+      <div class="insight-label green">📈 Insight</div>
+      <div class="insight-text"><ul>
+        <li>Post 2 driving majority of performance — highest CTR at ~11–12.5%</li>
+        <li>Strong traction from senior decision-makers: MDs, Directors of AI, Senior MDs</li>
+        <li>Targeting within Accenture is working — consistent engagement validates audience + narrative</li>
+      </ul></div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ── LINKEDIN ORGANIC ── -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-social">✍</div>
+    <span class="channel-name">LinkedIn Organic — Anju Post 2 · Thought Leadership</span>
+    <div class="channel-status-row">
+      <span class="badge live">Live This Week</span>
+    </div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text">Second post of the week published — GSI/SI thought leadership angle · Authored as Anju (VP Global Partnerships)</div><div class="item-badge-row"><span class="badge live">Live</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Cadence target: 2× per week on LinkedIn from Anju's profile</div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── WEBINAR ── -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-co-mkt">🎙</div>
+    <span class="channel-name">Webinar — "Beyond the Demo" · Co-Marketing with Movate</span>
+    <div class="channel-status-row">
+      <span class="badge done">Completed · Apr 29</span>
+    </div>
+  </div>
+  <div class="channel-body">
+    <div class="webinar-stats">
+      <div class="stat-pill">
+        <div class="stat-pill-val a">233</div>
+        <div class="stat-pill-label">Total Registered</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-pill-val g">76</div>
+        <div class="stat-pill-label">Total Attended</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-pill-val">32.6%</div>
+        <div class="stat-pill-label">Attendance Rate</div>
+      </div>
+    </div>
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text">Format: 60 min · 8:30 PM IST · Speakers: Devanathan Desikan (Movate) + Anju Chaudhary (Lyzr)</div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">LinkedIn Event: <a class="inline-link" href="https://www.linkedin.com/events/7447606705028411392" target="_blank">linkedin.com/events/7447606705028411392 ↗</a></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Registration list captured — to be used for cohort nurture sequence</div><div class="item-badge-row"><span class="badge next-wk">Nurture Next Wk</span></div></div>
+    </div>
+    <div class="iframe-wrap">
+      <div class="iframe-label"><span class="dot-ind"></span>Webinar Registration List<a class="iframe-open-btn" href="https://docs.google.com/spreadsheets/d/1whbfFny2Ju0Tpykgl_gl-_E0MhLtqgXYW0cvmDsnq-4/edit" target="_blank">Open ↗</a></div>
+      <iframe src="https://docs.google.com/spreadsheets/d/1whbfFny2Ju0Tpykgl_gl-_E0MhLtqgXYW0cvmDsnq-4/preview" height="300"></iframe>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── EVENTS: NY TECH WEEK ── -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-events">◆</div>
+    <span class="channel-name">Events — New York Tech Week · Jun 1–7</span>
+    <div class="channel-status-row">
+      <span class="badge next-wk">Marketing Kicks Off Next Wk</span>
+    </div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list" style="margin-bottom: 14px;">
+      <div class="item"><div class="item-dot"></div><div class="item-text">Aligned with Ankita & Anju — 10 events planned across NYC (Chelsea, SoHo, Midtown, Brooklyn, Hamptons)</div><div class="item-badge-row"><span class="badge done">Aligned</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Marketing push starting next week · Guest list prep, invite design, partner co-host confirmations underway</div><div class="item-badge-row"><span class="badge next-wk">Next Week</span></div></div>
+    </div>
+
+    <div class="section-eyebrow">Planned Events — Snapshot</div>
+    <div class="events-grid">
+      <div class="event-card">
+        <div class="event-name">Between the Frameworks</div>
+        <div class="event-meta">
+          <span class="event-tag">📅 <strong>May 29–30</strong></span>
+          <span class="event-tag">👥 <strong>12–15 pax</strong></span>
+          <span class="event-tag">💰 <strong>$10K</strong></span>
+        </div>
+        <div class="event-partner">Gallery walkthrough → dinner at Bottino · Partner: Accenture</div>
+      </div>
+      <div class="event-card">
+        <div class="event-name">The Morning Stack</div>
+        <div class="event-meta">
+          <span class="event-tag">📅 <strong>Jun 1 · 8AM</strong></span>
+          <span class="event-tag">👥 <strong>8–12 pax</strong></span>
+          <span class="event-tag">💰 <strong>$5K</strong></span>
+        </div>
+        <div class="event-partner">Speaker-led BFSI breakfast · Ned NoMad · Partner: Persistent Systems</div>
+      </div>
+      <div class="event-card">
+        <div class="event-name">Women in AI</div>
+        <div class="event-meta">
+          <span class="event-tag">📅 <strong>Jun 2 · 12:30PM</strong></span>
+          <span class="event-tag">👥 <strong>15–20 pax</strong></span>
+          <span class="event-tag">💰 <strong>$5K</strong></span>
+        </div>
+        <div class="event-partner">Power lunch + scent bar · Partners: Nvidia + Google Cloud + AWS + Accenture + Anthropic</div>
+      </div>
+      <div class="event-card">
+        <div class="event-name">Omakase by Lyzr</div>
+        <div class="event-meta">
+          <span class="event-tag">📅 <strong>Jun 2 · 7PM</strong></span>
+          <span class="event-tag">👥 <strong>8 pax</strong></span>
+          <span class="event-tag">💰 <strong>$8K</strong></span>
+        </div>
+        <div class="event-partner">Private counter omakase · CIOs + Firstsource · Partner: Yugabyte</div>
+      </div>
+      <div class="event-card">
+        <div class="event-name">Sail With Lyzr</div>
+        <div class="event-meta">
+          <span class="event-tag">📅 <strong>Jun 4 · 4PM</strong></span>
+          <span class="event-tag">👥 <strong>10–15 pax</strong></span>
+          <span class="event-tag">💰 <strong>$10K</strong></span>
+        </div>
+        <div class="event-partner">Private sailboat · Hudson River · Accenture MDs + AWS · Siva hosts</div>
+      </div>
+      <div class="event-card">
+        <div class="event-name">Free Ice Cream. Bring a Laptop.</div>
+        <div class="event-meta">
+          <span class="event-tag">📅 <strong>Jun 4 · 2–9PM</strong></span>
+          <span class="event-tag">👥 <strong>150–250</strong></span>
+          <span class="event-tag">💰 <strong>$10K</strong></span>
+        </div>
+        <div class="event-partner">Hackathon + ice cream · Engineers/PMs · Partners: Anthropic + AWS</div>
+      </div>
+      <div class="event-card">
+        <div class="event-name">AI Elevation by Lyzr</div>
+        <div class="event-meta">
+          <span class="event-tag">📅 <strong>Jun 5 · 5:30PM</strong></span>
+          <span class="event-tag">👥 <strong>25–30 pax</strong></span>
+          <span class="event-tag">💰 <strong>$12–18K</strong></span>
+        </div>
+        <div class="event-partner">Golden hour cocktails · The Skylark 30th Fl · Partners: Firstsource + AWS</div>
+      </div>
+      <div class="event-card" style="border-color: rgba(201,106,90,0.3);">
+        <div class="event-name">Above It All 🚁</div>
+        <div class="event-meta">
+          <span class="event-tag">📅 <strong>Jun 7 · 7PM</strong></span>
+          <span class="event-tag">👥 <strong>30 pax</strong></span>
+          <span class="event-tag">💰 <strong>$30–40K</strong></span>
+        </div>
+        <div class="event-partner">Helicopter → Private Hamptons estate · Partners: Accenture + Avanade + AWS · Closing night</div>
+      </div>
+    </div>
+
+    <div class="iframe-wrap" style="margin-top: 14px;">
+      <div class="iframe-label"><span class="dot-ind"></span>NY Tech Week Events Planner<a class="iframe-open-btn" href="https://docs.google.com/spreadsheets/d/14xJ3vQRdVLZ5fu40oMTuFrE2iaZFHSpR2M3xl_In_fI/edit" target="_blank">Open ↗</a></div>
+      <iframe src="https://docs.google.com/spreadsheets/d/14xJ3vQRdVLZ5fu40oMTuFrE2iaZFHSpR2M3xl_In_fI/preview#gid=1205283588" height="320"></iframe>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── INTERNAL REFERRAL ── -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-internal">🔗</div>
+    <span class="channel-name">Internal Referral — Lyzr Team → GSI/SI First Circle</span>
+    <div class="channel-status-row">
+      <span class="badge blocked">Blocked</span>
+    </div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list" style="margin-bottom: 14px;">
+      <div class="item"><div class="item-dot"></div><div class="item-text">Program: Lyzr team members to identify GSI/SI contacts from their first circle (Senior Manager+) across 20 target accounts</div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Target accounts: Accenture, Deloitte, Bain, BCG, McKinsey, Capgemini, PwC, EY, KPMG, TCS, Infosys, Wipro, HCL Tech, EXL, Persistent, Trace3, Firstsource, Grid Dynamics, CGI, TechnoLog</div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Reward incentive for referrals that convert to customers ($250K–$1M ACV deals)</div></div>
+    </div>
+    <div class="insight-box blocked">
+      <div class="insight-label blocked">🔴 Blocker</div>
+      <div class="insight-text">
+        Reward structure needs to be confirmed — <strong>waiting on Ani's input</strong> before the program can be activated and communicated to the team.
+      </div>
+    </div>
+    <div class="iframe-wrap">
+      <div class="iframe-label"><span class="dot-ind"></span>GSI Referral Tracker<a class="iframe-open-btn" href="https://docs.google.com/spreadsheets/d/1bslg0niqKJCuvr6II8Gm5Vb_cmgKk83RSBsIfkqUqIQ/edit" target="_blank">Open ↗</a></div>
+      <iframe src="https://docs.google.com/spreadsheets/d/1bslg0niqKJCuvr6II8Gm5Vb_cmgKk83RSBsIfkqUqIQ/preview" height="300"></iframe>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── ACCENTURE PERSONALIZED OUTREACH ── -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-accounts">🎯</div>
+    <span class="channel-name">Accenture Personalized Outreach — 8 Accounts</span>
+    <div class="channel-status-row">
+      <span class="badge today">Live Today</span>
+      <span class="badge blocked">Was Blocked</span>
+    </div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text"><strong>8 Accenture accounts</strong> with dedicated case studies — highly personalized outreach built per account</div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Channels: <strong>Instantly</strong> (email) + <strong>LinkedIn</strong> (direct message)</div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Was blocked on GSI/SI HubSpot lead form — <strong>form going live today</strong>, unblocking outreach</div><div class="item-badge-row"><span class="badge today">Unblocked Today</span></div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── CONTENT CALENDAR ── -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-content">📅</div>
+    <span class="channel-name">Content Calendar — Aligned with Shreya</span>
+    <div class="channel-status-row">
+      <span class="badge pending">Launching May</span>
+    </div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list" style="margin-bottom: 12px;">
+      <div class="item"><div class="item-dot"></div><div class="item-text"><strong>Newsletter</strong> (Beehiiv) — 1× per month</div><div class="item-badge-row"><span class="badge pending">May Onwards</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text"><strong>LinkedIn Article</strong> — 1× per month</div><div class="item-badge-row"><span class="badge pending">May Onwards</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text"><strong>Blog</strong> — 1 use case per month</div><div class="item-badge-row"><span class="badge pending">May Onwards</span></div></div>
+    </div>
+    <div class="insight-box amber">
+      <div class="insight-label amber">📌 Status</div>
+      <div class="insight-text">
+        Format aligned with Shreya. MS Clarity integration confirmed for blog analytics. Monthly calendar coming from Shreya — all content goes live from May.
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── ABM LIST ── -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-email">◎</div>
+    <span class="channel-name">ABM List — 12K GSI/SI Accounts</span>
+    <div class="channel-status-row">
+      <span class="badge wip">Ongoing</span>
+    </div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text">12,000 target accounts across 20 GSI/SI targets — list build in progress</div><div class="item-badge-row"><span class="badge wip">Ongoing</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Removing already-reached contacts from Instantly to prevent duplication and improve deliverability</div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── CO-MARKETING ── -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-co-mkt">🤝</div>
+    <span class="channel-name">Co-Marketing — Firstsource</span>
+    <div class="channel-status-row">
+      <span class="badge next-wk">May 4 · Scheduled</span>
+    </div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text">Next activity scheduled for <strong>May 4th</strong> — Podcast and/or Social Media Posts</div><div class="item-badge-row"><span class="badge next-wk">May 4</span></div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── LEAD LIFECYCLE / CRM ── -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-crm">⚙</div>
+    <span class="channel-name">Lead Lifecycle & CRM — Alignment</span>
+    <div class="channel-status-row">
+      <span class="badge done">Aligned</span>
+    </div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text">Praveen + Anju aligned on <strong>HubSpot sequence</strong> and <strong>lead form capturing</strong> for GSI/SI pipeline</div><div class="item-badge-row"><span class="badge done">Aligned</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">HubSpot Lead Form (GSI/SI) — <strong>going live today</strong></div><div class="item-badge-row"><span class="badge today">Today</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">LinkedIn Ads → HubSpot integration — <strong>going live today</strong></div><div class="item-badge-row"><span class="badge today">Today</span></div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ─────────────────────────────────── -->
+<!-- SECTION 3: PIPELINE / TO-DO        -->
+<!-- ─────────────────────────────────── -->
+<div id="pipeline" class="week-header">
+  <span class="week-badge pipeline"><span class="week-dot"></span>Upcoming</span>
+  <h2 class="week-title">Pipeline & To-Dos</h2>
+  <span class="week-dates">Next actions</span>
+</div>
+
+<div class="pipeline-grid">
+
+  <div class="pipeline-item">
+    <div class="pipeline-num">1</div>
+    <div style="flex:1">
+      <div class="pipeline-name">LinkedIn Ads → HubSpot Integration</div>
+      <div class="pipeline-detail">Lead capture from ads feeding directly into HubSpot</div>
+    </div>
+    <span class="badge today">Today</span>
+  </div>
+
+  <div class="pipeline-item">
+    <div class="pipeline-num">2</div>
+    <div style="flex:1">
+      <div class="pipeline-name">HubSpot Lead Form (GSI/SI)</div>
+      <div class="pipeline-detail">Dedicated lead form for GSI inbound — going live</div>
+    </div>
+    <span class="badge today">Today</span>
+  </div>
+
+  <div class="pipeline-item">
+    <div class="pipeline-num">3</div>
+    <div style="flex:1">
+      <div class="pipeline-name">Instantly + LinkedIn Campaign — 8 Accenture Accounts</div>
+      <div class="pipeline-detail">Personalized case study-based outreach — live today</div>
+    </div>
+    <span class="badge today">Today</span>
+  </div>
+
+  <div class="pipeline-item">
+    <div class="pipeline-num">4</div>
+    <div style="flex:1">
+      <div class="pipeline-name">HubSpot Sequence — GSI ICPs + Non-ICPs</div>
+      <div class="pipeline-detail">Marketing emails → warm referral ask for ICPs</div>
+    </div>
+    <span class="badge next-wk">Next Week</span>
+  </div>
+
+  <div class="pipeline-item">
+    <div class="pipeline-num">5</div>
+    <div style="flex:1">
+      <div class="pipeline-name">Kick Start Automation Experiment</div>
+      <div class="pipeline-detail">Per aligned timeline — multi-channel sequencing experiment</div>
+    </div>
+    <span class="badge next-wk">Next Week</span>
+  </div>
+
+  <div class="pipeline-item">
+    <div class="pipeline-num">6</div>
+    <div style="flex:1">
+      <div class="pipeline-name">Webinar Registration Cohort — Nurture Sequence</div>
+      <div class="pipeline-detail">233 registrants → segmented cohort + nurture setup</div>
+    </div>
+    <span class="badge next-wk">Next Week</span>
+  </div>
+
+  <div class="pipeline-item">
+    <div class="pipeline-num">7</div>
+    <div style="flex:1">
+      <div class="pipeline-name">NY Tech Week — Marketing Initiative</div>
+      <div class="pipeline-detail">Invites, guest lists, partner co-host confirmations</div>
+    </div>
+    <span class="badge next-wk">Next Week</span>
+  </div>
+
+  <div class="pipeline-item">
+    <div class="pipeline-num">8</div>
+    <div style="flex:1">
+      <div class="pipeline-name">GSI/SI Dedicated Landing Page</div>
+      <div class="pipeline-detail">Build and launch dedicated GSI landing page</div>
+    </div>
+    <span class="badge next-wk">Next Week</span>
+  </div>
+
+  <div class="pipeline-item">
+    <div class="pipeline-num">9</div>
+    <div style="flex:1">
+      <div class="pipeline-name">Monthly Calendar from Shreya</div>
+      <div class="pipeline-detail">Content calendar finalization — Newsletter, Article, Blog kicks off May</div>
+    </div>
+    <span class="badge next-wk">Next Week</span>
+  </div>
+
+  <div class="pipeline-item" style="border-color: rgba(200,80,80,0.3);">
+    <div class="pipeline-num" style="color: #d46a6a;">!</div>
+    <div style="flex:1">
+      <div class="pipeline-name">Internal Referral Reward — Ani's Input Needed</div>
+      <div class="pipeline-detail">Program launch blocked until reward structure is confirmed</div>
+    </div>
+    <span class="badge blocked">Blocked</span>
+  </div>
+
+</div>
+
+<!-- Footer -->
+<div style="margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+  <span style="font-size: 11.5px; color: var(--text-3);">Lyzr AI · GSI & Partner Marketing · Week of 22 April 2026</span>
+  <span style="font-size: 11px; color: var(--text-3);">Generated 30 Apr 2026</span>
+</div>
+
+</div><!-- /main -->
+
+<script>
+  document.querySelectorAll('.nav-pill').forEach(pill => {
+    pill.addEventListener('click', e => {
+      const href = pill.getAttribute('href');
+      if (href && href.startsWith('#')) {
+        e.preventDefault();
+        const target = document.querySelector(href);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+</script>
+</body>
+</html>

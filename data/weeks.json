@@ -1,5 +1,5 @@
 {
-  "current_week": 1,
+  "current_week": 2,
   "start_date": "2026-04-18",
   "timezone": "Asia/Kolkata",
   "weeks": [
@@ -9,7 +9,14 @@
       "path": "week_April_18to22",
       "status": "complete",
       "meetings_processed": 55
+    },
+    {
+      "number": 2,
+      "date_range": "April 22 to April 29",
+      "path": "week_April_22to29",
+      "status": "complete",
+      "meetings_processed": 0
     }
   ],
-  "last_updated": "2026-04-22"
+  "last_updated": "2026-04-30"
 }
