@@ -1,0 +1,1570 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lyzr Pipeline · Use Case Tracker</title>
+<meta name="description" content="Lyzr internal pipeline and use-case tracker." />
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,700&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+  rel="stylesheet"
+/>
+
+<!-- Tailwind (precompiled — see rebuild-styles.sh to regenerate) -->
+<link rel="stylesheet" href="styles.css" />
+
+<!-- Alpine.js -->
+<script defer src="https://unpkg.com/alpinejs@3.13.10/dist/cdn.min.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.js"></script>
+
+<!-- Google Identity Services (for @lyzr.ai OAuth) -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<style>
+  :root {
+    --bg: #190B04;
+    --bgAlt: #0F0703;
+    --inner: #1C0D06;
+    --card: #211008;
+    --rule: #2A1509;
+    --rule2: #3A1E0C;
+    --ink: #F5EDE3;
+    --ink2: #C4AFA0;
+    --ink3: #7A6358;
+    --orange: #EC7943;
+    --blue: #4A6EA8;
+    --green: #378063;
+    --purple: #7A629C;
+    --gold: #CF9F31;
+    --red: #C94658;
+    --o-lt: rgba(236, 121, 67, 0.10);
+    --o-bd: rgba(236, 121, 67, 0.30);
+    --b-lt: rgba(74, 110, 168, 0.10);
+    --b-bd: rgba(74, 110, 168, 0.30);
+    --g-lt: rgba(55, 128, 99, 0.10);
+    --g-bd: rgba(55, 128, 99, 0.30);
+    --p-lt: rgba(122, 98, 156, 0.10);
+    --p-bd: rgba(122, 98, 156, 0.30);
+    --go-lt: rgba(207, 159, 49, 0.10);
+    --go-bd: rgba(207, 159, 49, 0.30);
+    --r-lt: rgba(201, 70, 88, 0.10);
+    --r-bd: rgba(201, 70, 88, 0.30);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-image:
+      radial-gradient(1200px 600px at 80% -10%, rgba(236, 121, 67, 0.08), transparent 60%),
+      radial-gradient(900px 500px at -10% 30%, rgba(74, 110, 168, 0.05), transparent 60%);
+  }
+
+  /* Subtle grid texture on the body */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  .serif { font-family: 'Playfair Display', Georgia, serif; }
+  .mono  { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  /* Stage chips */
+  .chip-stage {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: capitalize;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .chip-stage::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+  .stage-demo            { background: var(--b-lt);  border-color: var(--b-bd);  color: var(--blue); }
+  .stage-in-conversation { background: var(--o-lt);  border-color: var(--o-bd);  color: var(--orange); }
+  .stage-customer        { background: var(--g-lt);  border-color: var(--g-bd);  color: var(--green); }
+  .stage-win             { background: var(--go-lt); border-color: var(--go-bd); color: var(--gold); }
+  .stage-lost            { background: var(--r-lt);  border-color: var(--r-bd);  color: var(--red); }
+  .stage-unspecified     { background: rgba(122,98,156,.08); border-color: rgba(122,98,156,.25); color: var(--purple); }
+
+  /* Owner pills */
+  .pill-owner {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    background: rgba(245, 237, 227, 0.04);
+    border: 1px solid rgba(245, 237, 227, 0.10);
+    color: var(--ink);
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease;
+    white-space: nowrap;
+    line-height: 1.2;
+  }
+  .pill-owner:hover {
+    background: var(--o-lt);
+    border-color: var(--o-bd);
+    color: var(--orange);
+  }
+  .pill-owner .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--orange);
+    flex: 0 0 5px;
+  }
+
+  /* Quiet pill (category, industry) */
+  .pill-quiet {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    background: rgba(245, 237, 227, 0.04);
+    color: var(--ink2);
+    border: 1px solid rgba(245, 237, 227, 0.06);
+    white-space: nowrap;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+  }
+  .card-inner {
+    background: var(--inner);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+  }
+
+  /* Big number style */
+  .big-num {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 700;
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+  }
+
+  /* KPI label */
+  .kpi-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ink3);
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--bgAlt); }
+  ::-webkit-scrollbar-thumb { background: var(--rule2); border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--ink3); }
+
+  /* Inputs */
+  .input {
+    background: var(--inner);
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    width: 100%;
+    transition: border-color 120ms;
+  }
+  .input:focus { outline: none; border-color: var(--orange); }
+
+  /* Tab nav */
+  .tab {
+    position: relative;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink2);
+    cursor: pointer;
+    transition: color 120ms;
+    border-radius: 6px;
+  }
+  .tab:hover { color: var(--ink); }
+  .tab.active {
+    color: var(--orange);
+    background: var(--o-lt);
+  }
+  .tab .badge {
+    margin-left: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgba(245,237,227,0.06);
+    color: var(--ink3);
+  }
+  .tab.active .badge {
+    background: rgba(236,121,67,0.18);
+    color: var(--orange);
+  }
+
+  /* Filter row */
+  .filter-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink3);
+    margin-bottom: 8px;
+    display: block;
+  }
+  .check-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--ink2);
+    transition: background 120ms;
+  }
+  .check-row:hover { background: rgba(245,237,227,0.04); color: var(--ink); }
+  .check-row input { accent-color: var(--orange); cursor: pointer; }
+  .check-row .count {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--ink3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Quick view chips */
+  .qv-chip {
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink2);
+    background: var(--card);
+    border: 1px solid var(--rule);
+    cursor: pointer;
+    transition: all 120ms;
+    white-space: nowrap;
+  }
+  .qv-chip:hover { color: var(--ink); border-color: var(--rule2); }
+  .qv-chip.active {
+    color: var(--orange);
+    background: var(--o-lt);
+    border-color: var(--o-bd);
+  }
+  .qv-chip[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .qv-chip[disabled]:hover { color: var(--ink2); border-color: var(--rule); }
+
+  /* Table */
+  table.deals { width: 100%; border-collapse: separate; border-spacing: 0; }
+  table.deals th {
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink3);
+    padding: 12px 10px;
+    background: var(--inner);
+    border-bottom: 1px solid var(--rule);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  table.deals th:hover { color: var(--ink); }
+  table.deals th .sort-arrow { opacity: 0.4; margin-left: 4px; }
+  table.deals th.sorted .sort-arrow { opacity: 1; color: var(--orange); }
+
+  table.deals td {
+    padding: 12px 10px;
+    border-bottom: 1px solid var(--rule);
+    font-size: 13px;
+    color: var(--ink2);
+    vertical-align: top;
+  }
+  table.deals tbody tr {
+    cursor: pointer;
+    transition: background 120ms;
+  }
+  table.deals tbody tr:hover { background: rgba(236,121,67,0.04); }
+  table.deals tbody tr td:first-child { color: var(--ink3); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  table.deals .col-company { color: var(--ink); font-weight: 500; }
+  table.deals .col-project { color: var(--ink); }
+  table.deals .col-acv { font-variant-numeric: tabular-nums; font-weight: 500; color: var(--ink); }
+
+  /* Drawer */
+  .drawer-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 50;
+  }
+  .drawer {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: 100%; max-width: 640px;
+    background: var(--bg);
+    border-left: 1px solid var(--rule2);
+    z-index: 51;
+    overflow-y: auto;
+    box-shadow: -20px 0 60px rgba(0,0,0,0.5);
+  }
+
+  /* Pill button (links) */
+  .btn-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    background: var(--o-lt);
+    border: 1px solid var(--o-bd);
+    color: var(--orange);
+    font-size: 11px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 120ms;
+    white-space: nowrap;
+  }
+  .btn-link:hover { background: var(--orange); color: var(--bg); }
+
+  /* Auth gate */
+  .auth-bg {
+    background:
+      radial-gradient(800px 600px at 70% 30%, rgba(236, 121, 67, 0.12), transparent 60%),
+      radial-gradient(600px 500px at 20% 70%, rgba(74, 110, 168, 0.08), transparent 60%),
+      var(--bg);
+    min-height: 100vh;
+  }
+
+  /* Funnel bars */
+  .funnel-row { display: grid; grid-template-columns: 110px 1fr 80px 90px; align-items: center; gap: 16px; padding: 10px 0; }
+  .funnel-bar { height: 28px; border-radius: 4px; }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .anim-fadeup { animation: fadeUp 400ms ease-out backwards; }
+
+  /* Hide alpine cloak before hydration */
+  [x-cloak] { display: none !important; }
+
+  /* Loading dot pulse */
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .pulse-dot { animation: pulse-dot 1.4s ease-in-out infinite; }
+</style>
+</head>
+
+<body class="font-sans">
+
+<!-- ============================================================
+     ROOT APP
+============================================================ -->
+<div x-data="lyzrApp()" x-init="init()" x-cloak class="relative" style="z-index: 1;"
+     @keydown.escape.window="selectedRow = null">
+
+  <!-- ============================================================
+       AUTH GATE  (stub — wire OAuth Client ID later)
+  ============================================================ -->
+  <template x-if="!authed">
+    <div class="auth-bg flex items-center justify-center px-6">
+      <div class="card max-w-md w-full p-10 anim-fadeup" style="animation-delay: 100ms;">
+
+        <!-- Lyzr wordmark -->
+        <div class="flex items-center gap-3 mb-10">
+          <div class="w-9 h-9 rounded-lg flex items-center justify-center"
+               style="background: linear-gradient(135deg, var(--orange), #c25e2c);">
+            <span class="serif text-bg text-xl font-bold leading-none">L</span>
+          </div>
+          <div>
+            <div class="serif text-xl font-bold">Lyzr</div>
+            <div class="text-xs uppercase tracking-[2px] text-ink3">Pipeline · Use Cases</div>
+          </div>
+        </div>
+
+        <h1 class="serif text-3xl font-bold mb-3 leading-tight">
+          Sign in to view <em class="text-orange not-italic">the pipeline</em>.
+        </h1>
+        <p class="text-ink2 text-sm leading-relaxed mb-8">
+          Restricted to Lyzr employees. Use your <span class="text-ink">@lyzr.ai</span> Google account.
+        </p>
+
+        <!-- Google sign-in button (stubbed) -->
+        <button
+          @click="googleSignIn()"
+          class="w-full flex items-center justify-center gap-3 px-5 py-3 rounded-lg
+                 bg-white text-bg font-medium text-sm
+                 hover:bg-ink transition"
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+            <g fill="none" fill-rule="evenodd">
+              <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+              <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+              <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+              <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+            </g>
+          </svg>
+          <span>Continue with Google</span>
+        </button>
+
+        <!-- Dev bypass — REMOVE once OAuth Client ID is wired -->
+        <div class="mt-6 pt-6 border-t border-rule">
+          <button
+            @click="devBypass()"
+            class="text-xs text-ink3 hover:text-orange transition w-full text-center"
+          >
+            Dev preview mode (no auth) →
+          </button>
+          <p class="text-[10px] text-ink3 mt-2 text-center leading-relaxed">
+            Auth is stubbed. Wire Google OAuth Client ID in <span class="mono text-ink2">app config</span> to enable.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </template>
+
+
+  <!-- ============================================================
+       MAIN APP SHELL  (after auth)
+  ============================================================ -->
+  <template x-if="authed">
+    <div class="min-h-screen flex flex-col">
+
+      <!-- ===== TOP NAV ===== -->
+      <header class="sticky top-0 z-30 backdrop-blur-md"
+              style="background: rgba(15,7,3,0.85); border-bottom: 1px solid var(--rule);">
+        <div class="max-w-[1600px] mx-auto px-6 h-16 flex items-center gap-8">
+
+          <!-- Logo -->
+          <button @click="setView('home')" class="flex items-center gap-2.5 group">
+            <div class="w-8 h-8 rounded-md flex items-center justify-center transition"
+                 style="background: linear-gradient(135deg, var(--orange), #c25e2c);">
+              <span class="serif text-bg text-base font-bold leading-none">L</span>
+            </div>
+            <div class="leading-tight">
+              <div class="serif text-base font-bold group-hover:text-orange transition">Pipeline</div>
+              <div class="text-[9px] uppercase tracking-[2px] text-ink3">Use Case Tracker</div>
+            </div>
+          </button>
+
+          <!-- Tabs -->
+          <nav class="flex items-center gap-1 flex-1">
+            <button class="tab" :class="view==='home' && 'active'" @click="setView('home')">Home</button>
+            <button class="tab" :class="view==='Internal' && 'active'" @click="setView('Internal')">
+              Internal <span class="badge" x-text="count('Internal')"></span>
+            </button>
+            <button class="tab" :class="view==='Accenture' && 'active'" @click="setView('Accenture')">
+              Accenture <span class="badge" x-text="count('Accenture')"></span>
+            </button>
+            <button class="tab" :class="view==='GSI-SI' && 'active'" @click="setView('GSI-SI')">
+              GSI/SI <span class="badge" x-text="count('GSI-SI')"></span>
+            </button>
+            <button class="tab" :class="view==='Enterprises' && 'active'" @click="setView('Enterprises')">
+              Enterprises <span class="badge" x-text="count('Enterprises')"></span>
+            </button>
+          </nav>
+
+          <!-- Right side: data freshness + user -->
+          <div class="flex items-center gap-4">
+            <div class="text-right leading-tight hidden md:block">
+              <div class="text-[10px] uppercase tracking-[1.5px] text-ink3">Last sync</div>
+              <div class="text-xs text-ink2 mono" x-text="formatGenerated()"></div>
+            </div>
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg"
+                 style="background: var(--inner); border: 1px solid var(--rule);">
+              <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold"
+                   style="background: var(--o-lt); color: var(--orange); border: 1px solid var(--o-bd);">
+                <span x-text="userInitial()"></span>
+              </div>
+              <span class="text-xs text-ink2" x-text="userLabel()"></span>
+              <button @click="signOut()" class="text-ink3 hover:text-red transition ml-1" title="Sign out">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+
+      <!-- ===== LOADING ===== -->
+      <template x-if="loading">
+        <div class="flex-1 flex items-center justify-center py-32">
+          <div class="text-center">
+            <div class="flex items-center justify-center gap-2 mb-3">
+              <div class="w-2 h-2 rounded-full bg-orange pulse-dot" style="animation-delay: 0ms;"></div>
+              <div class="w-2 h-2 rounded-full bg-orange pulse-dot" style="animation-delay: 200ms;"></div>
+              <div class="w-2 h-2 rounded-full bg-orange pulse-dot" style="animation-delay: 400ms;"></div>
+            </div>
+            <div class="text-xs text-ink3 uppercase tracking-[2px]">Loading pipeline</div>
+          </div>
+        </div>
+      </template>
+
+
+      <!-- ===== HOME VIEW ===== -->
+      <template x-if="!loading && view === 'home'">
+        <main class="flex-1 max-w-[1600px] mx-auto px-6 py-10 w-full">
+
+          <!-- Greeting block -->
+          <div class="anim-fadeup mb-12" style="animation-delay: 50ms;">
+            <div class="text-[11px] uppercase tracking-[3px] text-orange mb-3">Pipeline · Pulse</div>
+            <h1 class="serif text-5xl md:text-6xl font-bold leading-[0.95] mb-4">
+              <span x-text="data.aggregates.total_rows"></span> use cases.
+              <em class="not-italic text-orange"
+                  x-text="formatMoneyShort(data.aggregates.total_acv)"></em> in motion.
+            </h1>
+            <p class="text-ink2 text-base max-w-2xl leading-relaxed">
+              Across <span x-text="data.aggregates.unique_companies" class="text-ink"></span> companies,
+              four segments, and the whole GTM bench.
+              Numbers below are live as of the last data sync.
+            </p>
+          </div>
+
+          <!-- KPI strip — 6 cards -->
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-12">
+
+            <div class="card p-5 anim-fadeup" style="animation-delay: 100ms;">
+              <div class="kpi-label mb-3" style="color: var(--orange);">Active</div>
+              <div class="big-num text-4xl mb-1" x-text="data.aggregates.by_stage['in-conversation'] || 0"></div>
+              <div class="text-xs text-ink3">In conversation</div>
+            </div>
+
+            <div class="card p-5 anim-fadeup" style="animation-delay: 150ms;">
+              <div class="kpi-label mb-3" style="color: var(--blue);">Demos</div>
+              <div class="big-num text-4xl mb-1" x-text="data.aggregates.by_stage['Demo'] || 0"></div>
+              <div class="text-xs text-ink3">In flight</div>
+            </div>
+
+            <div class="card p-5 anim-fadeup" style="animation-delay: 200ms;">
+              <div class="kpi-label mb-3" style="color: var(--gold);">Wins</div>
+              <div class="big-num text-4xl mb-1" x-text="data.aggregates.by_stage['win'] || 0"></div>
+              <div class="text-xs text-ink3">Closed-won deals</div>
+            </div>
+
+            <div class="card p-5 anim-fadeup" style="animation-delay: 250ms;">
+              <div class="kpi-label mb-3" style="color: var(--green);">Customers</div>
+              <div class="big-num text-4xl mb-1" x-text="data.aggregates.by_stage['customer'] || 0"></div>
+              <div class="text-xs text-ink3">Live and retained</div>
+            </div>
+
+            <div class="card p-5 anim-fadeup" style="animation-delay: 300ms;">
+              <div class="kpi-label mb-3" style="color: var(--red);">Lost</div>
+              <div class="big-num text-4xl mb-1" x-text="data.aggregates.by_stage['lost'] || 0"></div>
+              <div class="text-xs text-ink3">Closed-lost deals</div>
+            </div>
+
+            <div class="card p-5 anim-fadeup" style="animation-delay: 350ms;">
+              <div class="kpi-label mb-3" style="color: var(--purple);">Reach</div>
+              <div class="big-num text-4xl mb-1" x-text="data.aggregates.unique_companies"></div>
+              <div class="text-xs text-ink3">Companies engaged</div>
+            </div>
+          </div>
+
+          <!-- ACV split + Segment breakdown -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-12">
+
+            <!-- ACV breakdown -->
+            <div class="card p-6 anim-fadeup" style="animation-delay: 400ms;">
+              <div class="kpi-label mb-4">Pipeline value</div>
+
+              <div class="big-num text-5xl mb-1 text-orange"
+                   x-text="formatMoneyShort(data.aggregates.total_acv)"></div>
+              <div class="text-xs text-ink3 mb-6">Total tracked ACV</div>
+
+              <div class="space-y-3">
+                <div>
+                  <div class="flex items-baseline justify-between mb-1.5">
+                    <span class="text-xs text-ink2">Open</span>
+                    <span class="text-sm text-ink mono"
+                          x-text="formatMoneyShort(data.aggregates.acv_open)"></span>
+                  </div>
+                  <div class="h-1.5 bg-inner rounded-full overflow-hidden">
+                    <div class="h-full"
+                         :style="`width: ${pct(data.aggregates.acv_open, data.aggregates.total_acv)}%; background: var(--orange);`"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex items-baseline justify-between mb-1.5">
+                    <span class="text-xs text-ink2">Won</span>
+                    <span class="text-sm text-ink mono"
+                          x-text="formatMoneyShort(data.aggregates.acv_won)"></span>
+                  </div>
+                  <div class="h-1.5 bg-inner rounded-full overflow-hidden">
+                    <div class="h-full"
+                         :style="`width: ${pct(data.aggregates.acv_won, data.aggregates.total_acv)}%; background: var(--green);`"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex items-baseline justify-between mb-1.5">
+                    <span class="text-xs text-ink2">Lost</span>
+                    <span class="text-sm text-ink mono"
+                          x-text="formatMoneyShort(data.aggregates.acv_lost)"></span>
+                  </div>
+                  <div class="h-1.5 bg-inner rounded-full overflow-hidden">
+                    <div class="h-full"
+                         :style="`width: ${pct(data.aggregates.acv_lost, data.aggregates.total_acv)}%; background: var(--red);`"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-6 pt-5 border-t border-rule text-xs text-ink3 leading-relaxed">
+                <span class="text-ink2"
+                      x-text="data.rows.filter(r => r.acv).length"></span>
+                of <span x-text="data.aggregates.total_rows" class="text-ink2"></span>
+                rows have a recorded ACV. The rest sit at the top of the funnel without a sized number yet.
+              </div>
+            </div>
+
+            <!-- Segment funnel — 2 cols wide -->
+            <div class="card p-6 lg:col-span-2 anim-fadeup" style="animation-delay: 450ms;">
+              <div class="flex items-baseline justify-between mb-5">
+                <div class="kpi-label">Pipeline shape</div>
+                <div class="text-xs text-ink3">Stage × Segment</div>
+              </div>
+
+              <div class="space-y-1">
+                <template x-for="seg in ['Internal','Accenture','GSI-SI','Enterprises']" :key="seg">
+                  <div class="funnel-row">
+                    <div class="text-sm text-ink font-medium" x-text="seg"></div>
+                    <div class="flex h-7 rounded overflow-hidden bg-inner">
+                      <template x-for="stage in ['Demo','in-conversation','win','customer','lost']" :key="stage">
+                        <div
+                          :style="`width: ${segStagePct(seg, stage)}%; background: ${stageColor(stage)};`"
+                          :title="`${seg} · ${stage}: ${segStageCount(seg, stage)}`"
+                          class="transition-all"
+                        ></div>
+                      </template>
+                    </div>
+                    <div class="text-xs text-ink3 text-right mono"
+                         x-text="data.aggregates.by_segment[seg]?.count || 0"></div>
+                    <div class="text-xs text-ink2 text-right mono"
+                         x-text="formatMoneyShort(data.aggregates.by_segment[seg]?.acv || 0)"></div>
+                  </div>
+                </template>
+              </div>
+
+              <!-- Legend -->
+              <div class="flex flex-wrap gap-4 mt-5 pt-4 border-t border-rule">
+                <template x-for="stage in ['Demo','in-conversation','win','customer','lost']" :key="stage">
+                  <div class="flex items-center gap-2">
+                    <div class="w-2.5 h-2.5 rounded-sm" :style="`background: ${stageColor(stage)};`"></div>
+                    <span class="text-[11px] text-ink3 capitalize" x-text="stage"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom row: leaderboard + top companies -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+
+            <!-- Owner leaderboard -->
+            <div class="card p-6 anim-fadeup" style="animation-delay: 500ms;">
+              <div class="flex items-baseline justify-between mb-5">
+                <div>
+                  <div class="kpi-label mb-1">Opportunity owners</div>
+                  <div class="text-sm text-ink2">By deal count and ACV</div>
+                </div>
+              </div>
+
+              <div class="space-y-1">
+                <template x-for="(owner, i) in data.aggregates.owner_leaderboard.slice(0, 10)" :key="owner.name">
+                  <div class="flex items-center gap-3 py-2.5 border-b border-rule last:border-0">
+                    <div class="text-xs text-ink3 mono w-5" x-text="(i+1).toString().padStart(2,'0')"></div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm text-ink font-medium truncate" x-text="owner.name"></div>
+                      <div class="text-xs text-ink3" x-text="`${owner.deals} deal${owner.deals===1?'':'s'}`"></div>
+                    </div>
+                    <div class="text-sm text-orange mono font-medium"
+                         x-text="formatMoneyShort(owner.acv)"></div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- Top companies -->
+            <div class="card p-6 anim-fadeup" style="animation-delay: 550ms;">
+              <div class="flex items-baseline justify-between mb-5">
+                <div>
+                  <div class="kpi-label mb-1">Top accounts</div>
+                  <div class="text-sm text-ink2">Companies by tracked pipeline</div>
+                </div>
+              </div>
+
+              <div class="space-y-1">
+                <template x-for="(co, i) in data.aggregates.top_companies.slice(0, 10)" :key="co.company">
+                  <div class="flex items-center gap-3 py-2.5 border-b border-rule last:border-0">
+                    <div class="text-xs text-ink3 mono w-5" x-text="(i+1).toString().padStart(2,'0')"></div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm text-ink font-medium truncate" x-text="co.company"></div>
+                      <div class="text-xs text-ink3" x-text="`${co.deals} use case${co.deals===1?'':'s'}`"></div>
+                    </div>
+                    <div class="text-sm text-orange mono font-medium"
+                         x-text="co.acv > 0 ? formatMoneyShort(co.acv) : '—'"></div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer note -->
+          <div class="mt-12 text-center text-xs text-ink3">
+            Source: <span class="mono" x-text="data.source_file"></span> ·
+            generated <span class="mono" x-text="formatGenerated()"></span> ·
+            read-only · v1.0
+          </div>
+        </main>
+      </template>
+
+
+      <!-- ===== SEGMENT VIEW ===== -->
+      <template x-if="!loading && view !== 'home'">
+        <main class="flex-1 max-w-[1600px] mx-auto px-6 py-8 w-full">
+
+          <!-- Segment header -->
+          <div class="mb-8 anim-fadeup">
+            <div class="text-[11px] uppercase tracking-[3px] text-orange mb-2" x-text="`${view} · Pipeline`"></div>
+            <h1 class="serif text-4xl md:text-5xl font-bold leading-[0.95] mb-2">
+              <span x-text="view"></span>
+            </h1>
+            <p class="text-ink2 text-sm max-w-2xl"
+               x-text="segmentSubtitle(view)"></p>
+          </div>
+
+          <!-- Mini stats strip -->
+          <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
+            <div class="card p-4">
+              <div class="kpi-label mb-2">Deals</div>
+              <div class="serif text-2xl font-bold" x-text="filtered.length"></div>
+              <div class="text-[10px] text-ink3 mt-0.5"
+                   x-text="filtered.length === segmentRows.length ? 'in segment' : `of ${segmentRows.length}`"></div>
+            </div>
+            <div class="card p-4">
+              <div class="kpi-label mb-2" style="color: var(--orange);">ACV</div>
+              <div class="serif text-2xl font-bold text-orange" x-text="formatMoneyShort(filteredAcv)"></div>
+              <div class="text-[10px] text-ink3 mt-0.5">in current view</div>
+            </div>
+            <template x-for="stage in ['in-conversation','Demo','win','customer','lost']" :key="stage">
+              <div class="card p-4">
+                <div class="kpi-label mb-2 capitalize"
+                     :style="`color: ${stageColor(stage)};`"
+                     x-text="stage"></div>
+                <div class="serif text-2xl font-bold" x-text="stageInFilteredCount(stage)"></div>
+                <div class="text-[10px] text-ink3 mt-0.5">deals</div>
+              </div>
+            </template>
+          </div>
+
+          <!-- Filter + Quick views row -->
+          <div class="flex flex-wrap items-center gap-2 mb-4">
+            <span class="text-[10px] uppercase tracking-[1.5px] text-ink3 mr-1">Quick</span>
+            <button class="qv-chip" :class="quickView==='all' && 'active'"
+                    @click="setQuickView('all')">All</button>
+            <button class="qv-chip" :class="quickView==='hot' && 'active'"
+                    @click="setQuickView('hot')">🔥 Hot deals</button>
+            <button class="qv-chip" :class="quickView==='wins' && 'active'"
+                    @click="setQuickView('wins')">Wins + Customers</button>
+            <button class="qv-chip" :class="quickView==='lost' && 'active'"
+                    @click="setQuickView('lost')">Lost</button>
+            <button class="qv-chip" :class="quickView==='no-owner' && 'active'"
+                    @click="setQuickView('no-owner')">No owner</button>
+            <button class="qv-chip" :class="quickView==='has-prototype' && 'active'"
+                    @click="setQuickView('has-prototype')">Has prototype</button>
+            <button class="qv-chip" disabled title="Sign in with @lyzr.ai to enable">My pipeline</button>
+
+            <div class="ml-auto flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Search company, project, use case…"
+                x-model="search"
+                class="input"
+                style="width: 320px;"
+              />
+              <button @click="exportCsv()" class="btn-link" title="Download filtered view as CSV">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                </svg>
+                CSV
+              </button>
+            </div>
+          </div>
+
+          <!-- 2-col layout: filters + table -->
+          <div class="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
+
+            <!-- Filter rail -->
+            <aside class="card p-5 h-fit lg:sticky lg:top-20" style="max-height: calc(100vh - 100px); overflow-y: auto;">
+
+              <div class="flex items-center justify-between mb-4">
+                <div class="kpi-label">Filters</div>
+                <button @click="clearFilters()"
+                        class="text-[10px] uppercase tracking-[1px] text-ink3 hover:text-orange transition"
+                        x-show="hasActiveFilters()">Clear</button>
+              </div>
+
+              <!-- Stage -->
+              <div class="mb-5">
+                <span class="filter-label">Stage</span>
+                <template x-for="s in data.facets.stages" :key="s">
+                  <label class="check-row">
+                    <input type="checkbox" :value="s" x-model="filters.stages" />
+                    <span class="capitalize" x-text="s"></span>
+                    <span class="count" x-text="segmentStageCount(s)"></span>
+                  </label>
+                </template>
+              </div>
+
+              <!-- Category -->
+              <div class="mb-5">
+                <span class="filter-label">Category</span>
+                <template x-for="c in segmentCategories()" :key="c">
+                  <label class="check-row">
+                    <input type="checkbox" :value="c" x-model="filters.categories" />
+                    <span x-text="c"></span>
+                    <span class="count" x-text="segmentRows.filter(r => r.category === c).length"></span>
+                  </label>
+                </template>
+              </div>
+
+              <!-- Industry -->
+              <div class="mb-5" x-show="segmentIndustries().length > 0">
+                <span class="filter-label">Industry</span>
+                <div class="max-h-44 overflow-y-auto pr-1">
+                  <template x-for="ind in segmentIndustries()" :key="ind">
+                    <label class="check-row">
+                      <input type="checkbox" :value="ind" x-model="filters.industries" />
+                      <span class="truncate" :title="ind" x-text="ind"></span>
+                      <span class="count" x-text="segmentRows.filter(r => r.industry === ind).length"></span>
+                    </label>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Opportunity Owner -->
+              <div class="mb-5" x-show="segmentOppOwners().length > 0">
+                <span class="filter-label">Opportunity Owner</span>
+                <div class="max-h-44 overflow-y-auto pr-1">
+                  <template x-for="o in segmentOppOwners()" :key="o">
+                    <label class="check-row">
+                      <input type="checkbox" :value="o" x-model="filters.oppOwners" />
+                      <span class="truncate" :title="o" x-text="o"></span>
+                      <span class="count" x-text="segmentRows.filter(r => r.opportunity_owners.includes(o)).length"></span>
+                    </label>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Prototype Owner -->
+              <div class="mb-5" x-show="segmentProtoOwners().length > 0">
+                <span class="filter-label">Prototype Owner</span>
+                <div class="max-h-44 overflow-y-auto pr-1">
+                  <template x-for="o in segmentProtoOwners()" :key="o">
+                    <label class="check-row">
+                      <input type="checkbox" :value="o" x-model="filters.protoOwners" />
+                      <span class="truncate" :title="o" x-text="o"></span>
+                      <span class="count" x-text="segmentRows.filter(r => r.prototype_owners.includes(o)).length"></span>
+                    </label>
+                  </template>
+                </div>
+              </div>
+
+              <!-- ACV bucket -->
+              <div class="mb-5">
+                <span class="filter-label">ACV bucket</span>
+                <template x-for="b in acvBuckets" :key="b.id">
+                  <label class="check-row">
+                    <input type="radio" name="acvb" :value="b.id" x-model="filters.acvBucket" />
+                    <span x-text="b.label"></span>
+                  </label>
+                </template>
+              </div>
+            </aside>
+
+            <!-- Table -->
+            <div class="card overflow-hidden">
+              <div style="max-height: calc(100vh - 100px); overflow: auto;">
+                <table class="deals" style="min-width: 1000px;">
+                  <thead>
+                    <tr>
+                      <th @click="sortBy('sn')" :class="sort.key==='sn' && 'sorted'">
+                        # <span class="sort-arrow" x-text="sortArrow('sn')"></span>
+                      </th>
+                      <th @click="sortBy('company')" :class="sort.key==='company' && 'sorted'">
+                        Company <span class="sort-arrow" x-text="sortArrow('company')"></span>
+                      </th>
+                      <th @click="sortBy('project')" :class="sort.key==='project' && 'sorted'">
+                        Project <span class="sort-arrow" x-text="sortArrow('project')"></span>
+                      </th>
+                      <th @click="sortBy('industry')" :class="sort.key==='industry' && 'sorted'">
+                        Industry <span class="sort-arrow" x-text="sortArrow('industry')"></span>
+                      </th>
+                      <th @click="sortBy('stage')" :class="sort.key==='stage' && 'sorted'">
+                        Stage <span class="sort-arrow" x-text="sortArrow('stage')"></span>
+                      </th>
+                      <th @click="sortBy('category')" :class="sort.key==='category' && 'sorted'">
+                        Category <span class="sort-arrow" x-text="sortArrow('category')"></span>
+                      </th>
+                      <th @click="sortBy('acv')" :class="sort.key==='acv' && 'sorted'" class="text-right">
+                        ACV <span class="sort-arrow" x-text="sortArrow('acv')"></span>
+                      </th>
+                      <th>Opp owner</th>
+                      <th>Prototype</th>
+                      <th>Close</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="row in filtered" :key="row.id">
+                      <tr @click="openRow(row)">
+                        <td x-text="row.sn"></td>
+                        <td class="col-company" x-text="row.company || '—'"></td>
+                        <td class="col-project">
+                          <div class="font-medium text-ink leading-snug" x-text="row.project || '—'"></div>
+                          <div class="text-[11px] text-ink3 mt-0.5 truncate"
+                               style="max-width: 220px;"
+                               x-show="row.use_case && row.use_case !== row.project"
+                               x-text="row.use_case"></div>
+                        </td>
+                        <td>
+                          <span x-show="row.industry" class="pill-quiet" x-text="row.industry"></span>
+                          <span x-show="!row.industry" class="text-ink3">—</span>
+                        </td>
+                        <td>
+                          <span class="chip-stage" :class="`stage-${row.stage?.toLowerCase().replace(' ','-')}`"
+                                x-text="row.stage || 'unspecified'"></span>
+                        </td>
+                        <td>
+                          <span x-show="row.category" class="pill-quiet" x-text="row.category"></span>
+                          <span x-show="!row.category" class="text-ink3">—</span>
+                        </td>
+                        <td class="col-acv text-right" x-text="row.acv ? formatMoneyShort(row.acv) : '—'"></td>
+                        <td>
+                          <div class="flex flex-wrap gap-1" x-show="row.opportunity_owners.length">
+                            <template x-for="o in row.opportunity_owners" :key="o">
+                              <span class="pill-owner" @click.stop="filters.oppOwners = [o]">
+                                <span class="dot"></span>
+                                <span x-text="o"></span>
+                              </span>
+                            </template>
+                          </div>
+                          <span x-show="!row.opportunity_owners.length" class="text-ink3">—</span>
+                        </td>
+                        <td>
+                          <a x-show="row.prototype_link"
+                             :href="row.prototype_link"
+                             target="_blank" rel="noopener noreferrer"
+                             @click.stop
+                             class="btn-link">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                              <path d="M7 17L17 7M7 7h10v10"/>
+                            </svg>
+                            View
+                          </a>
+                          <span x-show="!row.prototype_link" class="text-ink3">—</span>
+                        </td>
+                        <td>
+                          <div class="text-ink2" x-text="row.close_date_raw || '—'"></div>
+                          <div class="text-[10px] text-ink3 mono" x-show="row.close_quarter && row.close_quarter !== row.close_date_raw"
+                               x-text="row.close_quarter"></div>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+
+                <!-- Empty state -->
+                <div x-show="filtered.length === 0" class="py-20 text-center">
+                  <div class="text-ink3 text-sm mb-2">Nothing matches your filters.</div>
+                  <button @click="clearFilters()"
+                          class="text-orange text-xs uppercase tracking-[1.5px] hover:underline">
+                    Reset filters
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </template>
+
+
+      <!-- ===== ROW DRAWER ===== -->
+      <template x-if="selectedRow">
+        <div>
+          <div class="drawer-backdrop" @click="selectedRow = null"></div>
+          <aside class="drawer p-8">
+
+            <div class="flex items-start justify-between mb-6">
+              <div>
+                <div class="text-[10px] uppercase tracking-[2px] text-orange mb-2"
+                     x-text="`${selectedRow.segment} · ${selectedRow.id}`"></div>
+                <h2 class="serif text-3xl font-bold leading-tight"
+                    x-text="selectedRow.project || selectedRow.company || 'Untitled'"></h2>
+                <div class="text-base text-ink2 mt-1" x-text="selectedRow.company"></div>
+              </div>
+              <button @click="selectedRow = null" class="text-ink3 hover:text-ink p-2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Stage + Category -->
+            <div class="flex flex-wrap gap-2 mb-6">
+              <span x-show="selectedRow.stage"
+                    class="chip-stage"
+                    :class="`stage-${selectedRow.stage?.toLowerCase().replace(' ','-')}`"
+                    x-text="selectedRow.stage"></span>
+              <span x-show="selectedRow.category" class="pill-quiet" x-text="selectedRow.category"></span>
+              <span x-show="selectedRow.industry" class="pill-quiet" x-text="selectedRow.industry"></span>
+            </div>
+
+            <!-- Use case description -->
+            <div class="mb-6" x-show="selectedRow.use_case">
+              <div class="kpi-label mb-2">Use case</div>
+              <p class="text-sm text-ink2 leading-relaxed" x-text="selectedRow.use_case"></p>
+            </div>
+
+            <!-- Money + Close date -->
+            <div class="grid grid-cols-2 gap-3 mb-6">
+              <div class="card-inner p-4">
+                <div class="kpi-label mb-2" style="color: var(--orange);">ACV</div>
+                <div class="serif text-2xl font-bold text-orange"
+                     x-text="selectedRow.acv ? formatMoneyShort(selectedRow.acv) : '—'"></div>
+                <div class="text-[10px] text-ink3 mt-1"
+                     x-text="selectedRow.time_period || 'Time period not specified'"></div>
+              </div>
+              <div class="card-inner p-4">
+                <div class="kpi-label mb-2">Expected close</div>
+                <div class="text-base text-ink font-medium" x-text="selectedRow.close_date_raw || '—'"></div>
+                <div class="text-[10px] text-ink3 mt-1 mono"
+                     x-text="selectedRow.close_quarter && selectedRow.close_quarter !== selectedRow.close_date_raw ? selectedRow.close_quarter : ''"></div>
+              </div>
+            </div>
+
+            <!-- Owners -->
+            <div class="grid grid-cols-2 gap-3 mb-6">
+              <div class="card-inner p-4">
+                <div class="kpi-label mb-2.5">Opportunity owner</div>
+                <div class="flex flex-wrap gap-1.5" x-show="selectedRow.opportunity_owners.length">
+                  <template x-for="o in selectedRow.opportunity_owners" :key="o">
+                    <span class="pill-owner"><span class="dot"></span><span x-text="o"></span></span>
+                  </template>
+                </div>
+                <span x-show="!selectedRow.opportunity_owners.length" class="text-ink3 text-sm">Unassigned</span>
+              </div>
+              <div class="card-inner p-4">
+                <div class="kpi-label mb-2.5">Prototype owner</div>
+                <div class="flex flex-wrap gap-1.5" x-show="selectedRow.prototype_owners.length">
+                  <template x-for="o in selectedRow.prototype_owners" :key="o">
+                    <span class="pill-owner"><span class="dot"></span><span x-text="o"></span></span>
+                  </template>
+                </div>
+                <span x-show="!selectedRow.prototype_owners.length" class="text-ink3 text-sm">Unassigned</span>
+              </div>
+            </div>
+
+            <!-- Prototype link CTA -->
+            <a x-show="selectedRow.prototype_link"
+               :href="selectedRow.prototype_link"
+               target="_blank" rel="noopener noreferrer"
+               class="block w-full text-center py-3 rounded-lg font-medium mb-6 transition"
+               style="background: var(--orange); color: var(--bg);">
+              Open prototype →
+            </a>
+
+            <!-- Meta -->
+            <div class="card-inner p-4 text-xs text-ink3 leading-relaxed">
+              <div class="flex justify-between mb-1.5">
+                <span>Row ID</span>
+                <span class="mono text-ink2" x-text="selectedRow.id"></span>
+              </div>
+              <div class="flex justify-between mb-1.5">
+                <span>Segment</span>
+                <span class="text-ink2" x-text="selectedRow.segment"></span>
+              </div>
+              <div class="flex justify-between">
+                <span>Source row</span>
+                <span class="mono text-ink2" x-text="`#${selectedRow.sn}`"></span>
+              </div>
+            </div>
+
+          </aside>
+        </div>
+      </template>
+
+    </div>
+  </template>
+</div>
+
+
+<!-- ============================================================
+     APP LOGIC
+============================================================ -->
+<script>
+// =============================================================================
+// CONFIG — Lyzr OAuth Client ID
+// =============================================================================
+// To enable real Google sign-in:
+//   1. Create an OAuth Client ID in Google Cloud Console (see README).
+//   2. Replace the placeholder string below with your Client ID.
+//   3. Authorized JavaScript origins MUST include https://lyzr.kailash-gm.com
+//      (and http://localhost:8765 if you want to test locally).
+//
+// While this is the placeholder, the "Continue with Google" button will show
+// a friendly error and you can use Dev preview mode to look around.
+// =============================================================================
+const LYZR_OAUTH_CLIENT_ID = '393767244875-e2n5j0jr90g0a8asp4ti9akmlern6enb.apps.googleusercontent.com';
+
+function lyzrApp() {
+  return {
+    // --- auth ----
+    authed: false,
+    user: { name: 'Dev User', email: 'dev@lyzr.ai' },
+
+    // --- data ----
+    loading: true,
+    data: { rows: [], aggregates: {}, facets: {} },
+
+    // --- view ---
+    view: 'home',
+
+    // --- segment filters ---
+    search: '',
+    quickView: 'all',
+    filters: {
+      stages: [],
+      categories: [],
+      industries: [],
+      oppOwners: [],
+      protoOwners: [],
+      acvBucket: 'any',
+    },
+    sort: { key: 'acv', dir: 'desc' },
+    selectedRow: null,
+    acvBuckets: [
+      { id: 'any',    label: 'Any' },
+      { id: 'has',    label: 'Any with ACV' },
+      { id: 'none',   label: 'No ACV recorded' },
+      { id: 'lt50',   label: 'Under $50K' },
+      { id: '50_250', label: '$50K – $250K' },
+      { id: '250_1M', label: '$250K – $1M' },
+      { id: 'gt1M',   label: '$1M and up' },
+    ],
+
+    // ---------- INIT ----------
+    async init() {
+      // Restore auth from sessionStorage if present
+      const stored = sessionStorage.getItem('lyzr.user');
+      if (stored) {
+        try {
+          this.user = JSON.parse(stored);
+          this.authed = true;
+        } catch(e) {}
+      }
+
+      try {
+        const r = await fetch('data.json', { cache: 'no-store' });
+        this.data = await r.json();
+      } catch (err) {
+        console.error('Failed to load data.json', err);
+      }
+      this.loading = false;
+    },
+
+    // ---------- AUTH ----------
+    // Real Google Identity Services flow.
+    //
+    // The @lyzr.ai restriction is enforced by the `hd` claim on the returned
+    // ID token — that claim is only present for Google Workspace accounts,
+    // and only equals 'lyzr.ai' for verified @lyzr.ai users. Personal Gmail
+    // accounts have no `hd` claim and are rejected. Other Workspace accounts
+    // have a different `hd` and are also rejected.
+    //
+    // This works regardless of whether the OAuth project lives under a
+    // personal Gmail or under the Lyzr Workspace.
+    googleSignIn() {
+      // Guard 1: GIS script not loaded yet.
+      if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+        alert('Google sign-in is still loading. Wait a second and try again.');
+        return;
+      }
+      // Guard 2: Client ID hasn't been provisioned yet.
+      if (!LYZR_OAUTH_CLIENT_ID || LYZR_OAUTH_CLIENT_ID.startsWith('REPLACE_')) {
+        alert(
+          'OAuth Client ID is not configured yet.\n\n' +
+          'See README → "Wiring Google OAuth" for the 5-minute setup, then ' +
+          'paste the Client ID into LYZR_OAUTH_CLIENT_ID at the top of index.html.\n\n' +
+          'For now, use "Dev preview mode" to look around.'
+        );
+        return;
+      }
+
+      google.accounts.id.initialize({
+        client_id: LYZR_OAUTH_CLIENT_ID,
+        callback: (response) => {
+          try {
+            // Decode JWT payload. We don't verify the signature client-side —
+            // the token comes live from Google over HTTPS, so the trust anchor
+            // is the TLS connection.
+            const payload = JSON.parse(atob(response.credential.split('.')[1]));
+
+            // The hard wall.
+            if (payload.hd !== 'lyzr.ai' || !payload.email_verified) {
+              alert(
+                'Access restricted to verified @lyzr.ai accounts.\n\n' +
+                (payload.email
+                  ? `You signed in with: ${payload.email}`
+                  : 'No verified Lyzr Workspace account was found on the token.')
+              );
+              return;
+            }
+
+            this.user = {
+              name: payload.name,
+              email: payload.email,
+              picture: payload.picture,
+            };
+            this.authed = true;
+            sessionStorage.setItem('lyzr.user', JSON.stringify(this.user));
+          } catch (err) {
+            console.error('Auth error:', err);
+            alert('Sign-in failed. Open DevTools console for details.');
+          }
+        },
+        hd: 'lyzr.ai',       // Hint to filter the account picker. Not security.
+        auto_select: false,
+      });
+
+      // Show the Google account picker. If One Tap is throttled (cookie state),
+      // fall back to a friendly message instead of failing silently.
+      google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed && notification.isNotDisplayed()) {
+          alert(
+            'Google sign-in popup did not appear. This is usually a browser ' +
+            'cookie or third-party-cookie issue.\n\n' +
+            'Try: refreshing the page, or signing in via incognito mode.'
+          );
+        }
+      });
+    },
+    // Dev bypass — leave during testing, remove (or gate behind a build flag)
+    // before treating this dashboard as production for the team.
+    devBypass() {
+      this.user = { name: 'Dev User', email: 'dev@lyzr.ai' };
+      this.authed = true;
+      sessionStorage.setItem('lyzr.user', JSON.stringify(this.user));
+    },
+    signOut() {
+      sessionStorage.removeItem('lyzr.user');
+      this.authed = false;
+    },
+    userInitial() {
+      return (this.user.name || this.user.email || '?').charAt(0).toUpperCase();
+    },
+    userLabel() {
+      return this.user.name || this.user.email || 'Signed in';
+    },
+
+    // ---------- VIEW SWITCHING ----------
+    setView(v) {
+      this.view = v;
+      this.selectedRow = null;
+      this.search = '';
+      this.quickView = 'all';
+      this.clearFilters();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    count(seg) {
+      if (!this.data.rows) return 0;
+      return this.data.rows.filter(r => r.segment === seg).length;
+    },
+
+    // ---------- FORMATTING ----------
+    formatMoneyShort(n) {
+      if (!n) return '$0';
+      if (n >= 1_000_000) return `$${(n/1_000_000).toFixed(n >= 10_000_000 ? 1 : 2).replace(/\.?0+$/,'')}M`;
+      if (n >= 1_000) return `$${(n/1_000).toFixed(0)}K`;
+      return `$${n.toFixed(0)}`;
+    },
+    formatGenerated() {
+      if (!this.data.generated_at) return '—';
+      const d = new Date(this.data.generated_at);
+      return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    },
+    pct(part, total) {
+      if (!total) return 0;
+      return Math.max(0, Math.min(100, (part / total) * 100));
+    },
+
+    // ---------- HOME-PAGE HELPERS ----------
+    stageColor(stage) {
+      return ({
+        'Demo': '#4A6EA8',
+        'in-conversation': '#EC7943',
+        'win': '#CF9F31',
+        'customer': '#378063',
+        'lost': '#C94658',
+      })[stage] || '#7A629C';
+    },
+    segStageCount(seg, stage) {
+      return this.data.aggregates.by_segment?.[seg]?.stages?.[stage] || 0;
+    },
+    segStagePct(seg, stage) {
+      const total = this.data.aggregates.by_segment?.[seg]?.count || 0;
+      if (!total) return 0;
+      return (this.segStageCount(seg, stage) / total) * 100;
+    },
+
+    // ---------- SEGMENT-VIEW HELPERS ----------
+    get segmentRows() {
+      return this.data.rows.filter(r => r.segment === this.view);
+    },
+    segmentCategories() {
+      return [...new Set(this.segmentRows.map(r => r.category).filter(Boolean))].sort();
+    },
+    segmentIndustries() {
+      return [...new Set(this.segmentRows.map(r => r.industry).filter(Boolean))].sort();
+    },
+    segmentOppOwners() {
+      const s = new Set();
+      this.segmentRows.forEach(r => r.opportunity_owners.forEach(o => s.add(o)));
+      return [...s].sort();
+    },
+    segmentProtoOwners() {
+      const s = new Set();
+      this.segmentRows.forEach(r => r.prototype_owners.forEach(o => s.add(o)));
+      return [...s].sort();
+    },
+    segmentStageCount(stage) {
+      return this.segmentRows.filter(r => r.stage === stage).length;
+    },
+    stageInFilteredCount(stage) {
+      return this.filtered.filter(r => r.stage === stage).length;
+    },
+    segmentSubtitle(seg) {
+      return ({
+        'Internal': 'Lyzr-built use cases — internal demos, agents, and prototypes that power our own ops and sales conversations.',
+        'Accenture': 'The Accenture book of business — the GSI flagship partnership, including Accenture Song channel-routed deals.',
+        'GSI-SI': 'Other GSIs and SIs — Capgemini, Deloitte, KPMG, Persistent, Movate, Publicis, and the broader partner bench.',
+        'Enterprises': 'Direct enterprise opportunities, prototypes built for net-new accounts, and pipeline outside the GSI motion.',
+      })[seg] || '';
+    },
+
+    // ---------- FILTERING ----------
+    setQuickView(qv) {
+      this.quickView = qv;
+      // Quick views drive predicates in matchesFilters(); we only set explicit
+      // filter state for views that map cleanly to a stage selection.
+      if (qv === 'all') {
+        this.filters.stages = [];
+        this.filters.acvBucket = 'any';
+      } else if (qv === 'wins') {
+        this.filters.stages = ['win', 'customer'];
+        this.filters.acvBucket = 'any';
+      } else if (qv === 'lost') {
+        this.filters.stages = ['lost'];
+        this.filters.acvBucket = 'any';
+      } else if (qv === 'hot') {
+        // Stage + ACV floor handled in matchesFilters predicate (>= $100K)
+        this.filters.stages = [];
+        this.filters.acvBucket = 'any';
+      } else if (qv === 'no-owner' || qv === 'has-prototype') {
+        this.filters.stages = [];
+        this.filters.acvBucket = 'any';
+      }
+    },
+    hasActiveFilters() {
+      return this.filters.stages.length || this.filters.categories.length ||
+             this.filters.industries.length || this.filters.oppOwners.length ||
+             this.filters.protoOwners.length || this.filters.acvBucket !== 'any' ||
+             this.search.length > 0 || this.quickView !== 'all';
+    },
+    clearFilters() {
+      this.filters = {
+        stages: [], categories: [], industries: [],
+        oppOwners: [], protoOwners: [], acvBucket: 'any',
+      };
+      this.search = '';
+      this.quickView = 'all';
+    },
+
+    matchesFilters(row) {
+      // Quick view overrides — these are computed predicates not filter state
+      if (this.quickView === 'hot') {
+        if (row.stage !== 'in-conversation') return false;
+        if (!row.acv || row.acv < 100000) return false;
+      }
+      if (this.quickView === 'wins') {
+        if (row.stage !== 'win' && row.stage !== 'customer') return false;
+      }
+      if (this.quickView === 'lost') {
+        if (row.stage !== 'lost') return false;
+      }
+      if (this.quickView === 'no-owner') {
+        if (row.opportunity_owners.length > 0) return false;
+      }
+      if (this.quickView === 'has-prototype') {
+        if (!row.prototype_link) return false;
+      }
+
+      // Stage
+      if (this.filters.stages.length && !this.filters.stages.includes(row.stage)) return false;
+      // Category
+      if (this.filters.categories.length && !this.filters.categories.includes(row.category)) return false;
+      // Industry
+      if (this.filters.industries.length && !this.filters.industries.includes(row.industry)) return false;
+      // Opp owner
+      if (this.filters.oppOwners.length &&
+          !row.opportunity_owners.some(o => this.filters.oppOwners.includes(o))) return false;
+      // Proto owner
+      if (this.filters.protoOwners.length &&
+          !row.prototype_owners.some(o => this.filters.protoOwners.includes(o))) return false;
+
+      // ACV bucket
+      const a = row.acv;
+      const b = this.filters.acvBucket;
+      if (b === 'has' && !a) return false;
+      if (b === 'none' && a) return false;
+      if (b === 'lt50' && (!a || a >= 50000)) return false;
+      if (b === '50_250' && (!a || a < 50000 || a >= 250000)) return false;
+      if (b === '250_1M' && (!a || a < 250000 || a >= 1000000)) return false;
+      if (b === 'gt1M' && (!a || a < 1000000)) return false;
+
+      // Search
+      if (this.search) {
+        const q = this.search.toLowerCase();
+        const haystack = [
+          row.company, row.project, row.use_case, row.industry,
+          ...row.opportunity_owners, ...row.prototype_owners,
+        ].filter(Boolean).join(' ').toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+
+      return true;
+    },
+
+    get filtered() {
+      const list = this.segmentRows.filter(r => this.matchesFilters(r));
+      const { key, dir } = this.sort;
+      const sign = dir === 'asc' ? 1 : -1;
+      return [...list].sort((a, b) => {
+        const av = a[key], bv = b[key];
+        if (av == null && bv == null) return 0;
+        if (av == null) return 1; // nulls always last
+        if (bv == null) return -1;
+        if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * sign;
+        return String(av).localeCompare(String(bv)) * sign;
+      });
+    },
+    get filteredAcv() {
+      return this.filtered.reduce((s, r) => s + (r.acv || 0), 0);
+    },
+
+    // ---------- SORT ----------
+    sortBy(key) {
+      if (this.sort.key === key) {
+        this.sort.dir = this.sort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        this.sort.key = key;
+        this.sort.dir = (key === 'acv' || key === 'sn') ? 'desc' : 'asc';
+      }
+    },
+    sortArrow(key) {
+      if (this.sort.key !== key) return '↕';
+      return this.sort.dir === 'asc' ? '↑' : '↓';
+    },
+
+    // ---------- ROW DETAIL ----------
+    openRow(row) { this.selectedRow = row; },
+
+    // ---------- CSV EXPORT ----------
+    exportCsv() {
+      const cols = [
+        ['Sn', r => r.sn],
+        ['Segment', r => r.segment],
+        ['Company', r => r.company],
+        ['Project', r => r.project],
+        ['Industry', r => r.industry],
+        ['Stage', r => r.stage],
+        ['Category', r => r.category],
+        ['ACV', r => r.acv],
+        ['Opportunity Owners', r => r.opportunity_owners.join(' | ')],
+        ['Prototype Owners', r => r.prototype_owners.join(' | ')],
+        ['Prototype Link', r => r.prototype_link],
+        ['Time Period', r => r.time_period],
+        ['Close Date (Raw)', r => r.close_date_raw],
+        ['Close Quarter', r => r.close_quarter],
+        ['Use Case', r => r.use_case],
+      ];
+      const esc = v => {
+        if (v == null) return '';
+        const s = String(v);
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+      };
+      const lines = [cols.map(c => c[0]).join(',')];
+      this.filtered.forEach(r => lines.push(cols.map(c => esc(c[1](r))).join(',')));
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `lyzr-pipeline-${this.view}-${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+  };
+}
+</script>
+
+</body>
+</html>
