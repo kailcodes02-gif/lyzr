@@ -203,9 +203,7 @@ is good belt-and-braces.
 - Real GIS flow in `googleSignIn()` — JWT decode, `hd === 'lyzr.ai'`
   check, `email_verified` check, sessionStorage persist, two failure-mode
   guards (script not loaded, popup throttled).
-- Dev bypass kept for now under "Dev preview mode" — convenient while the
-  team is testing. Delete the `devBypass()` method and its button before
-  treating this dashboard as production-grade for the team.
+
 
 ### Adding more team members
 
@@ -238,7 +236,7 @@ python3 -m http.server 8765
 # Open http://localhost:8765/
 ```
 
-Use **Dev preview mode** to skip the auth gate while developing.
+
 
 ---
 
