@@ -1275,7 +1275,7 @@ function lyzrApp() {
     // personal Gmail or under the Lyzr Workspace.
     googleSignIn() {
       // Guard 1: GIS script not loaded yet.
-      if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+      if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
         alert('Google sign-in is still loading. Wait a second and try again.');
         return;
       }
@@ -1289,14 +1289,23 @@ function lyzrApp() {
         return;
       }
 
-      google.accounts.id.initialize({
+      // Use the OAuth2 Token Client which allows opening a popup from a custom button click
+      const client = google.accounts.oauth2.initTokenClient({
         client_id: LYZR_OAUTH_CLIENT_ID,
-        callback: (response) => {
+        scope: 'email profile',
+        hd: 'lyzr.ai',
+        callback: async (response) => {
+          if (response.error) {
+            console.error('OAuth error:', response);
+            return;
+          }
+          
           try {
-            // Decode JWT payload. We don't verify the signature client-side —
-            // the token comes live from Google over HTTPS, so the trust anchor
-            // is the TLS connection.
-            const payload = JSON.parse(atob(response.credential.split('.')[1]));
+            // Fetch user info using the access token
+            const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { Authorization: `Bearer ${response.access_token}` }
+            });
+            const payload = await res.json();
 
             // The hard wall.
             if (payload.hd !== 'lyzr.ai' || !payload.email_verified) {
@@ -1321,21 +1330,10 @@ function lyzrApp() {
             alert('Sign-in failed. Open DevTools console for details.');
           }
         },
-        hd: 'lyzr.ai',       // Hint to filter the account picker. Not security.
-        auto_select: false,
       });
 
-      // Show the Google account picker. If One Tap is throttled (cookie state),
-      // fall back to a friendly message instead of failing silently.
-      google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed && notification.isNotDisplayed()) {
-          alert(
-            'Google sign-in popup did not appear. This is usually a browser ' +
-            'cookie or third-party-cookie issue.\n\n' +
-            'Try: refreshing the page, or signing in via incognito mode.'
-          );
-        }
-      });
+      // Request the access token, this opens the Google sign-in popup
+      client.requestAccessToken();
     },
 
     signOut() {
