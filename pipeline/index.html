@@ -55,6 +55,14 @@
     --go-bd: rgba(207, 159, 49, 0.30);
     --r-lt: rgba(201, 70, 88, 0.10);
     --r-bd: rgba(201, 70, 88, 0.30);
+    /* Light mode fixes */
+    --nav-bg: rgba(15, 7, 3, 0.85);
+    --grid-line: rgba(255, 255, 255, 0.018);
+    --ink-04: rgba(245, 237, 227, 0.04);
+    --ink-06: rgba(245, 237, 227, 0.06);
+    --ink-10: rgba(245, 237, 227, 0.10);
+    --o-04: rgba(236, 121, 67, 0.04);
+    --o-18: rgba(236, 121, 67, 0.18);
   }
 
   html[data-theme="light"] {
@@ -85,6 +93,14 @@
     --go-bd: rgba(181, 134, 31, 0.30);
     --r-lt: rgba(179, 52, 70, 0.10);
     --r-bd: rgba(179, 52, 70, 0.30);
+    /* Light mode fixes */
+    --nav-bg: rgba(240, 240, 235, 0.85);
+    --grid-line: rgba(0, 0, 0, 0.03);
+    --ink-04: rgba(25, 11, 4, 0.04);
+    --ink-06: rgba(25, 11, 4, 0.06);
+    --ink-10: rgba(25, 11, 4, 0.10);
+    --o-04: rgba(217, 93, 34, 0.04);
+    --o-18: rgba(217, 93, 34, 0.18);
   }
 
   * { box-sizing: border-box; }
@@ -112,8 +128,8 @@
     pointer-events: none;
     z-index: 0;
     background-image:
-      linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
     background-size: 48px 48px;
   }
 
@@ -146,7 +162,7 @@
   .stage-customer        { background: var(--g-lt);  border-color: var(--g-bd);  color: var(--green); }
   .stage-win             { background: var(--go-lt); border-color: var(--go-bd); color: var(--gold); }
   .stage-lost            { background: var(--r-lt);  border-color: var(--r-bd);  color: var(--red); }
-  .stage-unspecified     { background: rgba(122,98,156,.08); border-color: rgba(122,98,156,.25); color: var(--purple); }
+  .stage-unspecified     { background: var(--p-lt); border-color: var(--p-bd); color: var(--purple); }
 
   /* Owner pills */
   .pill-owner {
@@ -157,8 +173,8 @@
     border-radius: 999px;
     font-size: 11px;
     font-weight: 500;
-    background: rgba(245, 237, 227, 0.04);
-    border: 1px solid rgba(245, 237, 227, 0.10);
+    background: var(--ink-04);
+    border: 1px solid var(--ink-10);
     color: var(--ink);
     cursor: pointer;
     transition: background 120ms ease, border-color 120ms ease;
@@ -185,9 +201,9 @@
     border-radius: 4px;
     font-size: 11px;
     font-weight: 500;
-    background: rgba(245, 237, 227, 0.04);
+    background: var(--ink-04);
     color: var(--ink2);
-    border: 1px solid rgba(245, 237, 227, 0.06);
+    border: 1px solid var(--ink-06);
     white-space: nowrap;
   }
 
@@ -261,11 +277,11 @@
     font-weight: 600;
     padding: 1px 6px;
     border-radius: 999px;
-    background: rgba(245,237,227,0.06);
+    background: var(--ink-06);
     color: var(--ink3);
   }
   .tab.active .badge {
-    background: rgba(236,121,67,0.18);
+    background: var(--o-18);
     color: var(--orange);
   }
 
@@ -290,7 +306,7 @@
     color: var(--ink2);
     transition: background 120ms;
   }
-  .check-row:hover { background: rgba(245,237,227,0.04); color: var(--ink); }
+  .check-row:hover { background: var(--ink-04); color: var(--ink); }
   .check-row input { accent-color: var(--orange); cursor: pointer; }
   .check-row .count {
     margin-left: auto;
@@ -358,7 +374,7 @@
     cursor: pointer;
     transition: background 120ms;
   }
-  table.deals tbody tr:hover { background: rgba(236,121,67,0.04); }
+  table.deals tbody tr:hover { background: var(--o-04); }
   table.deals tbody tr td:first-child { color: var(--ink3); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
   table.deals .col-company { color: var(--ink); font-weight: 500; }
   table.deals .col-project { color: var(--ink); }
@@ -497,9 +513,8 @@
   <template x-if="authed">
     <div class="min-h-screen flex flex-col">
 
-      <!-- ===== TOP NAV ===== -->
       <header class="sticky top-0 z-30 backdrop-blur-md"
-              style="background: rgba(15,7,3,0.85); border-bottom: 1px solid var(--rule);">
+              style="background: var(--nav-bg); border-bottom: 1px solid var(--rule);">
         <div class="max-w-[1600px] mx-auto px-6 h-16 flex items-center gap-8">
 
           <!-- Logo -->
