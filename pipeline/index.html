@@ -2111,14 +2111,20 @@ function lyzrApp() {
     // ---------- DATA LOADING ----------
     async loadData() {
       try {
-        // Try API first (when running via server.js), fall back to static data.json
-        let r;
-        try { r = await fetch('/api/data', { cache: 'no-store' }); }
-        catch(e) { r = await fetch('data.json', { cache: 'no-store' }); }
-        if (!r.ok) r = await fetch('data.json', { cache: 'no-store' });
-        this.data = await r.json();
+        let r = await fetch('/api/data', { cache: 'no-store' }).catch(() => null);
+        let text = r && r.ok ? await r.text().catch(() => '') : '';
+        
+        // If API fails or returns HTML (like a Cloudflare 404 page), fallback to static
+        if (!r || !r.ok || text.trim().startsWith('<')) {
+          r = await fetch('data.json', { cache: 'no-store' });
+          text = await r.text();
+        }
+        
+        this.data = JSON.parse(text);
       } catch (err) {
         console.error('Failed to load data', err);
+        // Ensure data has a valid structure even on failure
+        this.data = { rows: [], aggregates: {}, facets: {} };
       }
     },
 
