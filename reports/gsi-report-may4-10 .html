@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GSI Marketing Report — 4–10 May 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;0,600;1,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════
+   REPORT TOKENS
+═══════════════════════════════════════ */
+:root{
+  --bg:#0c0a08;--surface:#141210;--card:#1c1814;--card-2:#211d19;
+  --border:#2e2822;--border-light:#3a332c;
+  --rose:#c96a5a;--rose-dim:rgba(201,106,90,0.12);
+  --amber:#d9a84c;--amber-dim:rgba(217,168,76,0.12);
+  --green:#5aab8a;--green-dim:rgba(90,171,138,0.12);
+  --blue:#5a8bc9;--blue-dim:rgba(90,139,201,0.12);
+  --muted:#706458;--muted-dim:rgba(112,100,88,0.18);
+  --text:#f0ebe4;--text-2:#9e9188;--text-3:#635a52;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13.5px;line-height:1.6;min-height:100vh;}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 40px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.topbar-left{display:flex;align-items:center;gap:16px;}
+.logo-mark{width:28px;height:28px;background:var(--rose);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:14px;color:#fff;font-weight:600;}
+.report-title{font-size:13px;font-weight:600;color:var(--text);letter-spacing:0.02em;text-transform:uppercase;}
+.report-sub{font-size:11.5px;color:var(--text-2);letter-spacing:0.03em;}
+.topbar-nav{display:flex;gap:6px;}
+.nav-pill{padding:5px 14px;border-radius:20px;border:1px solid var(--border-light);font-size:11.5px;font-weight:500;color:var(--text-2);text-decoration:none;cursor:pointer;background:none;transition:all .15s;}
+.nav-pill:hover,.nav-pill.active-pill{border-color:var(--rose);color:var(--rose);}
+
+/* ── MAIN ── */
+.main{max-width:1160px;margin:0 auto;padding:40px 40px 80px;}
+
+/* ── WEEK HEADERS ── */
+.week-header{display:flex;align-items:center;gap:20px;margin-bottom:28px;margin-top:52px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+.week-header:first-child{margin-top:0;}
+.week-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border-radius:4px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;}
+.week-badge.past{background:var(--muted-dim);color:var(--text-2);border:1px solid var(--border-light);}
+.week-badge.current{background:var(--rose-dim);color:var(--rose);border:1px solid rgba(201,106,90,0.3);}
+.week-badge.pipeline{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(90,139,201,0.3);}
+.week-badge.overview{background:rgba(90,171,138,0.1);color:var(--green);border:1px solid rgba(90,171,138,0.3);}
+.week-dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+.week-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;color:var(--text);letter-spacing:-0.02em;}
+.week-dates{font-size:12px;color:var(--text-3);margin-left:auto;}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:3px;font-size:10.5px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;}
+.badge.live,.badge.active,.badge.done{background:var(--green-dim);color:var(--green);}
+.badge.wip{background:var(--amber-dim);color:var(--amber);}
+.badge.paused,.badge.inactive{background:var(--muted-dim);color:var(--muted);}
+.badge.today{background:var(--rose-dim);color:var(--rose);}
+.badge.pending{background:var(--blue-dim);color:var(--blue);}
+.badge.next-wk{background:var(--amber-dim);color:var(--amber);}
+.badge.blocked{background:rgba(200,80,80,0.12);color:#d46a6a;}
+
+/* ── CHANNEL BLOCKS ── */
+.channel-block{background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;overflow:hidden;}
+.channel-head{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--card-2);}
+.channel-icon{width:30px;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.ch-linkedin{background:rgba(10,102,194,0.18);color:#4a9fd4;}
+.ch-email{background:rgba(90,171,138,0.15);color:var(--green);}
+.ch-co-mkt{background:rgba(201,106,90,0.15);color:var(--rose);}
+.ch-ads{background:rgba(217,168,76,0.15);color:var(--amber);}
+.ch-events{background:rgba(90,139,201,0.15);color:var(--blue);}
+.ch-auto{background:rgba(160,120,200,0.15);color:#b08dd4;}
+.ch-accounts{background:rgba(201,106,90,0.12);color:#d4956a;}
+.ch-social{background:rgba(90,171,138,0.12);color:var(--green);}
+.channel-name{font-size:13px;font-weight:600;color:var(--text);}
+.channel-status-row{margin-left:auto;display:flex;gap:8px;align-items:center;}
+.channel-body{padding:16px 20px;}
+
+/* ── ITEMS ── */
+.item-list{display:flex;flex-direction:column;gap:10px;}
+.item{display:flex;align-items:flex-start;gap:12px;}
+.item-dot{width:4px;height:4px;border-radius:50%;background:var(--border-light);margin-top:7px;flex-shrink:0;}
+.item-text{flex:1;font-size:13px;color:var(--text);line-height:1.5;}
+.item-sub{font-size:12px;color:var(--text-2);margin-top:2px;}
+.item-badge-row{display:flex;gap:6px;flex-shrink:0;align-items:flex-start;padding-top:1px;}
+
+/* ── METRICS ── */
+.metrics-grid{display:grid;gap:1px;background:var(--border);border-radius:6px;overflow:hidden;margin-bottom:14px;}
+.metrics-grid.col3{grid-template-columns:repeat(3,1fr);}
+.metrics-grid.col4{grid-template-columns:repeat(4,1fr);}
+.metrics-grid.col5{grid-template-columns:repeat(5,1fr);}
+.metric-cell{background:var(--card);padding:14px 16px;}
+.metric-val{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;color:var(--text);letter-spacing:-0.02em;line-height:1.1;}
+.metric-val.rose{color:var(--rose);}
+.metric-val.green{color:var(--green);}
+.metric-val.amber{color:var(--amber);}
+.metric-label{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.06em;margin-top:4px;}
+
+/* ── INSIGHT BOX ── */
+.insight-box{border-radius:6px;padding:12px 16px;margin-top:12px;}
+.insight-box.rose{background:rgba(201,106,90,0.07);border:1px solid rgba(201,106,90,0.2);}
+.insight-box.blue{background:rgba(90,139,201,0.07);border:1px solid rgba(90,139,201,0.2);}
+.insight-box.amber{background:rgba(217,168,76,0.07);border:1px solid rgba(217,168,76,0.2);}
+.insight-box.green{background:rgba(90,171,138,0.07);border:1px solid rgba(90,171,138,0.2);}
+.insight-box.blocked{background:rgba(200,80,80,0.07);border:1px solid rgba(200,80,80,0.2);}
+.insight-label{font-size:10.5px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;}
+.insight-label.rose{color:var(--rose);}
+.insight-label.blue{color:var(--blue);}
+.insight-label.amber{color:var(--amber);}
+.insight-label.green{color:var(--green);}
+.insight-label.blocked{color:#d46a6a;}
+.insight-text{font-size:12.5px;color:var(--text-2);line-height:1.6;}
+.insight-text li{margin-left:14px;margin-top:4px;}
+
+/* ── TABLE ── */
+.ad-table-wrap{border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.mini-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+.mini-table th{text-align:left;padding:7px 10px;color:var(--text-3);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--border);}
+.mini-table td{padding:8px 10px;color:var(--text);border-bottom:1px solid var(--border);}
+.mini-table tr:last-child td{border-bottom:none;}
+.mini-table tr:hover td{background:rgba(255,255,255,0.015);}
+.val-hi{color:var(--green);font-weight:500;}
+.val-lo{color:var(--amber);font-weight:500;}
+.val-red{color:#d46a6a;font-weight:500;}
+
+/* ── IFRAME ── */
+.iframe-wrap{border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-top:14px;background:#fff;}
+.iframe-label{background:var(--card-2);border-bottom:1px solid var(--border);padding:7px 14px;font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:8px;letter-spacing:0.04em;}
+span.dot-ind{width:8px;height:8px;background:var(--border-light);border-radius:50%;flex-shrink:0;}
+.iframe-open-btn{margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:3px;border:1px solid var(--border-light);background:transparent;color:var(--text-2);font-size:10.5px;font-weight:500;font-family:'DM Sans',sans-serif;text-decoration:none;cursor:pointer;transition:all .15s;}
+.iframe-open-btn:hover{border-color:var(--rose);color:var(--rose);}
+.iframe-wrap iframe{display:block;width:100%;border:none;}
+
+/* ── STATUS GRID ── */
+.status-grid{display:grid;gap:8px;margin-bottom:20px;}
+.status-card{background:var(--card-2);border:1px solid var(--border);border-radius:6px;padding:12px 14px;}
+.status-card-label{font-size:11.5px;font-weight:500;color:var(--text-2);margin-bottom:6px;}
+
+/* ── PIPELINE ── */
+.pipeline-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+.pipeline-item{background:var(--card-2);border:1px solid var(--border);border-radius:6px;padding:12px 16px;display:flex;align-items:flex-start;gap:12px;}
+.pipeline-num{font-family:'Playfair Display',serif;font-size:18px;color:var(--text-3);font-weight:300;flex-shrink:0;width:20px;line-height:1.3;}
+.pipeline-name{font-size:13px;font-weight:500;color:var(--text);line-height:1.4;}
+.pipeline-detail{font-size:11.5px;color:var(--text-3);margin-top:3px;}
+
+/* ── MISC ── */
+.divider{height:1px;background:var(--border);margin:14px 0;}
+.section-eyebrow{font-size:10.5px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:14px;}
+a.inline-link{color:var(--rose);text-decoration:none;}
+a.inline-link:hover{text-decoration:underline;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--surface);}
+::-webkit-scrollbar-thumb{background:var(--border-light);border-radius:2px;}
+
+/* ═══════════════════════════════════════
+   GSI CONVERSATIONS WIDGET — SCOPED
+   All widget tokens live under .gsi-w
+   (no conflict with report :root tokens)
+═══════════════════════════════════════ */
+.gsi-w{
+  --w-bg:#160B07;--w-card:#20120C;--w-card-2:#281610;
+  --w-line:rgba(245,230,211,.08);--w-line2:rgba(245,230,211,.14);
+  --w-ink:#F5E6D3;--w-mute:#A38A75;--w-dim:#6E5847;
+  --w-accent:#E07A5F;--w-accent2:#F2A07B;
+  --w-conv:#D97757;--w-demo:#5B8CD6;--w-cust:#5FA890;--w-win:#D9C14A;--w-lost:#C46980;
+  --w-r:14px;--w-p:22px;
+  background:var(--w-bg);
+  border:1px solid var(--border);
+  border-radius:10px;
+  overflow:hidden;
+  margin-bottom:32px;
+  position:relative;
+}
+.gsi-w::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(1200px 600px at 90% -10%,rgba(224,122,95,.08),transparent 60%),
+             radial-gradient(900px 500px at -10% 110%,rgba(95,168,144,.04),transparent 60%);
+}
+.gsi-w .w-wrap{position:relative;z-index:1;padding:28px 28px 32px;}
+/* header */
+.gsi-w .w-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:22px;}
+.gsi-w .w-title{font-family:'Playfair Display',serif;font-weight:500;font-size:clamp(24px,2.8vw,36px);line-height:1.05;letter-spacing:-0.01em;color:var(--w-ink);margin:0 0 5px;}
+.gsi-w .w-title em{font-style:italic;color:var(--w-accent2);font-weight:400;}
+.gsi-w .w-sub{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--w-mute);font-weight:500;}
+/* filters */
+.gsi-w .w-filters{display:flex;gap:6px;background:rgba(245,230,211,.03);border:1px solid var(--w-line);padding:5px;border-radius:999px;}
+.gsi-w .w-filter{border:0;background:transparent;color:var(--w-mute);font:500 12px/1 'DM Sans',sans-serif;padding:8px 14px;border-radius:999px;cursor:pointer;transition:all .25s cubic-bezier(.22,1,.36,1);}
+.gsi-w .w-filter:hover{color:var(--w-ink);}
+.gsi-w .w-filter.active{background:var(--w-ink);color:var(--w-bg);font-weight:600;}
+/* kpis */
+.gsi-w .w-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px;}
+.gsi-w .w-kpi{background:linear-gradient(180deg,var(--w-card-2),var(--w-card));border:1px solid var(--w-line);border-radius:var(--w-r);padding:var(--w-p);position:relative;overflow:hidden;}
+.gsi-w .w-kpi::after{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(245,230,211,.18),transparent);}
+.gsi-w .w-kpi-label{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--w-mute);margin-bottom:12px;font-weight:500;}
+.gsi-w .w-kpi-val{font-family:'Playfair Display',serif;font-weight:400;font-size:clamp(26px,3vw,38px);line-height:1;color:var(--w-ink);font-variant-numeric:tabular-nums;}
+.gsi-w .w-kpi-val .sm{font-size:.44em;color:var(--w-dim);font-family:inherit;}
+/* tabs */
+.gsi-w .w-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.gsi-w .w-tab{border:1px solid var(--w-line);background:transparent;color:var(--w-mute);font:500 12px/1 'DM Sans',sans-serif;padding:9px 16px;border-radius:999px;cursor:pointer;transition:all .25s cubic-bezier(.22,1,.36,1);}
+.gsi-w .w-tab:hover{color:var(--w-ink);border-color:var(--w-line2);}
+.gsi-w .w-tab.active{background:rgba(245,230,211,.06);color:var(--w-ink);border-color:var(--w-line2);}
+/* legend */
+.gsi-w .w-legend{display:flex;gap:20px;flex-wrap:wrap;margin:6px 2px 12px;font-size:12.5px;color:var(--w-mute);}
+.gsi-w .w-lg{display:inline-flex;align-items:center;gap:7px;cursor:pointer;}
+.gsi-w .w-dot{width:9px;height:9px;border-radius:999px;display:inline-block;}
+.gsi-w .w-dot.conv{background:var(--w-conv);}
+.gsi-w .w-dot.demo{background:var(--w-demo);}
+.gsi-w .w-dot.cust{background:var(--w-cust);}
+.gsi-w .w-dot.win{background:var(--w-win);}
+.gsi-w .w-dot.lost{background:var(--w-lost);}
+/* chart */
+.gsi-w .w-chart-card{background:var(--w-card);border:1px solid var(--w-line);border-radius:var(--w-r);padding:22px 20px 16px;min-height:400px;position:relative;}
+.gsi-w .w-chart-svg{width:100%;height:auto;display:block;overflow:visible;}
+/* tooltip */
+.gsi-w .w-tip{position:absolute;pointer-events:none;background:#2C1A12;border:1px solid var(--w-line2);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--w-ink);box-shadow:0 12px 30px -10px rgba(0,0,0,.6);opacity:0;transform:translateY(-4px);transition:opacity .15s,transform .15s;z-index:50;min-width:180px;}
+.gsi-w .w-tip.show{opacity:1;transform:translateY(0);}
+.gsi-w .w-tip .t-head{font-family:'Playfair Display',serif;font-weight:500;font-size:14px;margin-bottom:6px;color:var(--w-ink);}
+.gsi-w .w-tip .t-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:2px 0;color:var(--w-mute);}
+.gsi-w .w-tip .t-row b{color:var(--w-ink);font-weight:600;font-variant-numeric:tabular-nums;}
+/* footer */
+.gsi-w .w-foot{text-align:right;font-size:11px;color:var(--w-dim);margin-top:10px;letter-spacing:.04em;}
+/* animations */
+@keyframes wBarV{from{transform:scaleY(0);opacity:.4}to{transform:scaleY(1);opacity:1}}
+@keyframes wBarH{from{transform:scaleX(0);opacity:.4}to{transform:scaleX(1);opacity:1}}
+@keyframes wFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.gsi-w .wa-v{animation:wBarV .6s cubic-bezier(.22,1,.36,1) backwards;transform-origin:bottom;}
+.gsi-w .wa-h{animation:wBarH .65s cubic-bezier(.22,1,.36,1) backwards;transform-origin:left;}
+.gsi-w .wa-f{animation:wFade .45s cubic-bezier(.22,1,.36,1) backwards;}
+.gsi-w .w-seg{transition:filter .15s,opacity .15s;cursor:pointer;}
+.gsi-w .w-seg:hover{filter:brightness(1.15);}
+.gsi-w .w-seg.dim{opacity:.25;}
+/* axis / bar labels */
+.gsi-w .ax-l{fill:#6E5847;font:500 11px 'DM Sans',sans-serif;letter-spacing:.04em;}
+.gsi-w .ax-t{fill:#A38A75;font:400 12px 'DM Sans',sans-serif;font-variant-numeric:tabular-nums;}
+.gsi-w .bn{fill:#F5E6D3;font:600 12px 'DM Sans',sans-serif;font-variant-numeric:tabular-nums;}
+.gsi-w .pl{fill:#F5E6D3;font:500 13px 'DM Sans',sans-serif;}
+.gsi-w .pl.acc{fill:#F2A07B;font-weight:600;}
+@media(max-width:880px){.gsi-w .w-kpis{grid-template-columns:repeat(2,1fr);}.gsi-w .w-head{flex-direction:column;}}
+@media(max-width:520px){.gsi-w .w-wrap{padding:18px 16px 24px;}}
+
+@media(max-width:768px){
+  .main{padding:24px 16px;}
+  .topbar{padding:12px 16px;}
+  .metrics-grid{grid-template-columns:repeat(2,1fr)!important;}
+  .status-grid{grid-template-columns:repeat(2,1fr)!important;}
+  .pipeline-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- ── TOPBAR ── -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo-mark">L</div>
+    <div>
+      <div class="report-title">GSI & Partner Marketing</div>
+      <div class="report-sub">Weekly Report · Lyzr AI</div>
+    </div>
+  </div>
+  <nav class="topbar-nav">
+    <a class="nav-pill" href="#overview">Pipeline</a>
+    <a class="nav-pill" href="#past">← 22–30 Apr</a>
+    <a class="nav-pill" href="#current">4–10 May</a>
+    <a class="nav-pill" href="#next">To-Do</a>
+  </nav>
+</div>
+
+<div class="main">
+
+<!-- ══════════════════════════════════════════
+     SECTION 0 — GSI/SI CONVERSATIONS WIDGET
+     Always at top of every report
+══════════════════════════════════════════ -->
+<div id="overview" class="week-header" style="margin-top:0;">
+  <span class="week-badge overview"><span class="week-dot"></span>Live</span>
+  <h2 class="week-title">GSI / SI Conversations Pipeline</h2>
+  <span class="week-dates">All partners · live tracker</span>
+</div>
+
+<div class="gsi-w">
+  <div class="w-wrap">
+
+    <!-- Header -->
+    <div class="w-head">
+      <div>
+        <h2 class="w-title">GSI / SI <em>conversations</em></h2>
+        <div class="w-sub">Accenture + 19 GSIs · live from consolidated tracker</div>
+      </div>
+      <div class="w-filters" role="tablist">
+        <button class="w-filter active" data-wf="all">All</button>
+        <button class="w-filter" data-wf="accenture">Accenture</button>
+        <button class="w-filter" data-wf="other">Other GSIs</button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="w-kpis">
+      <div class="w-kpi"><div class="w-kpi-label">Total conversations</div><div class="w-kpi-val" id="wk-total">—</div></div>
+      <div class="w-kpi"><div class="w-kpi-label">In-conversation</div><div class="w-kpi-val" id="wk-conv">—<span class="sm" id="wk-conv-of"></span></div></div>
+      <div class="w-kpi"><div class="w-kpi-label">Demos + Closed</div><div class="w-kpi-val" id="wk-demos">—</div></div>
+      <div class="w-kpi"><div class="w-kpi-label">Open ACV</div><div class="w-kpi-val" id="wk-acv">—</div></div>
+    </div>
+
+    <!-- Tabs -->
+    <nav class="w-tabs" role="tablist">
+      <button class="w-tab active" data-wt="timeline">Timeline</button>
+      <button class="w-tab" data-wt="companies">Companies</button>
+      <button class="w-tab" data-wt="stages">Stage mix</button>
+      <button class="w-tab" data-wt="substages">Sub-stage</button>
+      <button class="w-tab" data-wt="acv">ACV</button>
+    </nav>
+
+    <!-- Legend -->
+    <div class="w-legend" id="wk-legend">
+      <span class="w-lg" data-ws="In-conversation"><span class="w-dot conv"></span>In-conversation</span>
+      <span class="w-lg" data-ws="Demo"><span class="w-dot demo"></span>Demo</span>
+      <span class="w-lg" data-ws="Customer"><span class="w-dot cust"></span>Customer</span>
+      <span class="w-lg" data-ws="Win"><span class="w-dot win"></span>Win</span>
+      <span class="w-lg" data-ws="Lost"><span class="w-dot lost"></span>Lost</span>
+    </div>
+
+    <!-- Chart -->
+    <div class="w-chart-card">
+      <svg id="wk-chart" class="w-chart-svg" viewBox="0 0 1000 460" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="w-tip" id="wk-tip"></div>
+      <div class="w-foot" id="wk-foot"></div>
+    </div>
+
+  </div><!-- /w-wrap -->
+</div><!-- /gsi-w -->
+
+<!-- Widget data & script -->
+<script id="wk-data" type="application/json">[{"p":"Accenture","s":"Win","ss":"Closed Won","q":"Q1 2026","a":50000.0,"o":"Accenture IX"},{"p":"Accenture","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0,"o":"Accenture _Core42"},{"p":"Accenture","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0,"o":"Accenture_ Jenni"},{"p":"Accenture","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0,"o":"Accenture_ Audi"},{"p":"Accenture Song","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":250000.0,"o":"Song_ AWS"},{"p":"Accenture Song","s":"In-conversation","ss":"Discovery","q":"Q3 2026","a":0,"o":"Song_ reckitt"},{"p":"KPMG","s":"Demo","ss":"Legal & Contracts","q":"Q1 2026","a":200000.0,"o":"KPMG"},{"p":"FirstSource","s":"Customer","ss":"Legal & Contracts","q":"Q1 2026","a":0.0,"o":"FirstSource (Internal)"},{"p":"Accenture Song","s":"In-conversation","ss":"Discovery","q":"Q3 2026","a":0,"o":"Song_ Tu Clothing"},{"p":"Accenture Song","s":"In-conversation","ss":"Discovery","q":"Q3 2026","a":0,"o":"Song_ Intel"},{"p":"FirstSource","s":"Demo","ss":"Legal & Contracts","q":"Q1 2026","a":500000.0,"o":"FirstSource (HMSA)"},{"p":"Accenture Song","s":"In-conversation","ss":"Discovery","q":"Q3 2026","a":0,"o":"Song_ Hunter Dougless"},{"p":"FirstSource","s":"In-conversation","ss":"Discovery","q":"Q1 2026","a":500000.0,"o":"Firstsource Reforge"},{"p":"Accenture Song","s":"Demo","ss":"Solution Validation","q":"Q3 2026","a":0,"o":"Song_ Lloyds"},{"p":"FirstSource","s":"Demo","ss":"Solution Validation","q":"Q1 2026","a":750000.0,"o":"FirstSource (CX - ETS)"},{"p":"Accenture Song","s":"In-conversation","ss":"Discovery","q":"Q3 2026","a":0,"o":"Song_ Boots"},{"p":"Infosys","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":100000.0,"o":"Infosys"},{"p":"Deloitte","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0.0,"o":"Deloitte - Uday"},{"p":"Persistent Systems","s":"Demo","ss":"Legal & Contracts","q":"Q1 2026","a":150000.0,"o":"Persistent Systems"},{"p":"PwC","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0.0,"o":"PWC- Sanchit - Bank"},{"p":"PwC","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0.0,"o":"PWC- Sanchit - Payments"},{"p":"Capgemini","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":150000.0,"o":"Capgemini"},{"p":"Accenture","s":"In-conversation","ss":"Stalled","q":"Q2 2026","a":250000.0,"o":"Metlife"},{"p":"BCG","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":150000.0,"o":"BCG"},{"p":"Accenture","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0,"o":"Accenture _capital one"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":250000.0,"o":"Accenture (QBE)"},{"p":"FirstSource","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":360000.0,"o":"Firstsource (ANZ - GRC)"},{"p":"Accenture","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0.0,"o":"Accenture- Dan (Lloyds)"},{"p":"Apexon","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0.0,"o":"Apexon"},{"p":"LTI Mindtree","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0,"o":"LTI Mindtree"},{"p":"Accenture","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0,"o":"Accenture ABB"},{"p":"FirstSource","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":250000.0,"o":"FirstSource (Lloyds Bank Group)"},{"p":"EY","s":"In-conversation","ss":"Pipeline","q":"Q2 2026","a":250000.0,"o":"Persistent (KeyBank)"},{"p":"EY","s":"In-conversation","ss":"Pipeline","q":"Q2 2026","a":250000.0,"o":"KeyBank (Commercial)"},{"p":"Persistent Systems","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":250000.0,"o":"Persistent (League Data)"},{"p":"EY","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":250000.0,"o":"Valley Bank"},{"p":"EY","s":"In-conversation","ss":"Pipeline","q":"Q2 2026","a":250000.0,"o":"Morgan Stanley"},{"p":"Accenture","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0,"o":"Accenture Traveller"},{"p":"Accenture","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0,"o":"Accenture Rabo Bank"},{"p":"Accenture","s":"Win","ss":"Legal & Contracts","q":"Q1 2026","a":1000000.0,"o":"Accenture"},{"p":"Accenture","s":"Win","ss":"Legal & Contracts","q":"Q1 2026","a":0,"o":"Accenture (1M funding) Pivot 2 (125k)"},{"p":"Accenture","s":"Lost","ss":"Lost","q":"Q2 2026","a":250000.0,"o":"Accenture (Canadian Tyre)"},{"p":"Impetus","s":"Demo","ss":"Legal & Contracts","q":"Q1 2026","a":500000.0,"o":"Impetus"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":50000.0,"o":"Accenture Architect - Arunagiri"},{"p":"Accenture","s":"In-conversation","ss":"Pipeline","q":"Q2 2026","a":250000.0,"o":"Accenture Arunagiri"},{"p":"Accenture","s":"Lost","ss":"Lost","q":"Lost","a":45000.0,"o":"Accenture - Federal bank POC"},{"p":"Accenture","s":"Lost","ss":"Lost","q":"Lost","a":50000.0,"o":"Accenture Markel"},{"p":"Accenture","s":"Lost","ss":"Lost","q":"Lost","a":500000.0,"o":"Indosat _ Accenture"},{"p":"Accenture","s":"In-conversation","ss":"Pipeline","q":"Q2 2026","a":250000.0,"o":"Accenture -  Singtel"},{"p":"Accenture","s":"Customer","ss":"Pipeline","q":"Q2 2026","a":250000.0,"o":"Accenture Middle East Oracle"},{"p":"KPMG","s":"In-conversation","ss":"Pipeline","q":"Q2 2026","a":0.0,"o":"KPMG- Sherwin williams"},{"p":"KPMG","s":"In-conversation","ss":"Pipeline","q":"Q2 2026","a":0.0,"o":"KPMG- Genentech"},{"p":"Publicis Sapient","s":"In-conversation","ss":"Pipeline","q":"Q2 2026","a":500000.0,"o":"Publicis Sapient"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":0,"o":"Accenture Danish arla"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":100000.0,"o":"Accenture Procurement-Romain"},{"p":"EXL","s":"Demo","ss":"Legal & Contracts","q":"Q1 2026","a":400000.0,"o":"EXL"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":250000.0,"o":"Accenture_ Banking Mike Abbot"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":100000.0,"o":"Accenture_Nicole"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":250000.0,"o":"Accenture GE Vernova"},{"p":"Persistent Systems","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":500000.0,"o":"Persistent (LyzrBlocks)"},{"p":"Accenture","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0,"o":"Accenture_Sun Life"},{"p":"Accenture","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0,"o":"Accenture_NYL"},{"p":"FirstSource","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0,"o":"Firstsource_US Bank"},{"p":"FirstSource","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0,"o":"Firstsource_Home Office"},{"p":"FirstSource","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0,"o":"Firstsource_Prometric"},{"p":"FirstSource","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0,"o":"Firstsource_Bupa"},{"p":"FirstSource","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0,"o":"Firstsource_Telstra"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":250000.0,"o":"Accenture Varo Bank"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":250000.0,"o":"Accenture SBI Life"},{"p":"Tata Elxsi","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":250000.0,"o":"Tata Elxsi"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":0,"o":"Accenture - Damac"},{"p":"Accenture Song","s":"Demo","ss":"Legal & Contracts","q":"Q2 2026","a":200000.0,"o":"Song -Modbox"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":250000.0,"o":"Accenture Investor profile"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":500000.0,"o":"Accenture (National Grid)"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":500000.0,"o":"Accenture (Samsung)"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":250000.0,"o":"Accenture - Mashreq Bank"},{"p":"Movate","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":100000.0,"o":"Kemin(Movate)"},{"p":"Movate","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":100000.0,"o":"AI Hospitality(Movate)"},{"p":"Avanade","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":500000.0,"o":"Avanade"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":0,"o":"Accenture_ Ramki (SynOps)"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":0,"o":"Accenture_ Nirav & Shoba (HR)"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":0,"o":"Accenture_ UAE (DGE)"},{"p":"Accenture","s":"Customer","ss":"Solution Validation","q":"Q2 2026","a":250000.0,"o":"Accenture  Guru (Mayank)"},{"p":"Deloitte","s":"In-conversation","ss":"Pipeline","q":"Q3 2026","a":0,"o":"Deloitte Tax"},{"p":"EY","s":"Customer","ss":"Solution Validation","q":"Q3 2026","a":120000.0,"o":"Verifone HR"},{"p":"Accenture","s":"Customer","ss":"Solution Validation","q":"Q2 2026","a":500000.0,"o":"Accenture Aura (Mayank)"},{"p":"Accenture","s":"Customer","ss":"Solution Validation","q":"Q2 2026","a":500000.0,"o":"Accenture Best Buy(Mayank)"},{"p":"Accenture","s":"Lost","ss":"Solution Validation","q":"Q2 2026","a":500000.0,"o":"Accenture_ Shell"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":250000.0,"o":"Accenture Volkswagen RFP"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":0,"o":"Accenture Capital Land Ascott Team"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":500000.0,"o":"Accenture Insurance Singapore"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":500000.0,"o":"Accenture Pepsi"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":0,"o":"Accenture UOB Bank"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":0,"o":"Accenture Studio startup"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":250000.0,"o":"Accenture Cassava ai"},{"p":"Movate","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":100000.0,"o":"Beacon Mobility(Movate)"},{"p":"Movate","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":100000.0,"o":"DHL(Movate)"},{"p":"Movate","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":100000.0,"o":"Estee Lauder(Movate)"},{"p":"Accenture","s":"Demo","ss":"Legal & Contracts","q":"Q2 2026","a":150000.0,"o":"Accenture JPMC"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":100000.0,"o":"Accenture M&E (Song)"},{"p":"Accenture","s":"Demo","ss":"Solution Validation","q":"Q2 2026","a":0,"o":"Accenture Novartis"},{"p":"Accenture","s":"In-conversation","ss":"Pipeline","q":"Q2 2026","a":0,"o":"Accenture  Reliance (kamal) Retail"},{"p":"Accenture Song","s":"In-conversation","ss":"Discovery","q":"Q2 2026","a":0.0,"o":"Song -Modbox -VW"},{"p":"Accenture","s":"Customer","ss":"Best Case","q":"Q2 2026","a":250000.0,"o":"Accenture  Guru (Mayank) Retail"},{"p":"Accenture","s":"Customer","ss":"Best Case","q":"Q2 2026","a":250000.0,"o":"Accenture Aura (Mayank) Skincare"},{"p":"Accenture","s":"In-conversation","ss":"Commit","q":"Q2 2026","a":200000.0,"o":"Accenture Song Dan"},{"p":"Accenture","s":"In-conversation","ss":"Pipeline","q":"Q2 2026","a":0,"o":"Accenture_ Brett"},{"p":"Accenture","s":"In-conversation","ss":"Pipeline","q":"Q2 2026","a":0.0,"o":"Accenture- Dan (Diageo)"},{"p":"Accenture","s":"In-conversation","ss":"Pipeline","q":"Q2 2026","a":0,"o":"Accenture- Dan EE"}]</script>
+
+<script>
+(function(){
+  var ROWS = JSON.parse(document.getElementById('wk-data').textContent);
+  var S_ORDER = ["In-conversation","Demo","Customer","Win","Lost"];
+  // Read CSS from .gsi-w container (scoped, not :root)
+  var wRoot = document.querySelector('.gsi-w');
+  function gC(v){ return getComputedStyle(wRoot).getPropertyValue(v).trim(); }
+  var S_COLOR = {
+    "In-conversation": gC('--w-conv'),
+    "Demo":            gC('--w-demo'),
+    "Customer":        gC('--w-cust'),
+    "Win":             gC('--w-win'),
+    "Lost":            gC('--w-lost'),
+  };
+  var state = { filter:'all', tab:'timeline', hidden: new Set() };
+
+  function filtered(){
+    return ROWS.filter(function(r){
+      if(state.filter==='accenture' && !r.p.startsWith('Accenture')) return false;
+      if(state.filter==='other'     &&  r.p.startsWith('Accenture')) return false;
+      if(state.hidden.has(r.s)) return false;
+      return true;
+    });
+  }
+  function mFmt(n){
+    if(!n) return '$0';
+    if(n>=1e6) return '$'+(n/1e6).toFixed(2).replace(/\.?0+$/,'')+'M';
+    if(n>=1e3) return '$'+Math.round(n/1e3)+'K';
+    return '$'+n;
+  }
+  function pct(a,b){ return b?Math.round(a*100/b)+'%':'0%'; }
+
+  function renderKPIs(){
+    var rows=filtered(), tot=rows.length;
+    var inC=rows.filter(function(r){return ['In-conversation','Demo','Customer'].includes(r.s);}).length;
+    var demos=rows.filter(function(r){return ['Demo','Customer','Win'].includes(r.s);}).length;
+    var acv=rows.filter(function(r){return r.s!=='Lost';}).reduce(function(s,r){return s+(r.a||0);},0);
+    document.getElementById('wk-total').textContent=tot;
+    document.getElementById('wk-conv').childNodes[0].nodeValue=inC;
+    document.getElementById('wk-conv-of').textContent=' /'+tot;
+    document.getElementById('wk-demos').textContent=demos;
+    document.getElementById('wk-acv').textContent=mFmt(acv);
+  }
+
+  var tip=document.getElementById('wk-tip');
+  function showTip(x,y,html){
+    tip.innerHTML=html; tip.classList.add('show');
+    var cc=document.querySelector('.w-chart-card').getBoundingClientRect();
+    var tx=x-cc.left+14, ty=y-cc.top+14;
+    var tw=tip.offsetWidth,th=tip.offsetHeight;
+    if(tx+tw>cc.width) tx=x-cc.left-tw-14;
+    if(ty+th>cc.height) ty=y-cc.top-th-14;
+    tip.style.left=tx+'px'; tip.style.top=ty+'px';
+  }
+  function hideTip(){ tip.classList.remove('show'); }
+
+  function wireSegs(){
+    document.querySelectorAll('.w-seg').forEach(function(el){
+      el.addEventListener('mousemove',function(e){ var r=el.getAttribute('data-tip'); if(r) showTip(e.clientX,e.clientY,decodeURIComponent(r)); });
+      el.addEventListener('mouseleave',hideTip);
+    });
+  }
+
+  /* ── Timeline chart ── */
+  function chartTimeline(rows){
+    var qs=["Q1 2026","Q2 2026","Q3 2026"]; var W=1000,H=460;
+    var padL=70,padR=30,padT=30,padB=55,plotW=W-padL-padR,plotH=H-padT-padB;
+    var byQ={};
+    qs.forEach(function(q){ byQ[q]={};  S_ORDER.forEach(function(s){ byQ[q][s]=0; }); });
+    rows.forEach(function(r){ if(byQ[r.q]) byQ[r.q][r.s]++; });
+    var maxTotal=0;
+    qs.forEach(function(q){ var t=S_ORDER.reduce(function(s,st){ return s+byQ[q][st]; },0); if(t>maxTotal) maxTotal=t; });
+    maxTotal=Math.max(maxTotal,1);
+    var bw=Math.min(90,plotW/qs.length*0.5); var gap=(plotW-bw*qs.length)/(qs.length+1);
+    var svg='<g class="grid">';
+    [0,0.25,0.5,0.75,1].forEach(function(f){ var y=padT+plotH*(1-f); svg+='<line x1="'+padL+'" y1="'+y+'" x2="'+(W-padR)+'" y2="'+y+'"/>'; });
+    svg+='</g>';
+    [0,0.25,0.5,0.75,1].forEach(function(f){ var v=Math.round(maxTotal*f); var y=padT+plotH*(1-f); svg+='<text class="ax-t" x="'+(padL-8)+'" y="'+(y+4)+'" text-anchor="end">'+v+'</text>'; });
+    qs.forEach(function(q,qi){
+      var x=padL+gap+qi*(bw+gap); var base=padT+plotH; var stackedH=0;
+      S_ORDER.slice().reverse().forEach(function(s,_,arr){
+        var v=byQ[q][s]; if(!v) return;
+        var h=v/maxTotal*plotH; var y=base-stackedH-h;
+        var tipHtml='<div class="t-head">'+q+'</div><div class="t-row"><span>'+s+'</span><b>'+v+'</b></div><div class="t-row"><span>Share</span><b>'+pct(v,rows.length)+'</b></div>';
+        svg+='<rect class="w-seg wa-v" x="'+x+'" y="'+y+'" width="'+bw+'" height="'+h+'" rx="3" fill="'+S_COLOR[s]+'" data-tip="'+encodeURIComponent(tipHtml)+'" style="animation-delay:'+(qi*80)+'ms"></rect>';
+        if(h>14) svg+='<text class="bn wa-f" x="'+(x+bw/2)+'" y="'+(y+h/2+4)+'" text-anchor="middle" style="animation-delay:'+(qi*80+300)+'ms">'+v+'</text>';
+        stackedH+=h;
+      });
+      svg+='<text class="ax-t wa-f" x="'+(x+bw/2)+'" y="'+(padT+plotH+22)+'" text-anchor="middle" style="animation-delay:'+(qi*80+200)+'ms">'+q+'</text>';
+    });
+    setChart(svg,W,H,'Timeline · '+rows.length+' conversations');
+  }
+
+  /* ── Companies chart ── */
+  function chartCompanies(rows){
+    var map={};
+    rows.forEach(function(r){
+      if(!map[r.p]) map[r.p]={};
+      map[r.p][r.s]=(map[r.p][r.s]||0)+1;
+    });
+    var entries=Object.entries(map).sort(function(a,b){ return Object.values(b[1]).reduce(function(s,v){return s+v;},0)-Object.values(a[1]).reduce(function(s,v){return s+v;},0); });
+    if(entries.length>14) entries=entries.slice(0,14);
+    var W=1000,rowH=26,rowGap=14,padL=165,padR=60,padT=20;
+    var H=Math.max(360,padT+entries.length*(rowH+rowGap)+40);
+    var plotW=W-padL-padR;
+    var maxV=Math.max(1,...entries.map(function(e){ return Object.values(e[1]).reduce(function(s,v){return s+v;},0); }));
+    var svg='';
+    entries.forEach(function(e,i){
+      var p=e[0],counts=e[1],tot=Object.values(counts).reduce(function(s,v){return s+v;},0);
+      var y=padT+i*(rowH+rowGap); var cy=y+rowH/2+5;
+      var cls=p.startsWith('Accenture')?'pl acc':'pl';
+      svg+='<text class="'+cls+'" x="'+(padL-12)+'" y="'+cy+'" text-anchor="end">'+p+'</text>';
+      var x=padL;
+      S_ORDER.forEach(function(s){ var v=counts[s]||0; if(!v) return; var w=v/maxV*plotW;
+        var tip='<div class="t-head">'+p+'</div><div class="t-row"><span>'+s+'</span><b>'+v+'</b></div><div class="t-row"><span>Total</span><b>'+tot+'</b></div>';
+        svg+='<rect class="w-seg wa-h" x="'+x+'" y="'+y+'" width="'+w+'" height="'+rowH+'" rx="3" fill="'+S_COLOR[s]+'" data-tip="'+encodeURIComponent(tip)+'" style="animation-delay:'+(i*40)+'ms"></rect>';
+        x+=w;
+      });
+      svg+='<text class="bn wa-f" x="'+(x+8)+'" y="'+cy+'" style="animation-delay:'+(i*40+300)+'ms">'+tot+'</text>';
+    });
+    setChart(svg,W,H,'By partner · '+rows.length+' rows');
+  }
+
+  /* ── Stage mix (donut) ── */
+  function chartStages(rows){
+    var W=1000,H=440; var cx=220,cy=220,rO=170,rI=95; var start=-Math.PI/2;
+    var counts={};
+    S_ORDER.forEach(function(s){ counts[s]=0; });
+    rows.forEach(function(r){ counts[r.s]++; });
+    var total=rows.length; var svg=''; var a=start;
+    S_ORDER.forEach(function(s,i){
+      var v=counts[s]; if(!v) return;
+      var sweep=v/total*2*Math.PI; var a2=a+sweep;
+      var lg=(a2-a)>Math.PI?1:0;
+      var x1=cx+rO*Math.cos(a),y1=cy+rO*Math.sin(a);
+      var x2=cx+rO*Math.cos(a2),y2=cy+rO*Math.sin(a2);
+      var x3=cx+rI*Math.cos(a2),y3=cy+rI*Math.sin(a2);
+      var x4=cx+rI*Math.cos(a),y4=cy+rI*Math.sin(a);
+      var d='M '+x1+' '+y1+' A '+rO+' '+rO+' 0 '+lg+' 1 '+x2+' '+y2+' L '+x3+' '+y3+' A '+rI+' '+rI+' 0 '+lg+' 0 '+x4+' '+y4+' Z';
+      var tip='<div class="t-head">'+s+'</div><div class="t-row"><span>Count</span><b>'+v+'</b></div><div class="t-row"><span>Share</span><b>'+pct(v,total)+'</b></div>';
+      svg+='<path class="w-seg wa-f" d="'+d+'" fill="'+S_COLOR[s]+'" data-tip="'+encodeURIComponent(tip)+'" style="animation-delay:'+(i*100)+'ms"/>';
+      a=a2;
+    });
+    svg+='<text x="'+cx+'" y="'+(cy-14)+'" text-anchor="middle" font-family="Playfair Display" font-size="34" fill="#F5E6D3" font-weight="400">'+total+'</text>';
+    svg+='<text x="'+cx+'" y="'+(cy+14)+'" text-anchor="middle" font-family="DM Sans" font-size="11" fill="#A38A75" letter-spacing=".1em">TOTAL</text>';
+    var lx=490,ly=90;
+    S_ORDER.forEach(function(s,i){
+      var v=counts[s]; var op=v===0?0.4:1;
+      svg+='<g style="opacity:'+op+'"><rect x="'+lx+'" y="'+(ly-14)+'" width="10" height="10" rx="2" fill="'+S_COLOR[s]+'"/><text x="'+(lx+20)+'" y="'+(ly-5)+'" fill="#F5E6D3" font-family="DM Sans" font-size="15" font-weight="500">'+s+'</text><text x="'+(lx+320)+'" y="'+(ly-5)+'" text-anchor="end" fill="#F5E6D3" font-family="DM Sans" font-size="20" font-weight="500" font-variant-numeric="tabular-nums">'+v+'</text><text x="'+(lx+360)+'" y="'+(ly-5)+'" text-anchor="end" fill="#A38A75" font-family="DM Sans" font-size="13" font-variant-numeric="tabular-nums">'+pct(v,total)+'</text></g>';
+      ly+=56;
+    });
+    setChart(svg,W,H,'Stage mix · '+rows.length+' rows');
+  }
+
+  /* ── Sub-stage chart ── */
+  function chartSubstages(rows){
+    var subs=["Discovery","Pipeline","Best Case","Stalled","Commit","Proposal","Solution Validation","Negotiation","Legal & Contracts","Closed Won","Lost"];
+    var sTone={"Discovery":"In-conversation","Pipeline":"In-conversation","Best Case":"In-conversation","Stalled":"In-conversation","Commit":"Demo","Proposal":"Demo","Negotiation":"Demo","Solution Validation":"Demo","Legal & Contracts":"Demo","Closed Won":"Win","Lost":"Lost"};
+    var counts={};
+    subs.forEach(function(k){counts[k]=0;});
+    rows.forEach(function(r){if(counts[r.ss]!==undefined) counts[r.ss]++;});
+    var present=subs.filter(function(k){return counts[k]>0;});
+    var W=1000,rowH=28,rowGap=18,padL=185,padR=60,padT=24;
+    var H=Math.max(360,padT+present.length*(rowH+rowGap)+40);
+    var plotW=W-padL-padR;
+    var maxV=Math.max(1,...present.map(function(k){return counts[k];}));
+    var svg='';
+    present.forEach(function(k,i){
+      var y=padT+i*(rowH+rowGap); var cy=y+rowH/2+5; var v=counts[k]; var w=v/maxV*plotW;
+      var tone=S_COLOR[sTone[k]]||gC('--w-conv');
+      var tip='<div class="t-head">'+k+'</div><div class="t-row"><span>Count</span><b>'+v+'</b></div><div class="t-row"><span>Share</span><b>'+pct(v,rows.length)+'</b></div>';
+      svg+='<text class="pl" x="'+(padL-12)+'" y="'+cy+'" text-anchor="end">'+k+'</text>';
+      svg+='<rect class="w-seg wa-h" x="'+padL+'" y="'+y+'" width="'+w+'" height="'+rowH+'" rx="3" fill="'+tone+'" data-tip="'+encodeURIComponent(tip)+'" style="animation-delay:'+(i*50)+'ms"></rect>';
+      svg+='<text class="bn wa-f" x="'+(padL+w+10)+'" y="'+cy+'" style="animation-delay:'+(i*50+350)+'ms">'+v+'</text>';
+    });
+    setChart(svg,W,H,'Sub-stage detail · '+rows.length+' rows');
+  }
+
+  /* ── ACV chart ── */
+  function chartACV(rows){
+    var map={};
+    rows.forEach(function(r){ if(r.s==='Lost') return; var v=r.a||0; if(!v) return; if(!map[r.p]) map[r.p]={acv:0,count:0,byS:{}}; map[r.p].acv+=v; map[r.p].count++; map[r.p].byS[r.s]=(map[r.p].byS[r.s]||0)+v; });
+    var entries=Object.entries(map).sort(function(a,b){return b[1].acv-a[1].acv;});
+    if(entries.length>12) entries=entries.slice(0,12);
+    var W=1000,rowH=22,rowGap=14,padL=165,padR=130,padT=24;
+    var H=Math.max(360,padT+entries.length*(rowH+rowGap)+40);
+    var plotW=W-padL-padR;
+    var maxV=Math.max(1,...entries.map(function(e){return e[1].acv;}));
+    var svg='';
+    var totalACV=entries.reduce(function(s,e){return s+e[1].acv;},0);
+    entries.forEach(function(e,i){
+      var p=e[0],c=e[1]; var y=padT+i*(rowH+rowGap); var cy=y+rowH/2+5;
+      var cls=p.startsWith('Accenture')?'pl acc':'pl';
+      svg+='<text class="'+cls+'" x="'+(padL-12)+'" y="'+cy+'" text-anchor="end">'+p+'</text>';
+      var x=padL;
+      S_ORDER.forEach(function(s){ var v=c.byS[s]||0; if(!v) return; var w=v/maxV*plotW;
+        var tip='<div class="t-head">'+p+'</div><div class="t-row"><span>Open ACV</span><b>'+mFmt(c.acv)+'</b></div><div class="t-row"><span>Deals</span><b>'+c.count+'</b></div>';
+        svg+='<rect class="w-seg wa-h" x="'+x+'" y="'+y+'" width="'+w+'" height="'+rowH+'" rx="3" fill="'+S_COLOR[s]+'" data-tip="'+encodeURIComponent(tip)+'" style="animation-delay:'+(i*50)+'ms"></rect>';
+        x+=w;
+      });
+      svg+='<text class="bn wa-f" x="'+(x+10)+'" y="'+cy+'" style="animation-delay:'+(i*50+350)+'ms">'+mFmt(c.acv)+'</text>';
+    });
+    setChart(svg,W,H,'Open ACV · total '+mFmt(totalACV)+' across '+entries.length+' partners');
+  }
+
+  function setChart(svg,w,h,foot){
+    var el=document.getElementById('wk-chart');
+    el.setAttribute('viewBox','0 0 '+w+' '+h);
+    el.innerHTML=svg;
+    wireSegs();
+    document.getElementById('wk-foot').textContent=foot;
+  }
+
+  function render(){
+    var rows=filtered();
+    renderKPIs(); hideTip();
+    if     (state.tab==='timeline')  chartTimeline(rows);
+    else if(state.tab==='companies') chartCompanies(rows);
+    else if(state.tab==='stages')    chartStages(rows);
+    else if(state.tab==='substages') chartSubstages(rows);
+    else if(state.tab==='acv')       chartACV(rows);
+  }
+
+  document.querySelectorAll('.w-filter').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.querySelectorAll('.w-filter').forEach(function(x){x.classList.remove('active');});
+      b.classList.add('active'); state.filter=b.dataset.wf; render();
+    });
+  });
+  document.querySelectorAll('.w-tab').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.querySelectorAll('.w-tab').forEach(function(x){x.classList.remove('active');});
+      b.classList.add('active'); state.tab=b.dataset.wt; render();
+    });
+  });
+  document.querySelectorAll('.w-lg').forEach(function(el){
+    el.title='Click to toggle';
+    el.addEventListener('click',function(){
+      var s=el.dataset.ws;
+      if(state.hidden.has(s)){ state.hidden.delete(s); el.style.opacity=1; }
+      else { state.hidden.add(s); el.style.opacity=0.35; }
+      render();
+    });
+  });
+
+  render();
+})();
+</script>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 1 — PREVIOUS WEEK 22–30 APR
+══════════════════════════════════════════ -->
+<div id="past" class="week-header">
+  <span class="week-badge past"><span class="week-dot"></span>Previous · 22–30 Apr</span>
+  <h2 class="week-title">22 – 30 April 2026</h2>
+  <span class="week-dates">Summary</span>
+</div>
+
+<div class="section-eyebrow">Channel Status</div>
+<div class="status-grid" style="grid-template-columns:repeat(5,1fr);">
+  <div class="status-card"><div class="status-card-label">LinkedIn Ads (Conv.)</div><span class="badge live">Live · India Top</span></div>
+  <div class="status-card"><div class="status-card-label">Post Amplification</div><span class="badge live">Live</span></div>
+  <div class="status-card"><div class="status-card-label">LinkedIn Organic</div><span class="badge live">2 Posts</span></div>
+  <div class="status-card"><div class="status-card-label">Webinar (Movate)</div><span class="badge done">Completed</span></div>
+  <div class="status-card"><div class="status-card-label">Internal Referral</div><span class="badge blocked">Was Blocked</span></div>
+</div>
+<div class="status-grid" style="grid-template-columns:repeat(5,1fr);">
+  <div class="status-card"><div class="status-card-label">NY Tech Week</div><span class="badge done">Aligned</span></div>
+  <div class="status-card"><div class="status-card-label">Accenture Outreach</div><span class="badge live">8 Accts Live</span></div>
+  <div class="status-card"><div class="status-card-label">HubSpot / CRM</div><span class="badge live">Form + Integration</span></div>
+  <div class="status-card"><div class="status-card-label">ABM List (12K)</div><span class="badge wip">Ongoing</span></div>
+  <div class="status-card"><div class="status-card-label">Content Calendar</div><span class="badge pending">May Launch</span></div>
+</div>
+
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-linkedin">in</div>
+    <span class="channel-name">LinkedIn Ads — Conversation Ads</span>
+    <div class="channel-status-row"><span class="badge live">India Top Performer</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="metrics-grid col5">
+      <div class="metric-cell"><div class="metric-val rose">$800.60</div><div class="metric-label">Total Spend</div></div>
+      <div class="metric-cell"><div class="metric-val green">3</div><div class="metric-label">Leads</div></div>
+      <div class="metric-cell"><div class="metric-val amber">$266.87</div><div class="metric-label">Blended CPL</div></div>
+      <div class="metric-cell"><div class="metric-val">468</div><div class="metric-label">Sends</div></div>
+      <div class="metric-cell"><div class="metric-val">32.3%</div><div class="metric-label">Avg Open Rate</div></div>
+    </div>
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text">India: $201.56 CPL · 2 leads · 255 sends — outperformed US on every metric</div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">US: $397.48 CPL · 1 lead — paused, audience rework needed</div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Post Amplification — Post 2 "You know you're winning…" drove 12.5% CTR · $57 spend · traction from MDs + Directors of AI</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-co-mkt">🎙</div>
+    <span class="channel-name">Webinar — "Beyond the Demo" · Movate · Apr 29</span>
+    <div class="channel-status-row"><span class="badge done">Completed</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text"><strong>233 registered · 76 attended · 32.6% rate</strong> — 233 in nurture pipeline</div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Nurture sequence for registrant cohort — carried forward</div><div class="item-badge-row"><span class="badge next-wk">→ This Week</span></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-auto">⚙</div>
+    <span class="channel-name">CRM & Infrastructure — All Shipped</span>
+    <div class="channel-status-row"><span class="badge live">Live</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text">HubSpot Lead Form (GSI/SI) + LinkedIn Ads → HubSpot integration — both live</div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Accenture 8-account personalized outreach — went live (Instantly + LinkedIn)</div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">NY Tech Week: 10 events planned, aligned with Ankita + Anju</div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 2 — THIS WEEK 4–10 MAY
+══════════════════════════════════════════ -->
+<div id="current" class="week-header">
+  <span class="week-badge current"><span class="week-dot"></span>Current · 4–10 May</span>
+  <h2 class="week-title">4 – 10 May 2026</h2>
+  <span class="week-dates">What happened this week</span>
+</div>
+
+<!-- LinkedIn Ads -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-linkedin">in</div>
+    <span class="channel-name">LinkedIn Ads — Conversation Ads · Accenture</span>
+    <div class="channel-status-row">
+      <span class="badge active">India Live</span>
+      <span class="badge paused">US Paused</span>
+    </div>
+  </div>
+  <div class="channel-body">
+    <div class="section-eyebrow" style="margin-top:0;">This Week — 04/05/26–10/05/26</div>
+    <div class="metrics-grid col4">
+      <div class="metric-cell"><div class="metric-val rose">$422.93</div><div class="metric-label">Total Spend</div></div>
+      <div class="metric-cell"><div class="metric-val green">4</div><div class="metric-label">Leads</div></div>
+      <div class="metric-cell"><div class="metric-val green">$105.73</div><div class="metric-label">Avg CPL</div></div>
+      <div class="metric-cell"><div class="metric-val amber">42.98%</div><div class="metric-label">Avg Open Rate</div></div>
+    </div>
+    <div class="metrics-grid col3" style="margin-top:1px;margin-bottom:14px;">
+      <div class="metric-cell"><div class="metric-val">228</div><div class="metric-label">Total Sends</div></div>
+      <div class="metric-cell"><div class="metric-val">98</div><div class="metric-label">Total Opens</div></div>
+      <div class="metric-cell"><div class="metric-val">135</div><div class="metric-label">Total Engagements</div></div>
+    </div>
+    <div class="ad-table-wrap" style="margin-bottom:20px;">
+      <table class="mini-table">
+        <thead><tr><th>Ad Set</th><th>Spent</th><th>Sends</th><th>Opens</th><th>Open Rate</th><th>Leads</th><th>CPL</th><th>Engagements</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Accenture India Lead Gen</strong></td><td class="val-hi">$350.00</td><td>190</td><td>83</td><td class="val-hi">43.68%</td><td class="val-hi">4</td><td class="val-hi">$87.50</td><td>114</td></tr>
+          <tr><td>Accenture US Lead Gen <span class="badge paused" style="margin-left:6px;">Paused</span></td><td class="val-lo">$72.93</td><td>38</td><td>15</td><td class="val-lo">39.47%</td><td class="val-red">—</td><td class="val-red">—</td><td>21</td></tr>
+          <tr style="background:rgba(255,255,255,0.02);"><td><strong>Total</strong></td><td><strong>$422.93</strong></td><td><strong>228</strong></td><td><strong>98</strong></td><td><strong>42.98%</strong></td><td class="val-hi"><strong>4</strong></td><td><strong>$105.73</strong></td><td><strong>135</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="section-eyebrow">Month to Date — 01/05/26–10/05/26</div>
+    <div class="metrics-grid col4">
+      <div class="metric-cell"><div class="metric-val rose">$646.63</div><div class="metric-label">Total Spend</div></div>
+      <div class="metric-cell"><div class="metric-val green">4</div><div class="metric-label">Leads</div></div>
+      <div class="metric-cell"><div class="metric-val amber">$161.66</div><div class="metric-label">Avg CPL</div></div>
+      <div class="metric-cell"><div class="metric-val">40.26%</div><div class="metric-label">Avg Open Rate</div></div>
+    </div>
+    <div class="metrics-grid col3" style="margin-top:1px;margin-bottom:14px;">
+      <div class="metric-cell"><div class="metric-val">390</div><div class="metric-label">Total Sends</div></div>
+      <div class="metric-cell"><div class="metric-val">157</div><div class="metric-label">Total Opens</div></div>
+      <div class="metric-cell"><div class="metric-val" style="font-size:16px;">163 + 46</div><div class="metric-label">Engagements (India + US)</div></div>
+    </div>
+    <div class="ad-table-wrap" style="margin-bottom:14px;">
+      <table class="mini-table">
+        <thead><tr><th>Ad Set</th><th>Spent</th><th>Sends</th><th>Opens</th><th>Open Rate</th><th>Leads</th><th>CPL</th><th>Engagements</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Accenture India Lead Gen</strong></td><td class="val-hi">$472.00</td><td>289</td><td>120</td><td class="val-hi">41.52%</td><td class="val-hi">4</td><td class="val-lo">$117.95</td><td>163</td></tr>
+          <tr><td>Accenture US Lead Gen <span class="badge paused" style="margin-left:6px;">Paused</span></td><td class="val-lo">$174.63</td><td>101</td><td>37</td><td class="val-lo">36.63%</td><td class="val-red">—</td><td class="val-red">—</td><td>46</td></tr>
+          <tr style="background:rgba(255,255,255,0.02);"><td><strong>Total MTD</strong></td><td><strong>$646.63</strong></td><td><strong>390</strong></td><td><strong>157</strong></td><td><strong>40.26%</strong></td><td class="val-hi"><strong>4</strong></td><td><strong>$161.66</strong></td><td><strong>209</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="insight-box rose">
+      <div class="insight-label rose">💡 Key Takeaways</div>
+      <div class="insight-text"><ul>
+        <li>India CPL improved significantly WoW — $87.50 this week vs $201.56 last week · open rate holding at 43.68%</li>
+        <li>All 4 leads this month from India alone · US at 0 leads despite $174.63 MTD spend</li>
+        <li>MDs, AVPs, VPs engaging most — targeting within Accenture is working</li>
+        <li>US campaign paused — low LinkedIn member targeting identified as root cause, audience rework needed before reactivation</li>
+      </ul></div>
+    </div>
+  </div>
+</div>
+
+<!-- Email / Instantly -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-email">✉</div>
+    <span class="channel-name">Email Outreach — Instantly · GSI/SI Accenture April</span>
+    <div class="channel-status-row"><span class="badge active">Active · Early Stage</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="metrics-grid col4">
+      <div class="metric-cell"><div class="metric-val">5</div><div class="metric-label">Sequences Started</div></div>
+      <div class="metric-cell"><div class="metric-val amber">20%</div><div class="metric-label">Open Rate · 1 open</div></div>
+      <div class="metric-cell"><div class="metric-val">0%</div><div class="metric-label">Click Rate</div></div>
+      <div class="metric-cell"><div class="metric-val">0</div><div class="metric-label">Opportunities</div></div>
+    </div>
+    <div class="insight-box amber">
+      <div class="insight-label amber">📌 Status</div>
+      <div class="insight-text">Campaign just started around May 4–8 — too early to read. 5 sequences running, 1 open recorded. Volume needs to ramp before meaningful signal.</div>
+    </div>
+  </div>
+</div>
+
+<!-- LinkedIn Organic -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-social">✍</div>
+    <span class="channel-name">LinkedIn Organic — Anju Post</span>
+    <div class="channel-status-row"><span class="badge live">1 Post Live</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text">1 post published from Anju's profile this week · GSI/SI audience</div><div class="item-badge-row"><span class="badge live">Live</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Cadence: 2× per week — second post pending</div><div class="item-badge-row"><span class="badge pending">Pending</span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- GSI Demo Page -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-auto">🚀</div>
+    <span class="channel-name">GSI Demo Page + Lead Form + Enrichment Automation</span>
+    <div class="channel-status-row"><span class="badge done">100% Shipped</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list" style="margin-bottom:14px;">
+      <div class="item"><div class="item-dot"></div><div class="item-text">Dedicated GSI landing page with book-a-call form live at <a class="inline-link" href="https://www.lyzr.ai/lyzr-gsi-book-call/" target="_blank">lyzr.ai/lyzr-gsi-book-call ↗</a></div><div class="item-badge-row"><span class="badge done">Live</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Automation: on submit → lead enriched + GSI Slack channel notified — fully integrated</div><div class="item-badge-row"><span class="badge done">Live</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">UTM tracking in place per source: <code style="font-size:11px;background:var(--card-2);padding:2px 6px;border-radius:3px;color:var(--text-2);">?utm_source=instantly&utm_medium=Accenture_casestudy</code></div></div>
+    </div>
+    <div class="iframe-wrap">
+      <div class="iframe-label"><span class="dot-ind"></span>GSI Demo & Book-a-Call Page<a class="iframe-open-btn" href="https://www.lyzr.ai/lyzr-gsi-book-call/" target="_blank">Open ↗</a></div>
+      <iframe src="https://www.lyzr.ai/lyzr-gsi-book-call/" height="380" title="GSI Demo Page"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- Pipeline Dashboard -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-ads">📊</div>
+    <span class="channel-name">GSI Pipeline Dashboard — Shipped</span>
+    <div class="channel-status-row"><span class="badge done">100% Shipped</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list" style="margin-bottom:14px;">
+      <div class="item"><div class="item-dot"></div><div class="item-text">Live dashboard — pipeline + demo stage + total conversations, segmented across GSI, NSI, and overall</div><div class="item-badge-row"><span class="badge done">Live</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Single source of truth for the GSI pod at any moment</div></div>
+    </div>
+    <div class="iframe-wrap">
+      <div class="iframe-label"><span class="dot-ind"></span>GSI/NSI Pipeline Dashboard<a class="iframe-open-btn" href="https://www.lyzr.ai/prototype/" target="_blank">Open ↗</a></div>
+      <iframe src="https://www.lyzr.ai/prototype/" height="400" title="GSI Pipeline Dashboard"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- NY Tech Week -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-events">◆</div>
+    <span class="channel-name">Events — New York Tech Week · Jun 1–7</span>
+    <div class="channel-status-row">
+      <span class="badge live">4 Events Closed</span>
+      <span class="badge wip">Campaigns Building</span>
+    </div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text">Full campaign planning completed · <strong>4 events confirmed and closed</strong> — venue, partner, format locked</div><div class="item-badge-row"><span class="badge live">4 Closed</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Working on next campaign set — HubSpot list build, LinkedIn Ads, outreach campaigns</div><div class="item-badge-row"><span class="badge wip">In Build</span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- GSI Target List -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-accounts">🎯</div>
+    <span class="channel-name">GSI Target List — Partner Contacts · With Pooja</span>
+    <div class="channel-status-row"><span class="badge wip">In Progress</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list" style="margin-bottom:14px;">
+      <div class="item"><div class="item-dot"></div><div class="item-text">Sourced from Pooja (Anju's team) — GSI target contact list to amplify and enable faster sales</div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Goal: run enriched, validated campaigns on GSI contacts for higher conversion</div></div>
+    </div>
+    <div class="iframe-wrap">
+      <div class="iframe-label"><span class="dot-ind"></span>Partner Contacts — GSI Target List<a class="iframe-open-btn" href="https://docs.google.com/spreadsheets/d/1x7NYGU5FoZ7huP2PNa7ruCe_U1v-eLXYKN4BMYHID88/edit" target="_blank">Open ↗</a></div>
+      <iframe src="https://docs.google.com/spreadsheets/d/1x7NYGU5FoZ7huP2PNa7ruCe_U1v-eLXYKN4BMYHID88/preview" height="300"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- Internal Referral -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-auto">🔗</div>
+    <span class="channel-name">Internal Referral Program — Going Live Today</span>
+    <div class="channel-status-row"><span class="badge today">Today</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text">Spoke with <strong>Sejal</strong> — referral thread being created, going live today across all leaders</div><div class="item-badge-row"><span class="badge today">Today</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Communication asking leaders to share within their orgs — driving participation across 20 GSI target accounts</div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Was blocked on Ani's reward input — now unblocked</div><div class="item-badge-row"><span class="badge done">Unblocked</span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- GSI/SI Landing Page -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-co-mkt">🖥</div>
+    <span class="channel-name">GSI/SI Dedicated Landing Page — In Build</span>
+    <div class="channel-status-row"><span class="badge wip">With Leonard</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text">Dedicated GSI/SI landing page — actively in build with <strong>Leonard</strong></div><div class="item-badge-row"><span class="badge wip">In Build</span></div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 3 — PIPELINE & TO-DOS
+══════════════════════════════════════════ -->
+<div id="next" class="week-header">
+  <span class="week-badge pipeline"><span class="week-dot"></span>Next Up</span>
+  <h2 class="week-title">Pipeline & To-Dos</h2>
+  <span class="week-dates">May 11 onwards</span>
+</div>
+
+<div class="pipeline-grid">
+  <div class="pipeline-item"><div class="pipeline-num">1</div><div style="flex:1"><div class="pipeline-name">PhantomBuster — GSI/SI Reach-Out Campaigns</div><div class="pipeline-detail">Aligned with Pranamya, Rida & Ani · LinkedIn outreach automation</div></div><span class="badge pending">Going Live</span></div>
+  <div class="pipeline-item"><div class="pipeline-num">2</div><div style="flex:1"><div class="pipeline-name">Automation Post-PhantomBuster</div><div class="pipeline-detail">Full reach-out automation stack — kicks off after PhantomBuster live</div></div><span class="badge next-wk">Next</span></div>
+  <div class="pipeline-item"><div class="pipeline-num">3</div><div style="flex:1"><div class="pipeline-name">Movate Webinar Registrant Nurture</div><div class="pipeline-detail">233 registrants — outreach campaign still pending · Assign to Shifa</div></div><span class="badge next-wk">Pending</span></div>
+  <div class="pipeline-item"><div class="pipeline-num">4</div><div style="flex:1"><div class="pipeline-name">Non-ICP GSI Leads → Referral Sequence</div><div class="pipeline-detail">Pull from HubSpot · Build sequence to ask non-ICPs for ICP referrals</div></div><span class="badge next-wk">Next Week</span></div>
+  <div class="pipeline-item"><div class="pipeline-num">5</div><div style="flex:1"><div class="pipeline-name">Webinar with Persistent Systems — June</div><div class="pipeline-detail">Working with Shifa on setup · Topic and format TBD</div></div><span class="badge pending">June · Shifa</span></div>
+  <div class="pipeline-item"><div class="pipeline-num">6</div><div style="flex:1"><div class="pipeline-name">NY Tech Week — Outreach Campaigns</div><div class="pipeline-detail">HubSpot list build + LinkedIn Ads + outreach for June events</div></div><span class="badge wip">In Build</span></div>
+  <div class="pipeline-item"><div class="pipeline-num">7</div><div style="flex:1"><div class="pipeline-name">GSI/SI Dedicated Landing Page</div><div class="pipeline-detail">In build with Leonard — target launch next week</div></div><span class="badge wip">With Leonard</span></div>
+  <div class="pipeline-item"><div class="pipeline-num">8</div><div style="flex:1"><div class="pipeline-name">Monthly Content Calendar — Kick Off</div><div class="pipeline-detail">Newsletter, LinkedIn Article, Blog all starting May — with Shreya</div></div><span class="badge wip">With Shreya</span></div>
+</div>
+
+<!-- Footer -->
+<div style="margin-top:60px;padding-top:20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+  <span style="font-size:11.5px;color:var(--text-3);">Lyzr AI · GSI & Partner Marketing · Week of 4 May 2026</span>
+  <span style="font-size:11px;color:var(--text-3);">Generated 11 May 2026</span>
+</div>
+
+</div><!-- /main -->
+
+<script>
+  document.querySelectorAll('.nav-pill').forEach(function(pill){
+    pill.addEventListener('click',function(e){
+      var href=pill.getAttribute('href');
+      if(href&&href.startsWith('#')){
+        e.preventDefault();
+        var t=document.querySelector(href);
+        if(t) t.scrollIntoView({behavior:'smooth',block:'start'});
+      }
+    });
+  });
+</script>
+</body>
+</html>
