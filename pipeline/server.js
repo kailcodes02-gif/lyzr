@@ -111,7 +111,7 @@ function recomputeAggregates(data) {
     segments: [...new Set(rows.map(r => r.segment).filter(Boolean))].sort(),
     stages: [...new Set(rows.map(r => r.stage).filter(Boolean))],
     categories: [...new Set(rows.map(r => r.category).filter(Boolean))].sort(),
-    industries: [...new Set(rows.map(r => r.industry).filter(Boolean))].sort(),
+    industries: [...new Set(rows.map(r => r.industry?.startsWith('BFSI') ? 'BFSI' : r.industry).filter(Boolean))].sort(),
   };
 
   data.aggregates = {

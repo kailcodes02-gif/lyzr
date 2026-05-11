@@ -2008,7 +2008,11 @@ function lyzrApp() {
       // Category
       if (this.filters.categories.length && !this.filters.categories.includes(row.category)) return false;
       // Industry
-      if (this.filters.industries.length && !this.filters.industries.includes(row.industry)) return false;
+      if (this.filters.industries.length) {
+        let ind = row.industry || '';
+        if (ind.startsWith('BFSI')) ind = 'BFSI';
+        if (!this.filters.industries.includes(ind)) return false;
+      }
       // Opp owner
       if (this.filters.oppOwners.length &&
           !row.opportunity_owners.some(o => this.filters.oppOwners.includes(o))) return false;
