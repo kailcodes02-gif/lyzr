@@ -254,6 +254,11 @@
     transition: border-color 120ms;
   }
   .input:focus { outline: none; border-color: var(--orange); }
+  select.input { appearance: auto; cursor: pointer; }
+  textarea.input { resize: vertical; font-family: inherit; }
+  .line-through { text-decoration: line-through; }
+  .text-red { color: var(--red); }
+  .-translate-x-1\/2 { transform: translateX(-50%); }
 
   /* Tab nav */
   .tab {
@@ -396,6 +401,28 @@
     z-index: 51;
     overflow-y: auto;
     box-shadow: -20px 0 60px rgba(0,0,0,0.5);
+  }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(6px);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal {
+    width: 100%; max-width: 500px;
+    background: var(--bg);
+    border: 1px solid var(--rule2);
+    border-radius: 16px;
+    z-index: 51;
+    overflow-y: auto;
+    max-height: calc(100vh - 40px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
   }
 
   /* Pill button (links) */
@@ -884,6 +911,9 @@
                 </svg>
                 CSV
               </button>
+              <button @click="openAddDrawer()" class="btn-link" style="background:var(--orange);color:var(--bg);padding:6px 14px;border-radius:6px;font-weight:600;" title="Add new project">
+                + Add
+              </button>
             </div>
           </div>
 
@@ -1120,6 +1150,9 @@
                 </svg>
                 CSV
               </button>
+              <button @click="openAddDrawer()" class="btn-link" style="background:var(--orange);color:var(--bg);padding:6px 14px;border-radius:6px;font-weight:600;" title="Add new project">
+                + Add
+              </button>
             </div>
           </div>
 
@@ -1323,9 +1356,10 @@
       <!-- ===== ROW DRAWER ===== -->
       <template x-if="selectedRow">
         <div>
-          <div class="drawer-backdrop" @click="selectedRow = null"></div>
+          <div class="drawer-backdrop" @click="editStep === 'view' ? (selectedRow = null) : null"></div>
           <aside class="drawer p-8">
 
+            <!-- HEADER -->
             <div class="flex items-start justify-between mb-6">
               <div>
                 <div class="text-[10px] uppercase tracking-[2px] text-orange mb-2"
@@ -1334,90 +1368,154 @@
                     x-text="selectedRow.project || selectedRow.company || 'Untitled'"></h2>
                 <div class="text-base text-ink2 mt-1" x-text="selectedRow.company"></div>
               </div>
-              <button @click="selectedRow = null" class="text-ink3 hover:text-ink p-2">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M18 6L6 18M6 6l12 12"/>
-                </svg>
-              </button>
-            </div>
-
-            <!-- Stage + Category -->
-            <div class="flex flex-wrap gap-2 mb-6">
-              <span x-show="selectedRow.stage"
-                    class="chip-stage"
-                    :class="`stage-${selectedRow.stage?.toLowerCase().replace(' ','-')}`"
-                    x-text="selectedRow.stage"></span>
-              <span x-show="selectedRow.category" class="pill-quiet" x-text="selectedRow.category"></span>
-              <span x-show="selectedRow.industry" class="pill-quiet" x-text="selectedRow.industry"></span>
-            </div>
-
-            <!-- Use case description -->
-            <div class="mb-6" x-show="selectedRow.use_case">
-              <div class="kpi-label mb-2">Use case</div>
-              <p class="text-sm text-ink2 leading-relaxed" x-text="selectedRow.use_case"></p>
-            </div>
-
-            <!-- Money + Close date -->
-            <div class="grid grid-cols-2 gap-3 mb-6">
-              <div class="card-inner p-4">
-                <div class="kpi-label mb-2" style="color: var(--orange);">ACV</div>
-                <div class="serif text-2xl font-bold text-orange"
-                     x-text="selectedRow.acv ? formatMoneyShort(selectedRow.acv) : '—'"></div>
-                <div class="text-[10px] text-ink3 mt-1"
-                     x-text="selectedRow.time_period || 'Time period not specified'"></div>
-              </div>
-              <div class="card-inner p-4">
-                <div class="kpi-label mb-2">Expected close</div>
-                <div class="text-base text-ink font-medium" x-text="selectedRow.close_date_raw || '—'"></div>
-                <div class="text-[10px] text-ink3 mt-1 mono"
-                     x-text="selectedRow.close_quarter && selectedRow.close_quarter !== selectedRow.close_date_raw ? selectedRow.close_quarter : ''"></div>
+              <div class="flex items-center gap-2">
+                <button x-show="editStep==='view'" @click="startEdit()" class="text-ink3 hover:text-orange p-2 transition" title="Edit">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button @click="editStep='view'; selectedRow = null" class="text-ink3 hover:text-ink p-2">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
               </div>
             </div>
 
-            <!-- Owners -->
-            <div class="grid grid-cols-2 gap-3 mb-6">
-              <div class="card-inner p-4">
-                <div class="kpi-label mb-2.5">Opportunity owner</div>
-                <div class="flex flex-wrap gap-1.5" x-show="selectedRow.opportunity_owners.length">
-                  <template x-for="o in selectedRow.opportunity_owners" :key="o">
-                    <span class="pill-owner"><span class="dot"></span><span x-text="o"></span></span>
-                  </template>
+            <!-- CONFIRM EDIT DIALOG -->
+            <div x-show="editStep==='confirm-edit'" class="card-inner p-6 mb-6 text-center">
+              <div class="text-sm text-ink mb-4">Are you sure you want to edit this entry?</div>
+              <div class="flex gap-3 justify-center">
+                <button @click="cancelEdit()" class="px-5 py-2 rounded-lg text-sm" style="background:var(--rule);color:var(--ink);">Cancel</button>
+                <button @click="confirmStartEdit()" class="px-5 py-2 rounded-lg text-sm font-medium" style="background:var(--orange);color:var(--bg);">Yes, Edit</button>
+              </div>
+            </div>
+
+            <!-- VIEW MODE -->
+            <div x-show="editStep==='view'">
+              <div class="flex flex-wrap gap-2 mb-6">
+                <span x-show="selectedRow.stage" class="chip-stage" :class="`stage-${selectedRow.stage?.toLowerCase().replace(' ','-')}`" x-text="selectedRow.stage"></span>
+                <span x-show="selectedRow.category" class="pill-quiet" x-text="selectedRow.category"></span>
+                <span x-show="selectedRow.industry" class="pill-quiet" x-text="selectedRow.industry"></span>
+              </div>
+              <div class="mb-6" x-show="selectedRow.use_case">
+                <div class="kpi-label mb-2">Use case</div>
+                <p class="text-sm text-ink2 leading-relaxed" x-text="selectedRow.use_case"></p>
+              </div>
+              <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="card-inner p-4">
+                  <div class="kpi-label mb-2" style="color:var(--orange);">ACV</div>
+                  <div class="serif text-2xl font-bold text-orange" x-text="selectedRow.acv ? formatMoneyShort(selectedRow.acv) : '—'"></div>
+                  <div class="text-[10px] text-ink3 mt-1" x-text="selectedRow.time_period || ''"></div>
                 </div>
-                <span x-show="!selectedRow.opportunity_owners.length" class="text-ink3 text-sm">Unassigned</span>
-              </div>
-              <div class="card-inner p-4">
-                <div class="kpi-label mb-2.5">Prototype owner</div>
-                <div class="flex flex-wrap gap-1.5" x-show="selectedRow.prototype_owners.length">
-                  <template x-for="o in selectedRow.prototype_owners" :key="o">
-                    <span class="pill-owner"><span class="dot"></span><span x-text="o"></span></span>
-                  </template>
+                <div class="card-inner p-4">
+                  <div class="kpi-label mb-2">Expected close</div>
+                  <div class="text-base text-ink font-medium" x-text="selectedRow.close_date_raw || '—'"></div>
+                  <div class="text-[10px] text-ink3 mt-1 mono" x-text="selectedRow.close_quarter && selectedRow.close_quarter !== selectedRow.close_date_raw ? selectedRow.close_quarter : ''"></div>
                 </div>
-                <span x-show="!selectedRow.prototype_owners.length" class="text-ink3 text-sm">Unassigned</span>
+              </div>
+              <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="card-inner p-4">
+                  <div class="kpi-label mb-2.5">Opportunity owner</div>
+                  <div class="flex flex-wrap gap-1.5" x-show="selectedRow.opportunity_owners.length">
+                    <template x-for="o in selectedRow.opportunity_owners" :key="o"><span class="pill-owner"><span class="dot"></span><span x-text="o"></span></span></template>
+                  </div>
+                  <span x-show="!selectedRow.opportunity_owners.length" class="text-ink3 text-sm">Unassigned</span>
+                </div>
+                <div class="card-inner p-4">
+                  <div class="kpi-label mb-2.5">Prototype owner</div>
+                  <div class="flex flex-wrap gap-1.5" x-show="selectedRow.prototype_owners.length">
+                    <template x-for="o in selectedRow.prototype_owners" :key="o"><span class="pill-owner"><span class="dot"></span><span x-text="o"></span></span></template>
+                  </div>
+                  <span x-show="!selectedRow.prototype_owners.length" class="text-ink3 text-sm">Unassigned</span>
+                </div>
+              </div>
+              <a x-show="selectedRow.prototype_link" :href="selectedRow.prototype_link" target="_blank" rel="noopener noreferrer" class="block w-full text-center py-3 rounded-lg font-medium mb-6 transition" style="background:var(--orange);color:var(--bg);">Open prototype →</a>
+
+              <!-- Edit History -->
+              <div x-show="selectedRow.edit_history && selectedRow.edit_history.length > 0" class="mb-6">
+                <div class="kpi-label mb-3">Edit history</div>
+                <template x-for="(h, hi) in (selectedRow.edit_history || [])" :key="hi">
+                  <div class="card-inner p-3 mb-2 text-xs">
+                    <div class="flex justify-between mb-1">
+                      <span class="text-ink font-medium" x-text="h.edited_by"></span>
+                      <span class="text-ink3 mono" x-text="new Date(h.edited_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})"></span>
+                    </div>
+                    <template x-for="(chg, key) in h.changes" :key="key">
+                      <div class="text-ink3"><span class="capitalize" x-text="key"></span>: <span class="text-red" x-text="JSON.stringify(chg.old)"></span> → <span class="text-orange" x-text="JSON.stringify(chg.new)"></span></div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+
+              <div class="card-inner p-4 text-xs text-ink3 leading-relaxed">
+                <div x-show="selectedRow.created_by" class="flex justify-between mb-1.5 border-b border-rule pb-1.5">
+                  <span>Created by</span>
+                  <div class="text-right">
+                    <div class="text-ink font-medium" x-text="selectedRow.created_by"></div>
+                    <div class="mono text-[10px]" x-text="new Date(selectedRow.created_at).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric'})"></div>
+                  </div>
+                </div>
+                <div class="flex justify-between mb-1.5"><span>Row ID</span><span class="mono text-ink2" x-text="selectedRow.id"></span></div>
+                <div class="flex justify-between mb-1.5"><span>Segment</span><span class="text-ink2" x-text="selectedRow.segment"></span></div>
+                <div class="flex justify-between"><span>Source row</span><span class="mono text-ink2" x-text="`#${selectedRow.sn}`"></span></div>
               </div>
             </div>
 
-            <!-- Prototype link CTA -->
-            <a x-show="selectedRow.prototype_link"
-               :href="selectedRow.prototype_link"
-               target="_blank" rel="noopener noreferrer"
-               class="block w-full text-center py-3 rounded-lg font-medium mb-6 transition"
-               style="background: var(--orange); color: var(--bg);">
-              Open prototype →
-            </a>
+            <!-- EDIT FORM -->
+            <div x-show="editStep==='form'" class="space-y-4">
+              <div><label class="filter-label">Segment</label><select x-model="editForm.segment" class="input"><option>Internal</option><option>Accenture</option><option>GSI-SI</option><option>Enterprises</option></select></div>
+              <div><label class="filter-label">Stage</label><select x-model="editForm.stage" class="input"><option>Demo</option><option>in-conversation</option><option>win</option><option>customer</option><option>lost</option></select></div>
+              <div><label class="filter-label">Project</label><input type="text" x-model="editForm.project" class="input" /></div>
+              <div><label class="filter-label">Company</label><input type="text" x-model="editForm.company" class="input" /></div>
+              <div><label class="filter-label">Use Case</label><textarea x-model="editForm.use_case" class="input" rows="3"></textarea></div>
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="filter-label">Industry</label><input type="text" x-model="editForm.industry" class="input" list="ind-list2" /><datalist id="ind-list2"><template x-for="i in (data.facets.industries||[])" :key="i"><option :value="i"></option></template></datalist></div>
+                <div><label class="filter-label">Category</label><select x-model="editForm.category" class="input"><option value="">—</option><template x-for="c in (data.facets.categories||[])" :key="c"><option :value="c" x-text="c"></option></template></select></div>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="filter-label">ACV</label><input type="number" x-model="editForm.acv" class="input" /></div>
+                <div><label class="filter-label">Time Period</label><input type="text" x-model="editForm.time_period" class="input" /></div>
+              </div>
+              <div><label class="filter-label">Prototype Link</label><input type="url" x-model="editForm.prototype_link" class="input" /></div>
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="filter-label">Opp Owners</label><input type="text" x-model="editForm.opportunity_owners" class="input" /></div>
+                <div><label class="filter-label">Proto Owners</label><input type="text" x-model="editForm.prototype_owners" class="input" /></div>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="filter-label">Close Date</label><input type="text" x-model="editForm.close_date_raw" class="input" /></div>
+                <div><label class="filter-label">Close Quarter</label><input type="text" x-model="editForm.close_quarter" class="input" /></div>
+              </div>
+              <div class="flex gap-3 pt-4">
+                <button @click="cancelEdit()" class="flex-1 py-3 rounded-lg font-medium" style="background:var(--rule);color:var(--ink);">Cancel</button>
+                <button @click="reviewEdit()" class="flex-1 py-3 rounded-lg font-medium" style="background:var(--orange);color:var(--bg);">Review Changes →</button>
+              </div>
+            </div>
 
-            <!-- Meta -->
-            <div class="card-inner p-4 text-xs text-ink3 leading-relaxed">
-              <div class="flex justify-between mb-1.5">
-                <span>Row ID</span>
-                <span class="mono text-ink2" x-text="selectedRow.id"></span>
+            <!-- EDIT REVIEW (diff) -->
+            <div x-show="editStep==='review'" class="space-y-3">
+              <div class="kpi-label mb-3">Changes</div>
+              <template x-if="getEditChanges().length === 0">
+                <div class="text-sm text-ink3 py-4 text-center">No changes detected.</div>
+              </template>
+              <template x-for="ch in getEditChanges()" :key="ch.field">
+                <div class="card-inner p-3 text-sm">
+                  <div class="text-ink3 text-xs uppercase tracking-[1px] mb-1" x-text="ch.field"></div>
+                  <div class="flex gap-2 items-center">
+                    <span class="text-red line-through" x-text="ch.oldVal"></span>
+                    <span class="text-ink3">→</span>
+                    <span class="text-orange font-medium" x-text="ch.newVal"></span>
+                  </div>
+                </div>
+              </template>
+              <div class="flex gap-3 pt-4">
+                <button @click="editStep='form'" class="flex-1 py-3 rounded-lg font-medium" style="background:var(--rule);color:var(--ink);">← Back</button>
+                <button @click="confirmSaveEdit()" class="flex-1 py-3 rounded-lg font-medium" :disabled="getEditChanges().length===0" :style="getEditChanges().length ? 'background:var(--orange);color:var(--bg);' : 'background:var(--rule);color:var(--ink3);cursor:not-allowed;'">Save Changes</button>
               </div>
-              <div class="flex justify-between mb-1.5">
-                <span>Segment</span>
-                <span class="text-ink2" x-text="selectedRow.segment"></span>
-              </div>
-              <div class="flex justify-between">
-                <span>Source row</span>
-                <span class="mono text-ink2" x-text="`#${selectedRow.sn}`"></span>
+            </div>
+
+            <!-- CONFIRM SAVE DIALOG -->
+            <div x-show="editStep==='confirm-save'" class="card-inner p-6 text-center">
+              <div class="text-sm text-ink mb-4">Confirm saving these changes?</div>
+              <div class="flex gap-3 justify-center">
+                <button @click="editStep='review'" class="px-5 py-2 rounded-lg text-sm" style="background:var(--rule);color:var(--ink);">Back</button>
+                <button @click="saveEdit()" :disabled="editSaving" class="px-5 py-2 rounded-lg text-sm font-medium" style="background:var(--orange);color:var(--bg);" x-text="editSaving ? 'Saving…' : 'Yes, Save'"></button>
               </div>
             </div>
 
@@ -1427,6 +1525,145 @@
 
     </div>
   </template>
+
+  <!-- TOAST -->
+  <div x-show="toastVisible" x-transition class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] px-5 py-3 rounded-lg text-sm font-medium shadow-lg" style="background: var(--green); color: #fff;" x-text="toastMsg"></div>
+
+  <!-- ADD PROJECT DRAWER -->
+  <!-- ADD PROJECT MODAL -->
+  <template x-if="showAddDrawer">
+    <div class="modal-backdrop" @click.self="closeAddDrawer()">
+      <div class="modal p-8">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <div class="text-[10px] uppercase tracking-[2px] text-orange mb-1">New Project</div>
+            <h2 class="serif text-2xl font-bold" x-text="addStep==='review' ? 'Review & Confirm' : 'Step ' + addStep.replace('step','') + ' of 4'"></h2>
+          </div>
+          <button @click="closeAddDrawer()" class="text-ink3 hover:text-ink p-2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- STEP 1: Segment -->
+        <div x-show="addStep==='step1'" class="space-y-4">
+          <div>
+            <label class="filter-label">Segment *</label>
+            <select x-model="addForm.segment" class="input" @change="if(addForm.segment==='Internal'){ addForm.company='Lyzr'; addForm.stage='Demo'; }"><option value="">Select…</option><option>Internal</option><option>Accenture</option><option>GSI-SI</option><option>Enterprises</option></select>
+          </div>
+          <div class="pt-4 flex gap-3">
+            <button @click="closeAddDrawer()" class="flex-1 py-3 rounded-lg font-medium transition" style="background:var(--rule);color:var(--ink);">Cancel</button>
+            <button @click="nextStep('step2')" :disabled="!step1Valid()" class="flex-1 py-3 rounded-lg font-medium transition" :style="step1Valid() ? 'background:var(--orange);color:var(--bg);' : 'background:var(--rule);color:var(--ink3);cursor:not-allowed;'">Next →</button>
+          </div>
+        </div>
+
+        <!-- STEP 2: Core Details -->
+        <div x-show="addStep==='step2'" class="space-y-4">
+          <div>
+            <label class="filter-label">Project Name *</label>
+            <input type="text" x-model="addForm.project" class="input" placeholder="e.g. KYC Automation Agent" />
+          </div>
+          <div>
+            <label class="filter-label">Stage *</label>
+            <select x-model="addForm.stage" class="input"><option value="">Select…</option><option>Demo</option><option>in-conversation</option><option>win</option><option>customer</option><option>lost</option></select>
+          </div>
+          <div>
+            <label class="filter-label">Company *</label>
+            <input type="text" x-model="addForm.company" class="input" placeholder="e.g. Acme Corp" />
+          </div>
+          <div class="pt-4 flex gap-3">
+            <button @click="prevStep('step1')" class="flex-1 py-3 rounded-lg font-medium transition" style="background:var(--rule);color:var(--ink);">← Back</button>
+            <button @click="nextStep('step3')" :disabled="!step2Valid()" class="flex-1 py-3 rounded-lg font-medium transition" :style="step2Valid() ? 'background:var(--orange);color:var(--bg);' : 'background:var(--rule);color:var(--ink3);cursor:not-allowed;'">Next →</button>
+          </div>
+        </div>
+
+        <!-- STEP 3: Specifics -->
+        <div x-show="addStep==='step3'" class="space-y-4">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="filter-label">Industry *</label>
+              <input type="text" x-model="addForm.industry" class="input" list="ind-list" placeholder="e.g. Banking" />
+              <datalist id="ind-list"><template x-for="i in (data.facets.industries||[])" :key="i"><option :value="i"></option></template></datalist>
+            </div>
+            <div>
+              <label class="filter-label">Category</label>
+              <select x-model="addForm.category" class="input"><option value="">Select…</option><template x-for="c in (data.facets.categories||[])" :key="c"><option :value="c" x-text="c"></option></template></select>
+            </div>
+          </div>
+          <div>
+            <label class="filter-label">Use Case Description *</label>
+            <textarea x-model="addForm.use_case" class="input" rows="3" placeholder="Describe the use case…"></textarea>
+          </div>
+          <div>
+            <label class="filter-label">Prototype Link <span class="text-ink3 lowercase font-normal">(if available)</span></label>
+            <input type="url" x-model="addForm.prototype_link" class="input" placeholder="https://…" />
+          </div>
+          <div class="pt-4 flex gap-3">
+            <button @click="prevStep('step2')" class="flex-1 py-3 rounded-lg font-medium transition" style="background:var(--rule);color:var(--ink);">← Back</button>
+            <button @click="nextStep('step4')" :disabled="!step3Valid()" class="flex-1 py-3 rounded-lg font-medium transition" :style="step3Valid() ? 'background:var(--orange);color:var(--bg);' : 'background:var(--rule);color:var(--ink3);cursor:not-allowed;'">Next →</button>
+          </div>
+        </div>
+
+        <!-- STEP 4: Additional Information -->
+        <div x-show="addStep==='step4'" class="space-y-4">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="filter-label">Opportunity Owners *</label>
+              <input type="text" x-model="addForm.opportunity_owners" class="input" placeholder="Name1, Name2" />
+              <div class="text-[10px] text-ink3 mt-1">Sales/Partnership team</div>
+            </div>
+            <div>
+              <label class="filter-label">Prototype Owners *</label>
+              <input type="text" x-model="addForm.prototype_owners" class="input" placeholder="Name1, Name2" />
+              <div class="text-[10px] text-ink3 mt-1">Product/Prototype team</div>
+            </div>
+          </div>
+          <div class="text-[10px] text-orange mb-3">* At least one type of owner is required.</div>
+          
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="filter-label">ACV (USD)</label>
+              <input type="number" x-model="addForm.acv" class="input" placeholder="e.g. 250000" />
+            </div>
+            <div>
+              <label class="filter-label">Time Period</label>
+              <input type="text" x-model="addForm.time_period" class="input" placeholder="e.g. Annual" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="filter-label">Close Date</label>
+              <input type="text" x-model="addForm.close_date_raw" class="input" placeholder="e.g. Jun 2026" />
+            </div>
+            <div>
+              <label class="filter-label">Close Quarter</label>
+              <input type="text" x-model="addForm.close_quarter" class="input" placeholder="e.g. Q2 2026" />
+            </div>
+          </div>
+          <div class="pt-4 flex gap-3">
+            <button @click="prevStep('step3')" class="flex-1 py-3 rounded-lg font-medium transition" style="background:var(--rule);color:var(--ink);">← Back</button>
+            <button @click="reviewAdd()" :disabled="!step4Valid()" class="flex-1 py-3 rounded-lg font-medium transition" :style="step4Valid() ? 'background:var(--orange);color:var(--bg);' : 'background:var(--rule);color:var(--ink3);cursor:not-allowed;'">Review →</button>
+          </div>
+        </div>
+
+        <!-- ADD REVIEW -->
+        <div x-show="addStep==='review'" class="space-y-3">
+          <div class="card-inner p-4 space-y-2 text-sm">
+            <template x-for="[label, val] in [['Segment',addForm.segment],['Stage',addForm.stage],['Project',addForm.project],['Company',addForm.company],['Use Case',addForm.use_case],['Industry',addForm.industry],['Category',addForm.category],['ACV',addForm.acv?'$'+Number(addForm.acv).toLocaleString():'—'],['Prototype Link',addForm.prototype_link||'—'],['Opp Owners',addForm.opportunity_owners||'—'],['Proto Owners',addForm.prototype_owners||'—'],['Close Date',addForm.close_date_raw||'—'],['Close Quarter',addForm.close_quarter||'—']]" :key="label">
+              <div class="flex justify-between py-1 border-b border-rule">
+                <span class="text-ink3" x-text="label"></span>
+                <span class="text-ink font-medium text-right max-w-[60%] truncate" x-text="val"></span>
+              </div>
+            </template>
+          </div>
+          <div class="flex gap-3 pt-4">
+            <button @click="prevStep('step4')" class="flex-1 py-3 rounded-lg font-medium transition" style="background:var(--rule);color:var(--ink);">← Back</button>
+            <button @click="confirmAdd()" :disabled="addSaving" class="flex-1 py-3 rounded-lg font-medium transition" style="background:var(--orange);color:var(--bg);" x-text="addSaving ? 'Adding…' : 'Confirm & Add'"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
 </div>
 
 
@@ -1456,6 +1693,7 @@ function lyzrApp() {
     // --- auth ----
     authed: false,
     user: { name: 'Dev User', email: 'dev@lyzr.ai' },
+    accessToken: null,
 
     // --- data ----
     loading: true,
@@ -1488,6 +1726,20 @@ function lyzrApp() {
       { id: 'gt1M',   label: '$1M and up' },
     ],
 
+    // --- add/edit ---
+    showAddDrawer: false,
+    addStep: 'form', // 'form' | 'review'
+    addForm: {},
+    addSaving: false,
+
+    editMode: false,
+    editStep: 'view', // 'view' | 'confirm-edit' | 'form' | 'review' | 'confirm-save'
+    editForm: {},
+    editOriginal: {},
+    editSaving: false,
+    toastMsg: '',
+    toastVisible: false,
+
     // ---------- INIT ----------
     async init() {
       // Restore theme
@@ -1503,16 +1755,12 @@ function lyzrApp() {
       if (stored) {
         try {
           this.user = JSON.parse(stored);
+          this.accessToken = sessionStorage.getItem('lyzr.token');
           this.authed = true;
         } catch(e) {}
       }
 
-      try {
-        const r = await fetch('data.json', { cache: 'no-store' });
-        this.data = await r.json();
-      } catch (err) {
-        console.error('Failed to load data.json', err);
-      }
+      await this.loadData();
       this.loading = false;
     },
 
@@ -1577,6 +1825,8 @@ function lyzrApp() {
               email: payload.email,
               picture: payload.picture,
             };
+            this.accessToken = response.access_token;
+            sessionStorage.setItem('lyzr.token', response.access_token);
             this.authed = true;
             sessionStorage.setItem('lyzr.user', JSON.stringify(this.user));
           } catch (err) {
@@ -1856,6 +2106,195 @@ function lyzrApp() {
       a.download = `lyzr-pipeline-${this.view}-${new Date().toISOString().slice(0,10)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
+    },
+
+    // ---------- DATA LOADING ----------
+    async loadData() {
+      try {
+        // Try API first (when running via server.js), fall back to static data.json
+        let r;
+        try { r = await fetch('/api/data', { cache: 'no-store' }); }
+        catch(e) { r = await fetch('data.json', { cache: 'no-store' }); }
+        if (!r.ok) r = await fetch('data.json', { cache: 'no-store' });
+        this.data = await r.json();
+      } catch (err) {
+        console.error('Failed to load data', err);
+      }
+    },
+
+    // ---------- TOAST ----------
+    showToast(msg) {
+      this.toastMsg = msg;
+      this.toastVisible = true;
+      setTimeout(() => { this.toastVisible = false; }, 3000);
+    },
+
+    // ---------- ADD PROJECT ----------
+    openAddDrawer() {
+      this.addForm = {
+        segment: this.view === 'demos' ? '' : (this.view === 'home' ? '' : this.view),
+        stage: this.view === 'demos' ? 'Demo' : '',
+        company: '',
+        project: '',
+        use_case: '',
+        industry: '',
+        category: '',
+        acv: '',
+        time_period: '',
+        prototype_link: '',
+        opportunity_owners: '',
+        prototype_owners: '',
+        close_date_raw: '',
+        close_quarter: '',
+      };
+      this.addStep = 'step1';
+      this.addSaving = false;
+      this.showAddDrawer = true;
+    },
+    closeAddDrawer() {
+      this.showAddDrawer = false;
+    },
+    step1Valid() {
+      return !!this.addForm.segment;
+    },
+    step2Valid() {
+      return !!(this.addForm.project && this.addForm.stage && this.addForm.company);
+    },
+    step3Valid() {
+      return !!(this.addForm.industry && this.addForm.use_case);
+    },
+    step4Valid() {
+      return !!(this.addForm.opportunity_owners || this.addForm.prototype_owners);
+    },
+    nextStep(next) {
+      this.addStep = next;
+    },
+    prevStep(prev) {
+      this.addStep = prev;
+    },
+    reviewAdd() {
+      if (!this.step4Valid()) return;
+      this.addStep = 'review';
+    },
+    async confirmAdd() {
+      if (this.addSaving) return;
+      this.addSaving = true;
+      try {
+        const token = this.accessToken || sessionStorage.getItem('lyzr.token');
+        const res = await fetch('/api/rows', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            ...this.addForm,
+            acv: this.addForm.acv ? Number(this.addForm.acv) : null,
+          }),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Failed');
+        await this.loadData();
+        this.showAddDrawer = false;
+        this.showToast(`Added: ${result.row.project} (${result.row.id})`);
+      } catch (err) {
+        console.error('Add failed:', err);
+        alert('Failed to add project: ' + err.message);
+      }
+      this.addSaving = false;
+    },
+
+    // ---------- EDIT PROJECT ----------
+    startEdit() {
+      this.editStep = 'confirm-edit';
+    },
+    confirmStartEdit() {
+      const r = this.selectedRow;
+      this.editOriginal = JSON.parse(JSON.stringify(r));
+      this.editForm = {
+        segment: r.segment || '',
+        stage: r.stage || '',
+        company: r.company || '',
+        project: r.project || '',
+        use_case: r.use_case || '',
+        industry: r.industry || '',
+        category: r.category || '',
+        acv: r.acv || '',
+        time_period: r.time_period || '',
+        prototype_link: r.prototype_link || '',
+        opportunity_owners: (r.opportunity_owners || []).join(', '),
+        prototype_owners: (r.prototype_owners || []).join(', '),
+        close_date_raw: r.close_date_raw || '',
+        close_quarter: r.close_quarter || '',
+      };
+      this.editStep = 'form';
+      this.editSaving = false;
+    },
+    cancelEdit() {
+      this.editStep = 'view';
+    },
+    getEditChanges() {
+      const changes = [];
+      const labels = {
+        segment: 'Segment', stage: 'Stage', company: 'Company', project: 'Project',
+        use_case: 'Use Case', industry: 'Industry', category: 'Category', acv: 'ACV',
+        time_period: 'Time Period', prototype_link: 'Prototype Link',
+        opportunity_owners: 'Opp Owners', prototype_owners: 'Proto Owners',
+        close_date_raw: 'Close Date', close_quarter: 'Close Quarter',
+      };
+      const orig = this.editOriginal;
+      for (const [key, label] of Object.entries(labels)) {
+        let oldVal, newVal;
+        if (key === 'opportunity_owners' || key === 'prototype_owners') {
+          oldVal = (orig[key] || []).join(', ');
+          newVal = this.editForm[key];
+        } else if (key === 'acv') {
+          oldVal = String(orig[key] || '');
+          newVal = String(this.editForm[key] || '');
+        } else {
+          oldVal = orig[key] || '';
+          newVal = this.editForm[key] || '';
+        }
+        if (oldVal !== newVal) {
+          changes.push({ field: label, oldVal: oldVal || '—', newVal: newVal || '—' });
+        }
+      }
+      return changes;
+    },
+    reviewEdit() {
+      this.editStep = 'review';
+    },
+    confirmSaveEdit() {
+      this.editStep = 'confirm-save';
+    },
+    async saveEdit() {
+      if (this.editSaving) return;
+      this.editSaving = true;
+      try {
+        const token = this.accessToken || sessionStorage.getItem('lyzr.token');
+        const res = await fetch(`/api/rows/${this.selectedRow.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            ...this.editForm,
+            acv: this.editForm.acv ? Number(this.editForm.acv) : null,
+          }),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Failed');
+        await this.loadData();
+        // Re-select the updated row
+        this.selectedRow = this.data.rows.find(r => r.id === this.selectedRow.id) || null;
+        this.editStep = 'view';
+        this.showToast(`Updated: ${result.row.project}`);
+      } catch (err) {
+        console.error('Edit failed:', err);
+        alert('Failed to save edit: ' + err.message);
+      }
+      this.editSaving = false;
     },
   };
 }
