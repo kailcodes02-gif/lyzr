@@ -544,6 +544,10 @@
             <button class="tab" :class="view==='Enterprises' && 'active'" @click="setView('Enterprises')">
               Enterprises <span class="badge" x-text="count('Enterprises')"></span>
             </button>
+            <div style="width: 1px; height: 24px; background: var(--rule2); margin: 0 4px;"></div>
+            <button class="tab" :class="view==='demos' && 'active'" @click="setView('demos')">
+              Live Demos <span class="badge" x-text="demoCount()"></span>
+            </button>
           </nav>
 
           <!-- Right side: data freshness + user -->
@@ -813,8 +817,242 @@
       </template>
 
 
+      <!-- ===== LIVE DEMOS VIEW ===== -->
+      <template x-if="!loading && view === 'demos'">
+        <main class="flex-1 max-w-[1600px] mx-auto px-6 py-8 w-full">
+
+          <!-- Header -->
+          <div class="mb-8 anim-fadeup">
+            <div class="text-[11px] uppercase tracking-[3px] text-orange mb-2">Live Demos · Pipeline</div>
+            <h1 class="serif text-4xl md:text-5xl font-bold leading-[0.95] mb-2">
+              Live Demos
+            </h1>
+            <p class="text-ink2 text-sm max-w-2xl">
+              All use cases currently in demo stage — across every segment.
+              Filter by segment to narrow the view.
+            </p>
+          </div>
+
+          <!-- Mini stats strip -->
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+            <div class="card p-4">
+              <div class="kpi-label mb-2" style="color: var(--blue);">Total demos</div>
+              <div class="serif text-2xl font-bold" x-text="filtered.length"></div>
+              <div class="text-[10px] text-ink3 mt-0.5"
+                   x-text="demoSegment === 'all' ? 'across all segments' : demoSegment"></div>
+            </div>
+            <div class="card p-4">
+              <div class="kpi-label mb-2" style="color: var(--orange);">ACV</div>
+              <div class="serif text-2xl font-bold text-orange" x-text="formatMoneyShort(filteredAcv)"></div>
+              <div class="text-[10px] text-ink3 mt-0.5">in current view</div>
+            </div>
+            <template x-for="seg in ['Internal','Accenture','GSI-SI','Enterprises']" :key="seg">
+              <div class="card p-4">
+                <div class="kpi-label mb-2" x-text="seg"></div>
+                <div class="serif text-2xl font-bold"
+                     x-text="data.rows.filter(r => r.stage === 'Demo' && r.segment === seg).length"></div>
+                <div class="text-[10px] text-ink3 mt-0.5">demos</div>
+              </div>
+            </template>
+          </div>
+
+          <!-- Segment quick filters -->
+          <div class="flex flex-wrap items-center gap-2 mb-4">
+            <span class="text-[10px] uppercase tracking-[1.5px] text-ink3 mr-1">Segment</span>
+            <button class="qv-chip" :class="demoSegment==='all' && 'active'"
+                    @click="demoSegment='all'">All</button>
+            <button class="qv-chip" :class="demoSegment==='Internal' && 'active'"
+                    @click="demoSegment='Internal'">Internal</button>
+            <button class="qv-chip" :class="demoSegment==='Accenture' && 'active'"
+                    @click="demoSegment='Accenture'">Accenture</button>
+            <button class="qv-chip" :class="demoSegment==='GSI-SI' && 'active'"
+                    @click="demoSegment='GSI-SI'">GSI/SI</button>
+            <button class="qv-chip" :class="demoSegment==='Enterprises' && 'active'"
+                    @click="demoSegment='Enterprises'">Enterprises</button>
+
+            <div class="ml-auto flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Search company, project, use case…"
+                x-model="search"
+                class="input"
+                style="width: 320px;"
+              />
+              <button @click="exportCsv()" class="btn-link" title="Download filtered view as CSV">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                </svg>
+                CSV
+              </button>
+            </div>
+          </div>
+
+          <!-- 2-col layout: filters + table -->
+          <div class="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
+
+            <!-- Filter rail -->
+            <aside class="card p-5 h-fit lg:sticky lg:top-20" style="max-height: calc(100vh - 100px); overflow-y: auto;">
+
+              <div class="flex items-center justify-between mb-4">
+                <div class="kpi-label">Filters</div>
+                <button @click="clearFilters()"
+                        class="text-[10px] uppercase tracking-[1px] text-ink3 hover:text-orange transition"
+                        x-show="hasActiveFilters()">Clear</button>
+              </div>
+
+              <!-- Category -->
+              <div class="mb-5">
+                <span class="filter-label">Category</span>
+                <template x-for="c in segmentCategories()" :key="c">
+                  <label class="check-row">
+                    <input type="checkbox" :value="c" x-model="filters.categories" />
+                    <span x-text="c"></span>
+                    <span class="count" x-text="segmentRows.filter(r => r.category === c).length"></span>
+                  </label>
+                </template>
+              </div>
+
+              <!-- Industry -->
+              <div class="mb-5" x-show="segmentIndustries().length > 0">
+                <span class="filter-label">Industry</span>
+                <div class="max-h-44 overflow-y-auto pr-1">
+                  <template x-for="ind in segmentIndustries()" :key="ind">
+                    <label class="check-row">
+                      <input type="checkbox" :value="ind" x-model="filters.industries" />
+                      <span class="truncate" :title="ind" x-text="ind"></span>
+                      <span class="count" x-text="segmentRows.filter(r => r.industry === ind).length"></span>
+                    </label>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Opportunity Owner -->
+              <div class="mb-5" x-show="segmentOppOwners().length > 0">
+                <span class="filter-label">Opportunity Owner</span>
+                <div class="max-h-44 overflow-y-auto pr-1">
+                  <template x-for="o in segmentOppOwners()" :key="o">
+                    <label class="check-row">
+                      <input type="checkbox" :value="o" x-model="filters.oppOwners" />
+                      <span class="truncate" :title="o" x-text="o"></span>
+                      <span class="count" x-text="segmentRows.filter(r => r.opportunity_owners.includes(o)).length"></span>
+                    </label>
+                  </template>
+                </div>
+              </div>
+
+              <!-- ACV bucket -->
+              <div class="mb-5">
+                <span class="filter-label">ACV bucket</span>
+                <template x-for="b in acvBuckets" :key="b.id">
+                  <label class="check-row">
+                    <input type="radio" name="acvb-demo" :value="b.id" x-model="filters.acvBucket" />
+                    <span x-text="b.label"></span>
+                  </label>
+                </template>
+              </div>
+            </aside>
+
+            <!-- Table -->
+            <div class="card overflow-hidden">
+              <div style="max-height: calc(100vh - 100px); overflow: auto;">
+                <table class="deals" style="min-width: 900px;">
+                  <thead>
+                    <tr>
+                      <th @click="sortBy('sn')" :class="sort.key==='sn' && 'sorted'">
+                        # <span class="sort-arrow" x-text="sortArrow('sn')"></span>
+                      </th>
+                      <th @click="sortBy('segment')" :class="sort.key==='segment' && 'sorted'">
+                        Segment <span class="sort-arrow" x-text="sortArrow('segment')"></span>
+                      </th>
+                      <th @click="sortBy('company')" :class="sort.key==='company' && 'sorted'">
+                        Company <span class="sort-arrow" x-text="sortArrow('company')"></span>
+                      </th>
+                      <th @click="sortBy('project')" :class="sort.key==='project' && 'sorted'">
+                        Project <span class="sort-arrow" x-text="sortArrow('project')"></span>
+                      </th>
+                      <th @click="sortBy('industry')" :class="sort.key==='industry' && 'sorted'">
+                        Industry <span class="sort-arrow" x-text="sortArrow('industry')"></span>
+                      </th>
+                      <th @click="sortBy('category')" :class="sort.key==='category' && 'sorted'">
+                        Category <span class="sort-arrow" x-text="sortArrow('category')"></span>
+                      </th>
+                      <th @click="sortBy('acv')" :class="sort.key==='acv' && 'sorted'" class="text-right">
+                        ACV <span class="sort-arrow" x-text="sortArrow('acv')"></span>
+                      </th>
+                      <th>Opp owner</th>
+                      <th>Prototype</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="row in filtered" :key="row.id">
+                      <tr @click="openRow(row)">
+                        <td x-text="row.sn"></td>
+                        <td>
+                          <span class="pill-quiet" x-text="row.segment"></span>
+                        </td>
+                        <td class="col-company" x-text="row.company || '—'"></td>
+                        <td class="col-project">
+                          <div class="font-medium text-ink leading-snug" x-text="row.project || '—'"></div>
+                          <div class="text-[11px] text-ink3 mt-0.5 truncate"
+                               style="max-width: 220px;"
+                               x-show="row.use_case && row.use_case !== row.project"
+                               x-text="row.use_case"></div>
+                        </td>
+                        <td>
+                          <span x-show="row.industry" class="pill-quiet" x-text="row.industry"></span>
+                          <span x-show="!row.industry" class="text-ink3">—</span>
+                        </td>
+                        <td>
+                          <span x-show="row.category" class="pill-quiet" x-text="row.category"></span>
+                          <span x-show="!row.category" class="text-ink3">—</span>
+                        </td>
+                        <td class="col-acv text-right" x-text="row.acv ? formatMoneyShort(row.acv) : '—'"></td>
+                        <td>
+                          <div class="flex flex-wrap gap-1" x-show="row.opportunity_owners.length">
+                            <template x-for="o in row.opportunity_owners" :key="o">
+                              <span class="pill-owner" @click.stop="filters.oppOwners = [o]">
+                                <span class="dot"></span>
+                                <span x-text="o"></span>
+                              </span>
+                            </template>
+                          </div>
+                          <span x-show="!row.opportunity_owners.length" class="text-ink3">—</span>
+                        </td>
+                        <td>
+                          <a x-show="row.prototype_link"
+                             :href="row.prototype_link"
+                             target="_blank" rel="noopener noreferrer"
+                             @click.stop
+                             class="btn-link">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                              <path d="M7 17L17 7M7 7h10v10"/>
+                            </svg>
+                            View
+                          </a>
+                          <span x-show="!row.prototype_link" class="text-ink3">—</span>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+
+                <!-- Empty state -->
+                <div x-show="filtered.length === 0" class="py-20 text-center">
+                  <div class="text-ink3 text-sm mb-2">No demos match your filters.</div>
+                  <button @click="clearFilters(); demoSegment='all';"
+                          class="text-orange text-xs uppercase tracking-[1.5px] hover:underline">
+                    Reset filters
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </template>
+
+
       <!-- ===== SEGMENT VIEW ===== -->
-      <template x-if="!loading && view !== 'home'">
+      <template x-if="!loading && view !== 'home' && view !== 'demos'">
         <main class="flex-1 max-w-[1600px] mx-auto px-6 py-8 w-full">
 
           <!-- Segment header -->
@@ -1239,6 +1477,7 @@ function lyzrApp() {
     },
     sort: { key: 'acv', dir: 'desc' },
     selectedRow: null,
+    demoSegment: 'all',
     acvBuckets: [
       { id: 'any',    label: 'Any' },
       { id: 'has',    label: 'Any with ACV' },
@@ -1368,12 +1607,17 @@ function lyzrApp() {
       this.selectedRow = null;
       this.search = '';
       this.quickView = 'all';
+      this.demoSegment = 'all';
       this.clearFilters();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     count(seg) {
       if (!this.data.rows) return 0;
       return this.data.rows.filter(r => r.segment === seg).length;
+    },
+    demoCount() {
+      if (!this.data.rows) return 0;
+      return this.data.rows.filter(r => r.stage === 'Demo').length;
     },
 
     // ---------- FORMATTING ----------
@@ -1414,6 +1658,11 @@ function lyzrApp() {
 
     // ---------- SEGMENT-VIEW HELPERS ----------
     get segmentRows() {
+      if (this.view === 'demos') {
+        const base = this.data.rows.filter(r => r.stage === 'Demo');
+        if (this.demoSegment !== 'all') return base.filter(r => r.segment === this.demoSegment);
+        return base;
+      }
       return this.data.rows.filter(r => r.segment === this.view);
     },
     segmentCategories() {
