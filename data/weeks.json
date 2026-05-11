@@ -20,7 +20,7 @@
     {
       "number": 3,
       "date_range": "May 4 to May 10",
-      "path": "gsi-report-may4-10 .html",
+      "path": "week_May_4to10",
       "status": "complete",
       "meetings_processed": 0
     }
