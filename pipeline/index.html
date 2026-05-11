@@ -958,8 +958,8 @@
                 <table class="deals" style="min-width: 900px;">
                   <thead>
                     <tr>
-                      <th @click="sortBy('sn')" :class="sort.key==='sn' && 'sorted'">
-                        # <span class="sort-arrow" x-text="sortArrow('sn')"></span>
+                      <th style="width: 40px;">
+                        #
                       </th>
                       <th @click="sortBy('segment')" :class="sort.key==='segment' && 'sorted'">
                         Segment <span class="sort-arrow" x-text="sortArrow('segment')"></span>
@@ -984,9 +984,9 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <template x-for="row in filtered" :key="row.id">
+                    <template x-for="(row, idx) in filtered" :key="row.id">
                       <tr @click="openRow(row)">
-                        <td x-text="row.sn"></td>
+                        <td x-text="idx + 1"></td>
                         <td>
                           <span class="pill-quiet" x-text="row.segment"></span>
                         </td>
