@@ -72,16 +72,14 @@
           <span class="sidebar-item-count" id="count-others"></span>
         </button>
       </div>
-
-      <!-- Industry / Type filters (vertical) -->
-      <div class="sidebar-section">
-        <div class="sidebar-label">Industry / Type</div>
-        <div id="industry-filters"></div>
-      </div>
     </aside>
 
     <!-- Main content -->
     <main class="main-content" id="main-content">
+      <!-- Industry / Type bubble bar -->
+      <div class="industry-bar" id="industry-bar">
+        <div class="industry-bar-inner" id="industry-filters"></div>
+      </div>
       <!-- Loading -->
       <div class="loading-state" id="loading-state">
         <div class="loading-dots">
@@ -244,19 +242,19 @@
       const container = document.getElementById('industry-filters');
       container.innerHTML = '';
 
-      // "All" option
+      // "All" bubble
       const allBtn = document.createElement('button');
-      allBtn.className = 'sidebar-item active';
+      allBtn.className = 'bubble active';
       allBtn.dataset.industry = 'all';
-      allBtn.innerHTML = `<span class="sidebar-item-label">All Types</span><span class="sidebar-item-count">${allRows.length}</span>`;
+      allBtn.textContent = 'All';
       allBtn.addEventListener('click', () => setIndustry(null));
       container.appendChild(allBtn);
 
       sorted.forEach(([industry, count]) => {
         const btn = document.createElement('button');
-        btn.className = 'sidebar-item';
+        btn.className = 'bubble';
         btn.dataset.industry = industry;
-        btn.innerHTML = `<span class="sidebar-item-label">${escHtml(industry)}</span><span class="sidebar-item-count">${count}</span>`;
+        btn.innerHTML = `${escHtml(industry)} <span class="bubble-count">${count}</span>`;
         btn.addEventListener('click', () => setIndustry(industry));
         container.appendChild(btn);
       });
@@ -272,7 +270,7 @@
 
     function setIndustry(industry) {
       activeIndustry = industry;
-      document.querySelectorAll('[data-industry]').forEach(btn => {
+      document.querySelectorAll('.bubble[data-industry]').forEach(btn => {
         const match = industry === null ? btn.dataset.industry === 'all' : btn.dataset.industry === industry;
         btn.classList.toggle('active', match);
       });
