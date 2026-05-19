@@ -1,0 +1,4 @@
+# Rewrite /demo_pipeline/* → serve from /prototypes/ (URL stays as /demo_pipeline/)
+/demo_pipeline  /prototypes/index.html  200
+/demo_pipeline/ /prototypes/index.html  200
+/demo_pipeline/* /prototypes/:splat     200

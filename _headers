@@ -2,3 +2,8 @@
   X-Robots-Tag: noindex, nofollow
   X-Frame-Options: DENY
   Cache-Control: no-store
+
+/demo_pipeline/*
+  X-Frame-Options: ALLOWALL
+  Content-Security-Policy: frame-ancestors *
+  Cache-Control: no-store
