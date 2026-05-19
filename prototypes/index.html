@@ -56,21 +56,9 @@
 
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
-      <!-- Company categories -->
       <div class="sidebar-section">
         <div class="sidebar-label">Category</div>
-        <button class="sidebar-item active" data-company="all" id="tab-all">
-          <span class="sidebar-item-label">All</span>
-          <span class="sidebar-item-count" id="count-all"></span>
-        </button>
-        <button class="sidebar-item" data-company="Accenture" id="tab-accenture">
-          <span class="sidebar-item-label">Accenture</span>
-          <span class="sidebar-item-count" id="count-accenture"></span>
-        </button>
-        <button class="sidebar-item" data-company="others" id="tab-others">
-          <span class="sidebar-item-label">Others</span>
-          <span class="sidebar-item-count" id="count-others"></span>
-        </button>
+        <div id="category-list"></div>
       </div>
     </aside>
 
@@ -79,6 +67,13 @@
       <!-- Industry / Type bubble bar -->
       <div class="industry-bar" id="industry-bar">
         <div class="industry-bar-inner" id="industry-filters"></div>
+      </div>
+      <!-- Company dropdown (visible in Others view) -->
+      <div class="company-dropdown-bar hidden" id="company-dropdown-bar">
+        <label class="dropdown-label" for="others-company-select">Filter by company</label>
+        <select class="dropdown-select" id="others-company-select">
+          <option value="">All companies</option>
+        </select>
       </div>
       <!-- Loading -->
       <div class="loading-state" id="loading-state">
@@ -144,17 +139,24 @@
       'https://raw.githubusercontent.com/kailcodes02-gif/lyzr/main/pipeline/data.json',
     ];
 
-    // Accenture-related company names
-    const ACCENTURE_NAMES = ['Accenture', 'Accenture Song'];
+    // Companies that always get their own sidebar tab (case-insensitive match)
+    const PINNED_COMPANIES = ['Accenture', 'Accenture Song', 'Deloitte', 'KPMG', 'Capgemini', 'Persistent', 'Movate'];
+    // Minimum prototype count for auto-promotion to own tab
+    const AUTO_PROMOTE_THRESHOLD = 2;
 
     // ============================================================
     // State
     // ============================================================
     let allRows = [];
     let filteredRows = [];
-    let activeCategory = 'all'; // 'all' | 'Accenture' | 'others'
-    let activeIndustry = null;  // null = show all, string = single industry
+    let activeCategory = 'all';    // 'all' | company name | '__others__'
+    let activeIndustry = null;
+    let othersCompanyFilter = '';   // company filter within Others
     let searchQuery = '';
+
+    // Derived: computed after data loads
+    let promotedCompanies = [];     // companies with own tabs
+    let othersCompanies = [];       // companies in "Others" bucket
 
     // ============================================================
     // Data Loading
@@ -191,6 +193,7 @@
               d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
           }
 
+          computeCategories();
           buildUI();
           return;
         } catch (e) {
@@ -202,36 +205,122 @@
     }
 
     // ============================================================
+    // Category computation
+    // ============================================================
+    function computeCategories() {
+      // Count prototypes per company
+      const companyCounts = new Map();
+      allRows.forEach(r => {
+        companyCounts.set(r.company, (companyCounts.get(r.company) || 0) + 1);
+      });
+
+      const promoted = new Set();
+
+      // 1. Always promote pinned companies (if they exist in data)
+      PINNED_COMPANIES.forEach(name => {
+        if (companyCounts.has(name)) promoted.add(name);
+      });
+
+      // 2. Also promote any company with >= threshold prototypes
+      companyCounts.forEach((count, name) => {
+        if (count >= AUTO_PROMOTE_THRESHOLD) promoted.add(name);
+      });
+
+      // Group Accenture + Accenture Song together
+      const accentureGroup = ['Accenture', 'Accenture Song'].filter(n => companyCounts.has(n));
+
+      // Build promoted list (Accenture group first, then rest alphabetically)
+      const nonAccenturePromoted = [...promoted]
+        .filter(n => !accentureGroup.includes(n))
+        .sort((a, b) => a.localeCompare(b));
+
+      promotedCompanies = [];
+      if (accentureGroup.length > 0) promotedCompanies.push({ label: 'Accenture', names: accentureGroup });
+      nonAccenturePromoted.forEach(name => {
+        promotedCompanies.push({ label: name, names: [name] });
+      });
+
+      // Others = everything not promoted
+      const allPromotedNames = new Set(promotedCompanies.flatMap(p => p.names));
+      othersCompanies = [...companyCounts.keys()]
+        .filter(n => !allPromotedNames.has(n))
+        .sort((a, b) => a.localeCompare(b));
+    }
+
+    // ============================================================
     // UI Building
     // ============================================================
     function buildUI() {
       hideLoading();
-      updateCategoryCounts();
+      buildCategoryList();
       buildIndustryFilters();
+      updateOthersDropdown();
       render();
     }
 
-    function updateCategoryCounts() {
-      const accentureCount = allRows.filter(r => ACCENTURE_NAMES.includes(r.company)).length;
-      const othersCount = allRows.length - accentureCount;
+    function buildCategoryList() {
+      const container = document.getElementById('category-list');
+      container.innerHTML = '';
 
-      document.getElementById('count-all').textContent = allRows.length;
-      document.getElementById('count-accenture').textContent = accentureCount;
-      document.getElementById('count-others').textContent = othersCount;
+      // "All" tab
+      const allCount = allRows.length;
+      container.appendChild(makeSidebarBtn('all', 'All', allCount, activeCategory === 'all'));
+
+      // Promoted companies
+      promotedCompanies.forEach(({ label, names }) => {
+        const count = allRows.filter(r => names.includes(r.company)).length;
+        const key = label; // use label as category key
+        container.appendChild(makeSidebarBtn(key, label, count, activeCategory === key));
+      });
+
+      // Others
+      if (othersCompanies.length > 0) {
+        const othersCount = allRows.filter(r => othersCompanies.includes(r.company)).length;
+        container.appendChild(makeSidebarBtn('__others__', 'Others', othersCount, activeCategory === '__others__'));
+      }
 
       // Stats pill
       const uniqueCompanies = new Set(allRows.map(r => r.company)).size;
       document.getElementById('stats-text').textContent =
         `${allRows.length} prototype${allRows.length !== 1 ? 's' : ''} · ${uniqueCompanies} compan${uniqueCompanies !== 1 ? 'ies' : 'y'}`;
+    }
 
-      // Bind category clicks
-      document.getElementById('tab-all').onclick = () => setCategory('all');
-      document.getElementById('tab-accenture').onclick = () => setCategory('Accenture');
-      document.getElementById('tab-others').onclick = () => setCategory('others');
+    function makeSidebarBtn(key, label, count, isActive) {
+      const btn = document.createElement('button');
+      btn.className = 'sidebar-item' + (isActive ? ' active' : '');
+      btn.dataset.company = key;
+      btn.innerHTML = `<span class="sidebar-item-label">${escHtml(label)}</span><span class="sidebar-item-count">${count}</span>`;
+      btn.addEventListener('click', () => setCategory(key));
+      return btn;
+    }
+
+    function updateOthersDropdown() {
+      const bar = document.getElementById('company-dropdown-bar');
+      const sel = document.getElementById('others-company-select');
+
+      if (activeCategory !== '__others__') {
+        bar.classList.add('hidden');
+        return;
+      }
+
+      bar.classList.remove('hidden');
+      sel.innerHTML = '<option value="">All companies</option>';
+      othersCompanies.forEach(name => {
+        const count = allRows.filter(r => r.company === name).length;
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = `${name} (${count})`;
+        if (othersCompanyFilter === name) opt.selected = true;
+        sel.appendChild(opt);
+      });
+
+      sel.onchange = () => {
+        othersCompanyFilter = sel.value;
+        render();
+      };
     }
 
     function buildIndustryFilters() {
-      // Get rows scoped to the active category
       const scopedRows = getCategoryRows();
 
       const industrySet = new Map();
@@ -265,18 +354,27 @@
 
     // Returns rows filtered by the active category only
     function getCategoryRows() {
-      if (activeCategory === 'Accenture') return allRows.filter(r => ACCENTURE_NAMES.includes(r.company));
-      if (activeCategory === 'others') return allRows.filter(r => !ACCENTURE_NAMES.includes(r.company));
+      if (activeCategory === 'all') return allRows;
+      if (activeCategory === '__others__') {
+        let rows = allRows.filter(r => othersCompanies.includes(r.company));
+        if (othersCompanyFilter) rows = rows.filter(r => r.company === othersCompanyFilter);
+        return rows;
+      }
+      // Find promoted group
+      const group = promotedCompanies.find(p => p.label === activeCategory);
+      if (group) return allRows.filter(r => group.names.includes(r.company));
       return allRows;
     }
 
     function setCategory(cat) {
       activeCategory = cat;
-      activeIndustry = null; // reset industry when switching category
+      activeIndustry = null;
+      othersCompanyFilter = '';
       document.querySelectorAll('[data-company]').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.company === cat);
       });
-      buildIndustryFilters(); // rebuild bubbles for this category
+      buildIndustryFilters();
+      updateOthersDropdown();
       render();
     }
 
@@ -291,12 +389,9 @@
 
     function render() {
       const query = searchQuery.toLowerCase().trim();
+      const catRows = getCategoryRows();
 
-      filteredRows = allRows.filter(r => {
-        // Category filter
-        if (activeCategory === 'Accenture' && !ACCENTURE_NAMES.includes(r.company)) return false;
-        if (activeCategory === 'others' && ACCENTURE_NAMES.includes(r.company)) return false;
-
+      filteredRows = catRows.filter(r => {
         // Industry filter
         if (activeIndustry && r._industry !== activeIndustry) return false;
 
