@@ -1527,7 +1527,7 @@
   </template>
 
   <!-- TOAST -->
-  <div x-show="toastVisible" x-transition class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] px-5 py-3 rounded-lg text-sm font-medium shadow-lg" style="background: var(--green); color: #fff;" x-text="toastMsg"></div>
+  <div x-show="toastVisible" x-transition class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] px-5 py-3 rounded-lg text-sm font-medium shadow-lg" :style="toastError ? 'background:#C94658;color:#fff;' : 'background:var(--green);color:#fff;'" x-text="toastMsg"></div>
 
   <!-- ADD PROJECT DRAWER -->
   <!-- ADD PROJECT MODAL -->
@@ -1657,7 +1657,7 @@
           </div>
           <div class="flex gap-3 pt-4">
             <button @click="prevStep('step4')" class="flex-1 py-3 rounded-lg font-medium transition" style="background:var(--rule);color:var(--ink);">← Back</button>
-            <button @click="confirmAdd()" :disabled="addSaving" class="flex-1 py-3 rounded-lg font-medium transition" style="background:var(--orange);color:var(--bg);" x-text="addSaving ? 'Adding…' : 'Confirm & Add'"></button>
+            <button @click="confirmAdd()" :disabled="addSaving" class="flex-1 py-3 rounded-lg font-medium transition" style="background:var(--orange);color:var(--bg);" x-text="addSaving ? 'Saving… committing to GitHub' : 'Confirm & Add'"></button>
           </div>
         </div>
       </div>
@@ -1739,6 +1739,7 @@ function lyzrApp() {
     editSaving: false,
     toastMsg: '',
     toastVisible: false,
+    toastError: false,
 
     // ---------- INIT ----------
     async init() {
@@ -2133,10 +2134,11 @@ function lyzrApp() {
     },
 
     // ---------- TOAST ----------
-    showToast(msg) {
+    showToast(msg, isError = false) {
       this.toastMsg = msg;
+      this.toastError = isError;
       this.toastVisible = true;
-      setTimeout(() => { this.toastVisible = false; }, 3000);
+      setTimeout(() => { this.toastVisible = false; this.toastError = false; }, isError ? 5000 : 3000);
     },
 
     // ---------- ADD PROJECT ----------
@@ -2191,6 +2193,7 @@ function lyzrApp() {
       this.addSaving = true;
       try {
         const token = this.accessToken || sessionStorage.getItem('lyzr.token');
+        if (!token) throw new Error('You must be signed in to add a project.');
         const res = await fetch('/api/rows', {
           method: 'POST',
           headers: {
@@ -2203,13 +2206,15 @@ function lyzrApp() {
           }),
         });
         const result = await res.json();
-        if (!res.ok) throw new Error(result.error || 'Failed');
+        if (!res.ok) throw new Error(result.error || 'Server error');
+        // Wait a moment for GitHub to process the commit before reloading
+        await new Promise(r => setTimeout(r, 1500));
         await this.loadData();
         this.showAddDrawer = false;
-        this.showToast(`Added: ${result.row.project} (${result.row.id})`);
+        this.showToast(`✅ Added: ${result.row.project} (${result.row.id}) — live in ~30s`);
       } catch (err) {
         console.error('Add failed:', err);
-        alert('Failed to add project: ' + err.message);
+        this.showToast('❌ Failed to add: ' + err.message, true);
       }
       this.addSaving = false;
     },
@@ -2282,6 +2287,7 @@ function lyzrApp() {
       this.editSaving = true;
       try {
         const token = this.accessToken || sessionStorage.getItem('lyzr.token');
+        if (!token) throw new Error('You must be signed in to edit.');
         const res = await fetch(`/api/rows/${this.selectedRow.id}`, {
           method: 'PUT',
           headers: {
@@ -2294,15 +2300,15 @@ function lyzrApp() {
           }),
         });
         const result = await res.json();
-        if (!res.ok) throw new Error(result.error || 'Failed');
+        if (!res.ok) throw new Error(result.error || 'Server error');
+        await new Promise(r => setTimeout(r, 1500));
         await this.loadData();
-        // Re-select the updated row
         this.selectedRow = this.data.rows.find(r => r.id === this.selectedRow.id) || null;
         this.editStep = 'view';
-        this.showToast(`Updated: ${result.row.project}`);
+        this.showToast(`✅ Updated: ${result.row.project} — live in ~30s`);
       } catch (err) {
         console.error('Edit failed:', err);
-        alert('Failed to save edit: ' + err.message);
+        this.showToast('❌ Failed to save: ' + err.message, true);
       }
       this.editSaving = false;
     },
