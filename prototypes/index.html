@@ -4,37 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lyzr Prototypes — AI Use Case Showcase</title>
-  <meta name="description" content="Explore Lyzr's portfolio of AI prototype solutions built for enterprises. Browse by company and category to find relevant use cases and live demo links." />
+  <meta name="description" content="Explore Lyzr's portfolio of AI prototype solutions built for enterprises. Browse by company and industry to find relevant use cases and live demo links." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,700&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" type="image/png" href="logo.png" />
+  <link rel="apple-touch-icon" href="logo.png" />
 </head>
 <body>
-  <!-- Background mesh -->
-  <div class="bg-mesh" aria-hidden="true">
-    <div class="mesh-blob blob-1"></div>
-    <div class="mesh-blob blob-2"></div>
-    <div class="mesh-blob blob-3"></div>
-  </div>
+  <!-- Subtle grid texture -->
+  <div class="grid-texture" aria-hidden="true"></div>
+  <!-- Background radial gradients -->
+  <div class="bg-gradient" aria-hidden="true"></div>
 
   <!-- Header -->
   <header class="site-header" id="site-header">
     <div class="header-inner">
       <div class="brand">
-        <div class="brand-logo" aria-label="Lyzr logo">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="8" fill="url(#logoGrad)"/>
-            <path d="M8 22L16 10L24 22H8Z" fill="white" opacity="0.9"/>
-            <path d="M12 22L16 14L20 22H12Z" fill="white" opacity="0.5"/>
-            <defs>
-              <linearGradient id="logoGrad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#7C3AED"/>
-                <stop offset="1" stop-color="#4F46E5"/>
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
+        <img src="logo.png" alt="Lyzr" class="brand-logo-img" width="32" height="32" />
         <div class="brand-text">
           <span class="brand-name">Lyzr</span>
           <span class="brand-tag">Prototypes</span>
@@ -54,54 +42,65 @@
     </div>
   </header>
 
-  <!-- Company tab bar -->
-  <nav class="company-nav" id="company-nav" aria-label="Company filter">
-    <div class="company-nav-inner">
-      <button class="company-tab active" data-company="all" id="tab-all">
-        <span class="tab-label">All Companies</span>
-      </button>
-      <!-- Company tabs injected by JS -->
-    </div>
-  </nav>
+  <!-- App layout: sidebar + main -->
+  <div class="app-layout" id="app-layout">
 
-  <!-- Main content -->
-  <main class="main-content" id="main-content">
-    <!-- Loading skeleton -->
-    <div class="loading-state" id="loading-state">
-      <div class="skeleton-grid">
-        <div class="skeleton-card"></div>
-        <div class="skeleton-card"></div>
-        <div class="skeleton-card"></div>
-        <div class="skeleton-card"></div>
-        <div class="skeleton-card"></div>
-        <div class="skeleton-card"></div>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <!-- Company list -->
+      <div class="sidebar-section">
+        <div class="sidebar-label">Companies</div>
+        <button class="sidebar-item active" data-company="all" id="tab-all">
+          <span class="sidebar-item-label">All Companies</span>
+          <span class="sidebar-item-count" id="count-all"></span>
+        </button>
+        <div id="company-list"></div>
       </div>
-    </div>
 
-    <!-- Error state -->
-    <div class="error-state hidden" id="error-state">
-      <div class="error-icon">⚠️</div>
-      <h2>Couldn't load prototypes</h2>
-      <p id="error-message">Please try again later.</p>
-      <button class="btn-retry" id="btn-retry" onclick="loadData()">Retry</button>
-    </div>
+      <!-- Industry filters -->
+      <div class="sidebar-section">
+        <div class="sidebar-label">Industry / Type</div>
+        <div id="industry-filters"></div>
+      </div>
+    </aside>
 
-    <!-- Empty state -->
-    <div class="empty-state hidden" id="empty-state">
-      <div class="empty-icon">🔍</div>
-      <h2>No prototypes found</h2>
-      <p>Try a different search or company filter.</p>
-    </div>
+    <!-- Main content -->
+    <main class="main-content" id="main-content">
+      <!-- Loading skeleton -->
+      <div class="loading-state" id="loading-state">
+        <div class="loading-dots">
+          <div class="dot" style="animation-delay:0ms;"></div>
+          <div class="dot" style="animation-delay:200ms;"></div>
+          <div class="dot" style="animation-delay:400ms;"></div>
+        </div>
+        <div class="loading-text">Loading prototypes</div>
+      </div>
 
-    <!-- Company sections injected here -->
-    <div id="companies-container"></div>
-  </main>
+      <!-- Error state -->
+      <div class="error-state hidden" id="error-state">
+        <div class="error-icon">⚠️</div>
+        <h2>Couldn't load prototypes</h2>
+        <p id="error-message">Please try again later.</p>
+        <button class="btn-primary" id="btn-retry" onclick="loadData()">Retry</button>
+      </div>
+
+      <!-- Empty state -->
+      <div class="empty-state hidden" id="empty-state">
+        <div class="empty-icon">🔍</div>
+        <h2>No prototypes found</h2>
+        <p>Try a different search or filter.</p>
+      </div>
+
+      <!-- Cards container -->
+      <div id="cards-container"></div>
+    </main>
+  </div>
 
   <!-- Footer -->
   <footer class="site-footer">
     <div class="footer-inner">
       <span class="footer-copy">© 2025 Lyzr AI — Prototype Showcase</span>
-      <span class="footer-tagline">Powered by the Lyzr Pipeline · <span id="footer-updated">—</span></span>
+      <span class="footer-tagline">Last updated · <span id="footer-updated">—</span></span>
     </div>
   </footer>
 
@@ -110,8 +109,8 @@
     // Config
     // ============================================================
     const DATA_SOURCES = [
-      '/api/data',                          // Cloudflare/Vercel function
-      'https://raw.githubusercontent.com/kailcodes02-gif/lyzr/main/pipeline/data.json', // raw fallback
+      '/api/data',
+      'https://raw.githubusercontent.com/kailcodes02-gif/lyzr/main/pipeline/data.json',
     ];
 
     // ============================================================
@@ -120,8 +119,8 @@
     let allRows = [];
     let filteredRows = [];
     let activeCompany = 'all';
+    let activeIndustries = new Set(); // empty = show all
     let searchQuery = '';
-    let generatedAt = '';
 
     // ============================================================
     // Data Loading
@@ -137,17 +136,25 @@
           const json = await res.json();
           if (json.error) continue;
 
-          // Accept both array root and { rows: [] } shape
           const rows = Array.isArray(json) ? json : (json.rows || []);
 
-          // Filter: only rows with a prototype_link
-          allRows = rows.filter(r => r.prototype_link && r.prototype_link.trim());
-          generatedAt = json.generated_at || '';
+          // Filter: must have prototype_link AND company AND project
+          allRows = rows.filter(r =>
+            r.prototype_link && r.prototype_link.trim() &&
+            r.company && r.company.trim() &&
+            r.project && r.project.trim()
+          );
+
+          // Normalize industry: BFSI variants → "BFSI"
+          allRows.forEach(r => {
+            if (r.industry && r.industry.startsWith('BFSI')) r._industry = 'BFSI';
+            else r._industry = r.industry || null;
+          });
 
           if (json.generated_at) {
             const d = new Date(json.generated_at);
             document.getElementById('footer-updated').textContent =
-              'Last updated ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+              d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
           }
 
           buildUI();
@@ -165,72 +172,99 @@
     // ============================================================
     function buildUI() {
       hideLoading();
-      buildCompanyTabs();
+      buildCompanyList();
+      buildIndustryFilters();
       render();
     }
 
-    function buildCompanyTabs() {
-      // Collect unique companies, preserving insertion order
-      const companySet = new Set();
-      allRows.forEach(r => { if (r.company) companySet.add(r.company); });
-      const companies = [...companySet].sort();
+    function buildCompanyList() {
+      const companySet = new Map();
+      allRows.forEach(r => {
+        const c = r.company;
+        companySet.set(c, (companySet.get(c) || 0) + 1);
+      });
 
-      const nav = document.getElementById('company-nav').querySelector('.company-nav-inner');
+      // Sort alphabetically
+      const sorted = [...companySet.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 
-      // Clear existing dynamic tabs (keep "All" button)
-      [...nav.querySelectorAll('.company-tab:not([data-company="all"])')].forEach(el => el.remove());
+      const container = document.getElementById('company-list');
+      container.innerHTML = '';
 
-      companies.forEach(company => {
-        const count = allRows.filter(r => r.company === company).length;
+      sorted.forEach(([company, count]) => {
         const btn = document.createElement('button');
-        btn.className = 'company-tab';
+        btn.className = 'sidebar-item';
         btn.dataset.company = company;
         btn.id = 'tab-' + slugify(company);
-        btn.innerHTML = `<span class="tab-label">${escHtml(company)}</span><span class="tab-count">${count}</span>`;
+        btn.innerHTML = `<span class="sidebar-item-label">${escHtml(company)}</span><span class="sidebar-item-count">${count}</span>`;
         btn.addEventListener('click', () => setCompany(company));
-        nav.appendChild(btn);
+        container.appendChild(btn);
       });
 
       // Update "All" count
-      document.querySelector('[data-company="all"] .tab-count')?.remove();
-      const allBtn = document.querySelector('[data-company="all"]');
-      const allCount = document.createElement('span');
-      allCount.className = 'tab-count';
-      allCount.textContent = allRows.length;
-      allBtn.appendChild(allCount);
+      document.getElementById('count-all').textContent = allRows.length;
+      document.getElementById('tab-all').onclick = () => setCompany('all');
 
-      // Bind "All" click
-      allBtn.onclick = () => setCompany('all');
-
-      // Update stats pill
-      const uniqueCompanies = companySet.size;
+      // Stats pill
       document.getElementById('stats-text').textContent =
-        `${allRows.length} prototype${allRows.length !== 1 ? 's' : ''} · ${uniqueCompanies} compan${uniqueCompanies !== 1 ? 'ies' : 'y'}`;
+        `${allRows.length} prototype${allRows.length !== 1 ? 's' : ''} · ${companySet.size} compan${companySet.size !== 1 ? 'ies' : 'y'}`;
+    }
+
+    function buildIndustryFilters() {
+      const industrySet = new Map();
+      allRows.forEach(r => {
+        if (r._industry) {
+          industrySet.set(r._industry, (industrySet.get(r._industry) || 0) + 1);
+        }
+      });
+
+      const sorted = [...industrySet.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+      const container = document.getElementById('industry-filters');
+      container.innerHTML = '';
+
+      sorted.forEach(([industry, count]) => {
+        const btn = document.createElement('button');
+        btn.className = 'filter-chip';
+        btn.dataset.industry = industry;
+        btn.innerHTML = `${escHtml(industry)} <span class="chip-count">${count}</span>`;
+        btn.addEventListener('click', () => toggleIndustry(industry, btn));
+        container.appendChild(btn);
+      });
     }
 
     function setCompany(company) {
       activeCompany = company;
-      document.querySelectorAll('.company-tab').forEach(btn => {
+      document.querySelectorAll('.sidebar-item').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.company === company);
       });
+      render();
+    }
+
+    function toggleIndustry(industry, btn) {
+      if (activeIndustries.has(industry)) {
+        activeIndustries.delete(industry);
+        btn.classList.remove('active');
+      } else {
+        activeIndustries.add(industry);
+        btn.classList.add('active');
+      }
       render();
     }
 
     function render() {
       const query = searchQuery.toLowerCase().trim();
 
-      // Filter
       filteredRows = allRows.filter(r => {
         if (activeCompany !== 'all' && r.company !== activeCompany) return false;
+        if (activeIndustries.size > 0 && !activeIndustries.has(r._industry)) return false;
         if (query) {
-          const haystack = [r.project, r.use_case, r.company, r.category, r.industry]
+          const haystack = [r.project, r.use_case, r.company, r._industry]
             .filter(Boolean).join(' ').toLowerCase();
           if (!haystack.includes(query)) return false;
         }
         return true;
       });
 
-      const container = document.getElementById('companies-container');
+      const container = document.getElementById('cards-container');
       container.innerHTML = '';
 
       if (filteredRows.length === 0) {
@@ -239,7 +273,7 @@
       }
       document.getElementById('empty-state').classList.add('hidden');
 
-      // Group by company, then by category
+      // Group by company
       const byCompany = groupBy(filteredRows, 'company');
 
       Object.entries(byCompany).forEach(([company, rows]) => {
@@ -247,10 +281,10 @@
         container.appendChild(section);
       });
 
-      // Animate in
+      // Animate
       requestAnimationFrame(() => {
         document.querySelectorAll('.proto-card').forEach((card, i) => {
-          card.style.animationDelay = `${i * 40}ms`;
+          card.style.animationDelay = `${Math.min(i * 35, 600)}ms`;
           card.classList.add('animate-in');
         });
       });
@@ -261,12 +295,11 @@
       section.className = 'company-section';
       section.id = 'section-' + slugify(company);
 
-      // Section header
       const header = document.createElement('div');
       header.className = 'section-header';
       header.innerHTML = `
         <div class="section-title-row">
-          <div class="company-avatar" aria-hidden="true">${getInitials(company)}</div>
+          <div class="company-avatar">${getInitials(company)}</div>
           <div>
             <h2 class="section-company-name">${escHtml(company)}</h2>
             <span class="section-count">${rows.length} prototype${rows.length !== 1 ? 's' : ''}</span>
@@ -275,88 +308,51 @@
       `;
       section.appendChild(header);
 
-      // Group by category
-      const byCategory = groupBy(rows, 'category');
-      const hasCats = Object.keys(byCategory).length > 1 || (Object.keys(byCategory).length === 1 && Object.keys(byCategory)[0] !== 'null');
+      const grid = document.createElement('div');
+      grid.className = 'proto-grid';
 
-      Object.entries(byCategory).forEach(([category, catRows]) => {
-        const catEl = document.createElement('div');
-        catEl.className = 'category-block';
-
-        if (hasCats && category && category !== 'null') {
-          const catHeader = document.createElement('div');
-          catHeader.className = 'category-header';
-          catHeader.innerHTML = `
-            <button class="category-toggle" aria-expanded="true" data-target="catgrid-${slugify(company)}-${slugify(category)}">
-              <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
-              <span class="category-label">${escHtml(category)}</span>
-              <span class="category-count">${catRows.length}</span>
-            </button>
-          `;
-          catEl.appendChild(catHeader);
-        }
-
-        const grid = document.createElement('div');
-        grid.className = 'proto-grid';
-        grid.id = `catgrid-${slugify(company)}-${slugify(category)}`;
-
-        catRows.forEach(row => {
-          grid.appendChild(buildCard(row));
-        });
-
-        catEl.appendChild(grid);
-        section.appendChild(catEl);
+      rows.forEach(row => {
+        grid.appendChild(buildCard(row));
       });
 
+      section.appendChild(grid);
       return section;
     }
 
     function buildCard(row) {
-      // Clean prototype link — take first valid URL if multiple are stored
       const rawLink = row.prototype_link || '';
       const firstLink = rawLink.split(/\s+/).find(s => s.startsWith('http')) || rawLink;
 
-      // Use case text — fall back to project name
       const useCase = getUseCase(row);
-
-      // Industry badge
-      const industryLabel = row.industry
-        ? (row.industry.startsWith('BFSI') ? 'BFSI' : row.industry)
-        : null;
+      const industryLabel = row._industry;
 
       const card = document.createElement('article');
       card.className = 'proto-card';
-      card.setAttribute('role', 'article');
 
       card.innerHTML = `
         <div class="card-inner">
           <div class="card-top">
-            <div class="card-badges">
-              ${industryLabel ? `<span class="badge badge-industry">${escHtml(industryLabel)}</span>` : ''}
-              ${row.stage ? `<span class="badge badge-stage stage-${escHtml(row.stage.toLowerCase().replace(/\s+/g,'-'))}">${escHtml(row.stage)}</span>` : ''}
-            </div>
+            ${industryLabel ? `<span class="pill-quiet">${escHtml(industryLabel)}</span>` : ''}
             <h3 class="card-title">${escHtml(row.project)}</h3>
-            ${useCase ? `<p class="card-usecase">${escHtml(useCase)}</p>` : ''}
+            ${useCase ? `<p class="card-usecase">${escHtml(useCase)}</p>` : '<p class="card-usecase card-usecase-empty">No description available</p>'}
           </div>
           <div class="card-bottom">
             <a
               href="${escAttr(firstLink)}"
               target="_blank"
               rel="noopener noreferrer"
-              class="card-link-btn"
+              class="btn-demo"
               id="proto-link-${escAttr(row.id || slugify(row.project))}"
-              aria-label="Open ${escHtml(row.project)} prototype"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
               <span>Open Demo</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             </a>
-            <div class="card-link-url" title="${escAttr(firstLink)}">
+            <div class="card-url" title="${escAttr(firstLink)}">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
               <span>${truncateUrl(firstLink)}</span>
             </div>
           </div>
         </div>
-        <div class="card-glow" aria-hidden="true"></div>
       `;
 
       return card;
@@ -368,15 +364,15 @@
     function getUseCase(row) {
       const uc = row.use_case;
       if (!uc) return null;
-      // If it's a URL or contains a URL, skip it
       if (/^https?:\/\//i.test(uc.trim())) return null;
-      // Keep but truncate very long strings
-      return uc.length > 220 ? uc.slice(0, 220).trim() + '…' : uc;
+      if (/^PRJ\s/i.test(uc.trim())) return null;
+      if (uc.trim().toLowerCase() === row.project?.trim().toLowerCase()) return null;
+      return uc;
     }
 
     function groupBy(arr, key) {
       return arr.reduce((acc, item) => {
-        const k = item[key] || 'Uncategorized';
+        const k = item[key] || 'Other';
         if (!acc[k]) acc[k] = [];
         acc[k].push(item);
         return acc;
@@ -385,11 +381,7 @@
 
     function escHtml(str) {
       if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
     function escAttr(str) {
@@ -408,26 +400,11 @@
     function truncateUrl(url) {
       try {
         const u = new URL(url);
-        const host = u.hostname.replace(/^www\./, '');
-        return host;
+        return u.hostname.replace(/^www\./, '');
       } catch {
         return url.length > 40 ? url.slice(0, 40) + '…' : url;
       }
     }
-
-    // ============================================================
-    // Category toggle
-    // ============================================================
-    document.addEventListener('click', e => {
-      const toggle = e.target.closest('.category-toggle');
-      if (!toggle) return;
-      const targetId = toggle.dataset.target;
-      const grid = document.getElementById(targetId);
-      if (!grid) return;
-      const expanded = toggle.getAttribute('aria-expanded') === 'true';
-      toggle.setAttribute('aria-expanded', String(!expanded));
-      grid.classList.toggle('collapsed', expanded);
-    });
 
     // ============================================================
     // Search
@@ -447,7 +424,7 @@
     // ============================================================
     function showLoading() {
       document.getElementById('loading-state').classList.remove('hidden');
-      document.getElementById('companies-container').innerHTML = '';
+      document.getElementById('cards-container').innerHTML = '';
     }
     function hideLoading() {
       document.getElementById('loading-state').classList.add('hidden');
@@ -459,6 +436,13 @@
     }
     function hideError() {
       document.getElementById('error-state').classList.add('hidden');
+    }
+
+    // ============================================================
+    // Mobile sidebar toggle
+    // ============================================================
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('sidebar-open');
     }
 
     // ============================================================
