@@ -231,8 +231,11 @@
     }
 
     function buildIndustryFilters() {
+      // Get rows scoped to the active category
+      const scopedRows = getCategoryRows();
+
       const industrySet = new Map();
-      allRows.forEach(r => {
+      scopedRows.forEach(r => {
         if (r._industry) {
           industrySet.set(r._industry, (industrySet.get(r._industry) || 0) + 1);
         }
@@ -244,15 +247,15 @@
 
       // "All" bubble
       const allBtn = document.createElement('button');
-      allBtn.className = 'bubble active';
+      allBtn.className = 'bubble' + (activeIndustry === null ? ' active' : '');
       allBtn.dataset.industry = 'all';
-      allBtn.textContent = 'All';
+      allBtn.innerHTML = `All <span class="bubble-count">${scopedRows.length}</span>`;
       allBtn.addEventListener('click', () => setIndustry(null));
       container.appendChild(allBtn);
 
       sorted.forEach(([industry, count]) => {
         const btn = document.createElement('button');
-        btn.className = 'bubble';
+        btn.className = 'bubble' + (activeIndustry === industry ? ' active' : '');
         btn.dataset.industry = industry;
         btn.innerHTML = `${escHtml(industry)} <span class="bubble-count">${count}</span>`;
         btn.addEventListener('click', () => setIndustry(industry));
@@ -260,11 +263,20 @@
       });
     }
 
+    // Returns rows filtered by the active category only
+    function getCategoryRows() {
+      if (activeCategory === 'Accenture') return allRows.filter(r => ACCENTURE_NAMES.includes(r.company));
+      if (activeCategory === 'others') return allRows.filter(r => !ACCENTURE_NAMES.includes(r.company));
+      return allRows;
+    }
+
     function setCategory(cat) {
       activeCategory = cat;
+      activeIndustry = null; // reset industry when switching category
       document.querySelectorAll('[data-company]').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.company === cat);
       });
+      buildIndustryFilters(); // rebuild bubbles for this category
       render();
     }
 
