@@ -470,3 +470,197 @@ body {
   .section-company-name { font-size: 17px; }
   .brand-tag { display: none; }
 }
+
+/* --- Auth Gate -------------------------------------------- */
+.auth-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(800px 600px at 70% 30%, rgba(236, 121, 67, 0.12), transparent 60%),
+    radial-gradient(600px 500px at 20% 70%, rgba(74, 110, 168, 0.08), transparent 60%),
+    var(--bg);
+  min-height: 100vh;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 16px;
+  padding: 40px;
+  box-shadow: var(--shadow-card);
+  animation: authFadeUp 0.4s ease-out;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes authFadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.auth-logo-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--orange), var(--orange-dark));
+  color: #fff;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.auth-logo-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.auth-logo-subtitle {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink3);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.auth-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 12px;
+  color: var(--ink);
+}
+
+.auth-title em {
+  font-style: normal;
+  color: var(--orange);
+}
+
+.auth-desc {
+  font-size: 14px;
+  color: var(--ink2);
+  line-height: 1.6;
+  margin-bottom: 32px;
+}
+
+.auth-desc span {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 24px;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #190B04;
+  border: 1px solid var(--rule);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.1s;
+}
+
+.btn-google:hover {
+  background-color: #f7f7f7;
+  transform: translateY(-1px);
+}
+
+.btn-google:active {
+  transform: translateY(0);
+}
+
+.btn-google svg {
+  flex-shrink: 0;
+}
+
+/* --- User Profile in Header ------------------------------- */
+.user-profile-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--inner);
+  border: 1px solid var(--rule);
+  transition: background .3s;
+}
+
+.user-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--o-lt);
+  border: 1px solid var(--o-bd);
+  color: var(--orange);
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-name {
+  font-size: 12px;
+  color: var(--ink2);
+  font-weight: 500;
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-signout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--ink3);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  transition: all .12s;
+}
+
+.btn-signout:hover {
+  color: #EA4335;
+}
+

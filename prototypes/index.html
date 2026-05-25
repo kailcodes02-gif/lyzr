@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="styles.css" />
   <link rel="icon" type="image/png" href="logo.png" />
   <link rel="apple-touch-icon" href="logo.png" />
+  <!-- Google Identity Services (for @lyzr.ai OAuth) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
   <!-- Background layers -->
@@ -47,6 +49,16 @@
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
           </svg>
         </button>
+        <!-- User Profile -->
+        <div class="user-profile-wrap hidden" id="user-profile-wrap">
+          <div class="user-avatar" id="user-avatar">?</div>
+          <span class="user-name" id="user-name">Signed In</span>
+          <button class="btn-signout" id="btn-signout" title="Sign out" aria-label="Sign out">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   </header>
@@ -106,12 +118,38 @@
   </div>
 
   <!-- Footer -->
-  <footer class="site-footer">
+  <footer class="site-footer" id="site-footer">
     <div class="footer-inner">
       <span class="footer-copy">© 2025 Lyzr AI — Prototype Showcase</span>
       <span class="footer-tagline">Last updated · <span id="footer-updated">—</span></span>
     </div>
   </footer>
+
+  <!-- Auth Gate -->
+  <div id="auth-gate" class="auth-bg">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="auth-logo-icon">L</div>
+        <div class="auth-logo-text">
+          <span class="auth-logo-title">Lyzr</span>
+          <span class="auth-logo-subtitle">Prototypes</span>
+        </div>
+      </div>
+      <h1 class="auth-title">Sign in to view <em>the prototypes</em>.</h1>
+      <p class="auth-desc">Restricted to Lyzr employees. Use your <span>@lyzr.ai</span> Google account.</p>
+      <button class="btn-google" id="btn-google-login">
+        <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+          <g fill="none" fill-rule="evenodd">
+            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+            <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+            <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+            <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+          </g>
+        </svg>
+        <span>Continue with Google</span>
+      </button>
+    </div>
+  </div>
 
   <script>
     // ============================================================
@@ -130,6 +168,14 @@
     function applyTheme(theme) {
       document.documentElement.setAttribute('data-theme', theme);
     }
+
+    // ============================================================
+    // Authentication State & Config
+    // ============================================================
+    const LYZR_OAUTH_CLIENT_ID = '393767244875-e2n5j0jr90g0a8asp4ti9akmlern6enb.apps.googleusercontent.com';
+    let authed = false;
+    let accessToken = null;
+    let user = null;
 
     // ============================================================
     // Config
@@ -167,7 +213,11 @@
 
       for (const src of DATA_SOURCES) {
         try {
-          const res = await fetch(src, { cache: 'no-store' });
+          const fetchOptions = { cache: 'no-store' };
+          if (src.startsWith('/') && accessToken) {
+            fetchOptions.headers = { Authorization: `Bearer ${accessToken}` };
+          }
+          const res = await fetch(src, fetchOptions);
           if (!res.ok) continue;
           const json = await res.json();
           if (json.error) continue;
@@ -548,9 +598,153 @@
     function hideError() { document.getElementById('error-state').classList.add('hidden'); }
 
     // ============================================================
+    // Authentication Functions
+    // ============================================================
+    function initAuth() {
+      // Bind Google Sign-In button
+      const loginBtn = document.getElementById('btn-google-login');
+      if (loginBtn) {
+        loginBtn.addEventListener('click', googleSignIn);
+      }
+
+      // Bind Sign-Out button
+      const signoutBtn = document.getElementById('btn-signout');
+      if (signoutBtn) {
+        signoutBtn.addEventListener('click', signOut);
+      }
+
+      // Restore auth from sessionStorage if present
+      const storedUser = sessionStorage.getItem('proto.user');
+      const storedToken = sessionStorage.getItem('proto.token');
+
+      if (storedUser && storedToken) {
+        try {
+          user = JSON.parse(storedUser);
+          accessToken = storedToken;
+          authed = true;
+        } catch (e) {
+          sessionStorage.removeItem('proto.user');
+          sessionStorage.removeItem('proto.token');
+        }
+      }
+
+      updateVisibility();
+
+      if (authed) {
+        loadData();
+      }
+    }
+
+    function updateVisibility() {
+      const header = document.getElementById('site-header');
+      const layout = document.getElementById('app-layout');
+      const footer = document.getElementById('site-footer');
+      const authGate = document.getElementById('auth-gate');
+      const userProfile = document.getElementById('user-profile-wrap');
+
+      if (authed) {
+        if (header) header.classList.remove('hidden');
+        if (layout) layout.classList.remove('hidden');
+        if (footer) footer.classList.remove('hidden');
+        if (authGate) authGate.classList.add('hidden');
+
+        if (userProfile && user) {
+          userProfile.classList.remove('hidden');
+          const avatar = document.getElementById('user-avatar');
+          const nameSpan = document.getElementById('user-name');
+
+          if (avatar) {
+            if (user.picture) {
+              avatar.innerHTML = `<img src="${user.picture}" alt="${user.name || ''}" />`;
+            } else {
+              avatar.textContent = (user.name || user.email || '?').charAt(0).toUpperCase();
+            }
+          }
+          if (nameSpan) {
+            nameSpan.textContent = user.name || user.email;
+          }
+        }
+      } else {
+        if (header) header.classList.add('hidden');
+        if (layout) layout.classList.add('hidden');
+        if (footer) footer.classList.add('hidden');
+        if (authGate) authGate.classList.remove('hidden');
+        if (userProfile) userProfile.classList.add('hidden');
+      }
+    }
+
+    function googleSignIn() {
+      if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+        alert('Google sign-in is still loading. Wait a second and try again.');
+        return;
+      }
+
+      if (!LYZR_OAUTH_CLIENT_ID || LYZR_OAUTH_CLIENT_ID.startsWith('REPLACE_')) {
+        alert('OAuth Client ID is not configured.');
+        return;
+      }
+
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: LYZR_OAUTH_CLIENT_ID,
+        scope: 'email profile',
+        hd: 'lyzr.ai',
+        callback: async (response) => {
+          if (response.error) {
+            console.error('OAuth error:', response);
+            return;
+          }
+
+          try {
+            const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { Authorization: `Bearer ${response.access_token}` }
+            });
+            const payload = await res.json();
+
+            if (payload.hd !== 'lyzr.ai' || !payload.email_verified) {
+              alert(
+                'Access restricted to verified @lyzr.ai accounts.\n\n' +
+                (payload.email
+                  ? `You signed in with: ${payload.email}`
+                  : 'No verified Lyzr Workspace account was found on the token.')
+              );
+              return;
+            }
+
+            user = {
+              name: payload.name,
+              email: payload.email,
+              picture: payload.picture,
+            };
+            accessToken = response.access_token;
+            sessionStorage.setItem('proto.token', accessToken);
+            sessionStorage.setItem('proto.user', JSON.stringify(user));
+            authed = true;
+
+            updateVisibility();
+            loadData();
+          } catch (err) {
+            console.error('Auth error:', err);
+            alert('Sign-in failed. Open DevTools console for details.');
+          }
+        }
+      });
+
+      client.requestAccessToken();
+    }
+
+    function signOut() {
+      sessionStorage.removeItem('proto.user');
+      sessionStorage.removeItem('proto.token');
+      authed = false;
+      accessToken = null;
+      user = null;
+      updateVisibility();
+    }
+
+    // ============================================================
     // Boot
     // ============================================================
-    loadData();
+    initAuth();
   </script>
 </body>
 </html>

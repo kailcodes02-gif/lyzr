@@ -11,6 +11,23 @@
 //   GITHUB_PATH   — "pipeline/data.json"
 // =============================================================================
 
+async function verifyGoogleToken(accessToken) {
+  try {
+    const url = `https://www.googleapis.com/oauth2/v3/userinfo`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) return null;
+    const payload = await res.json();
+    if (payload.hd === 'lyzr.ai' && payload.email_verified) {
+      return payload;
+    }
+    return null;
+  } catch (err) {
+    return null;
+  }
+}
+
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -18,6 +35,18 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  // Google OAuth verification
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing Authorization header' });
+  }
+
+  const token = authHeader.slice(7);
+  const user = await verifyGoogleToken(token);
+  if (!user) {
+    return res.status(403).json({ error: 'Invalid token or access restricted to @lyzr.ai accounts' });
   }
 
   const { GITHUB_OWNER, GITHUB_REPO, GITHUB_TOKEN, GITHUB_PATH } = process.env;
