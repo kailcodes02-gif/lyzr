@@ -184,6 +184,16 @@
               <option value="Enterprises">Enterprises</option>
             </select>
           </div>
+          <div class="form-group business-only">
+            <label class="form-label" for="form-stage">Stage *</label>
+            <select class="form-select" id="form-stage" required>
+              <option value="Demo">Demo</option>
+              <option value="in-conversation">In Conversation</option>
+              <option value="win">Win</option>
+              <option value="customer">Customer</option>
+              <option value="lost">Lost</option>
+            </select>
+          </div>
           <div class="form-group">
             <label class="form-label" for="form-prototype_link">Prototype Link *</label>
             <input class="form-input" id="form-prototype_link" type="url" required />
@@ -203,6 +213,26 @@
           <div class="form-group full-width">
             <label class="form-label" for="form-prototype_owners">Prototype Owners (comma separated)</label>
             <input class="form-input" id="form-prototype_owners" type="text" />
+          </div>
+          <div class="form-group business-only">
+            <label class="form-label" for="form-opportunity_owners">Opportunity Owners (comma separated)</label>
+            <input class="form-input" id="form-opportunity_owners" type="text" />
+          </div>
+          <div class="form-group business-only">
+            <label class="form-label" for="form-acv">ACV ($ USD)</label>
+            <input class="form-input" id="form-acv" type="number" placeholder="e.g. 100000" />
+          </div>
+          <div class="form-group business-only">
+            <label class="form-label" for="form-time_period">Time Period</label>
+            <input class="form-input" id="form-time_period" type="text" placeholder="e.g. Annual" />
+          </div>
+          <div class="form-group business-only">
+            <label class="form-label" for="form-close_date_raw">Close Date (Text)</label>
+            <input class="form-input" id="form-close_date_raw" type="text" placeholder="e.g. Q2 2026" />
+          </div>
+          <div class="form-group business-only">
+            <label class="form-label" for="form-close_quarter">Close Quarter</label>
+            <input class="form-input" id="form-close_quarter" type="text" placeholder="e.g. Q2 2026" />
           </div>
         </form>
 
@@ -236,7 +266,7 @@
   <div id="success-modal" class="modal-backdrop hidden">
     <div class="modal-alert-card">
       <div class="alert-icon" style="color:var(--orange);">✨</div>
-      <h2 class="alert-title">Changes Saved</h2>
+      <h2 class="alert-title" id="success-modal-title">Changes Saved</h2>
       <p class="alert-desc" id="success-modal-desc">Your changes have been successfully committed to GitHub.</p>
       <div class="alert-buttons">
         <button class="btn-primary" style="margin-top:0; min-width: 100px;" id="btn-success-ok">OK</button>
@@ -909,7 +939,7 @@
           editMode = true;
           currentEditId = id;
 
-          // Pre-fill form
+          // Pre-fill form (only technical fields)
           document.getElementById('form-modal-title').textContent = "Edit Prototype";
           document.getElementById('form-project').value = row.project || "";
           document.getElementById('form-company').value = row.company || "";
@@ -919,6 +949,18 @@
           document.getElementById('form-category').value = row.category || "";
           document.getElementById('form-industry').value = row._industry || row.industry || "";
           document.getElementById('form-prototype_owners').value = Array.isArray(row.prototype_owners) ? row.prototype_owners.join(', ') : (row.prototype_owners || "");
+
+          // Clear business-only inputs
+          document.getElementById('form-stage').value = "";
+          document.getElementById('form-opportunity_owners').value = "";
+          document.getElementById('form-acv').value = "";
+          document.getElementById('form-time_period').value = "";
+          document.getElementById('form-close_date_raw').value = "";
+          document.getElementById('form-close_quarter').value = "";
+
+          // Hide business-only fields and remove required attribute from stage
+          document.querySelectorAll('.business-only').forEach(el => el.classList.add('hidden'));
+          document.getElementById('form-stage').removeAttribute('required');
 
           // Populate edit history
           const historySection = document.getElementById('form-history-section');
@@ -948,6 +990,10 @@
       document.getElementById('form-modal-title').textContent = "Add New Prototype";
       document.getElementById('proto-form').reset();
 
+      // Show business-only fields and restore required attribute to stage
+      document.querySelectorAll('.business-only').forEach(el => el.classList.remove('hidden'));
+      document.getElementById('form-stage').setAttribute('required', 'required');
+
       // Autofill segment default if currently in a segment tab
       if (activeCategory && activeCategory !== 'all' && activeCategory !== '__others__') {
         const matchingSeg = ['Internal', 'Accenture', 'GSI-SI', 'Enterprises'].find(s => s.toLowerCase() === activeCategory.toLowerCase());
@@ -963,26 +1009,42 @@
     function handleSaveFormClick() {
       const project = document.getElementById('form-project').value.trim();
       const question = editMode ?
-        `Do you want to save the changes for "${project}" to the database?` :
+        "Do you want to save the changes to the database?" :
         `Do you want to add the new prototype "${project}" to the database?`;
 
       showConfirmation(
         "Apply Changes?",
         question,
         async () => {
-          const payload = {
-            project: document.getElementById('form-project').value.trim(),
-            company: document.getElementById('form-company').value.trim(),
-            segment: document.getElementById('form-segment').value,
-            use_case: document.getElementById('form-use_case').value.trim(),
-            prototype_link: document.getElementById('form-prototype_link').value.trim(),
-            category: document.getElementById('form-category').value.trim() || null,
-            industry: document.getElementById('form-industry').value.trim() || null,
-            prototype_owners: document.getElementById('form-prototype_owners').value.trim() || null,
-          };
-
-          if (!editMode) {
-            payload.stage = "Demo";
+          let payload;
+          if (editMode) {
+            payload = {
+              project: document.getElementById('form-project').value.trim(),
+              company: document.getElementById('form-company').value.trim(),
+              segment: document.getElementById('form-segment').value,
+              use_case: document.getElementById('form-use_case').value.trim(),
+              prototype_link: document.getElementById('form-prototype_link').value.trim(),
+              category: document.getElementById('form-category').value.trim() || null,
+              industry: document.getElementById('form-industry').value.trim() || null,
+              prototype_owners: document.getElementById('form-prototype_owners').value.trim() || null,
+            };
+          } else {
+            payload = {
+              project: document.getElementById('form-project').value.trim(),
+              company: document.getElementById('form-company').value.trim(),
+              segment: document.getElementById('form-segment').value,
+              use_case: document.getElementById('form-use_case').value.trim(),
+              prototype_link: document.getElementById('form-prototype_link').value.trim(),
+              category: document.getElementById('form-category').value.trim() || null,
+              industry: document.getElementById('form-industry').value.trim() || null,
+              prototype_owners: document.getElementById('form-prototype_owners').value.trim() || null,
+              stage: document.getElementById('form-stage').value,
+              opportunity_owners: document.getElementById('form-opportunity_owners').value.trim() || null,
+              acv: document.getElementById('form-acv').value.trim() || null,
+              time_period: document.getElementById('form-time_period').value.trim() || null,
+              close_date_raw: document.getElementById('form-close_date_raw').value.trim() || null,
+              close_quarter: document.getElementById('form-close_quarter').value.trim() || null,
+            };
           }
 
           const saveBtn = document.getElementById('btn-form-save');
@@ -1009,9 +1071,9 @@
             }
 
             closeFormModal();
-            showSuccess(editMode ?
-              "Your edits have been successfully saved and pushed to GitHub." :
-              "The new prototype has been successfully added to GitHub."
+            showSuccess(
+              editMode ? "Changes Saved" : "Prototype Added",
+              editMode ? "Changes saved successfully!" : "The new prototype has been successfully added to GitHub."
             );
             await loadData();
           } catch (err) {
@@ -1041,7 +1103,9 @@
       document.getElementById('confirm-modal').classList.add('hidden');
     }
 
-    function showSuccess(message) {
+    function showSuccess(title, message) {
+      const titleEl = document.getElementById('success-modal-title');
+      if (titleEl) titleEl.textContent = title;
       document.getElementById('success-modal-desc').textContent = message;
       document.getElementById('success-modal').classList.remove('hidden');
     }
