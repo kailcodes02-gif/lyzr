@@ -185,22 +185,12 @@
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label" for="form-stage">Stage *</label>
-            <select class="form-select" id="form-stage" required>
-              <option value="Demo">Demo</option>
-              <option value="in-conversation">In Conversation</option>
-              <option value="win">Win</option>
-              <option value="customer">Customer</option>
-              <option value="lost">Lost</option>
-            </select>
-          </div>
-          <div class="form-group full-width">
-            <label class="form-label" for="form-use_case">Use Case / Description *</label>
-            <textarea class="form-textarea" id="form-use_case" required></textarea>
-          </div>
-          <div class="form-group">
             <label class="form-label" for="form-prototype_link">Prototype Link *</label>
             <input class="form-input" id="form-prototype_link" type="url" required />
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label" for="form-use_case">Use Case Description *</label>
+            <textarea class="form-textarea" id="form-use_case" required></textarea>
           </div>
           <div class="form-group">
             <label class="form-label" for="form-category">Category</label>
@@ -210,29 +200,9 @@
             <label class="form-label" for="form-industry">Industry</label>
             <input class="form-input" id="form-industry" type="text" placeholder="e.g. BFSI" />
           </div>
-          <div class="form-group">
+          <div class="form-group full-width">
             <label class="form-label" for="form-prototype_owners">Prototype Owners (comma separated)</label>
             <input class="form-input" id="form-prototype_owners" type="text" />
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="form-opportunity_owners">Opportunity Owners (comma separated)</label>
-            <input class="form-input" id="form-opportunity_owners" type="text" />
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="form-acv">ACV ($ USD)</label>
-            <input class="form-input" id="form-acv" type="number" placeholder="e.g. 100000" />
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="form-time_period">Time Period</label>
-            <input class="form-input" id="form-time_period" type="text" placeholder="e.g. Annual" />
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="form-close_date_raw">Close Date (Text)</label>
-            <input class="form-input" id="form-close_date_raw" type="text" placeholder="e.g. Q2 2026" />
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="form-close_quarter">Close Quarter</label>
-            <input class="form-input" id="form-close_quarter" type="text" placeholder="e.g. Q2 2026" />
           </div>
         </form>
 
@@ -944,17 +914,11 @@
           document.getElementById('form-project').value = row.project || "";
           document.getElementById('form-company').value = row.company || "";
           document.getElementById('form-segment').value = row.segment || "Internal";
-          document.getElementById('form-stage').value = row.stage || "Demo";
           document.getElementById('form-use_case').value = row.use_case || "";
           document.getElementById('form-prototype_link').value = row.prototype_link || "";
           document.getElementById('form-category').value = row.category || "";
           document.getElementById('form-industry').value = row._industry || row.industry || "";
           document.getElementById('form-prototype_owners').value = Array.isArray(row.prototype_owners) ? row.prototype_owners.join(', ') : (row.prototype_owners || "");
-          document.getElementById('form-opportunity_owners').value = Array.isArray(row.opportunity_owners) ? row.opportunity_owners.join(', ') : (row.opportunity_owners || "");
-          document.getElementById('form-acv').value = row.acv || "";
-          document.getElementById('form-time_period').value = row.time_period || "";
-          document.getElementById('form-close_date_raw').value = row.close_date_raw || "";
-          document.getElementById('form-close_quarter').value = row.close_quarter || "";
 
           // Populate edit history
           const historySection = document.getElementById('form-history-section');
@@ -1010,18 +974,16 @@
             project: document.getElementById('form-project').value.trim(),
             company: document.getElementById('form-company').value.trim(),
             segment: document.getElementById('form-segment').value,
-            stage: document.getElementById('form-stage').value,
             use_case: document.getElementById('form-use_case').value.trim(),
             prototype_link: document.getElementById('form-prototype_link').value.trim(),
             category: document.getElementById('form-category').value.trim() || null,
             industry: document.getElementById('form-industry').value.trim() || null,
             prototype_owners: document.getElementById('form-prototype_owners').value.trim() || null,
-            opportunity_owners: document.getElementById('form-opportunity_owners').value.trim() || null,
-            acv: document.getElementById('form-acv').value.trim() || null,
-            time_period: document.getElementById('form-time_period').value.trim() || null,
-            close_date_raw: document.getElementById('form-close_date_raw').value.trim() || null,
-            close_quarter: document.getElementById('form-close_quarter').value.trim() || null,
           };
+
+          if (!editMode) {
+            payload.stage = "Demo";
+          }
 
           const saveBtn = document.getElementById('btn-form-save');
           const originalText = saveBtn.textContent;

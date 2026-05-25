@@ -138,8 +138,9 @@ export default async function handler(req, res) {
 
       if (req.method === 'POST') {
         // --- ADD NEW ROW ---
-        if (!body.segment || !body.project || !body.stage) {
-          return res.status(400).json({ error: 'Missing required fields: segment, project, stage' });
+        const stage = body.stage || "Demo";
+        if (!body.segment || !body.project) {
+          return res.status(400).json({ error: 'Missing required fields: segment, project' });
         }
         
         const newRow = {
@@ -151,7 +152,7 @@ export default async function handler(req, res) {
           project: body.project,
           use_case: body.use_case || body.project,
           category: body.category || null,
-          stage: body.stage,
+          stage: stage,
           prototype_owners: parseOwners(body.prototype_owners),
           opportunity_owners: parseOwners(body.opportunity_owners),
           prototype_link: body.prototype_link || null,
