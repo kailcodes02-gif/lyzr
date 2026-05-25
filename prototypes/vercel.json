@@ -6,6 +6,10 @@
       "dest": "/api/data.js"
     },
     {
+      "src": "/api/rows",
+      "dest": "/api/rows.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "/$1"
     }

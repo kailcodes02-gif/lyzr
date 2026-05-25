@@ -40,6 +40,11 @@
           <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input type="text" id="global-search" class="search-input" placeholder="Search use cases…" autocomplete="off" />
         </div>
+        <!-- Add Prototype Button -->
+        <button class="btn-add-proto hidden" id="btn-header-add" title="Add Prototype">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span>Add Prototype</span>
+        </button>
         <!-- Theme toggle -->
         <button class="theme-toggle" id="theme-toggle" title="Toggle theme" aria-label="Toggle light/dark mode">
           <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -148,6 +153,124 @@
         </svg>
         <span>Continue with Google</span>
       </button>
+    </div>
+  </div>
+
+  <!-- Form Modal -->
+  <div id="form-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 class="modal-title" id="form-modal-title">Edit Prototype</h2>
+        <button class="btn-modal-close" id="btn-form-close" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="proto-form" class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="form-project">Project Name *</label>
+            <input class="form-input" id="form-project" type="text" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="form-company">Company *</label>
+            <input class="form-input" id="form-company" type="text" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="form-segment">Segment *</label>
+            <select class="form-select" id="form-segment" required>
+              <option value="Internal">Internal</option>
+              <option value="Accenture">Accenture</option>
+              <option value="GSI-SI">GSI-SI</option>
+              <option value="Enterprises">Enterprises</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="form-stage">Stage *</label>
+            <select class="form-select" id="form-stage" required>
+              <option value="Demo">Demo</option>
+              <option value="in-conversation">In Conversation</option>
+              <option value="win">Win</option>
+              <option value="customer">Customer</option>
+              <option value="lost">Lost</option>
+            </select>
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label" for="form-use_case">Use Case / Description *</label>
+            <textarea class="form-textarea" id="form-use_case" required></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="form-prototype_link">Prototype Link *</label>
+            <input class="form-input" id="form-prototype_link" type="url" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="form-category">Category</label>
+            <input class="form-input" id="form-category" type="text" placeholder="e.g. RPT Prototype" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="form-industry">Industry</label>
+            <input class="form-input" id="form-industry" type="text" placeholder="e.g. BFSI" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="form-prototype_owners">Prototype Owners (comma separated)</label>
+            <input class="form-input" id="form-prototype_owners" type="text" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="form-opportunity_owners">Opportunity Owners (comma separated)</label>
+            <input class="form-input" id="form-opportunity_owners" type="text" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="form-acv">ACV ($ USD)</label>
+            <input class="form-input" id="form-acv" type="number" placeholder="e.g. 100000" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="form-time_period">Time Period</label>
+            <input class="form-input" id="form-time_period" type="text" placeholder="e.g. Annual" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="form-close_date_raw">Close Date (Text)</label>
+            <input class="form-input" id="form-close_date_raw" type="text" placeholder="e.g. Q2 2026" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="form-close_quarter">Close Quarter</label>
+            <input class="form-input" id="form-close_quarter" type="text" placeholder="e.g. Q2 2026" />
+          </div>
+        </form>
+
+        <!-- Edit History Logs -->
+        <div id="form-history-section" class="history-section hidden">
+          <h3 class="history-title">Edit History Log (Last 3 Edits)</h3>
+          <div id="form-history-list" class="history-list"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btn-form-cancel">Cancel</button>
+        <button class="btn-primary" style="margin-top:0;" id="btn-form-save">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmation Alert Modal -->
+  <div id="confirm-modal" class="modal-backdrop hidden">
+    <div class="modal-alert-card">
+      <div class="alert-icon" id="confirm-modal-icon">❓</div>
+      <h2 class="alert-title" id="confirm-modal-title">Are you sure?</h2>
+      <p class="alert-desc" id="confirm-modal-desc">Do you want to apply these edits to the database?</p>
+      <div class="alert-buttons">
+        <button class="btn-secondary" id="btn-confirm-no">No, Cancel</button>
+        <button class="btn-primary" style="margin-top:0;" id="btn-confirm-yes">Yes, Proceed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div id="success-modal" class="modal-backdrop hidden">
+    <div class="modal-alert-card">
+      <div class="alert-icon" style="color:var(--orange);">✨</div>
+      <h2 class="alert-title">Changes Saved</h2>
+      <p class="alert-desc" id="success-modal-desc">Your changes have been successfully committed to GitHub.</p>
+      <div class="alert-buttons">
+        <button class="btn-primary" style="margin-top:0; min-width: 100px;" id="btn-success-ok">OK</button>
+      </div>
     </div>
   </div>
 
@@ -514,6 +637,9 @@
       const card = document.createElement('article');
       card.className = 'proto-card';
       card.innerHTML = `
+        <button class="btn-card-edit" onclick="handleCardEditClick('${row.id}')" title="Edit Prototype" aria-label="Edit Prototype">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"/></svg>
+        </button>
         <div class="card-body">
           <div class="card-top">
             ${industryLabel ? `<span class="pill-quiet">${escHtml(industryLabel)}</span>` : ''}
@@ -600,6 +726,14 @@
     // ============================================================
     // Authentication Functions
     // ============================================================
+    // ============================================================
+    // Authentication & Modal Flows
+    // ============================================================
+    let editMode = false;
+    let currentEditId = null;
+    let confirmYesCallback = null;
+    let confirmNoCallback = null;
+
     function initAuth() {
       // Bind Google Sign-In button
       const loginBtn = document.getElementById('btn-google-login');
@@ -611,6 +745,55 @@
       const signoutBtn = document.getElementById('btn-signout');
       if (signoutBtn) {
         signoutBtn.addEventListener('click', signOut);
+      }
+
+      // Bind Add Prototype button
+      const headerAddBtn = document.getElementById('btn-header-add');
+      if (headerAddBtn) {
+        headerAddBtn.addEventListener('click', handleHeaderAddClick);
+      }
+
+      // Bind form buttons
+      const formCancelBtn = document.getElementById('btn-form-cancel');
+      const formCloseBtn = document.getElementById('btn-form-close');
+      const formSaveBtn = document.getElementById('btn-form-save');
+      const protoForm = document.getElementById('proto-form');
+
+      if (formCancelBtn) {
+        formCancelBtn.addEventListener('click', closeFormModal);
+      }
+      if (formCloseBtn) {
+        formCloseBtn.addEventListener('click', closeFormModal);
+      }
+      if (formSaveBtn) {
+        formSaveBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          if (protoForm.reportValidity()) {
+            handleSaveFormClick();
+          }
+        });
+      }
+
+      // Bind confirmation buttons
+      const confirmYesBtn = document.getElementById('btn-confirm-yes');
+      const confirmNoBtn = document.getElementById('btn-confirm-no');
+      if (confirmYesBtn) {
+        confirmYesBtn.addEventListener('click', () => {
+          hideConfirmation();
+          if (confirmYesCallback) confirmYesCallback();
+        });
+      }
+      if (confirmNoBtn) {
+        confirmNoBtn.addEventListener('click', () => {
+          hideConfirmation();
+          if (confirmNoCallback) confirmNoCallback();
+        });
+      }
+
+      // Bind success modal button
+      const successOkBtn = document.getElementById('btn-success-ok');
+      if (successOkBtn) {
+        successOkBtn.addEventListener('click', hideSuccess);
       }
 
       // Restore auth from sessionStorage if present
@@ -641,12 +824,14 @@
       const footer = document.getElementById('site-footer');
       const authGate = document.getElementById('auth-gate');
       const userProfile = document.getElementById('user-profile-wrap');
+      const addBtn = document.getElementById('btn-header-add');
 
       if (authed) {
         if (header) header.classList.remove('hidden');
         if (layout) layout.classList.remove('hidden');
         if (footer) footer.classList.remove('hidden');
         if (authGate) authGate.classList.add('hidden');
+        if (addBtn) addBtn.classList.remove('hidden');
 
         if (userProfile && user) {
           userProfile.classList.remove('hidden');
@@ -670,6 +855,7 @@
         if (footer) footer.classList.add('hidden');
         if (authGate) authGate.classList.remove('hidden');
         if (userProfile) userProfile.classList.add('hidden');
+        if (addBtn) addBtn.classList.add('hidden');
       }
     }
 
@@ -739,6 +925,188 @@
       accessToken = null;
       user = null;
       updateVisibility();
+    }
+
+    // --- Card Edit Flow ---
+    window.handleCardEditClick = function(id) {
+      const row = allRows.find(r => r.id === id);
+      if (!row) return;
+
+      showConfirmation(
+        "Edit Prototype?",
+        `Are you sure you want to edit the prototype "${row.project}"?`,
+        () => {
+          editMode = true;
+          currentEditId = id;
+
+          // Pre-fill form
+          document.getElementById('form-modal-title').textContent = "Edit Prototype";
+          document.getElementById('form-project').value = row.project || "";
+          document.getElementById('form-company').value = row.company || "";
+          document.getElementById('form-segment').value = row.segment || "Internal";
+          document.getElementById('form-stage').value = row.stage || "Demo";
+          document.getElementById('form-use_case').value = row.use_case || "";
+          document.getElementById('form-prototype_link').value = row.prototype_link || "";
+          document.getElementById('form-category').value = row.category || "";
+          document.getElementById('form-industry').value = row._industry || row.industry || "";
+          document.getElementById('form-prototype_owners').value = Array.isArray(row.prototype_owners) ? row.prototype_owners.join(', ') : (row.prototype_owners || "");
+          document.getElementById('form-opportunity_owners').value = Array.isArray(row.opportunity_owners) ? row.opportunity_owners.join(', ') : (row.opportunity_owners || "");
+          document.getElementById('form-acv').value = row.acv || "";
+          document.getElementById('form-time_period').value = row.time_period || "";
+          document.getElementById('form-close_date_raw').value = row.close_date_raw || "";
+          document.getElementById('form-close_quarter').value = row.close_quarter || "";
+
+          // Populate edit history
+          const historySection = document.getElementById('form-history-section');
+          const historyList = document.getElementById('form-history-list');
+          if (historySection && historyList) {
+            historyList.innerHTML = '';
+            if (row.edit_history && row.edit_history.length > 0) {
+              historySection.classList.remove('hidden');
+              row.edit_history.forEach(item => {
+                historyList.insertAdjacentHTML('beforeend', formatHistoryItem(item));
+              });
+            } else {
+              historySection.classList.add('hidden');
+            }
+          }
+
+          document.getElementById('form-modal').classList.remove('hidden');
+        }
+      );
+    };
+
+    function handleHeaderAddClick() {
+      editMode = false;
+      currentEditId = null;
+
+      // Clear form
+      document.getElementById('form-modal-title').textContent = "Add New Prototype";
+      document.getElementById('proto-form').reset();
+
+      // Autofill segment default if currently in a segment tab
+      if (activeCategory && activeCategory !== 'all' && activeCategory !== '__others__') {
+        const matchingSeg = ['Internal', 'Accenture', 'GSI-SI', 'Enterprises'].find(s => s.toLowerCase() === activeCategory.toLowerCase());
+        if (matchingSeg) {
+          document.getElementById('form-segment').value = matchingSeg;
+        }
+      }
+
+      document.getElementById('form-history-section').classList.add('hidden');
+      document.getElementById('form-modal').classList.remove('hidden');
+    }
+
+    function handleSaveFormClick() {
+      const project = document.getElementById('form-project').value.trim();
+      const question = editMode ?
+        `Do you want to save the changes for "${project}" to the database?` :
+        `Do you want to add the new prototype "${project}" to the database?`;
+
+      showConfirmation(
+        "Apply Changes?",
+        question,
+        async () => {
+          const payload = {
+            project: document.getElementById('form-project').value.trim(),
+            company: document.getElementById('form-company').value.trim(),
+            segment: document.getElementById('form-segment').value,
+            stage: document.getElementById('form-stage').value,
+            use_case: document.getElementById('form-use_case').value.trim(),
+            prototype_link: document.getElementById('form-prototype_link').value.trim(),
+            category: document.getElementById('form-category').value.trim() || null,
+            industry: document.getElementById('form-industry').value.trim() || null,
+            prototype_owners: document.getElementById('form-prototype_owners').value.trim() || null,
+            opportunity_owners: document.getElementById('form-opportunity_owners').value.trim() || null,
+            acv: document.getElementById('form-acv').value.trim() || null,
+            time_period: document.getElementById('form-time_period').value.trim() || null,
+            close_date_raw: document.getElementById('form-close_date_raw').value.trim() || null,
+            close_quarter: document.getElementById('form-close_quarter').value.trim() || null,
+          };
+
+          const saveBtn = document.getElementById('btn-form-save');
+          const originalText = saveBtn.textContent;
+          saveBtn.disabled = true;
+          saveBtn.textContent = "Saving...";
+
+          try {
+            const url = editMode ? `/api/rows?id=${currentEditId}` : `/api/rows`;
+            const method = editMode ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+              method: method,
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+              },
+              body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+              const errJson = await response.json().catch(() => ({}));
+              throw new Error(errJson.error || `HTTP ${response.status}`);
+            }
+
+            closeFormModal();
+            showSuccess(editMode ?
+              "Your edits have been successfully saved and pushed to GitHub." :
+              "The new prototype has been successfully added to GitHub."
+            );
+            await loadData();
+          } catch (err) {
+            console.error('Save failed:', err);
+            alert(`Failed to save: ${err.message}`);
+          } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalText;
+          }
+        }
+      );
+    }
+
+    function closeFormModal() {
+      document.getElementById('form-modal').classList.add('hidden');
+    }
+
+    function showConfirmation(title, message, onYes, onNo) {
+      document.getElementById('confirm-modal-title').textContent = title;
+      document.getElementById('confirm-modal-desc').textContent = message;
+      confirmYesCallback = onYes;
+      confirmNoCallback = onNo || null;
+      document.getElementById('confirm-modal').classList.remove('hidden');
+    }
+
+    function hideConfirmation() {
+      document.getElementById('confirm-modal').classList.add('hidden');
+    }
+
+    function showSuccess(message) {
+      document.getElementById('success-modal-desc').textContent = message;
+      document.getElementById('success-modal').classList.remove('hidden');
+    }
+
+    function hideSuccess() {
+      document.getElementById('success-modal').classList.add('hidden');
+    }
+
+    function formatHistoryItem(item) {
+      const date = new Date(item.edited_at).toLocaleString();
+      let changesHtml = '';
+      if (item.changes) {
+        for (const [field, delta] of Object.entries(item.changes)) {
+          const oldStr = delta.old !== null && delta.old !== undefined ? JSON.stringify(delta.old) : 'None';
+          const newStr = delta.new !== null && delta.new !== undefined ? JSON.stringify(delta.new) : 'None';
+          changesHtml += `• ${field}: ${oldStr} ➔ ${newStr}\n`;
+        }
+      }
+      return `
+        <div class="history-item">
+          <div class="history-meta">
+            <span>By: <strong>${escHtml(item.edited_by)}</strong></span>
+            <span>${date}</span>
+          </div>
+          <div class="history-changes">${escHtml(changesHtml || 'No direct field changes logged.')}</div>
+        </div>
+      `;
     }
 
     // ============================================================
