@@ -1053,7 +1053,7 @@
           saveBtn.textContent = "Saving...";
 
           try {
-            const url = editMode ? `/api/rows?id=${currentEditId}` : `/api/rows`;
+            const url = editMode ? `/api/rows/${currentEditId}` : `/api/rows`;
             const method = editMode ? 'PUT' : 'POST';
 
             const response = await fetch(url, {
