@@ -15,6 +15,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4.94.0'
           command: pages deploy . --project-name=lyzr-work-os
 
       - name: Set GITHUB_TOKEN (using GH_PAT) on Pages
@@ -25,6 +26,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4.94.0'
           command: echo "${{ secrets.GH_PAT }}" | wrangler pages secret put GITHUB_TOKEN --project-name=lyzr-work-os
 
       - name: Set GITHUB_TOKEN (using PERSONAL_ACCESS_TOKEN) on Pages
@@ -35,6 +37,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4.94.0'
           command: echo "${{ secrets.PERSONAL_ACCESS_TOKEN }}" | wrangler pages secret put GITHUB_TOKEN --project-name=lyzr-work-os
 
       - name: Set GITHUB_TOKEN (using PAT) on Pages
@@ -45,4 +48,5 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4.94.0'
           command: echo "${{ secrets.PAT }}" | wrangler pages secret put GITHUB_TOKEN --project-name=lyzr-work-os
