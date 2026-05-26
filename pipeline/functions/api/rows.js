@@ -268,3 +268,114 @@ function json(body, status = 200) {
     },
   });
 }
+
+export async function onRequestPut(context) {
+  const { request, env } = context;
+  const url = new URL(request.url);
+  const rowId = url.searchParams.get('id');
+
+  if (!rowId) return json({ error: 'Missing row ID in URL query parameter' }, 400);
+
+  // Auth
+  const authHeader = request.headers.get('Authorization') || '';
+  if (!authHeader.startsWith('Bearer ')) {
+    return json({ error: 'Missing Authorization header' }, 401);
+  }
+  const token = authHeader.slice(7);
+  const user = await verifyGoogleToken(token);
+  if (!user) {
+    return json({ error: 'Invalid token or not a @lyzr.ai account' }, 403);
+  }
+
+  // Parse body
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'Invalid JSON body' }, 400);
+  }
+
+  if (!env.GITHUB_OWNER || !env.GITHUB_REPO || !env.GITHUB_TOKEN || !env.GITHUB_PATH) {
+    return json({ error: 'GitHub environment variables not configured' }, 503);
+  }
+
+  try {
+    const { data, sha } = await fetchDataFromGitHub(env);
+    const rowIndex = data.rows.findIndex((r) => r.id === rowId);
+    if (rowIndex === -1) {
+      return json({ error: `Row ${rowId} not found` }, 404);
+    }
+
+    const existing = data.rows[rowIndex];
+    const editableFields = [
+      'company', 'industry', 'project', 'use_case', 'category', 'stage',
+      'prototype_link', 'acv', 'time_period', 'close_date_raw', 'close_quarter',
+      'opportunity_owners', 'prototype_owners', 'segment',
+    ];
+
+    const changes = {};
+    for (const field of editableFields) {
+      if (body[field] === undefined) continue;
+      const oldVal = existing[field];
+      let newVal = body[field];
+
+      if (field === 'opportunity_owners' || field === 'prototype_owners') {
+        newVal = parseOwners(newVal);
+      }
+      if (field === 'acv') {
+        newVal = newVal ? Number(newVal) : null;
+      }
+
+      const oldStr = JSON.stringify(oldVal);
+      const newStr = JSON.stringify(newVal);
+      if (oldStr !== newStr) {
+        changes[field] = { old: oldVal, new: newVal };
+        existing[field] = newVal;
+      }
+    }
+
+    if (changes.prototype_link) {
+      existing.prototype_link_text = existing.prototype_link;
+    }
+    if (changes.acv) {
+      existing.acv_raw = existing.acv ? String(existing.acv) : null;
+    }
+
+    if (Object.keys(changes).length > 0) {
+      if (!existing.edit_history) existing.edit_history = [];
+      existing.edit_history.unshift({
+        edited_by: user.name || user.email,
+        edited_at: new Date().toISOString(),
+        changes,
+      });
+      if (existing.edit_history.length > 3) {
+        existing.edit_history = existing.edit_history.slice(0, 3);
+      }
+    }
+
+    data.rows[rowIndex] = existing;
+    recomputeAggregates(data);
+
+    await commitDataToGitHub(
+      env,
+      data,
+      sha,
+      `data: edit "${existing.project}" [${rowId}] by ${user.email}`
+    );
+
+    return json({ success: true, row: existing, changes }, 200);
+  } catch (err) {
+    console.error('PUT /api/rows error:', err);
+    return json({ error: err.message || 'Internal error' }, 500);
+  }
+}
+
+export async function onRequestOptions() {
+  return new Response(null, {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, PUT, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
