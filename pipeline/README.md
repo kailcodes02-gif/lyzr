@@ -289,3 +289,5 @@ Owners on leaderboard: 18
 
 If those numbers ever drift unexpectedly, the source xlsx changed. Re-run the
 generator and visually diff against the previous `data.json` in git.
+
+<!-- trigger redeploy -->
