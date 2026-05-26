@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-26T17:44:16.365Z",
+  "generated_at": "2026-05-26T17:44:36.648Z",
   "source_file": "tracker.xlsx",
   "rows": [
     {
@@ -597,7 +597,7 @@
       "company": "Accenture",
       "industry": "R&D",
       "project": "Ge Vernova",
-      "use_case": "The use case focuses on building an AI-powered engineering knowledge hub for GE Vernova R&D teams that centralizes internal and external technical data and enables intelligent, context-aware search. The goal is to reduce information retrieval time from 10Ã¢ÂÂ15 minutes to seconds by using an agent that refines queries and pulls precise insights from distributed, access-controlled data sources.",
+      "use_case": "The use case focuses on building an AI-powered engineering knowledge hub for GE Vernova R&D teams that centralizes internal and external technical data and enables intelligent, context-aware search. The goal is to reduce information retrieval time from 10ÃÂ¢ÃÂÃÂ15 minutes to seconds by using an agent that refines queries and pulls precise insights from distributed, access-controlled data sources.",
       "category": "Custom Implementation",
       "stage": "in-conversation",
       "prototype_owners": [
@@ -643,7 +643,7 @@
       "company": "Accenture",
       "industry": null,
       "project": "Workload Manager Agent",
-      "use_case": "The use case focuses on building an Agentic AIÃ¢ÂÂdriven workload management solution that generates and continuously updates project workload forecasts by leveraging pipeline data, ongoing contracts, historical benchmarks, and resource master data",
+      "use_case": "The use case focuses on building an Agentic AIÃÂ¢ÃÂÃÂdriven workload management solution that generates and continuously updates project workload forecasts by leveraging pipeline data, ongoing contracts, historical benchmarks, and resource master data",
       "category": "Custom Implementation",
       "stage": "Demo",
       "prototype_owners": [
@@ -2418,9 +2418,9 @@
       "id": "GSI-0112",
       "segment": "GSI-SI",
       "sn": 7,
-      "company": "Movate",
+      "company": "Estee Lauder",
       "industry": null,
-      "project": "Estee Lauder - Trend hopping + Marketing campaign creation + content genera",
+      "project": "Trend hopping + Marketing campaign creation + content genera",
       "use_case": "Trend hopping + Marketing campaign creation + content generation",
       "category": "RPT Prototype",
       "stage": "in-conversation",
@@ -2434,7 +2434,23 @@
       "acv_raw": "$100,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
-      "close_quarter": "Q2 2026"
+      "close_quarter": "Q2 2026",
+      "edit_history": [
+        {
+          "edited_by": "Kailash G M",
+          "edited_at": "2026-05-26T17:44:36.648Z",
+          "changes": {
+            "company": {
+              "old": "Movate",
+              "new": "Estee Lauder"
+            },
+            "project": {
+              "old": "Estee Lauder - Trend hopping + Marketing campaign creation + content genera",
+              "new": "Trend hopping + Marketing campaign creation + content genera"
+            }
+          }
+        }
+      ]
     },
     {
       "id": "GSI-0113",
@@ -4145,7 +4161,7 @@
       "sn": 17,
       "company": "Crown Castle",
       "industry": "TeleCommunication",
-      "project": "Crown Castle - ÃÂ Drone Image Analysis",
+      "project": "Crown Castle - ÃÂÃÂ Drone Image Analysis",
       "use_case": null,
       "category": "RPT Prototype",
       "stage": "win",
@@ -7613,7 +7629,7 @@
     "acv_open": 29046000,
     "acv_won": 3630000,
     "acv_lost": 3108000,
-    "unique_companies": 196,
+    "unique_companies": 197,
     "by_stage": {
       "Demo": 52,
       "in-conversation": 214,
@@ -7792,11 +7808,6 @@
         "acv": 620000
       },
       {
-        "company": "Movate",
-        "deals": 6,
-        "acv": 500000
-      },
-      {
         "company": "Avanade",
         "deals": 1,
         "acv": 500000
@@ -7810,6 +7821,11 @@
         "company": "Prudential",
         "deals": 1,
         "acv": 500000
+      },
+      {
+        "company": "Movate",
+        "deals": 5,
+        "acv": 400000
       },
       {
         "company": "Exl",
@@ -8100,6 +8116,11 @@
         "company": "Wasabi",
         "deals": 1,
         "acv": 120000
+      },
+      {
+        "company": "Estee Lauder",
+        "deals": 1,
+        "acv": 100000
       },
       {
         "company": "Infosys",
