@@ -1,18 +1,14 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "lyzr-work-os",
-  "pages_build_output_dir": ".",
-  "compatibility_date": "2024-04-17",
+  "name": "wos-auth",
+  "compatibility_date": "2026-04-17",
   "observability": {
     "enabled": true
   },
+  "assets": {
+    "directory": "."
+  },
   "compatibility_flags": [
     "nodejs_compat"
-  ],
-  "vars": {
-    "GITHUB_OWNER": "kailcodes02-gif",
-    "GITHUB_REPO": "lyzr",
-    "GITHUB_PATH": "pipeline/data.json",
-    "GITHUB_BRANCH": "main"
-  }
+  ]
 }
