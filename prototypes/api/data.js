@@ -19,9 +19,14 @@ async function verifyGoogleToken(accessToken) {
     });
     if (!res.ok) return null;
     const payload = await res.json();
-    if (payload.hd === 'lyzr.ai' && payload.email_verified) {
-      return payload;
-    }
+    const email = payload.email || '';
+    const emailVerified = payload.email_verified === true || payload.email_verified === 'true';
+    const isLyzrOrDev = emailVerified && (
+      email.endsWith('@lyzr.ai') ||
+      payload.hd === 'lyzr.ai' ||
+      email === 'kailcodes02@gmail.com'
+    );
+    if (isLyzrOrDev) return payload;
     return null;
   } catch (err) {
     return null;
@@ -59,7 +64,7 @@ export default async function handler(req, res) {
     const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_PATH}`;
     const ghRes = await fetch(url, {
       headers: {
-        Authorization: `token ${GITHUB_TOKEN}`,
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
         Accept: 'application/vnd.github.v3+json',
         'User-Agent': 'lyzr-prototypes-vercel-fn',
       },

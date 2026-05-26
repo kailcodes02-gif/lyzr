@@ -55,14 +55,21 @@ async function verifyGoogleToken(accessToken) {
     });
     if (!res.ok) return null;
     const p = await res.json();
-    return (p.hd === 'lyzr.ai' && p.email_verified) ? p : null;
+    const email = p.email || '';
+    const emailVerified = p.email_verified === true || p.email_verified === 'true';
+    const isLyzrOrDev = emailVerified && (
+      email.endsWith('@lyzr.ai') ||
+      p.hd === 'lyzr.ai' ||
+      email === 'kailcodes02@gmail.com'
+    );
+    return isLyzrOrDev ? p : null;
   } catch { return null; }
 }
 
 async function ghGet(owner, repo, token, path) {
   const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
   const res = await fetch(url, {
-    headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json', 'User-Agent': 'lyzr-pipeline' },
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github.v3+json', 'User-Agent': 'lyzr-pipeline' },
   });
   if (!res.ok) throw new Error(`GitHub read failed: ${res.status}`);
   const meta = await res.json();
@@ -74,7 +81,7 @@ async function ghPut(owner, repo, token, path, data, sha, message, branch) {
   const content = Buffer.from(JSON.stringify(data, null, 2)).toString('base64');
   const res = await fetch(url, {
     method: 'PUT',
-    headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json', 'User-Agent': 'lyzr-pipeline' },
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json', 'User-Agent': 'lyzr-pipeline' },
     body: JSON.stringify({ message, content, sha, branch: branch || 'main' }),
   });
   if (!res.ok) { const e = await res.text(); throw new Error(`GitHub write failed: ${res.status} — ${e}`); }

@@ -120,7 +120,14 @@ async function verifyGoogleToken(accessToken) {
     });
     if (!res.ok) return null;
     const payload = await res.json();
-    if (payload.hd === 'lyzr.ai' && payload.email_verified) return payload;
+    const email = payload.email || '';
+    const emailVerified = payload.email_verified === true || payload.email_verified === 'true';
+    const isLyzrOrDev = emailVerified && (
+      email.endsWith('@lyzr.ai') ||
+      payload.hd === 'lyzr.ai' ||
+      email === 'kailcodes02@gmail.com'
+    );
+    if (isLyzrOrDev) return payload;
     return null;
   } catch {
     return null;
@@ -131,7 +138,7 @@ async function fetchDataFromGitHub(env) {
   const url = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/${env.GITHUB_PATH}`;
   const res = await fetch(url, {
     headers: {
-      Authorization: `token ${env.GITHUB_TOKEN}`,
+      Authorization: `Bearer ${env.GITHUB_TOKEN}`,
       Accept: 'application/vnd.github.v3+json',
       'User-Agent': 'lyzr-pipeline-cf-function',
     },
@@ -148,7 +155,7 @@ async function commitDataToGitHub(env, data, sha, message) {
   const res = await fetch(url, {
     method: 'PUT',
     headers: {
-      Authorization: `token ${env.GITHUB_TOKEN}`,
+      Authorization: `Bearer ${env.GITHUB_TOKEN}`,
       Accept: 'application/vnd.github.v3+json',
       'Content-Type': 'application/json',
       'User-Agent': 'lyzr-pipeline-cf-function',

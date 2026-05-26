@@ -31,7 +31,7 @@ export async function onRequestGet(context) {
     const url = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/${env.GITHUB_PATH}`;
     const ghRes = await fetch(url, {
       headers: {
-        Authorization: `token ${env.GITHUB_TOKEN}`,
+        Authorization: `Bearer ${env.GITHUB_TOKEN}`,
         Accept: 'application/vnd.github.v3+json',
         'User-Agent': 'lyzr-prototypes-cf-function',
       },

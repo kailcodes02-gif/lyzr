@@ -886,7 +886,15 @@
             });
             const payload = await res.json();
 
-            if (payload.hd !== 'lyzr.ai' || !payload.email_verified) {
+            const email = payload.email || '';
+            const emailVerified = payload.email_verified === true || payload.email_verified === 'true';
+            const isLyzrOrDev = emailVerified && (
+              email.endsWith('@lyzr.ai') ||
+              payload.hd === 'lyzr.ai' ||
+              email === 'kailcodes02@gmail.com'
+            );
+
+            if (!isLyzrOrDev) {
               alert(
                 'Access restricted to verified @lyzr.ai accounts.\n\n' +
                 (payload.email
