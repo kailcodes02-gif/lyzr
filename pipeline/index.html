@@ -1706,7 +1706,7 @@ const LYZR_OAUTH_CLIENT_ID = '393767244875-e2n5j0jr90g0a8asp4ti9akmlern6enb.apps
 function lyzrApp() {
   return {
     // --- theme ---
-    theme: 'dark',
+    theme: 'light',
 
     // --- auth ----
     authed: false,
@@ -1764,7 +1764,7 @@ function lyzrApp() {
     // ---------- INIT ----------
     async init() {
       // Restore theme
-      this.theme = localStorage.getItem('lyzr.theme') || 'dark';
+      this.theme = localStorage.getItem('lyzr.theme') || 'light';
       document.documentElement.setAttribute('data-theme', this.theme);
       this.$watch('theme', val => {
         document.documentElement.setAttribute('data-theme', val);

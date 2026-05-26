@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -279,7 +279,7 @@
     // Theme
     // ============================================================
     const themeToggle = document.getElementById('theme-toggle');
-    let currentTheme = localStorage.getItem('proto-theme') || 'dark';
+    let currentTheme = localStorage.getItem('proto-theme') || 'light';
     applyTheme(currentTheme);
 
     themeToggle.addEventListener('click', () => {
