@@ -16,3 +16,27 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy . --project-name=lyzr-work-os
+
+      - name: Set GITHUB_TOKEN (using GH_PAT) on Pages
+        if: ${{ secrets.GH_PAT != '' }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: echo "${{ secrets.GH_PAT }}" | wrangler pages secret put GITHUB_TOKEN --project-name=lyzr-work-os
+
+      - name: Set GITHUB_TOKEN (using PERSONAL_ACCESS_TOKEN) on Pages
+        if: ${{ secrets.PERSONAL_ACCESS_TOKEN != '' }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: echo "${{ secrets.PERSONAL_ACCESS_TOKEN }}" | wrangler pages secret put GITHUB_TOKEN --project-name=lyzr-work-os
+
+      - name: Set GITHUB_TOKEN (using PAT) on Pages
+        if: ${{ secrets.PAT != '' }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: echo "${{ secrets.PAT }}" | wrangler pages secret put GITHUB_TOKEN --project-name=lyzr-work-os
