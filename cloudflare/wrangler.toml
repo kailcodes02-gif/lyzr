@@ -1,5 +1,5 @@
 name = "wos-auth"
-main = "cloudflare/worker.js"
+main = "worker.js"
 compatibility_date = "2024-04-17"
 
 [vars]
