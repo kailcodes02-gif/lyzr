@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-05-08T16:36:56.316610Z",
+  "generated_at": "2026-05-26T17:43:55.610Z",
   "source_file": "tracker.xlsx",
   "rows": [
     {
       "id": "INT-0001",
       "segment": "Internal",
       "sn": 1,
-      "company": "Lyzr",
+      "company": "Lyzrr",
       "industry": "Marketing",
       "project": "CFO's Office",
       "use_case": "CFO's Office",
@@ -20,7 +20,19 @@
       "acv_raw": null,
       "time_period": null,
       "close_date_raw": null,
-      "close_quarter": null
+      "close_quarter": null,
+      "edit_history": [
+        {
+          "edited_by": "Kailash G M",
+          "edited_at": "2026-05-26T17:43:55.610Z",
+          "changes": {
+            "company": {
+              "old": "Lyzr",
+              "new": "Lyzrr"
+            }
+          }
+        }
+      ]
     },
     {
       "id": "INT-0002",
@@ -221,7 +233,7 @@
       ],
       "prototype_link": "https://best-buy-demo-nwiditvq3a-ue.a.run.app/",
       "prototype_link_text": "https://best-buy-demo-nwiditvq3a-ue.a.run.app/",
-      "acv": 500000.0,
+      "acv": 500000,
       "acv_raw": "$500,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -357,7 +369,7 @@
       ],
       "prototype_link": "https://aipbook.rapid.studio.lyzr.ai/",
       "prototype_link_text": "https://aipbook.rapid.studio.lyzr.ai/",
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -404,7 +416,7 @@
       ],
       "prototype_link": "https://mergers-and-acquisitions-agent.studio.lyzr.ai/",
       "prototype_link_text": "https://mergers-and-acquisitions-agent.studio.lyzr.ai/",
-      "acv": 1000000.0,
+      "acv": 1000000,
       "acv_raw": "$1,000,000",
       "time_period": "1 year",
       "close_date_raw": "March",
@@ -426,7 +438,7 @@
       ],
       "prototype_link": "https://modbox-app.ca.lyzr.app/\n\nhttps://lyzr.slack.com/files/U0ASFFAQ9S8/F0B29DH9XS6/modbox_prd_v3.pdf",
       "prototype_link_text": "https://modbox-app.ca.lyzr.app/\n\nhttps://lyzr.slack.com/files/U0ASFFAQ9S8/F0B29DH9XS6/modbox_prd_v3.pdf",
-      "acv": 200000.0,
+      "acv": 200000,
       "acv_raw": "$200,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -575,7 +587,7 @@
       "company": "Accenture",
       "industry": "R&D",
       "project": "Ge Vernova",
-      "use_case": "The use case focuses on building an AI-powered engineering knowledge hub for GE Vernova R&D teams that centralizes internal and external technical data and enables intelligent, context-aware search. The goal is to reduce information retrieval time from 10–15 minutes to seconds by using an agent that refines queries and pulls precise insights from distributed, access-controlled data sources.",
+      "use_case": "The use case focuses on building an AI-powered engineering knowledge hub for GE Vernova R&D teams that centralizes internal and external technical data and enables intelligent, context-aware search. The goal is to reduce information retrieval time from 10â15 minutes to seconds by using an agent that refines queries and pulls precise insights from distributed, access-controlled data sources.",
       "category": "Custom Implementation",
       "stage": "in-conversation",
       "prototype_owners": [
@@ -586,7 +598,7 @@
       ],
       "prototype_link": "https://yellow-grass-0d02d3f0f.1.azurestaticapps.net/",
       "prototype_link_text": "https://yellow-grass-0d02d3f0f.1.azurestaticapps.net/",
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "2/25/2026",
@@ -621,7 +633,7 @@
       "company": "Accenture",
       "industry": null,
       "project": "Workload Manager Agent",
-      "use_case": "The use case focuses on building an Agentic AI–driven workload management solution that generates and continuously updates project workload forecasts by leveraging pipeline data, ongoing contracts, historical benchmarks, and resource master data",
+      "use_case": "The use case focuses on building an Agentic AIâdriven workload management solution that generates and continuously updates project workload forecasts by leveraging pipeline data, ongoing contracts, historical benchmarks, and resource master data",
       "category": "Custom Implementation",
       "stage": "Demo",
       "prototype_owners": [
@@ -736,7 +748,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 50000.0,
+      "acv": 50000,
       "acv_raw": "$50,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -800,7 +812,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 500000.0,
+      "acv": 500000,
       "acv_raw": "$500,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -862,7 +874,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -924,7 +936,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -968,7 +980,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -1056,7 +1068,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 45000.0,
+      "acv": 45000,
       "acv_raw": "$45,000",
       "time_period": "Annual",
       "close_date_raw": "Lost",
@@ -1098,7 +1110,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -1142,7 +1154,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 500000.0,
+      "acv": 500000,
       "acv_raw": "$500,000",
       "time_period": "Annual",
       "close_date_raw": "Lost",
@@ -1164,7 +1176,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 500000.0,
+      "acv": 500000,
       "acv_raw": "$500,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -1186,7 +1198,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 50000.0,
+      "acv": 50000,
       "acv_raw": "$50,000",
       "time_period": "1 year",
       "close_date_raw": "Jan 2026",
@@ -1230,7 +1242,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 150000.0,
+      "acv": 150000,
       "acv_raw": "$150,000",
       "time_period": "Annual",
       "close_date_raw": "April",
@@ -1312,7 +1324,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 50000.0,
+      "acv": 50000,
       "acv_raw": "$50,000",
       "time_period": "Annual",
       "close_date_raw": "Lost",
@@ -1334,7 +1346,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -1376,7 +1388,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -1418,7 +1430,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 500000.0,
+      "acv": 500000,
       "acv_raw": "$500,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -1440,7 +1452,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 100000.0,
+      "acv": 100000,
       "acv_raw": "$100,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -1526,7 +1538,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 500000.0,
+      "acv": 500000,
       "acv_raw": "$500,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -1548,7 +1560,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 100000.0,
+      "acv": 100000,
       "acv_raw": "$100,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -1610,7 +1622,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -1674,7 +1686,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 500000.0,
+      "acv": 500000,
       "acv_raw": "$500,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -1696,7 +1708,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 500000.0,
+      "acv": 500000,
       "acv_raw": "$500,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -1718,7 +1730,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -1740,7 +1752,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 100000.0,
+      "acv": 100000,
       "acv_raw": "$100,000",
       "time_period": "Annual",
       "close_date_raw": "April",
@@ -1784,7 +1796,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 50000.0,
+      "acv": 50000,
       "acv_raw": "$50,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -1992,7 +2004,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -2014,7 +2026,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -2096,7 +2108,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 500000.0,
+      "acv": 500000,
       "acv_raw": "$500,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -2140,7 +2152,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -2162,7 +2174,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -2228,7 +2240,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -2275,7 +2287,7 @@
       ],
       "prototype_link": "https://lyzr-outlay-agent.rapid.studio.lyzr.ai/",
       "prototype_link_text": "https://lyzr-outlay-agent.rapid.studio.lyzr.ai/",
-      "acv": 150000.0,
+      "acv": 150000,
       "acv_raw": "$150,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -2364,7 +2376,7 @@
       ],
       "prototype_link": "https://kpmg.ca.lyzr.app/",
       "prototype_link_text": "https://kpmg.ca.lyzr.app/",
-      "acv": 200000.0,
+      "acv": 200000,
       "acv_raw": "$200,000",
       "time_period": "Monthly",
       "close_date_raw": "March",
@@ -2408,7 +2420,7 @@
       ],
       "prototype_link": "https://lyzr-trend-hopper.rapid.studio.lyzr.ai/",
       "prototype_link_text": "https://lyzr-trend-hopper.rapid.studio.lyzr.ai/",
-      "acv": 100000.0,
+      "acv": 100000,
       "acv_raw": "$100,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -2454,7 +2466,7 @@
       ],
       "prototype_link": "https://one-click-fetch.dqis0bdqo4ngo.amplifyapp.com/",
       "prototype_link_text": "https://one-click-fetch.dqis0bdqo4ngo.amplifyapp.com/",
-      "acv": 150000.0,
+      "acv": 150000,
       "acv_raw": "$150,000",
       "time_period": "Annual",
       "close_date_raw": "March",
@@ -2830,7 +2842,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 500000.0,
+      "acv": 500000,
       "acv_raw": "$500,000",
       "time_period": "Annual",
       "close_date_raw": "4/15/2026",
@@ -3006,7 +3018,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -3028,7 +3040,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 500000.0,
+      "acv": 500000,
       "acv_raw": "$500,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -3050,7 +3062,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 150000.0,
+      "acv": 150000,
       "acv_raw": "$150,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -3094,7 +3106,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -3116,7 +3128,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 400000.0,
+      "acv": 400000,
       "acv_raw": "$400,000",
       "time_period": "Annual",
       "close_date_raw": "March",
@@ -3138,7 +3150,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 180000.0,
+      "acv": 180000,
       "acv_raw": "$180,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -3182,7 +3194,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 2250000.0,
+      "acv": 2250000,
       "acv_raw": "$2,250,000",
       "time_period": "Annual",
       "close_date_raw": "March",
@@ -3204,7 +3216,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 1500000.0,
+      "acv": 1500000,
       "acv_raw": "$1,500,000",
       "time_period": "3 years",
       "close_date_raw": "March",
@@ -3248,7 +3260,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Annual",
       "close_date_raw": "March",
@@ -3270,7 +3282,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -3314,7 +3326,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 500000.0,
+      "acv": 500000,
       "acv_raw": "$500,000",
       "time_period": "Annual",
       "close_date_raw": "March",
@@ -3380,7 +3392,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 150000.0,
+      "acv": 150000,
       "acv_raw": "$150,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -3402,7 +3414,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 500000.0,
+      "acv": 500000,
       "acv_raw": "$500,000",
       "time_period": "Annual",
       "close_date_raw": "March",
@@ -3424,7 +3436,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 100000.0,
+      "acv": 100000,
       "acv_raw": "$100,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -3446,7 +3458,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -3468,7 +3480,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -3534,7 +3546,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 100000.0,
+      "acv": 100000,
       "acv_raw": "$100,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -3556,7 +3568,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 100000.0,
+      "acv": 100000,
       "acv_raw": "$100,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -3578,7 +3590,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 100000.0,
+      "acv": 100000,
       "acv_raw": "$100,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -3600,7 +3612,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 100000.0,
+      "acv": 100000,
       "acv_raw": "$100,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -3622,7 +3634,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -3644,7 +3656,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -3666,7 +3678,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 500000.0,
+      "acv": 500000,
       "acv_raw": "$500,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -3688,7 +3700,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 120000.0,
+      "acv": 120000,
       "acv_raw": "$120,000",
       "time_period": "Monthly",
       "close_date_raw": "Q2 2026",
@@ -3710,7 +3722,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -3732,7 +3744,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 100000.0,
+      "acv": 100000,
       "acv_raw": "$100,000",
       "time_period": "Annual",
       "close_date_raw": "Q1 2026",
@@ -3754,7 +3766,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 100000.0,
+      "acv": 100000,
       "acv_raw": "$100,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -3798,7 +3810,7 @@
       ],
       "prototype_link": "https://allianz-ai.rapid.studio.lyzr.ai/",
       "prototype_link_text": "https://allianz-ai.rapid.studio.lyzr.ai/",
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Annual",
       "close_date_raw": "March",
@@ -3887,7 +3899,7 @@
       ],
       "prototype_link": "https://axos.rapid.studio.lyzr.ai/ui",
       "prototype_link_text": "https://axos.rapid.studio.lyzr.ai/ui",
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -4111,7 +4123,7 @@
       ],
       "prototype_link": "https://crown-castle.rapid.studio.lyzr.ai/",
       "prototype_link_text": "https://crown-castle.rapid.studio.lyzr.ai/",
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "March",
@@ -4123,7 +4135,7 @@
       "sn": 17,
       "company": "Crown Castle",
       "industry": "TeleCommunication",
-      "project": "Crown Castle -  Drone Image Analysis",
+      "project": "Crown Castle - Â Drone Image Analysis",
       "use_case": null,
       "category": "RPT Prototype",
       "stage": "win",
@@ -4315,7 +4327,7 @@
       ],
       "prototype_link": "https://firstsource-exit-interview.rapid.studio.lyzr.ai/",
       "prototype_link_text": "https://firstsource-exit-interview.rapid.studio.lyzr.ai/",
-      "acv": 40000.0,
+      "acv": 40000,
       "acv_raw": "$40,000",
       "time_period": "Annual",
       "close_date_raw": "March",
@@ -4339,7 +4351,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 120000.0,
+      "acv": 120000,
       "acv_raw": "$120,000",
       "time_period": "Annual",
       "close_date_raw": "March",
@@ -4407,7 +4419,7 @@
       ],
       "prototype_link": "https://gsam-sandbox.rapid.studio.lyzr.ai/",
       "prototype_link_text": "https://gsam-sandbox.rapid.studio.lyzr.ai/",
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -4453,7 +4465,7 @@
       ],
       "prototype_link": "https://hills-support.rapid.studio.lyzr.ai/\nhttps://lyzr-brew.rapid.studio.lyzr.ai/",
       "prototype_link_text": "https://hills-support.rapid.studio.lyzr.ai/\nhttps://lyzr-brew.rapid.studio.lyzr.ai/",
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -4585,7 +4597,7 @@
       ],
       "prototype_link": "https://competitor-research.rapid.studio.lyzr.ai/dashboard",
       "prototype_link_text": "https://competitor-research.rapid.studio.lyzr.ai/dashboard",
-      "acv": 8000.0,
+      "acv": 8000,
       "acv_raw": "$8,000",
       "time_period": "Annual",
       "close_date_raw": "March",
@@ -4830,7 +4842,7 @@
       ],
       "prototype_link": "https://fund-reconcilation-agent.rapid.studio.lyzr.ai/",
       "prototype_link_text": "https://fund-reconcilation-agent.rapid.studio.lyzr.ai/",
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -4921,7 +4933,7 @@
       ],
       "prototype_link": "https://main.dxlzjbxxevizs.amplifyapp.com/",
       "prototype_link_text": "https://main.dxlzjbxxevizs.amplifyapp.com/",
-      "acv": 100000.0,
+      "acv": 100000,
       "acv_raw": "$100,000",
       "time_period": "Annual",
       "close_date_raw": "March",
@@ -4987,7 +4999,7 @@
       ],
       "prototype_link": "https://customer-onboarding.studio.lyzr.ai/",
       "prototype_link_text": "https://customer-onboarding.studio.lyzr.ai/",
-      "acv": 100000.0,
+      "acv": 100000,
       "acv_raw": "$100,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -5034,7 +5046,7 @@
       ],
       "prototype_link": "https://star-health.rapid.studio.lyzr.ai/login/",
       "prototype_link_text": "https://star-health.rapid.studio.lyzr.ai/login/",
-      "acv": 60000.0,
+      "acv": 60000,
       "acv_raw": "$60,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -5058,7 +5070,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -5103,7 +5115,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 30000.0,
+      "acv": 30000,
       "acv_raw": "$30,000",
       "time_period": "Annual",
       "close_date_raw": "Feb 2026",
@@ -5193,7 +5205,7 @@
       ],
       "prototype_link": "https://warby-parker-fra.rapid.studio.lyzr.ai/",
       "prototype_link_text": "https://warby-parker-fra.rapid.studio.lyzr.ai/",
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -5217,7 +5229,7 @@
       ],
       "prototype_link": "https://corporate-due-diligence.rapid.studio.lyzr.ai/",
       "prototype_link_text": "https://corporate-due-diligence.rapid.studio.lyzr.ai/",
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -5307,7 +5319,7 @@
       ],
       "prototype_link": "https://main.d392fsf4ao8jh4.amplifyapp.com/",
       "prototype_link_text": "https://main.d392fsf4ao8jh4.amplifyapp.com/",
-      "acv": 150000.0,
+      "acv": 150000,
       "acv_raw": "$150,000",
       "time_period": "Annual",
       "close_date_raw": "12/10/2025",
@@ -5331,7 +5343,7 @@
       ],
       "prototype_link": "https://dvora-support.rapid.studio.lyzr.ai/",
       "prototype_link_text": "https://dvora-support.rapid.studio.lyzr.ai/",
-      "acv": 1500000.0,
+      "acv": 1500000,
       "acv_raw": "$1,500,000",
       "time_period": "Annual",
       "close_date_raw": "1/31/2025",
@@ -5685,7 +5697,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "2026-02-30",
@@ -5885,7 +5897,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "1/15/2026",
@@ -5931,7 +5943,7 @@
       ],
       "prototype_link": "https://verifone.rapid.studio.lyzr.ai/",
       "prototype_link_text": "https://verifone.rapid.studio.lyzr.ai/",
-      "acv": 1500000.0,
+      "acv": 1500000,
       "acv_raw": "$1,500,000",
       "time_period": "3 Years",
       "close_date_raw": "Feb 2nd Half",
@@ -6037,7 +6049,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6059,7 +6071,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 33000.0,
+      "acv": 33000,
       "acv_raw": "$33,000",
       "time_period": "Annual",
       "close_date_raw": "March",
@@ -6081,7 +6093,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q3 2026",
@@ -6103,7 +6115,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6147,7 +6159,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6191,7 +6203,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6213,7 +6225,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6235,7 +6247,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6257,7 +6269,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 150000.0,
+      "acv": 150000,
       "acv_raw": "$150,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6301,7 +6313,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 100000.0,
+      "acv": 100000,
       "acv_raw": "$100,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6323,7 +6335,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6345,7 +6357,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6367,7 +6379,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6389,7 +6401,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6433,7 +6445,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6455,7 +6467,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6499,7 +6511,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6543,7 +6555,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 200000.0,
+      "acv": 200000,
       "acv_raw": "$200,000",
       "time_period": "Annual",
       "close_date_raw": "Feb 2nd Half",
@@ -6565,7 +6577,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6587,7 +6599,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6609,7 +6621,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q3 2026",
@@ -6631,7 +6643,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 18000.0,
+      "acv": 18000,
       "acv_raw": "$18,000",
       "time_period": "Monthly",
       "close_date_raw": "Q2 2026",
@@ -6653,7 +6665,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6675,7 +6687,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6697,7 +6709,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q3 2026",
@@ -6719,7 +6731,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6741,7 +6753,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6763,7 +6775,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 50000.0,
+      "acv": 50000,
       "acv_raw": "$50,000",
       "time_period": "Annual",
       "close_date_raw": "-",
@@ -6785,7 +6797,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Annual",
       "close_date_raw": "March",
@@ -6807,7 +6819,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6829,7 +6841,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 100000.0,
+      "acv": 100000,
       "acv_raw": "$100,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6851,7 +6863,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6873,7 +6885,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 120000.0,
+      "acv": 120000,
       "acv_raw": "$120,000",
       "time_period": "Annual",
       "close_date_raw": "March",
@@ -6895,7 +6907,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 50000.0,
+      "acv": 50000,
       "acv_raw": "$50,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6917,7 +6929,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6939,7 +6951,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 120000.0,
+      "acv": 120000,
       "acv_raw": "$120,000",
       "time_period": "Annual",
       "close_date_raw": "May",
@@ -6961,7 +6973,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -6983,7 +6995,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q3 2026",
@@ -7005,7 +7017,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 50000.0,
+      "acv": 50000,
       "acv_raw": "$50,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -7027,7 +7039,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 100000.0,
+      "acv": 100000,
       "acv_raw": "$100,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -7049,7 +7061,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -7071,7 +7083,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Monthly",
       "close_date_raw": "March",
@@ -7093,7 +7105,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 100000.0,
+      "acv": 100000,
       "acv_raw": "$100,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -7115,7 +7127,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q3 2026",
@@ -7137,7 +7149,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -7159,7 +7171,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -7181,7 +7193,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 500000.0,
+      "acv": 500000,
       "acv_raw": "$500,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -7225,7 +7237,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -7247,7 +7259,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -7269,7 +7281,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 25000.0,
+      "acv": 25000,
       "acv_raw": "$25,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -7291,7 +7303,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 45000.0,
+      "acv": 45000,
       "acv_raw": "$45,000",
       "time_period": "Annual",
       "close_date_raw": "Q1 2026",
@@ -7314,7 +7326,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -7336,7 +7348,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -7358,7 +7370,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 0.0,
+      "acv": 0,
       "acv_raw": "$0",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -7380,7 +7392,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q3 2026",
@@ -7402,7 +7414,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -7424,7 +7436,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -7446,7 +7458,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 100000.0,
+      "acv": 100000,
       "acv_raw": "$100,000",
       "time_period": "Annual",
       "close_date_raw": "Feb 2026",
@@ -7468,7 +7480,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q3 2026",
@@ -7490,7 +7502,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -7512,7 +7524,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -7534,7 +7546,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -7556,7 +7568,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 120000.0,
+      "acv": 120000,
       "acv_raw": "$120,000",
       "time_period": "Annual",
       "close_date_raw": "Q3 2026",
@@ -7578,7 +7590,7 @@
       ],
       "prototype_link": null,
       "prototype_link_text": null,
-      "acv": 250000.0,
+      "acv": 250000,
       "acv_raw": "$250,000",
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
@@ -7587,11 +7599,11 @@
   ],
   "aggregates": {
     "total_rows": 345,
-    "total_acv": 35784000.0,
-    "acv_open": 29046000.0,
-    "acv_won": 3630000.0,
-    "acv_lost": 3108000.0,
-    "unique_companies": 196,
+    "total_acv": 35784000,
+    "acv_open": 29046000,
+    "acv_won": 3630000,
+    "acv_lost": 3108000,
+    "unique_companies": 197,
     "by_stage": {
       "Demo": 52,
       "in-conversation": 214,
@@ -7609,7 +7621,7 @@
       },
       "Accenture": {
         "count": 96,
-        "acv": 9645000.0,
+        "acv": 9645000,
         "stages": {
           "Demo": 9,
           "in-conversation": 76,
@@ -7620,7 +7632,7 @@
       },
       "GSI-SI": {
         "count": 68,
-        "acv": 9300000.0,
+        "acv": 9300000,
         "stages": {
           "in-conversation": 55,
           "Demo": 3,
@@ -7631,7 +7643,7 @@
       },
       "Enterprises": {
         "count": 172,
-        "acv": 16839000.0,
+        "acv": 16839000,
         "stages": {
           "lost": 31,
           "Demo": 31,
@@ -7643,79 +7655,79 @@
     },
     "owner_leaderboard": [
       {
-        "name": "Praveen Sukumar",
-        "deals": 48,
-        "acv": 7595000.0
-      },
-      {
         "name": "Vedant Gaur",
         "deals": 30,
-        "acv": 8430000.0
+        "acv": 8430000
       },
       {
-        "name": "Anju Chaudhary",
-        "deals": 22,
-        "acv": 4250000.0
-      },
-      {
-        "name": "Jesse Palmer",
-        "deals": 20,
-        "acv": 2880000.0
+        "name": "Praveen Sukumar",
+        "deals": 48,
+        "acv": 7595000
       },
       {
         "name": "Joel Kandy",
         "deals": 16,
-        "acv": 4750000.0
+        "acv": 4750000
+      },
+      {
+        "name": "Anju Chaudhary",
+        "deals": 22,
+        "acv": 4250000
       },
       {
         "name": "Reid Jarvis",
         "deals": 14,
-        "acv": 4070000.0
+        "acv": 4070000
+      },
+      {
+        "name": "Jesse Palmer",
+        "deals": 20,
+        "acv": 2880000
       },
       {
         "name": "Mark Leibowitz",
         "deals": 10,
-        "acv": 2250000.0
-      },
-      {
-        "name": "Arkojit Kolay",
-        "deals": 7,
-        "acv": 270000.0
-      },
-      {
-        "name": "Naveedh S",
-        "deals": 5,
-        "acv": 218000.0
-      },
-      {
-        "name": "Bharath Bhat",
-        "deals": 5,
-        "acv": 118000.0
+        "acv": 2250000
       },
       {
         "name": "Siva",
         "deals": 3,
-        "acv": 700000.0
+        "acv": 700000
+      },
+      {
+        "name": "Arkojit Kolay",
+        "deals": 7,
+        "acv": 270000
+      },
+      {
+        "name": "Naveedh S",
+        "deals": 5,
+        "acv": 218000
       },
       {
         "name": "Siddharth Asokan",
         "deals": 2,
-        "acv": 200000.0
+        "acv": 200000
       },
       {
         "name": "Kushal",
         "deals": 2,
-        "acv": 145000.0
+        "acv": 145000
+      },
+      {
+        "name": "Bharath Bhat",
+        "deals": 5,
+        "acv": 118000
       },
       {
         "name": "Shefali Joshi",
         "deals": 2,
-        "acv": 100000.0
+        "acv": 100000
       },
       {
         "name": "Ravi Kumar",
         "deals": 2,
-        "acv": 58000.0
+        "acv": 58000
       },
       {
         "name": "Thomas Therkatil",
@@ -7737,86 +7749,996 @@
       {
         "company": "Accenture",
         "deals": 87,
-        "acv": 8895000.0
+        "acv": 8895000
       },
       {
         "company": "Firstsource",
         "deals": 11,
-        "acv": 4680000.0
+        "acv": 4680000
       },
       {
         "company": "Dvora",
         "deals": 1,
-        "acv": 1500000.0
+        "acv": 1500000
       },
       {
         "company": "Verifone",
         "deals": 1,
-        "acv": 1500000.0
+        "acv": 1500000
       },
       {
         "company": "Persistent Systems",
         "deals": 3,
-        "acv": 1000000.0
+        "acv": 1000000
       },
       {
         "company": "Accenture Song",
         "deals": 9,
-        "acv": 750000.0
+        "acv": 750000
       },
       {
         "company": "Publicis",
         "deals": 6,
-        "acv": 620000.0
+        "acv": 620000
       },
       {
         "company": "Movate",
         "deals": 6,
-        "acv": 500000.0
+        "acv": 500000
       },
       {
         "company": "Avanade",
         "deals": 1,
-        "acv": 500000.0
+        "acv": 500000
       },
       {
         "company": "Impetus",
         "deals": 1,
-        "acv": 500000.0
+        "acv": 500000
       },
       {
         "company": "Prudential",
         "deals": 1,
-        "acv": 500000.0
+        "acv": 500000
       },
       {
         "company": "Exl",
         "deals": 1,
-        "acv": 400000.0
+        "acv": 400000
       },
       {
         "company": "Warby Parker",
         "deals": 3,
-        "acv": 250000.0
+        "acv": 250000
       },
       {
         "company": "Crown Castle",
         "deals": 2,
-        "acv": 250000.0
+        "acv": 250000
       },
       {
         "company": "Axos Bank",
         "deals": 1,
-        "acv": 250000.0
+        "acv": 250000
+      },
+      {
+        "company": "GSAM- Investment Guideline Audit",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Haven Hill",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Northern Trust",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Sun-life",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Nvidia",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Under Armour",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Allegiant",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "AllState - ACS",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Ametek",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Arch Group",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Bayer",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Byline bank",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Cenlar",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Definity Insurance",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "DP World",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Intact Insurance",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Intuit",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "JPM Retail",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "JPMC",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Kemper",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "KeyBank (Commercial)",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Korn Ferry Digital",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Live Nation",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Metlife",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Morgan Stanley",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "National Bank of Canada",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Natwest",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Oura",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Pepsi",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Pricipal Insurance",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "RingCentral",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "SageMount",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "State Street",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "STG Labs",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Teva",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "TIAA",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Tokio Marine",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Unigen",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Unum",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "UPS",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "Valley Bank",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "WME",
+        "deals": 1,
+        "acv": 250000
+      },
+      {
+        "company": "KPMG",
+        "deals": 4,
+        "acv": 200000
+      },
+      {
+        "company": "Growth Directors",
+        "deals": 1,
+        "acv": 200000
+      },
+      {
+        "company": "Capgemini",
+        "deals": 1,
+        "acv": 150000
+      },
+      {
+        "company": "Persistent",
+        "deals": 1,
+        "acv": 150000
+      },
+      {
+        "company": "Bcg",
+        "deals": 1,
+        "acv": 150000
+      },
+      {
+        "company": "Genpact",
+        "deals": 1,
+        "acv": 150000
+      },
+      {
+        "company": "Chrys Capital -Slide generator",
+        "deals": 1,
+        "acv": 150000
+      },
+      {
+        "company": "Beacon Pointe",
+        "deals": 1,
+        "acv": 150000
+      },
+      {
+        "company": "Fvlcrum",
+        "deals": 1,
+        "acv": 120000
+      },
+      {
+        "company": "Millennium Web",
+        "deals": 1,
+        "acv": 120000
+      },
+      {
+        "company": "Nabfid Regulatory Compliance",
+        "deals": 1,
+        "acv": 120000
+      },
+      {
+        "company": "Wasabi",
+        "deals": 1,
+        "acv": 120000
+      },
+      {
+        "company": "Infosys",
+        "deals": 1,
+        "acv": 100000
+      },
+      {
+        "company": "Shorthills Ai",
+        "deals": 1,
+        "acv": 100000
+      },
+      {
+        "company": "Tata Elxsi",
+        "deals": 1,
+        "acv": 100000
+      },
+      {
+        "company": "Republic Bank",
+        "deals": 1,
+        "acv": 100000
+      },
+      {
+        "company": "SMBC",
+        "deals": 1,
+        "acv": 100000
+      },
+      {
+        "company": "Bridgestone",
+        "deals": 1,
+        "acv": 100000
+      },
+      {
+        "company": "Materialise",
+        "deals": 1,
+        "acv": 100000
+      },
+      {
+        "company": "NPD Products",
+        "deals": 1,
+        "acv": 100000
+      },
+      {
+        "company": "Peapack Private bank",
+        "deals": 1,
+        "acv": 100000
+      },
+      {
+        "company": "Trekka - VC Agents (Partnership)",
+        "deals": 1,
+        "acv": 100000
+      },
+      {
+        "company": "Star Health Insurance",
+        "deals": 1,
+        "acv": 60000
+      },
+      {
+        "company": "KRBL Limited - India Gate",
+        "deals": 1,
+        "acv": 50000
+      },
+      {
+        "company": "Minitab",
+        "deals": 1,
+        "acv": 50000
+      },
+      {
+        "company": "NexRev",
+        "deals": 1,
+        "acv": 50000
+      },
+      {
+        "company": "Screen Cloud",
+        "deals": 1,
+        "acv": 45000
+      },
+      {
+        "company": "First Source",
+        "deals": 1,
+        "acv": 40000
+      },
+      {
+        "company": "AirAsia - Marketing Agent (Phase 1)",
+        "deals": 1,
+        "acv": 33000
+      },
+      {
+        "company": "United rentals",
+        "deals": 1,
+        "acv": 30000
+      },
+      {
+        "company": "Sapcon Steels",
+        "deals": 1,
+        "acv": 25000
+      },
+      {
+        "company": "JobStep",
+        "deals": 1,
+        "acv": 18000
+      },
+      {
+        "company": "ICICI Home Finance",
+        "deals": 1,
+        "acv": 8000
+      },
+      {
+        "company": "Fs Int",
+        "deals": 9,
+        "acv": 0
+      },
+      {
+        "company": "Lyzr",
+        "deals": 8,
+        "acv": 0
+      },
+      {
+        "company": "Deloitte",
+        "deals": 4,
+        "acv": 0
+      },
+      {
+        "company": "Hfs",
+        "deals": 3,
+        "acv": 0
+      },
+      {
+        "company": "Lti",
+        "deals": 2,
+        "acv": 0
+      },
+      {
+        "company": "Wtw",
+        "deals": 2,
+        "acv": 0
+      },
+      {
+        "company": "Bajaj Allianz",
+        "deals": 2,
+        "acv": 0
+      },
+      {
+        "company": "HUL",
+        "deals": 2,
+        "acv": 0
+      },
+      {
+        "company": "eMudra",
+        "deals": 2,
+        "acv": 0
+      },
+      {
+        "company": "MSP",
+        "deals": 2,
+        "acv": 0
+      },
+      {
+        "company": "Lyzrr",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Hitachi Digital",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Nagarro",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Wns",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Fs Ext",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Saksoft",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Apexon",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Latentview",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "PwC",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Accel",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Allianz",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "AP Task",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Atomberg",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Axis Maxlife",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Bangalore Airport",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Chicago Cubs",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Citi Bank- Credit Tear Sheet Agent",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Claim processing with fraud detection",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Cloudflare-worker-poc",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Club Brugge",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "CoBe Capital",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "DBS",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "DBS V2",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "DBS V3",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Diageo",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Dispute Management",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Document Extraction for Litigation",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "EnParadigm",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Gener8tor",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Google Macy",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Harmony Bio Sciences",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "HelloGard",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "HPE",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "http",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "IHCL Digital Concierge",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "IsBank",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "LCW Legal",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Lloyds",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Malam",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Marubeni",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Meesho",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Millenium web- Brand Guidelines Agent",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Morningstar",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "NBC",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Nous",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Powergrid",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Republic",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Rivian",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "SATEC",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "SoCal Gas",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Uniglobe",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Varo bank",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Yes Bank",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "60 Hz",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Air Asia",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Altruis",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "DX Agency",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "ETS",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Finpact",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Hitachi",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "HMSA",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Katama",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "LBG",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "LSDJ",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "MentorCloud",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Novitium",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "NPD",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Penn Stainless",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "PNO",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Prophet",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Result CX",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Richfire",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "SNS",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Tiny's Construction",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Truckstop",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Uniqus",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Zinnov",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Zoovu",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "AWS ABM",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "EEBT",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "ABSA Group",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Alvarez and Marcell",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "AON",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Athena BPO",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Boeing",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Capricorn Bank",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Carl Zeiss",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Cognex",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "DBS Bank",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Deutsche Bank",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Everise",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Hero MotoCorp",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "LBBC",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Partnership Fund",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "PlayOn Sports",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "PTC Therapeutics",
+        "deals": 1,
+        "acv": 0
+      },
+      {
+        "company": "Tenshi Group",
+        "deals": 1,
+        "acv": 0
       }
     ]
   },
   "facets": {
     "segments": [
-      "Internal",
       "Accenture",
+      "Enterprises",
       "GSI-SI",
-      "Enterprises"
+      "Internal"
     ],
     "stages": [
       "Demo",
@@ -7834,12 +8756,6 @@
     ],
     "industries": [
       "BFSI",
-      "BFSI - Corporate & Commercial Banking",
-      "BFSI - Insurance",
-      "BFSI - Operations & Technology",
-      "BFSI - Retail Banking",
-      "BFSI - Support Functions",
-      "BFSI - Wealth & Private Banking",
       "Banking",
       "Customer Support",
       "FMCG",
@@ -7856,238 +8772,6 @@
       "TeleCommunication",
       "Travel and Booking",
       "VC"
-    ],
-    "companies": [
-      "60 Hz",
-      "ABSA Group",
-      "AON",
-      "AP Task",
-      "AWS ABM",
-      "Accel",
-      "Accenture",
-      "Accenture Song",
-      "Air Asia",
-      "AirAsia - Marketing Agent (Phase 1)",
-      "AllState - ACS",
-      "Allegiant",
-      "Allianz",
-      "Altruis",
-      "Alvarez and Marcell",
-      "Ametek",
-      "Apexon",
-      "Arch Group",
-      "Athena BPO",
-      "Atomberg",
-      "Avanade",
-      "Axis Maxlife",
-      "Axos Bank",
-      "Bajaj Allianz",
-      "Bangalore Airport",
-      "Bayer",
-      "Bcg",
-      "Beacon Pointe",
-      "Boeing",
-      "Bridgestone",
-      "Byline bank",
-      "Capgemini",
-      "Capricorn Bank",
-      "Carl Zeiss",
-      "Cenlar",
-      "Chicago Cubs",
-      "Chrys Capital -Slide generator",
-      "Citi Bank- Credit Tear Sheet Agent",
-      "Claim processing with fraud detection",
-      "Cloudflare-worker-poc",
-      "Club Brugge",
-      "CoBe Capital",
-      "Cognex",
-      "Crown Castle",
-      "DBS",
-      "DBS Bank",
-      "DBS V2",
-      "DBS V3",
-      "DP World",
-      "DX Agency",
-      "Definity Insurance",
-      "Deloitte",
-      "Deutsche Bank",
-      "Diageo",
-      "Dispute Management",
-      "Document Extraction for Litigation",
-      "Dvora",
-      "EEBT",
-      "ETS",
-      "EnParadigm",
-      "Everise",
-      "Exl",
-      "Finpact",
-      "First Source",
-      "Firstsource",
-      "Fs Ext",
-      "Fs Int",
-      "Fvlcrum",
-      "GSAM- Investment Guideline Audit",
-      "Gener8tor",
-      "Genpact",
-      "Google Macy",
-      "Growth Directors",
-      "HMSA",
-      "HPE",
-      "HUL",
-      "Harmony Bio Sciences",
-      "Haven Hill",
-      "HelloGard",
-      "Hero MotoCorp",
-      "Hfs",
-      "Hitachi",
-      "Hitachi Digital",
-      "ICICI Home Finance",
-      "IHCL Digital Concierge",
-      "Impetus",
-      "Infosys",
-      "Intact Insurance",
-      "Intuit",
-      "IsBank",
-      "JPM Retail",
-      "JPMC",
-      "JobStep",
-      "KPMG",
-      "KRBL Limited - India Gate",
-      "Katama",
-      "Kemper",
-      "KeyBank (Commercial)",
-      "Korn Ferry Digital",
-      "LBBC",
-      "LBG",
-      "LCW Legal",
-      "LSDJ",
-      "Latentview",
-      "Live Nation",
-      "Lloyds",
-      "Lti",
-      "Lyzr",
-      "MSP",
-      "Malam",
-      "Marubeni",
-      "Materialise",
-      "Meesho",
-      "MentorCloud",
-      "Metlife",
-      "Millenium web- Brand Guidelines Agent",
-      "Millennium Web",
-      "Minitab",
-      "Morgan Stanley",
-      "Morningstar",
-      "Movate",
-      "NBC",
-      "NPD",
-      "NPD Products",
-      "Nabfid Regulatory Compliance",
-      "Nagarro",
-      "National Bank of Canada",
-      "Natwest",
-      "NexRev",
-      "Northern Trust",
-      "Nous",
-      "Novitium",
-      "Nvidia",
-      "Oura",
-      "PNO",
-      "PTC Therapeutics",
-      "Partnership Fund",
-      "Peapack Private bank",
-      "Penn Stainless",
-      "Pepsi",
-      "Persistent",
-      "Persistent Systems",
-      "PlayOn Sports",
-      "Powergrid",
-      "Pricipal Insurance",
-      "Prophet",
-      "Prudential",
-      "Publicis",
-      "PwC",
-      "Republic",
-      "Republic Bank",
-      "Result CX",
-      "Richfire",
-      "RingCentral",
-      "Rivian",
-      "SATEC",
-      "SMBC",
-      "SNS",
-      "STG Labs",
-      "SageMount",
-      "Saksoft",
-      "Sapcon Steels",
-      "Screen Cloud",
-      "Shorthills Ai",
-      "SoCal Gas",
-      "Star Health Insurance",
-      "State Street",
-      "Sun-life",
-      "TIAA",
-      "Tata Elxsi",
-      "Tenshi Group",
-      "Teva",
-      "Tiny's Construction",
-      "Tokio Marine",
-      "Trekka - VC Agents (Partnership)",
-      "Truckstop",
-      "UPS",
-      "Under Armour",
-      "Unigen",
-      "Uniglobe",
-      "Uniqus",
-      "United rentals",
-      "Unum",
-      "Valley Bank",
-      "Varo bank",
-      "Verifone",
-      "WME",
-      "Warby Parker",
-      "Wasabi",
-      "Wns",
-      "Wtw",
-      "Yes Bank",
-      "Zinnov",
-      "Zoovu",
-      "eMudra",
-      "http"
-    ],
-    "prototype_owners": [
-      "Abhishek Bhat",
-      "Ayush Kumar",
-      "Barathan",
-      "Harshit Nariya",
-      "Kabir Chhabra",
-      "Karan",
-      "Mudit Pandey",
-      "Pranay",
-      "Rohith",
-      "Sneha",
-      "Vaseem",
-      "Zahid"
-    ],
-    "opportunity_owners": [
-      "Amol",
-      "Anju Chaudhary",
-      "Arkojit Kolay",
-      "Bharath Bhat",
-      "Jesse Palmer",
-      "Jill Ravitz",
-      "Joel Kandy",
-      "Kushal",
-      "Mark Leibowitz",
-      "Naveedh S",
-      "Praveen Sukumar",
-      "Ravi Kumar",
-      "Reid Jarvis",
-      "Shefali Joshi",
-      "Siddharth Asokan",
-      "Siva",
-      "Thomas Therkatil",
-      "Vedant Gaur"
     ]
   }
 }
