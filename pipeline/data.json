@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-05-26T17:43:55.610Z",
+  "generated_at": "2026-05-26T17:44:16.365Z",
   "source_file": "tracker.xlsx",
   "rows": [
     {
       "id": "INT-0001",
       "segment": "Internal",
       "sn": 1,
-      "company": "Lyzrr",
+      "company": "Lyzr",
       "industry": "Marketing",
       "project": "CFO's Office",
       "use_case": "CFO's Office",
@@ -22,6 +22,16 @@
       "close_date_raw": null,
       "close_quarter": null,
       "edit_history": [
+        {
+          "edited_by": "Kailash G M",
+          "edited_at": "2026-05-26T17:44:16.365Z",
+          "changes": {
+            "company": {
+              "old": "Lyzrr",
+              "new": "Lyzr"
+            }
+          }
+        },
         {
           "edited_by": "Kailash G M",
           "edited_at": "2026-05-26T17:43:55.610Z",
@@ -587,7 +597,7 @@
       "company": "Accenture",
       "industry": "R&D",
       "project": "Ge Vernova",
-      "use_case": "The use case focuses on building an AI-powered engineering knowledge hub for GE Vernova R&D teams that centralizes internal and external technical data and enables intelligent, context-aware search. The goal is to reduce information retrieval time from 10â15 minutes to seconds by using an agent that refines queries and pulls precise insights from distributed, access-controlled data sources.",
+      "use_case": "The use case focuses on building an AI-powered engineering knowledge hub for GE Vernova R&D teams that centralizes internal and external technical data and enables intelligent, context-aware search. The goal is to reduce information retrieval time from 10Ã¢ÂÂ15 minutes to seconds by using an agent that refines queries and pulls precise insights from distributed, access-controlled data sources.",
       "category": "Custom Implementation",
       "stage": "in-conversation",
       "prototype_owners": [
@@ -633,7 +643,7 @@
       "company": "Accenture",
       "industry": null,
       "project": "Workload Manager Agent",
-      "use_case": "The use case focuses on building an Agentic AIâdriven workload management solution that generates and continuously updates project workload forecasts by leveraging pipeline data, ongoing contracts, historical benchmarks, and resource master data",
+      "use_case": "The use case focuses on building an Agentic AIÃ¢ÂÂdriven workload management solution that generates and continuously updates project workload forecasts by leveraging pipeline data, ongoing contracts, historical benchmarks, and resource master data",
       "category": "Custom Implementation",
       "stage": "Demo",
       "prototype_owners": [
@@ -4135,7 +4145,7 @@
       "sn": 17,
       "company": "Crown Castle",
       "industry": "TeleCommunication",
-      "project": "Crown Castle - Â Drone Image Analysis",
+      "project": "Crown Castle - ÃÂ Drone Image Analysis",
       "use_case": null,
       "category": "RPT Prototype",
       "stage": "win",
@@ -7603,7 +7613,7 @@
     "acv_open": 29046000,
     "acv_won": 3630000,
     "acv_lost": 3108000,
-    "unique_companies": 197,
+    "unique_companies": 196,
     "by_stage": {
       "Demo": 52,
       "in-conversation": 214,
@@ -8197,13 +8207,13 @@
         "acv": 8000
       },
       {
-        "company": "Fs Int",
+        "company": "Lyzr",
         "deals": 9,
         "acv": 0
       },
       {
-        "company": "Lyzr",
-        "deals": 8,
+        "company": "Fs Int",
+        "deals": 9,
         "acv": 0
       },
       {
@@ -8244,11 +8254,6 @@
       {
         "company": "MSP",
         "deals": 2,
-        "acv": 0
-      },
-      {
-        "company": "Lyzrr",
-        "deals": 1,
         "acv": 0
       },
       {
