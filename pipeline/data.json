@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-26T17:44:36.648Z",
+  "generated_at": "2026-05-27T12:10:17.151Z",
   "source_file": "tracker.xlsx",
   "rows": [
     {
@@ -597,7 +597,7 @@
       "company": "Accenture",
       "industry": "R&D",
       "project": "Ge Vernova",
-      "use_case": "The use case focuses on building an AI-powered engineering knowledge hub for GE Vernova R&D teams that centralizes internal and external technical data and enables intelligent, context-aware search. The goal is to reduce information retrieval time from 10ÃÂ¢ÃÂÃÂ15 minutes to seconds by using an agent that refines queries and pulls precise insights from distributed, access-controlled data sources.",
+      "use_case": "The use case focuses on building an AI-powered engineering knowledge hub for GE Vernova R&D teams that centralizes internal and external technical data and enables intelligent, context-aware search. The goal is to reduce information retrieval time from 10ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ15 minutes to seconds by using an agent that refines queries and pulls precise insights from distributed, access-controlled data sources.",
       "category": "Custom Implementation",
       "stage": "in-conversation",
       "prototype_owners": [
@@ -643,7 +643,7 @@
       "company": "Accenture",
       "industry": null,
       "project": "Workload Manager Agent",
-      "use_case": "The use case focuses on building an Agentic AIÃÂ¢ÃÂÃÂdriven workload management solution that generates and continuously updates project workload forecasts by leveraging pipeline data, ongoing contracts, historical benchmarks, and resource master data",
+      "use_case": "The use case focuses on building an Agentic AIÃÂÃÂ¢ÃÂÃÂÃÂÃÂdriven workload management solution that generates and continuously updates project workload forecasts by leveraging pipeline data, ongoing contracts, historical benchmarks, and resource master data",
       "category": "Custom Implementation",
       "stage": "Demo",
       "prototype_owners": [
@@ -4161,7 +4161,7 @@
       "sn": 17,
       "company": "Crown Castle",
       "industry": "TeleCommunication",
-      "project": "Crown Castle - ÃÂÃÂ Drone Image Analysis",
+      "project": "Crown Castle - ÃÂÃÂÃÂÃÂ Drone Image Analysis",
       "use_case": null,
       "category": "RPT Prototype",
       "stage": "win",
@@ -7621,17 +7621,40 @@
       "time_period": "Annual",
       "close_date_raw": "Q2 2026",
       "close_quarter": "Q2 2026"
+    },
+    {
+      "id": "ENT-0346",
+      "segment": "Enterprises",
+      "sn": 173,
+      "company": "Publicis",
+      "industry": "Cross-Industry Enterprise Sales & Procurement",
+      "project": "Lyzr Procurement AgenticOS",
+      "use_case": "The Bid Intelligence Platform helps enterprises manage RFPs, RFQs, PQQs, and proposals through AI-assisted response drafting, compliance review, knowledge base integration, analytics, and audit-ready human-in-the-loop workflows.\n\nIt enables bid teams to track active bids, draft source-backed responses from prior documents, route questions for SME review, assess compliance gaps, generate mitigation plans, sync SharePoint knowledge, view collateral coverage, and manage approvals through configurable confidence, authority, and recency thresholds.",
+      "category": "Procurement Solutions",
+      "stage": "Demo",
+      "prototype_owners": [],
+      "opportunity_owners": [],
+      "prototype_link": "https://drive.google.com/file/d/1zsc2wy3_WYSUhXI_Qf5hWaPw34dl5UZX/view",
+      "prototype_link_text": "https://drive.google.com/file/d/1zsc2wy3_WYSUhXI_Qf5hWaPw34dl5UZX/view",
+      "acv": null,
+      "acv_raw": null,
+      "time_period": null,
+      "close_date_raw": null,
+      "close_quarter": null,
+      "created_by": "Stacey Horricks",
+      "created_at": "2026-05-27T12:10:17.151Z",
+      "edit_history": []
     }
   ],
   "aggregates": {
-    "total_rows": 345,
+    "total_rows": 346,
     "total_acv": 35784000,
     "acv_open": 29046000,
     "acv_won": 3630000,
     "acv_lost": 3108000,
     "unique_companies": 197,
     "by_stage": {
-      "Demo": 52,
+      "Demo": 53,
       "in-conversation": 214,
       "win": 13,
       "customer": 29,
@@ -7668,11 +7691,11 @@
         }
       },
       "Enterprises": {
-        "count": 172,
+        "count": 173,
         "acv": 16839000,
         "stages": {
           "lost": 31,
-          "Demo": 31,
+          "Demo": 32,
           "in-conversation": 83,
           "win": 7,
           "customer": 20
@@ -7804,7 +7827,7 @@
       },
       {
         "company": "Publicis",
-        "deals": 6,
+        "deals": 7,
         "acv": 620000
       },
       {
@@ -8778,11 +8801,13 @@
       "Lyzr Internal",
       "Pipeline Opportunity",
       "Potential Customer",
+      "Procurement Solutions",
       "RPT Prototype"
     ],
     "industries": [
       "BFSI",
       "Banking",
+      "Cross-Industry Enterprise Sales & Procurement",
       "Customer Support",
       "FMCG",
       "HR",
