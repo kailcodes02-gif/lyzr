@@ -1134,7 +1134,11 @@
                     @click="setQuickView('no-owner')">No owner</button>
             <button class="qv-chip" :class="quickView==='has-prototype' && 'active'"
                     @click="setQuickView('has-prototype')">Has prototype</button>
-            <button class="qv-chip" disabled title="Sign in with @lyzr.ai to enable">My pipeline</button>
+            <button class="qv-chip" :class="quickView==='my-pipeline' && 'active'"
+                    x-show="authed"
+                    :disabled="!myOwnerName()"
+                    :title="myOwnerName() ? 'Deals you own' : 'Your @lyzr.ai email is not mapped to an owner name yet'"
+                    @click="myOwnerName() && setQuickView('my-pipeline')">My pipeline</button>
 
             <div class="ml-auto flex items-center gap-2">
               <input
@@ -1744,6 +1748,27 @@ function lyzrApp() {
       { id: 'gt1M',   label: '$1M and up' },
     ],
 
+    // Maps a signed-in @lyzr.ai email to the owner display name used in the
+    // data, so the "My pipeline" chip can filter to rows the user owns.
+    // CONFIRMED entries come from the architecture session (see README).
+    // TODO entries are inferred from the firstname@lyzr.ai convention and must
+    // be confirmed against the real Workspace directory before being relied on.
+    ownerEmailMap: {
+      // --- confirmed ---
+      'praveen@lyzr.ai': 'Praveen Sukumar',
+      'vedant@lyzr.ai':  'Vedant Gaur',
+      'anju@lyzr.ai':    'Anju Chaudhary',
+      // --- inferred, TODO: confirm exact email aliases ---
+      'harshit@lyzr.ai':  'Harshit Nariya',
+      'kabir@lyzr.ai':    'Kabir Chhabra',
+      'ayush@lyzr.ai':    'Ayush Kumar',
+      'mudit@lyzr.ai':    'Mudit Pandey',
+      'arkojit@lyzr.ai':  'Arkojit Kolay',
+      'naveedh@lyzr.ai':  'Naveedh S',
+      'bharath@lyzr.ai':  'Bharath Bhat',
+      'abhishek@lyzr.ai': 'Abhishek Bhat',
+    },
+
     // --- add/edit ---
     showAddDrawer: false,
     addStep: 'form', // 'form' | 'review'
@@ -1879,6 +1904,12 @@ function lyzrApp() {
     userLabel() {
       return this.user.name || this.user.email || 'Signed in';
     },
+    // Resolve the signed-in user to their owner display name (or null if their
+    // email is not in ownerEmailMap). Drives the "My pipeline" quick view.
+    myOwnerName() {
+      const email = ((this.user && this.user.email) || '').toLowerCase();
+      return this.ownerEmailMap[email] || null;
+    },
 
     // ---------- VIEW SWITCHING ----------
     setView(v) {
@@ -1993,7 +2024,7 @@ function lyzrApp() {
         // Stage + ACV floor handled in matchesFilters predicate (>= $100K)
         this.filters.stages = [];
         this.filters.acvBucket = 'any';
-      } else if (qv === 'no-owner' || qv === 'has-prototype') {
+      } else if (qv === 'no-owner' || qv === 'has-prototype' || qv === 'my-pipeline') {
         this.filters.stages = [];
         this.filters.acvBucket = 'any';
       }
@@ -2030,6 +2061,12 @@ function lyzrApp() {
       }
       if (this.quickView === 'has-prototype') {
         if (!row.prototype_link) return false;
+      }
+      if (this.quickView === 'my-pipeline') {
+        const me = this.myOwnerName();
+        if (!me) return false;
+        if (!row.opportunity_owners.includes(me) &&
+            !row.prototype_owners.includes(me)) return false;
       }
 
       // Stage

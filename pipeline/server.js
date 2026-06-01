@@ -180,13 +180,25 @@ function verifyGoogleToken(accessToken) {
       let body = '';
       res.on('data', chunk => body += chunk);
       res.on('end', () => {
+        // Reject non-2xx responses (e.g. 401 for an expired/invalid token)
+        // before attempting to read identity claims from the body.
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          return resolve(null);
+        }
         try {
           const payload = JSON.parse(body);
-          if (payload.hd === 'lyzr.ai' && payload.email_verified) {
-            resolve(payload);
-          } else {
-            resolve(null);
-          }
+          const email = payload.email || '';
+          const emailVerified = payload.email_verified === true || payload.email_verified === 'true';
+          // Match the Cloudflare functions: accept a verified @lyzr.ai email OR
+          // the hd=lyzr.ai claim (plus the one dev gmail). The old check only
+          // looked at `hd`, which wrongly rejected valid @lyzr.ai tokens whose
+          // userinfo response omits the hosted-domain claim.
+          const isLyzrOrDev = emailVerified && (
+            email.endsWith('@lyzr.ai') ||
+            payload.hd === 'lyzr.ai' ||
+            email === 'kailcodes02@gmail.com'
+          );
+          resolve(isLyzrOrDev ? payload : null);
         } catch {
           resolve(null);
         }
@@ -237,6 +249,11 @@ app.post('/api/rows', requireAuth, (req, res) => {
         error: 'Missing required fields: segment, project, stage',
       });
     }
+    if (!ALLOWED_SEGMENTS.includes(body.segment)) {
+      return res.status(400).json({
+        error: `Invalid segment. Must be one of: ${ALLOWED_SEGMENTS.join(', ')}`,
+      });
+    }
 
     const newRow = {
       id: generateId(data.rows, body.segment),
@@ -252,8 +269,8 @@ app.post('/api/rows', requireAuth, (req, res) => {
       opportunity_owners: parseOwners(body.opportunity_owners),
       prototype_link: body.prototype_link || null,
       prototype_link_text: body.prototype_link || null,
-      acv: body.acv ? Number(body.acv) : null,
-      acv_raw: body.acv ? String(body.acv) : null,
+      acv: parseAcv(body.acv),
+      acv_raw: (body.acv === null || body.acv === undefined || body.acv === '') ? null : String(body.acv),
       time_period: body.time_period || null,
       close_date_raw: body.close_date_raw || null,
       close_quarter: body.close_quarter || null,
@@ -286,6 +303,12 @@ app.put('/api/rows/:id', requireAuth, (req, res) => {
     const existing = data.rows[rowIndex];
     const body = req.body;
 
+    if (body.segment !== undefined && !ALLOWED_SEGMENTS.includes(body.segment)) {
+      return res.status(400).json({
+        error: `Invalid segment. Must be one of: ${ALLOWED_SEGMENTS.join(', ')}`,
+      });
+    }
+
     // Track what changed
     const editableFields = [
       'company', 'industry', 'project', 'use_case', 'category', 'stage',
@@ -303,27 +326,28 @@ app.put('/api/rows/:id', requireAuth, (req, res) => {
         if (field === 'opportunity_owners' || field === 'prototype_owners') {
           newVal = parseOwners(newVal);
         }
-        // Parse ACV
+        // Parse ACV (NaN-safe)
         if (field === 'acv') {
-          newVal = newVal ? Number(newVal) : null;
+          newVal = parseAcv(newVal);
         }
 
         // Compare (stringify for arrays)
         const oldStr = JSON.stringify(oldVal);
         const newStr = JSON.stringify(newVal);
         if (oldStr !== newStr) {
-          changes[field] = { old: oldVal, new: newVal };
+          changes[field] = { old: oldVal === undefined ? null : oldVal, new: newVal };
           existing[field] = newVal;
         }
       }
     }
 
-    // Update derived fields
-    if (changes.prototype_link) {
+    // Update derived fields. Use `in changes` (not truthiness) so clearing a
+    // value to null still re-syncs the derived field.
+    if ('prototype_link' in changes) {
       existing.prototype_link_text = existing.prototype_link;
     }
-    if (changes.acv) {
-      existing.acv_raw = existing.acv ? String(existing.acv) : null;
+    if ('acv' in changes) {
+      existing.acv_raw = existing.acv === null ? null : String(existing.acv);
     }
 
     // Add to edit history (keep last 3)
@@ -358,9 +382,18 @@ app.put('/api/rows/:id', requireAuth, (req, res) => {
 /** Parse owner input — accepts string (comma-separated) or array */
 function parseOwners(input) {
   if (!input) return [];
-  if (Array.isArray(input)) return input.map(s => s.trim()).filter(Boolean);
+  if (Array.isArray(input)) return input.map(s => String(s).trim()).filter(Boolean);
   return String(input).split(',').map(s => s.trim()).filter(Boolean);
 }
+
+/** Parse an ACV value into a finite number, or null (guards against NaN). */
+function parseAcv(input) {
+  if (input === null || input === undefined || input === '') return null;
+  const n = Number(input);
+  return Number.isFinite(n) ? n : null;
+}
+
+const ALLOWED_SEGMENTS = ['Internal', 'Accenture', 'GSI-SI', 'Enterprises'];
 
 // =============================================================================
 // START

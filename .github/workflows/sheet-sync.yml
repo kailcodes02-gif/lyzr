@@ -1,0 +1,49 @@
+name: Sync pipeline from Google Sheet
+
+# Option B (service account) live data sync. See docs/google-sheets-sync.md.
+#
+# MANUAL ONLY for now: this runs only when triggered by hand, so it never fails
+# noisily on a schedule before the secrets exist. Once the secrets below are set
+# and a manual run succeeds, uncomment the `schedule` block to automate it.
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: '0 * * * *'   # hourly; adjust cadence as needed
+
+# Required repo secrets (Settings > Secrets and variables > Actions):
+#   GOOGLE_SERVICE_ACCOUNT_JSON  the service account key JSON (sheet shared with its email)
+#   GOOGLE_SHEET_ID              the spreadsheet id from the sheet URL
+# Optional repo variable:
+#   SHEET_RANGE                  e.g. "Pipeline!A1:L" (defaults in the script)
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r scripts/sheet-sync/requirements.txt
+
+      - name: Pull sheet and regenerate data.json
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          SHEET_RANGE: ${{ vars.SHEET_RANGE }}
+        run: python3 scripts/sheet-sync/sync_from_sheets.py
+
+      - name: Commit data.json if it changed
+        run: |
+          if git diff --quiet -- pipeline/data.json; then
+            echo "No data.json changes; nothing to commit."
+          else
+            git config user.name  "sheet-sync-bot"
+            git config user.email "actions@github.com"
+            git add pipeline/data.json
+            git commit -m "data: sync pipeline from Google Sheet"
+            git push
+          fi

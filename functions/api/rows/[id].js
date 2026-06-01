@@ -9,10 +9,23 @@
 //  5. Committing updated data.json back to GitHub
 // =============================================================================
 
+const ALLOWED_SEGMENTS = ['Internal', 'Accenture', 'GSI-SI', 'Enterprises'];
+// Sentinel returned by a mutate() callback to tell commitWithRetry to skip the
+// commit entirely (e.g. the target row was not found).
+const ABORT_COMMIT = Symbol('ABORT_COMMIT');
+
 function parseOwners(input) {
   if (!input) return [];
-  if (Array.isArray(input)) return input.map((s) => s.trim()).filter(Boolean);
+  if (Array.isArray(input)) return input.map((s) => String(s).trim()).filter(Boolean);
   return String(input).split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+// Parse an ACV value into a finite number, or null. Guards against NaN
+// (e.g. Number("abc")) leaking into the row and poisoning total_acv.
+function parseAcv(input) {
+  if (input === null || input === undefined || input === '') return null;
+  const n = Number(input);
+  return Number.isFinite(n) ? n : null;
 }
 
 function recomputeAggregates(data) {
@@ -140,9 +153,88 @@ async function commitDataToGitHub(env, data, sha, message) {
   });
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`GitHub PUT failed: ${res.status} — ${err}`);
+    const e = new Error(`GitHub PUT failed: ${res.status} — ${err}`);
+    e.status = res.status;
+    throw e;
   }
   return res.json();
+}
+
+// Read-modify-write with optimistic-concurrency retry on SHA conflict (409/422),
+// so a concurrent edit cannot silently drop this one. See functions/api/rows.js
+// for the full rationale.
+async function commitWithRetry(env, mutate, buildMessage, maxAttempts = 4) {
+  let lastErr;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const { data, sha } = await fetchDataFromGitHub(env);
+    const result = mutate(data);
+    if (result === ABORT_COMMIT) return ABORT_COMMIT;
+    const message = buildMessage(result, data);
+    try {
+      await commitDataToGitHub(env, data, sha, message);
+      return result;
+    } catch (err) {
+      if (err.status === 409 || err.status === 422) {
+        lastErr = err;
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error(
+    `GitHub commit failed after ${maxAttempts} attempts (SHA conflict): ${lastErr && lastErr.message}`
+  );
+}
+
+// Apply an edit to a row in place, recording the diff into edit_history (last 3).
+function applyRowEdit(existing, body, user) {
+  const editableFields = [
+    'company', 'industry', 'project', 'use_case', 'category', 'stage',
+    'prototype_link', 'acv', 'time_period', 'close_date_raw', 'close_quarter',
+    'opportunity_owners', 'prototype_owners', 'segment',
+  ];
+
+  const changes = {};
+  for (const field of editableFields) {
+    if (body[field] === undefined) continue;
+    const oldVal = existing[field];
+    let newVal = body[field];
+
+    if (field === 'opportunity_owners' || field === 'prototype_owners') {
+      newVal = parseOwners(newVal);
+    }
+    if (field === 'acv') {
+      newVal = parseAcv(newVal);
+    }
+
+    const oldStr = JSON.stringify(oldVal);
+    const newStr = JSON.stringify(newVal);
+    if (oldStr !== newStr) {
+      changes[field] = { old: oldVal === undefined ? null : oldVal, new: newVal };
+      existing[field] = newVal;
+    }
+  }
+
+  if ('prototype_link' in changes) {
+    existing.prototype_link_text = existing.prototype_link;
+  }
+  if ('acv' in changes) {
+    existing.acv_raw = existing.acv === null ? null : String(existing.acv);
+  }
+
+  if (Object.keys(changes).length > 0) {
+    if (!existing.edit_history) existing.edit_history = [];
+    existing.edit_history.unshift({
+      edited_by: user.name || user.email,
+      edited_at: new Date().toISOString(),
+      changes,
+    });
+    if (existing.edit_history.length > 3) {
+      existing.edit_history = existing.edit_history.slice(0, 3);
+    }
+  }
+
+  return { row: existing, changes };
 }
 
 // ---- handler ----------------------------------------------------------------
@@ -172,75 +264,31 @@ export async function onRequestPut(context) {
     return json({ error: 'Invalid JSON body' }, 400);
   }
 
+  if (body.segment !== undefined && !ALLOWED_SEGMENTS.includes(body.segment)) {
+    return json({ error: `Invalid segment. Must be one of: ${ALLOWED_SEGMENTS.join(', ')}` }, 400);
+  }
+
   if (!env.GITHUB_OWNER || !env.GITHUB_REPO || !env.GITHUB_TOKEN || !env.GITHUB_PATH) {
     return json({ error: 'GitHub environment variables not configured' }, 503);
   }
 
   try {
-    const { data, sha } = await fetchDataFromGitHub(env);
-    const rowIndex = data.rows.findIndex((r) => r.id === rowId);
-    if (rowIndex === -1) {
-      return json({ error: `Row ${rowId} not found` }, 404);
-    }
-
-    const existing = data.rows[rowIndex];
-    const editableFields = [
-      'company', 'industry', 'project', 'use_case', 'category', 'stage',
-      'prototype_link', 'acv', 'time_period', 'close_date_raw', 'close_quarter',
-      'opportunity_owners', 'prototype_owners', 'segment',
-    ];
-
-    const changes = {};
-    for (const field of editableFields) {
-      if (body[field] === undefined) continue;
-      const oldVal = existing[field];
-      let newVal = body[field];
-
-      if (field === 'opportunity_owners' || field === 'prototype_owners') {
-        newVal = parseOwners(newVal);
-      }
-      if (field === 'acv') {
-        newVal = newVal ? Number(newVal) : null;
-      }
-
-      const oldStr = JSON.stringify(oldVal);
-      const newStr = JSON.stringify(newVal);
-      if (oldStr !== newStr) {
-        changes[field] = { old: oldVal, new: newVal };
-        existing[field] = newVal;
-      }
-    }
-
-    if (changes.prototype_link) {
-      existing.prototype_link_text = existing.prototype_link;
-    }
-    if (changes.acv) {
-      existing.acv_raw = existing.acv ? String(existing.acv) : null;
-    }
-
-    if (Object.keys(changes).length > 0) {
-      if (!existing.edit_history) existing.edit_history = [];
-      existing.edit_history.unshift({
-        edited_by: user.name || user.email,
-        edited_at: new Date().toISOString(),
-        changes,
-      });
-      if (existing.edit_history.length > 3) {
-        existing.edit_history = existing.edit_history.slice(0, 3);
-      }
-    }
-
-    data.rows[rowIndex] = existing;
-    recomputeAggregates(data);
-
-    await commitDataToGitHub(
+    const result = await commitWithRetry(
       env,
-      data,
-      sha,
-      `data: edit "${existing.project}" [${rowId}] by ${user.email}`
+      (data) => {
+        const rowIndex = data.rows.findIndex((r) => r.id === rowId);
+        if (rowIndex === -1) return ABORT_COMMIT;
+        const res = applyRowEdit(data.rows[rowIndex], body, user);
+        recomputeAggregates(data);
+        return res;
+      },
+      (res) => `data: edit "${(res && res.row && res.row.project) || rowId}" [${rowId}] by ${user.email}`
     );
 
-    return json({ success: true, row: existing, changes }, 200);
+    if (result === ABORT_COMMIT) {
+      return json({ error: `Row ${rowId} not found` }, 404);
+    }
+    return json({ success: true, row: result.row, changes: result.changes }, 200);
   } catch (err) {
     console.error('PUT /api/rows/[id] error:', err);
     return json({ error: err.message || 'Internal error' }, 500);

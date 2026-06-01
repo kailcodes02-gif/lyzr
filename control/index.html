@@ -402,9 +402,14 @@
 
   <script>
     // ── Auth Check Disabled per User Request ────────────────────────────────
+    // NOTE: the #auth-check gate element was removed when auth was disabled, so
+    // it may be absent. Guard the access so this IIFE does not throw and abort
+    // the rest of this script tag (which wires the Burn Memory modal below).
     (function disableAuthCheck() {
-      document.getElementById('auth-check').style.display  = 'none';
-      document.getElementById('page-content').style.display = 'block';
+      const authCheck = document.getElementById('auth-check');
+      if (authCheck) authCheck.style.display = 'none';
+      const pageContent = document.getElementById('page-content');
+      if (pageContent) pageContent.style.display = 'block';
     })();
 
     // ── System health auto-refresh (placeholder) ──────────────────────────────

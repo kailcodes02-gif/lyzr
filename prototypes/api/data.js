@@ -34,8 +34,12 @@ async function verifyGoogleToken(accessToken) {
 }
 
 export default async function handler(req, res) {
-  // CORS headers
+  // CORS headers. The Allow-Headers entry is required for the browser to send
+  // the Authorization header on a cross-origin (preflighted) request; without
+  // it the preflight fails and the real request never goes out.
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') {
@@ -75,7 +79,12 @@ export default async function handler(req, res) {
     }
 
     const meta = await ghRes.json();
-    // GitHub encodes file content as base64
+    // GitHub encodes file content as base64. For >1MB blobs it returns
+    // encoding: "none" with empty content, and for directories `content` is
+    // absent; guard both so we fail clearly instead of returning garbage.
+    if (typeof meta.content !== 'string' || meta.encoding !== 'base64') {
+      return res.status(502).json({ error: 'Unexpected GitHub response (content not base64-encoded)' });
+    }
     const content = Buffer.from(meta.content, 'base64').toString('utf-8');
     const data = JSON.parse(content);
 

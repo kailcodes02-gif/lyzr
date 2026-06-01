@@ -125,10 +125,13 @@
       const FAIL_KEY = 'wos_fails';
       const MAX_FAILS = 3;
 
-      // On load: hide gear if already locked out
+      // On load: hide gear if already locked out.
+      // NOTE: the gear button was removed from the page (see commit "Removed gear
+      // icon"), so gearBtn may be null. Guard every access so the login script
+      // does not throw on load and the modal can still be opened programmatically.
       const fails = parseInt(sessionStorage.getItem(FAIL_KEY) || '0', 10);
       const gearBtn = document.getElementById('gear-btn');
-      if (fails >= MAX_FAILS) {
+      if (gearBtn && fails >= MAX_FAILS) {
         gearBtn.style.display = 'none';
       }
 
@@ -151,8 +154,10 @@
         backdrop.classList.add('hidden');
       }
 
-      // Gear click → open modal
-      gearBtn.addEventListener('click', openModal);
+      // Gear click → open modal (gear button is currently absent; guard the bind)
+      if (gearBtn) {
+        gearBtn.addEventListener('click', openModal);
+      }
 
       // Backdrop click → close (does NOT reset fail count)
       backdrop.addEventListener('click', function (e) {

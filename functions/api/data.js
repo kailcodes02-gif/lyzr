@@ -40,7 +40,16 @@ export async function onRequestGet(context) {
     }
 
     const meta = await ghRes.json();
-    // GitHub returns base64-encoded content
+    // GitHub returns base64-encoded content for files. For blobs over 1MB it
+    // returns content: "" with encoding: "none" (use the Blob/raw API instead),
+    // and for directories `content` is absent entirely. Guard both so we fail
+    // with a clear 502 rather than crashing on atob(undefined).
+    if (typeof meta.content !== 'string' || meta.encoding !== 'base64') {
+      return new Response(
+        JSON.stringify({ error: 'Unexpected GitHub response (content not base64-encoded)' }),
+        { status: 502, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
     const content = atob(meta.content.replace(/\n/g, ''));
     const data = JSON.parse(content);
 

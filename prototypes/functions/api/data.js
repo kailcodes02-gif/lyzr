@@ -45,6 +45,14 @@ export async function onRequestGet(context) {
     }
 
     const meta = await ghRes.json();
+    // Guard against >1MB blobs (encoding: "none", empty content) and directories
+    // (no `content`) so we fail clearly instead of crashing on atob(undefined).
+    if (typeof meta.content !== 'string' || meta.encoding !== 'base64') {
+      return new Response(
+        JSON.stringify({ error: 'Unexpected GitHub response (content not base64-encoded)' }),
+        { status: 502, headers: corsHeaders }
+      );
+    }
     const content = atob(meta.content.replace(/\n/g, ''));
     const data = JSON.parse(content);
 

@@ -1,0 +1,4 @@
+# Dependencies for scripts/sheet-sync/sync_from_sheets.py (Option B: service account)
+google-api-python-client>=2.0.0
+google-auth>=2.0.0
+openpyxl>=3.1.0
