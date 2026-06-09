@@ -13,7 +13,7 @@
 >
 > | | |
 > |---|---|
-> | **Last updated** | 2026-06-01 |
+> | **Last updated** | 2026-06-09 |
 > | **Maintained by** | subs@lyzr.ai (with Claude Code) |
 > | **Git repo** | `github.com/kailcodes02-gif/lyzr` (branch `main`) |
 > | **Live domain** | `https://lyzr.kailash-gm.com` |
@@ -398,6 +398,29 @@ Access if the data ever becomes confidential.
 
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
+
+### 2026-06-09, GSI/SI GTM strategy page published at `/GSI_GTM`
+- Added `GSI_GTM/index.html` — a standalone interactive "GSI & SI Growth Engine"
+  strategy view (objective-lens / channel-group-lens toggle, funnel filters, 42
+  activities across 9 channel families). Self-contained single file; no shared deps.
+- Serves at `https://lyzr.kailash-gm.com/GSI_GTM` via the existing root Cloudflare
+  Pages deploy (folder + `index.html`, same pattern as `control/`, `reports/`).
+- The source HTML arrived UTF-8-mojibaked (`Â·`, `â€"`, card arrow). Repaired
+  deterministically: `·` middot, `▸` disclosure triangle, `✕` clear button,
+  context-resolved `—` em / `–` en / `→` flow arrows. 0 stray bytes remaining.
+- **Note:** this artifact's copy uses em dashes, which is contrary to the Lyzr
+  no-em-dash brand convention (spec §18). Preserved as-authored since the page was
+  supplied to host verbatim, not to re-copyedit. Flag for owners if they want it conformed.
+
+### 2026-06-02, GSI Tracker hardening + first tests (local only, separate product, not pushed)
+Tracker-only pass; kept local (the tracker is now treated as its own product with its own git, TBD).
+- **7**: fixed the pre-existing `PopoverTrigger asChild` type error in `tracker/page.tsx` (base-ui Trigger renders a button; merged styles, dropped the nested button + invalid prop). `npx tsc --noEmit` now exits 0.
+- **5a**: cron routes (`weekly-snapshot`, `hubspot-sync`) no longer honor `?bypass=true` in production and now require `CRON_SECRET` (previously auth was skipped if the secret was unset).
+- **5b**: `createMention` trims + lowercases the email so mentions resolve regardless of case.
+- **5c**: recurring template `next_due_date` is now one interval after the first instance (was the same day, so the 2nd instance used to land on the 1st's date).
+- **5d**: `updateTask` now blocks closing a task while its blocker dependencies are open, unless `overrideBlockers` is passed; the drawer's existing confirm now passes that override. Previously client-only / bypassable.
+- **8**: pure logic extracted to `lib/task-logic.ts`; added vitest (`npm test`) + `lib/task-logic.test.ts` (12 tests, all passing) covering the 5b/5c/5d fixes.
+- Phase 4 polish (C) explicitly out of scope.
 
 ### 2026-06-02, Bug-fix + Phase 4 + Section D sweep (working tree, NOT yet committed)
 Multi-agent pass (3 background agents, partitioned by component). Two agents stalled

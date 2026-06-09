@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GSI / SI Growth Strategy — Lyzr</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#160B05;
+    --bg2:#1E110A;
+    --card:#241409;
+    --card2:#2C190D;
+    --card3:#341E10;
+    --line:rgba(236,121,67,.14);
+    --line2:rgba(236,121,67,.28);
+    --ink:#F5ECE0;
+    --ink-mute:#B7A48E;
+    --ink-dim:#8A7762;
+    --brand:#EC7943;   /* Branding */
+    --gold:#DDA94A;    /* Engagement */
+    --rust:#C8584A;    /* Lead-gen */
+    --brand-soft:rgba(236,121,67,.13);
+    --gold-soft:rgba(221,169,74,.13);
+    --rust-soft:rgba(200,88,74,.15);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'DM Sans',sans-serif;
+    background:
+      radial-gradient(1100px 700px at 82% -8%, rgba(236,121,67,.10), transparent 60%),
+      radial-gradient(900px 600px at 5% 105%, rgba(221,169,74,.06), transparent 55%),
+      linear-gradient(180deg,var(--bg),var(--bg2));
+    background-attachment:fixed;
+    color:var(--ink);
+    min-height:100vh;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:
+      linear-gradient(rgba(236,121,67,.035) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(236,121,67,.035) 1px,transparent 1px);
+    background-size:46px 46px;
+    mask-image:radial-gradient(circle at 50% 30%,#000,transparent 80%);
+  }
+  .wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:54px 28px 80px}
+
+  /* ---------- Header ---------- */
+  header{margin-bottom:34px}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:9px;
+    font-family:'DM Mono',monospace;font-size:11.5px;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--brand);
+    border:1px solid var(--line2);border-radius:100px;
+    padding:7px 15px;margin-bottom:22px;background:var(--brand-soft);
+  }
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--brand);box-shadow:0 0 10px var(--brand)}
+  h1{
+    font-family:'Playfair Display',serif;font-weight:600;
+    font-size:clamp(34px,5vw,58px);line-height:1.04;letter-spacing:-.01em;
+    margin-bottom:18px;
+  }
+  h1 .accent{color:var(--brand);font-style:italic}
+  .lede{font-size:16.5px;color:var(--ink-mute);max-width:680px;line-height:1.62}
+
+  /* ---------- Stat strip ---------- */
+  .stats{
+    display:grid;grid-template-columns:repeat(5,1fr);gap:1px;
+    margin:34px 0 8px;border:1px solid var(--line);border-radius:16px;
+    overflow:hidden;background:var(--line);
+  }
+  .stat{background:linear-gradient(180deg,var(--card),var(--bg2));padding:20px 18px}
+  .stat .n{font-family:'Playfair Display',serif;font-size:30px;font-weight:600;color:var(--ink);line-height:1}
+  .stat .n .pct{color:var(--brand)}
+  .stat .l{font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-dim);margin-top:9px}
+
+  /* ---------- Controls ---------- */
+  .controls{
+    position:sticky;top:0;z-index:20;margin:30px 0 26px;padding:16px 0 14px;
+    background:linear-gradient(180deg,var(--bg) 72%,transparent);
+    display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;
+  }
+  .seg{display:inline-flex;background:var(--card);border:1px solid var(--line2);border-radius:12px;padding:4px;gap:3px}
+  .seg button{
+    font-family:'DM Sans',sans-serif;font-weight:600;font-size:13.5px;
+    color:var(--ink-mute);background:transparent;border:none;cursor:pointer;
+    padding:9px 18px;border-radius:9px;transition:.18s;white-space:nowrap;
+  }
+  .seg button.on{background:var(--brand);color:#1c0d04;box-shadow:0 4px 14px rgba(236,121,67,.3)}
+  .seg button:not(.on):hover{color:var(--ink)}
+
+  .filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .flabel{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);margin-right:2px}
+  .chip{
+    font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;
+    color:var(--ink-mute);background:var(--card);border:1px solid var(--line);
+    padding:7px 12px;border-radius:100px;cursor:pointer;transition:.16s;text-transform:uppercase;
+  }
+  .chip:hover{border-color:var(--line2);color:var(--ink)}
+  .chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+  /* ---------- Objective sections ---------- */
+  .obj-sec{margin-bottom:18px;border-radius:20px;overflow:hidden;border:1px solid var(--line)}
+  .obj-head{
+    display:flex;align-items:flex-start;gap:18px;padding:26px 28px;cursor:pointer;
+    position:relative;transition:.2s;
+  }
+  .obj-head:hover{background:rgba(255,255,255,.012)}
+  .obj-bar{position:absolute;left:0;top:0;bottom:0;width:4px}
+  .obj-ico{
+    flex:none;width:46px;height:46px;border-radius:12px;display:grid;place-items:center;
+    font-family:'Playfair Display',serif;font-size:22px;font-weight:700;margin-top:2px;
+  }
+  .obj-meta{flex:1;min-width:0}
+  .obj-title{font-family:'Playfair Display',serif;font-size:25px;font-weight:600;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .obj-count{font-family:'DM Mono',monospace;font-size:11px;color:var(--ink-dim);border:1px solid var(--line);border-radius:100px;padding:3px 10px;letter-spacing:.08em}
+  .obj-desc{font-size:14.5px;color:var(--ink-mute);margin-top:8px;line-height:1.6;max-width:780px}
+  .obj-toggle{flex:none;font-size:22px;color:var(--ink-dim);transition:.28s;margin-top:8px}
+  .obj-sec.open .obj-toggle{transform:rotate(45deg)}
+  .obj-body{display:none;padding:4px 22px 22px;background:rgba(0,0,0,.16)}
+  .obj-sec.open .obj-body{display:block;animation:fade .3s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+
+  /* channel groups inside objective */
+  .chgroup{margin-top:14px}
+  .chgroup-h{
+    font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-dim);padding:6px 6px 10px;border-bottom:1px dashed var(--line);margin-bottom:12px;
+    display:flex;align-items:center;gap:9px;
+  }
+  .chgroup-h::before{content:"";width:7px;height:7px;border-radius:2px;background:var(--ink-dim)}
+
+  /* ---------- Activity cards ---------- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:11px}
+  .act{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    overflow:hidden;transition:.16s;cursor:pointer;
+  }
+  .act:hover{border-color:var(--line2);background:var(--card2);transform:translateY(-2px)}
+  .act.open{border-color:var(--line2);background:var(--card2)}
+  .act-top{padding:15px 16px;display:flex;flex-direction:column;gap:11px}
+  .act-name{font-weight:600;font-size:14.5px;line-height:1.3;color:var(--ink);display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+  .act-name .arr{flex:none;color:var(--ink-dim);font-size:14px;transition:.25s;margin-top:1px}
+  .act.open .act-name .arr{transform:rotate(90deg);color:var(--brand)}
+  .act-pills{display:flex;flex-wrap:wrap;gap:6px}
+  .pill{font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.06em;padding:3px 8px;border-radius:100px;text-transform:uppercase;white-space:nowrap}
+  .pill-tofu{background:rgba(236,121,67,.10);color:#F0B48C;border:1px solid rgba(236,121,67,.22)}
+  .pill-mofu{background:rgba(221,169,74,.10);color:#E8C97E;border:1px solid rgba(221,169,74,.22)}
+  .pill-bofu{background:rgba(200,88,74,.13);color:#E59182;border:1px solid rgba(200,88,74,.26)}
+  .pill-obj{font-weight:500}
+  .pill-b{background:var(--brand-soft);color:#F0B48C;border:1px solid rgba(236,121,67,.25)}
+  .pill-e{background:var(--gold-soft);color:#E8C97E;border:1px solid rgba(221,169,74,.25)}
+  .pill-l{background:var(--rust-soft);color:#E59182;border:1px solid rgba(200,88,74,.28)}
+  .pill-plus{background:transparent;color:var(--ink-dim);border:1px dashed var(--line2)}
+  .status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:middle}
+  .st-live{background:#5FB87A;box-shadow:0 0 7px rgba(95,184,122,.6)}
+  .st-plan{background:var(--gold);box-shadow:0 0 7px rgba(221,169,74,.5)}
+  .st-tbd{background:var(--ink-dim)}
+
+  .act-detail{display:none;padding:0 16px 16px;border-top:1px solid var(--line);margin-top:-2px}
+  .act.open .act-detail{display:block;animation:fade .26s ease}
+  .drow{display:flex;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid rgba(236,121,67,.07)}
+  .drow:last-child{border-bottom:none}
+  .dk{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);flex:none;padding-top:2px}
+  .dv{font-size:13.5px;color:var(--ink);text-align:right;font-weight:500}
+  .dv.target{color:var(--brand);font-family:'DM Mono',monospace;font-size:12.5px}
+  .dnote{font-size:12px;color:var(--ink-mute);line-height:1.55;margin-top:11px;padding:11px 12px;background:rgba(0,0,0,.22);border-radius:9px;border-left:2px solid var(--line2)}
+
+  /* ---------- Channel-group view ---------- */
+  #channelView{display:none}
+  .fam{margin-bottom:16px;border:1px solid var(--line);border-radius:18px;overflow:hidden}
+  .fam-h{
+    display:flex;align-items:center;gap:14px;padding:20px 24px;cursor:pointer;transition:.18s;
+  }
+  .fam-h:hover{background:rgba(255,255,255,.012)}
+  .fam-num{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--brand);
+    width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:var(--brand-soft);flex:none}
+  .fam-title{font-family:'Playfair Display',serif;font-size:21px;font-weight:600;flex:1}
+  .fam-sub{font-family:'DM Mono',monospace;font-size:10.5px;color:var(--ink-dim);letter-spacing:.1em;text-transform:uppercase}
+  .fam-toggle{font-size:20px;color:var(--ink-dim);transition:.28s}
+  .fam.open .fam-toggle{transform:rotate(45deg)}
+  .fam-body{display:none;padding:2px 20px 20px;background:rgba(0,0,0,.16)}
+  .fam.open .fam-body{display:block;animation:fade .3s ease}
+
+  /* ---------- Legend ---------- */
+  .legend{margin-top:40px;padding:24px 26px;border:1px solid var(--line);border-radius:18px;background:var(--card)}
+  .legend h3{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;margin-bottom:16px}
+  .legend-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .legend-col h4{font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:11px}
+  .legend-row{display:flex;align-items:center;gap:11px;margin-bottom:9px;font-size:13px;color:var(--ink-mute)}
+  .legend-row b{color:var(--ink);font-weight:600}
+
+  footer{margin-top:36px;text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--ink-dim);letter-spacing:.08em;line-height:1.9}
+  footer .sep{color:var(--line2)}
+
+  @media(max-width:760px){
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .legend-grid{grid-template-columns:1fr}
+    .controls{position:static}
+    .obj-head{padding:20px 18px;gap:12px}
+    .obj-body{padding:4px 12px 16px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow"><span class="dot"></span>GSI / SI · GTM &amp; Marketing Strategy</div>
+    <h1>The GSI &amp; SI<br><span class="accent">Growth Engine</span></h1>
+    <p class="lede">Every motion we run to win Global System Integrators, System Integrators and consulting firms — organized by what each is built to do. Toggle between an <b style="color:var(--ink)">objective lens</b> and a <b style="color:var(--ink)">channel-group lens</b>, then open any channel to see its activities, cadence and targets.</p>
+
+    <div class="stats">
+      <div class="stat"><div class="n">9</div><div class="l">Channel Families</div></div>
+      <div class="stat"><div class="n">42</div><div class="l">Activities</div></div>
+      <div class="stat"><div class="n">36</div><div class="l">Live Now</div></div>
+      <div class="stat"><div class="n">10</div><div class="l">Always-On Engines</div></div>
+      <div class="stat"><div class="n">3</div><div class="l">Objectives</div></div>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="seg">
+      <button id="btnObj" class="on" onclick="setView('obj')">By Objective</button>
+      <button id="btnCh" onclick="setView('ch')">By Channel Group</button>
+    </div>
+    <div class="filters">
+      <span class="flabel">Funnel</span>
+      <span class="chip" data-f="ToFu" onclick="toggleFilter(this,'ToFu')">ToFu</span>
+      <span class="chip" data-f="MoFu" onclick="toggleFilter(this,'MoFu')">MoFu</span>
+      <span class="chip" data-f="BoFu" onclick="toggleFilter(this,'BoFu')">BoFu</span>
+      <span class="chip" id="clearF" onclick="clearFilters()" style="display:none">✕ Clear</span>
+    </div>
+  </div>
+
+  <div id="objectiveView"></div>
+  <div id="channelView"></div>
+
+  <div class="legend">
+    <h3>How to read this</h3>
+    <div class="legend-grid">
+      <div class="legend-col">
+        <h4>Objective (the lens)</h4>
+        <div class="legend-row"><span class="pill pill-obj pill-b">Branding</span><span>Awareness &amp; credibility — get known and trusted</span></div>
+        <div class="legend-row"><span class="pill pill-obj pill-e">Engagement</span><span>Two-way relationship &amp; nurture</span></div>
+        <div class="legend-row"><span class="pill pill-obj pill-l">Lead-gen</span><span>Capture, hot leads &amp; conversion to pipeline</span></div>
+      </div>
+      <div class="legend-col">
+        <h4>Funnel stage &amp; status</h4>
+        <div class="legend-row"><span class="pill pill-tofu">ToFu</span><span class="pill pill-mofu">MoFu</span><span class="pill pill-bofu">BoFu</span><span>top → bottom of funnel</span></div>
+        <div class="legend-row"><span class="status-dot st-live"></span><span><b>Live</b> now &amp; running</span></div>
+        <div class="legend-row"><span class="status-dot st-plan"></span><span><b>Launching</b> — go-live scheduled / yet to decide spend</span></div>
+        <div class="legend-row"><span class="status-dot st-tbd"></span><span><b>TBD</b> — target not yet set</span></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    LYZR · GSI/SI GROWTH STRATEGY <span class="sep">|</span> OWNERS: PRAVEEN · BHARATH · KAUSHIK · ANJU · POOJA <span class="sep">|</span> INTERNAL WORKING VIEW
+  </footer>
+
+</div>
+
+<script>
+/* ---------------- DATA ---------------- */
+const OBJ = {
+  Branding:{key:'b',color:'var(--brand)',soft:'var(--brand-soft)',sym:'B',
+    desc:'Establish Lyzr as the category-defining agentic infrastructure platform across the GSI/SI ecosystem. Every motion here builds top-of-mind presence and credibility with alliance leaders and Managing Directors — through owned voice, earned media, paid reach and third-party validation — so that when a partnership conversation opens, Lyzr is already known and trusted.'},
+  Engagement:{key:'e',color:'var(--gold)',soft:'var(--gold-soft)',sym:'E',
+    desc:'Turn awareness into active relationships. These motions create two-way conversation with GSI/SI decision-makers and their practitioners — through communities, owned media, education and high-touch gestures — keeping Lyzr in consistent, value-led dialogue and surfacing the warm signals that mature into qualified pipeline.'},
+  'Lead-gen':{key:'l',color:'var(--rust)',soft:'var(--rust-soft)',sym:'L',
+    desc:'Convert attention and relationships into pipeline and closed partnerships. This is the capture-and-conversion engine — intent ads, gated assets, hosted events, direct outreach and conversational routing — built to generate hot leads, book meetings and drive the program toward its partnership-closure goals.'}
+};
+
+/* parent channel families (for channel-group view) */
+const FAM_ORDER = ['Organic','Ads','Paid Promotion','Long-form','Outbound','Growth Hack','Events','Credibility','SEO'];
+const FAM_SUB = {
+  'Organic':'LinkedIn · Reddit · Communities · Content · Listings',
+  'Ads':'LinkedIn · Google · Meta · Twitter',
+  'Paid Promotion':'Influencers · Thought leaders · PR · Magazines',
+  'Long-form':'Podcast · YouTube · Webinars · Workshops',
+  'Outbound':'Email · InMail · Telecalling · Newsletter',
+  'Growth Hack':'Survey+Report · Course · Gifting · Roadmap builder',
+  'Events':'Sponsor · Speaker · Attend · Hosted',
+  'Credibility':'Gartner · G2 · Forrester · IDC',
+  'SEO':'Rankings · Domain authority · Keywords'
+};
+
+/* the 42 activities */
+const A = [
+  {id:1, name:'LinkedIn Ads — Branding', fam:'Ads', funnel:'ToFu', obj:'Branding', metric:'Creatives live · reach · budget', cad:'Always-on', target:'$500–1,000 / mo', st:'live'},
+  {id:2, name:'YouTube Ads', fam:'Ads', funnel:'ToFu', obj:'Branding', metric:'Views · budget', cad:'—', target:'Yet to decide', st:'plan'},
+  {id:3, name:'Twitter Brand Ads', fam:'Ads', funnel:'ToFu', obj:'Branding', metric:'Impressions · budget', cad:'—', target:'Yet to decide', st:'plan'},
+  {id:4, name:'Meta Brand Ads', fam:'Ads', funnel:'ToFu', obj:'Branding', metric:'Impressions · budget', cad:'—', target:'Yet to decide', st:'plan'},
+  {id:5, name:'LinkedIn Posting', fam:'Organic', funnel:'ToFu', obj:'Branding', metric:'Posts / profile · follower growth', cad:'Weekly', target:'2 posts / wk · per profile', st:'live', note:'Across all profiles — Anju, Siva, Ani, the GSI/SI page and the Lyzr page. Built to establish brand and attract the right audience on LinkedIn.'},
+  {id:6, name:'Podcast', fam:'Long-form', funnel:'ToFu', obj:'Branding', metric:'CXO appearances · hosted episodes', cad:'Quarterly', target:'3 / quarter', st:'live', note:'Two motions — (1) Lyzr CXOs appearing on external podcasts, and (2) hosting our own podcast IP with invited GSI/SI leaders. Weighted toward CXO appearances for brand reach.'},
+  {id:7, name:'YouTube Video', fam:'Long-form', funnel:'ToFu', obj:'Branding', metric:'Videos · views', cad:'Quarterly', target:'3 / quarter', st:'live'},
+  {id:8, name:'Blog', fam:'Organic', funnel:'ToFu', obj:'Branding', metric:'Blogs · organic traffic · rankings', cad:'Monthly', target:'2 / month', st:'live', note:'Content — top-of-funnel discovery, SEO ranking and proof of work.'},
+  {id:9, name:'Case Studies', fam:'Organic', funnel:'ToFu', obj:'Branding', metric:'Published · views / downloads', cad:'Monthly', target:'1 / month', st:'live', note:'Content — proof of work and credibility, also feeding SEO.'},
+  {id:10, name:'Influencers', fam:'Paid Promotion', funnel:'ToFu', obj:'Branding', metric:'Collabs · reach', cad:'Quarterly', target:'10 / quarter', st:'live'},
+  {id:11, name:'Thought Leaders (paid)', fam:'Paid Promotion', funnel:'ToFu', obj:'Branding', metric:'Collabs · reach', cad:'Monthly', target:'1–2 / month', st:'live'},
+  {id:12, name:'PR & News', fam:'Paid Promotion', funnel:'ToFu', obj:'Branding', metric:'Placements', cad:'Quarterly', target:'3 / quarter', st:'live'},
+  {id:13, name:'Magazines', fam:'Paid Promotion', funnel:'ToFu', obj:'Branding', metric:'Features', cad:'Monthly', target:'1 / month', st:'live'},
+  {id:14, name:'Listing Platforms', fam:'Organic', funnel:'ToFu', obj:'Branding', metric:'Listings · backlinks · domain authority', cad:'Monthly', target:'10 / month', st:'live', note:'Listing Lyzr across listicles & platforms to drive discovery, AI citation, domain authority and backlinks.'},
+  {id:15, name:'SEO', fam:'SEO', funnel:'ToFu', obj:'Branding', metric:'Ranked keywords · organic traffic · DA', cad:'Monthly', target:'Monthly rejig', st:'live', note:'Coupled to organic content publishing and to the keyword set behind Google Ads.'},
+  {id:16, name:'Testimonials & Analysts', fam:'Credibility', funnel:'ToFu', obj:'Branding', metric:'Reviews · analyst briefings / inclusions', cad:'Monthly', target:'2 / month', st:'live', note:'Gartner · G2 · Forrester · IDC — third-party credibility building.'},
+  {id:17, name:'Event Sponsoring', fam:'Events', funnel:'ToFu', obj:'Branding', metric:'Events sponsored · leads scanned', cad:'Quarterly', target:'3–5 / quarter', st:'live', note:'Stall + logo placement at GSI/SI/ICP and end-client conferences.'},
+  {id:18, name:'Reddit', fam:'Organic', funnel:'MoFu', obj:'Branding', plus:['Engagement','Lead-gen'], metric:'Active subreddits · posts / comments · DMs→leads', cad:'Daily / Weekly', target:'5 comments / day · 2 posts / wk', st:'live', note:'Engage the right subreddits to build brand presence and credibility that gets fetched by both AIs and real community members. High-engaging accounts are routed to DM via LinkedIn outreach to start conversations — branding-led, with engagement and a lead-gen tail.'},
+  {id:19, name:'Communities', fam:'Organic', funnel:'MoFu', obj:'Engagement', plus:['Branding','Lead-gen'], metric:'Active communities · engagements · leads harvested', cad:'Weekly', target:'3 engagements / week', st:'live', note:'Dev communities, LinkedIn groups, GSI/SI forums, consulting communities, Facebook professional networks and Gartner communities. Be present, engage in Lyzr’s voice, build brand, then harvest the low-hanging fruit — ICP matches become hot leads, the rest stays engagement.'},
+  {id:20, name:'LinkedIn Ads — Thought Leadership', fam:'Ads', funnel:'MoFu', obj:'Engagement', metric:'Ads live · engagement · budget', cad:'Always-on', target:'Always-on', st:'live'},
+  {id:21, name:'LinkedIn Ads — Playbook', fam:'Ads', funnel:'MoFu', obj:'Lead-gen', metric:'Ads live · downloads (MQLs) · budget', cad:'Always-on', target:'Always-on', st:'live'},
+  {id:22, name:'LinkedIn Ads — Events', fam:'Ads', funnel:'MoFu', obj:'Lead-gen', metric:'Ads live · registrations · budget', cad:'Per event', target:'As per schedule', st:'live'},
+  {id:23, name:'White Paper', fam:'Organic', funnel:'MoFu', obj:'Lead-gen', metric:'Published · downloads (soft leads)', cad:'Quarterly', target:'1–2 / quarter', st:'live', note:'Content — soft lead-gen funnel plus trustworthiness. Objective is both lead-gen and credibility establishment.'},
+  {id:24, name:'Playbook', fam:'Organic', funnel:'MoFu', obj:'Lead-gen', metric:'Published · downloads (MQLs)', cad:'Monthly', target:'1–2 / month', st:'live', note:'Content — the tactical gated download that captures a hand-raise.'},
+  {id:25, name:'Events — Speaker', fam:'Events', funnel:'MoFu', obj:'Engagement', metric:'Speaking slots · leads', cad:'Quarterly', target:'3 / quarter', st:'live', note:'Panel participation / speaker slots at GSI/SI/ICP and end-client events.'},
+  {id:26, name:'Offline Gifting', fam:'Growth Hack', funnel:'MoFu', obj:'Engagement', metric:'ICPs gifted · meetings generated', cad:'Monthly', target:'5–10 ICPs / month', st:'live'},
+  {id:27, name:'Self-Learning Course', fam:'Growth Hack', funnel:'MoFu', obj:'Engagement', metric:'Enrollments · completions→leads', cad:'Always-on (from Aug)', target:'Go live Aug · always-on', st:'plan', note:'Self-paced course; engagement-led with a lead-gen tail. Launches August, always active from then.'},
+  {id:28, name:'Newsletter (owned)', fam:'Outbound', funnel:'MoFu', obj:'Engagement', metric:'Editions · subscriber growth', cad:'Monthly', target:'1 / month', st:'live'},
+  {id:29, name:'Survey + Report (bundle)', fam:'Growth Hack', funnel:'MoFu', obj:'Lead-gen', metric:'Responses · downloads · reach · leads', cad:'Bi-monthly', target:'1 per 2 months', st:'live', note:'Industry survey → social cards → report → ads behind it. Opens a non-sales relationship with ICPs (asking their opinion), then nurtures slowly toward a sales conversation.'},
+  {id:30, name:'Webinar + Workshops', fam:'Long-form', funnel:'MoFu', obj:'Lead-gen', metric:'Webinars · workshop cohorts · regs→MQLs', cad:'Monthly / Bi-monthly', target:'Webinar 1/mo · Workshops 1–2 per 2 mo', st:'live', note:'Workshop cohorts run with GSIs invited — a growing, recurring line item.'},
+  {id:31, name:'Agentic Roadmap Builder', fam:'Growth Hack', funnel:'MoFu', obj:'Lead-gen', metric:'Firms using · completions→MQLs', cad:'Always-on (from June)', target:'Go live June · always-on', st:'plan', note:'A prototype that lets firms plan their agentic-automation market readiness and action plan. Pushed to the mid-tier accounts to self-serve, engage with the product first, then nurture to a call.'},
+  {id:32, name:'Events — Hosted', fam:'Events', funnel:'BoFu', obj:'Lead-gen', metric:'Events · attendees · meetings · pipeline', cad:'Quarterly', target:'3 / quarter', st:'live', note:'Roadshows inviting ICPs and side events during big conclaves — high-intent, sales-present (conversion).'},
+  {id:33, name:'Events — Attending (floor)', fam:'Events', funnel:'BoFu', obj:'Lead-gen', metric:'Events · meetings booked on floor', cad:'Monthly', target:'2–3 / month', st:'live', note:'Be on the floor to connect and establish relationships — hot lead-gen.'},
+  {id:34, name:'Lead-gen Ads', fam:'Ads', funnel:'BoFu', obj:'Lead-gen', metric:'Ads live · MQLs · CPL · budget', cad:'Always-on', target:'Always-on', st:'live'},
+  {id:35, name:'Conversation Ads', fam:'Ads', funnel:'BoFu', obj:'Lead-gen', metric:'Campaigns · conversations · meetings · budget', cad:'Always-on', target:'Always-on', st:'live', note:'Direct 1:1 routing to sales — conversion.'},
+  {id:36, name:'Google Keyword Ads', fam:'Ads', funnel:'ToFu', obj:'Lead-gen', metric:'Campaigns · leads · CPL · budget', cad:'Always-on', target:'Always-on', st:'live', note:'Sits in a ToFu slot but behaves as intent-capture / lead-gen.'},
+  {id:37, name:'Email — Outbound Sales', fam:'Outbound', funnel:'BoFu', obj:'Lead-gen', metric:'Sequences · sends · replies · meetings (SQLs)', cad:'Monthly', target:'5–7K ICPs / month', st:'live', note:'Conversion sequences. This 5–7K pool sits inside the 10K nurture pool — overlapping, not additive.'},
+  {id:38, name:'Email — Nurture', fam:'Outbound', funnel:'BoFu', obj:'Engagement', metric:'Contacts nurtured · engagement', cad:'Always-on', target:'10K contacts / month', st:'live', note:'The full monthly email pool (~10K distinct contacts); 5–7K of these are in active outbound sales sequences.'},
+  {id:39, name:'Email — Non-ICP Referral', fam:'Outbound', funnel:'BoFu', obj:'Engagement', metric:'Contacts · referrals · rewards issued', cad:'Always-on', target:'Always-on', st:'live', note:'Non-ICP contacts inside target accounts who can’t buy directly. Nurture them, then ask for a referral into their org’s ICP buyers, with a referral reward when it converts.'},
+  {id:40, name:'Email — Event Registration', fam:'Outbound', funnel:'BoFu', obj:'Engagement', metric:'Sends · registrations', cad:'Per event', target:'Based on requirement', st:'live'},
+  {id:41, name:'InMail + PhantomBuster', fam:'Outbound', funnel:'BoFu', obj:'Lead-gen', metric:'InMails · leads scraped · meetings', cad:'Monthly', target:'300 contacts / month', st:'live', note:'Accounts synced — Ani, Siva, Anju. Leads generated from their LinkedIn posts and from the LinkedIn groups they belong to.'},
+  {id:42, name:'Agentic Calling / Telecalling', fam:'Outbound', funnel:'BoFu', obj:'Lead-gen', metric:'Calls · connects · meetings', cad:'TBD', target:'TBD', st:'tbd'}
+];
+
+/* ---------------- STATE ---------------- */
+let view='obj';
+let activeFilters=new Set();
+
+/* ---------------- HELPERS ---------------- */
+const funnelPill=f=>`<span class="pill pill-${f.toLowerCase()}">${f}</span>`;
+const objPillClass=o=>o==='Branding'?'pill-b':o==='Engagement'?'pill-e':'pill-l';
+const objPill=o=>`<span class="pill pill-obj ${objPillClass(o)}">${o}</span>`;
+const plusPill=o=>`<span class="pill pill-plus">+${o.replace('-gen','')}</span>`;
+
+function actCard(a){
+  const plus=(a.plus||[]).map(plusPill).join('');
+  const noteHtml=a.note?`<div class="dnote">${a.note}</div>`:'';
+  return `<div class="act" data-funnel="${a.funnel}" onclick="this.classList.toggle('open')">
+    <div class="act-top">
+      <div class="act-name"><span><span class="status-dot st-${a.st}"></span>${a.name}</span><span class="arr">▸</span></div>
+      <div class="act-pills">${funnelPill(a.funnel)}${objPill(a.obj)}${plus}</div>
+    </div>
+    <div class="act-detail" onclick="event.stopPropagation()">
+      <div class="drow"><span class="dk">Metric</span><span class="dv">${a.metric}</span></div>
+      <div class="drow"><span class="dk">Cadence</span><span class="dv">${a.cad}</span></div>
+      <div class="drow"><span class="dk">Target</span><span class="dv target">${a.target}</span></div>
+      <div class="drow"><span class="dk">Channel</span><span class="dv">${a.fam}</span></div>
+      ${noteHtml}
+    </div>
+  </div>`;
+}
+
+/* ---------------- OBJECTIVE VIEW ---------------- */
+function buildObjective(){
+  let html='';
+  Object.keys(OBJ).forEach((oName,i)=>{
+    const o=OBJ[oName];
+    // items in this objective = primary obj match
+    let items=A.filter(a=>a.obj===oName);
+    if(activeFilters.size) items=items.filter(a=>activeFilters.has(a.funnel));
+    // group by family, in canonical order
+    const fams=FAM_ORDER.filter(f=>items.some(a=>a.fam===f));
+    let body='';
+    fams.forEach(f=>{
+      const fItems=items.filter(a=>a.fam===f).sort((x,y)=>['ToFu','MoFu','BoFu'].indexOf(x.funnel)-['ToFu','MoFu','BoFu'].indexOf(y.funnel));
+      body+=`<div class="chgroup"><div class="chgroup-h">${f}</div><div class="grid">${fItems.map(actCard).join('')}</div></div>`;
+    });
+    const count=items.length;
+    const hidden=(activeFilters.size&&count===0)?'style="display:none"':'';
+    html+=`<div class="obj-sec ${i===0?'open':''}" ${hidden}>
+      <div class="obj-head" onclick="this.parentNode.classList.toggle('open')">
+        <div class="obj-bar" style="background:${o.color}"></div>
+        <div class="obj-ico" style="background:${o.soft};color:${o.color}">${o.sym}</div>
+        <div class="obj-meta">
+          <div class="obj-title">${oName}<span class="obj-count">${count} ${count===1?'activity':'activities'}</span></div>
+          <div class="obj-desc">${o.desc}</div>
+        </div>
+        <div class="obj-toggle">+</div>
+      </div>
+      <div class="obj-body">${body||'<p style="color:var(--ink-dim);padding:16px 6px;font-size:13px">No activities match the current funnel filter.</p>'}</div>
+    </div>`;
+  });
+  document.getElementById('objectiveView').innerHTML=html;
+}
+
+/* ---------------- CHANNEL-GROUP VIEW ---------------- */
+function buildChannel(){
+  let items=A.slice();
+  if(activeFilters.size) items=items.filter(a=>activeFilters.has(a.funnel));
+  const fams=FAM_ORDER.filter(f=>items.some(a=>a.fam===f));
+  let html='';
+  fams.forEach((f,i)=>{
+    const fItems=items.filter(a=>a.fam===f).sort((x,y)=>['ToFu','MoFu','BoFu'].indexOf(x.funnel)-['ToFu','MoFu','BoFu'].indexOf(y.funnel));
+    html+=`<div class="fam ${i===0?'open':''}">
+      <div class="fam-h" onclick="this.parentNode.classList.toggle('open')">
+        <div class="fam-num">${String(i+1).padStart(2,'0')}</div>
+        <div style="flex:1">
+          <div class="fam-title">${f}</div>
+          <div class="fam-sub">${FAM_SUB[f]||''} · ${fItems.length} ${fItems.length===1?'activity':'activities'}</div>
+        </div>
+        <div class="fam-toggle">+</div>
+      </div>
+      <div class="fam-body"><div class="grid">${fItems.map(actCard).join('')}</div></div>
+    </div>`;
+  });
+  document.getElementById('channelView').innerHTML=html;
+}
+
+/* ---------------- VIEW SWITCH ---------------- */
+function setView(v){
+  view=v;
+  document.getElementById('btnObj').classList.toggle('on',v==='obj');
+  document.getElementById('btnCh').classList.toggle('on',v==='ch');
+  document.getElementById('objectiveView').style.display=v==='obj'?'block':'none';
+  document.getElementById('channelView').style.display=v==='ch'?'block':'none';
+  render();
+}
+function toggleFilter(el,f){
+  if(activeFilters.has(f)){activeFilters.delete(f);el.classList.remove('on');}
+  else{activeFilters.add(f);el.classList.add('on');}
+  document.getElementById('clearF').style.display=activeFilters.size?'inline-block':'none';
+  render();
+}
+function clearFilters(){
+  activeFilters.clear();
+  document.querySelectorAll('.chip[data-f]').forEach(c=>c.classList.remove('on'));
+  document.getElementById('clearF').style.display='none';
+  render();
+}
+function render(){ view==='obj'?buildObjective():buildChannel(); }
+
+render();
+</script>
+</body>
+</html>
