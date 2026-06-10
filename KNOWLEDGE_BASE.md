@@ -399,6 +399,24 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-06-08, Week 7 GSI report (1–8 June) published to `/reports`
+- Added `reports/gsi-report-jun1-8.html` — the 1–8 June weekly GSI/SI marketing report.
+  Built from the `may25-31` template (shared CSS / pipeline widget / chart script) with a
+  fresh HubSpot snapshot (88 conversations, 18 partners = Accenture + 17 GSIs/SIs; 14 won,
+  16 lost, 42 demos, 16 in-conversation), this week's channel updates, the June–July content
+  calendar, and the 14-item to-do pipeline.
+- Registered as a bubble: `data/weeks.json` (added week 7, `current_week`→7, `last_updated`→2026-06-08)
+  drives the index's dynamic list; mirrored the static `<noscript>` card + AI-scraper summary
+  line in `reports/index.html`.
+- Source arrived UTF-8-mojibaked again. Avoided the garble entirely by reconstructing from the
+  clean template and splicing only the new JSON + body with context-resolved glyphs (`·`, `—`/`–`,
+  `→`, `↗`, `★`, channel emoji). 0 stray bytes; embedded JSON parses; divs balanced 399/399.
+- Same em-dash caveat as the GTM entry below: report copy uses em dashes (consistent with the
+  existing weekly reports, contrary to spec §18 no-em-dash). Preserved as-supplied, not re-copyedited.
+- **Data note:** the new snapshot renamed/deduped several deals vs. week 6 (e.g. "Accenture 1M
+  Product Team" → "1M Product Team"; some Movate Pipeline rows replaced). Taken verbatim from the
+  supplied report; flag for owners if week-over-week label continuity matters.
+
 ### 2026-06-09, GSI/SI GTM strategy page published at `/GSI_GTM`
 - Added `GSI_GTM/index.html` — a standalone interactive "GSI & SI Growth Engine"
   strategy view (objective-lens / channel-group-lens toggle, funnel filters, 42
