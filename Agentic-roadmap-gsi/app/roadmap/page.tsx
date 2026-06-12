@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, ChevronDown, Loader2, Sparkles, TrendingUp, CircleCheck, X } from "lucide-react";
 import { Logo, Card, Eyebrow, Ring, Pill, Bar } from "@/components/ui";
 import { Radar, type RadarPoint } from "@/components/radar";
-import { OpportunityBlueprint, PathToAE, DevBoardTab, DemandTab } from "@/components/result-extras";
+import { OpportunityDrawer, OpportunityBlueprint, PathToAE, DevBoardTab, DemandTab } from "@/components/result-extras";
 import { cn, formatUSD } from "@/lib/utils";
 import { buildAssessment, DEEPEN, DIMENSIONS } from "@/lib/content";
 import { LANE_META, SHORT, dimColor } from "@/lib/display";
@@ -21,6 +21,7 @@ export default function RoadmapPage() {
   const [enriching, setEnriching] = useState(false);
   const [tab, setTab] = useState<Tab>("Scorecard");
   const [selected, setSelected] = useState<Opportunity | null>(null);
+  const [blueprintOpp, setBlueprintOpp] = useState<Opportunity | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [demoOpen, setDemoOpen] = useState(false);
 
@@ -178,8 +179,8 @@ export default function RoadmapPage() {
         ))}
       </div>
 
-      {selected ? (
-        <OpportunityBlueprint opp={selected} onBack={() => setSelected(null)} onBookDemo={() => setDemoOpen(true)} />
+      {blueprintOpp ? (
+        <OpportunityBlueprint opp={blueprintOpp} onBack={() => setBlueprintOpp(null)} onBookDemo={() => setDemoOpen(true)} />
       ) : (
         <>
           {/* tabs */}
@@ -210,6 +211,14 @@ export default function RoadmapPage() {
         </>
       )}
 
+      <OpportunityDrawer
+        opp={selected}
+        onClose={() => setSelected(null)}
+        onViewBlueprint={() => {
+          setBlueprintOpp(selected);
+          setSelected(null);
+        }}
+      />
       <BookDemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
     </main>
   );
