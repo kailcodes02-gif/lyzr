@@ -1,0 +1,140 @@
+@import "tailwindcss";
+
+@theme {
+  /* Lyzr brand — warm, editorial light theme */
+  --color-canvas: #f6f1ea; /* warm cream page */
+  --color-surface: #ffffff; /* cards */
+  --color-surface-2: #f1e9e0; /* warm subtle */
+  --color-elevated: #fbf7f2;
+  --color-border: #e7dccf;
+  --color-border-strong: #d9ccbb;
+  --color-fg: #27272a; /* near-black text */
+  --color-muted: #6b5853; /* warm muted */
+  --color-faint: #9c8b7f;
+  --color-ink: #26211c; /* dark pill buttons */
+
+  --color-accent: #c96a5a; /* terracotta / clay */
+  --color-accent-2: #b5564a; /* deeper terracotta */
+  --color-violet: #6e51e4; /* secondary accent */
+
+  --color-build: #3e9c72; /* lane: build now */
+  --color-fix: #cc8a3a; /* lane: fix first */
+  --color-hold: #8c7b70; /* lane: not now */
+  --color-critical: #c0473b;
+
+  --font-display: var(--font-dm), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-dm), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-playfair), "Playfair Display", Georgia, serif;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-canvas);
+  background-image:
+    radial-gradient(1100px 540px at 88% -12%, rgba(201, 106, 90, 0.07), transparent 60%),
+    radial-gradient(820px 460px at -6% -4%, rgba(110, 81, 228, 0.04), transparent 55%);
+  background-attachment: fixed;
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+}
+
+*,
+*::before,
+*::after {
+  border-color: var(--color-border);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+::selection {
+  background: rgba(201, 106, 90, 0.22);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade {
+  animation: fadeIn 0.2s ease both;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0.5;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 0%,
+    var(--color-surface-2) 50%,
+    var(--color-surface) 100%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
