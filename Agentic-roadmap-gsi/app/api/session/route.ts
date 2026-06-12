@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createRecord } from "@/lib/store";
+import { EMAIL_RE, isFreeEmail } from "@/lib/email";
 import type { IntakeData } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -13,8 +14,6 @@ const MESSAGES: Record<string, string> = {
     "You've reached the limit of 5 assessments this week for this email. Please try again next week.",
 };
 
-const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-
 export async function POST(req: Request) {
   let body: { email?: string; intake?: IntakeData };
   try {
@@ -26,6 +25,12 @@ export async function POST(req: Request) {
   const email = (body.email ?? "").trim().toLowerCase();
   if (!EMAIL_RE.test(email)) {
     return NextResponse.json({ error: "Please enter a valid work email." }, { status: 400 });
+  }
+  if (isFreeEmail(email)) {
+    return NextResponse.json(
+      { error: "Please use your work email — personal providers like Gmail, Outlook, and Yahoo aren't supported." },
+      { status: 400 },
+    );
   }
   if (!body.intake) {
     return NextResponse.json({ error: "Missing intake." }, { status: 400 });

@@ -29,8 +29,7 @@ import {
   TIMELINES,
 } from "@/lib/content";
 import type { QuickScan, Tri } from "@/lib/types";
-
-const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+import { isFreeEmail, isWorkEmail } from "@/lib/email";
 
 const STEP_META = [
   { label: "Company", sub: "Tell us about your organization" },
@@ -137,7 +136,7 @@ export default function Onboarding() {
   const canContinue = (() => {
     switch (step) {
       case 0:
-        return EMAIL_RE.test(q.email) && !!q.company.industry && !!q.company.size;
+        return isWorkEmail(q.email) && !!q.company.industry && !!q.company.size;
       case 1:
         return q.functions.length > 0;
       case 2:
@@ -213,7 +212,7 @@ export default function Onboarding() {
         <div className="mt-7 space-y-7">
           {step === 0 && (
             <>
-              <Field label="Work email" hint="we save your assessment here">
+              <Field label="Work email" hint="company email — no Gmail/Outlook/Yahoo">
                 <input
                   value={q.email}
                   onChange={(e) => set("email", e.target.value)}
@@ -221,6 +220,11 @@ export default function Onboarding() {
                   placeholder="you@company.com"
                   className="h-11 w-full rounded-xl border border-border-strong bg-surface-2 px-3.5 text-sm text-fg outline-none transition-colors placeholder:text-faint focus:border-accent/60"
                 />
+                {isFreeEmail(q.email) && (
+                  <p className="mt-1.5 text-xs text-critical">
+                    Please use your work email — personal providers like Gmail, Outlook, and Yahoo aren&apos;t supported.
+                  </p>
+                )}
               </Field>
               <Field label="Company name" hint="optional">
                 <input
