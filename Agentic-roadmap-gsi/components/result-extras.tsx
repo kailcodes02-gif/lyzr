@@ -13,7 +13,6 @@ import {
   ListChecks,
   Sparkles,
   TrendingUp,
-  X,
 } from "lucide-react";
 import { Card, Eyebrow, Pill } from "@/components/ui";
 import { cn, formatUSD } from "@/lib/utils";
@@ -51,122 +50,136 @@ const FIT_LABELS: { key: keyof Opportunity["fit"]; label: string }[] = [
   { key: "dataAvailable", label: "Data available" },
 ];
 
-export function OpportunityDrawer({ opp, onClose }: { opp: Opportunity | null; onClose: () => void }) {
-  if (!opp) return null;
+export function OpportunityBlueprint({ opp, onBack, onBookDemo }: { opp: Opportunity; onBack: () => void; onBookDemo: () => void }) {
   const meta = LANE_META[opp.lane];
   const priorityTone = opp.priority === "Critical" ? "critical" : opp.priority === "High" ? "fix" : "muted";
 
   return (
-    <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 animate-fade bg-ink/30 backdrop-blur-[2px]" onClick={onClose} />
-      <div className="animate-slide-in absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-border bg-surface shadow-2xl">
-        {/* header */}
-        <div className="flex items-start justify-between border-b border-border px-6 py-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium" style={{ color: meta.cssVar }}>
-              {meta.label}
-            </span>
-            <Pill tone={priorityTone as "critical" | "fix" | "muted"}>{opp.priority}</Pill>
-            {opp.aiGenerated && (
-              <Pill tone="accent">
-                <Sparkles className="mr-1 h-2.5 w-2.5" /> AI
-              </Pill>
-            )}
+    <div className="animate-fade-up mt-8">
+      {/* back nav */}
+      <button
+        onClick={onBack}
+        className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-muted transition-colors hover:text-fg"
+      >
+        <ArrowRight className="h-4 w-4 rotate-180" />
+        Back to roadmap
+      </button>
+
+      {/* hero */}
+      <div className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium" style={{ color: meta.cssVar }}>
+            {meta.label}
+          </span>
+          <Pill tone={priorityTone as "critical" | "fix" | "muted"}>{opp.priority}</Pill>
+          {opp.aiGenerated && (
+            <Pill tone="accent">
+              <Sparkles className="mr-1 h-2.5 w-2.5" /> AI
+            </Pill>
+          )}
+        </div>
+        <h2 className="mt-3 font-display text-2xl font-semibold leading-snug text-fg sm:text-[1.7rem]">{opp.name}</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{opp.description}</p>
+
+        {/* stat tiles */}
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+          <StatTile icon={TrendingUp} value={formatUSD(opp.annualValueUSD)} label="Est. value" />
+          <StatTile icon={Gauge} value={`${opp.impactScore}`} label="Impact" />
+          <StatTile icon={Gauge} value={`${opp.complexityScore}`} label="Complexity" />
+          <StatTile icon={Clock} value={opp.timeToValue} label="Timeline" />
+          <div className="rounded-xl border border-border bg-surface-2/60 p-3 text-center">
+            <FileText className="mx-auto h-4 w-4 text-faint" />
+            <div className="mt-1.5 text-sm font-medium text-fg">{opp.funcLabel}</div>
+            <div className="mt-0.5 text-[0.6rem] uppercase tracking-wide text-faint">Department</div>
           </div>
-          <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:bg-surface-2 hover:text-fg">
-            <X className="h-4 w-4" />
-          </button>
+          <div className="rounded-xl border border-border bg-surface-2/60 p-3 text-center">
+            <Gauge className="mx-auto h-4 w-4 text-faint" />
+            <div
+              className="mt-1.5 text-sm font-medium"
+              style={{ color: opp.riskLevel === "High" ? "var(--color-critical)" : opp.riskLevel === "Medium" ? "var(--color-fix)" : "var(--color-build)" }}
+            >
+              {opp.riskLevel}
+            </div>
+            <div className="mt-0.5 text-[0.6rem] uppercase tracking-wide text-faint">Risk level</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2-column detail grid */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        {/* left column */}
+        <div className="space-y-6">
+          {/* business outcomes */}
+          <Card className="p-6">
+            <Section title="Business outcomes" icon={Sparkles}>
+              <ul className="space-y-2.5">
+                {opp.keyBenefits.map((b) => (
+                  <li key={b} className="flex items-start gap-2.5 text-sm text-muted">
+                    <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
+                    {b}
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          </Card>
+
+          {/* implementation workflow */}
+          <Card className="p-6">
+            <Section title="Implementation workflow" icon={ListChecks}>
+              <ol className="space-y-3">
+                {opp.workflow.map((step, i) => (
+                  <li key={step} className="flex items-start gap-3 text-sm text-muted">
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-border-strong text-xs font-medium text-faint">
+                      {i + 1}
+                    </span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            </Section>
+          </Card>
         </div>
 
-        {/* body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
-          <h2 className="font-display text-xl font-semibold leading-snug text-fg">{opp.name}</h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted">{opp.description}</p>
-
-          {/* stat tiles */}
-          <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-            <StatTile icon={TrendingUp} value={formatUSD(opp.annualValueUSD)} label="Est. value" />
-            <StatTile icon={Gauge} value={`${opp.impactScore}`} label="Impact" />
-            <StatTile icon={Gauge} value={`${opp.complexityScore}`} label="Complexity" />
-            <StatTile icon={Clock} value={opp.timeToValue} label="Timeline" />
-          </div>
-
-          {/* department + risk */}
-          <div className="mt-3 grid grid-cols-2 gap-2.5">
-            <div className="rounded-xl border border-border p-3">
-              <div className="text-[0.6rem] uppercase tracking-wide text-faint">Department</div>
-              <div className="mt-0.5 text-sm font-medium text-fg">{opp.funcLabel}</div>
-            </div>
-            <div className="rounded-xl border border-border p-3">
-              <div className="text-[0.6rem] uppercase tracking-wide text-faint">Risk level</div>
-              <div
-                className="mt-0.5 text-sm font-medium"
-                style={{ color: opp.riskLevel === "High" ? "var(--color-critical)" : opp.riskLevel === "Medium" ? "var(--color-fix)" : "var(--color-build)" }}
-              >
-                {opp.riskLevel}
-              </div>
-            </div>
-          </div>
-
-          {/* business outcomes */}
-          <Section title="Business outcomes" icon={Sparkles}>
-            <ul className="space-y-2">
-              {opp.keyBenefits.map((b) => (
-                <li key={b} className="flex items-start gap-2 text-sm text-muted">
-                  <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
-                  {b}
-                </li>
-              ))}
-            </ul>
-          </Section>
-
-          {/* implementation */}
-          <Section title="Technologies" icon={FileText}>
-            <div className="flex flex-wrap gap-1.5">
-              {opp.technologies.map((t) => (
-                <span key={t} className="rounded-lg border border-border bg-surface-2/60 px-2.5 py-1 text-xs text-muted">
-                  {t}
-                </span>
-              ))}
-            </div>
-          </Section>
-
-          <Section title="Implementation workflow" icon={ListChecks}>
-            <ol className="space-y-2.5">
-              {opp.workflow.map((step, i) => (
-                <li key={step} className="flex items-start gap-3 text-sm text-muted">
-                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-border-strong text-[0.65rem] text-faint">
-                    {i + 1}
+        {/* right column */}
+        <div className="space-y-6">
+          {/* technologies */}
+          <Card className="p-6">
+            <Section title="Technologies" icon={FileText}>
+              <div className="flex flex-wrap gap-2">
+                {opp.technologies.map((t) => (
+                  <span key={t} className="rounded-lg border border-border bg-surface-2/60 px-3 py-1.5 text-xs text-muted">
+                    {t}
                   </span>
-                  {step}
-                </li>
-              ))}
-            </ol>
-          </Section>
+                ))}
+              </div>
+            </Section>
+          </Card>
 
-          {/* fit */}
-          <Section title="Fit for your organization" icon={CircleCheck}>
-            <div className="grid grid-cols-2 gap-2.5">
-              {FIT_LABELS.map((f) => {
-                const ok = opp.fit[f.key];
-                return (
-                  <div key={f.key} className="flex items-center gap-2 text-sm">
-                    {ok ? <CircleCheck className="h-4 w-4 text-build" /> : <CircleX className="h-4 w-4 text-critical" />}
-                    <span className={ok ? "text-fg" : "text-muted"}>{f.label}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </Section>
+          {/* organization fit */}
+          <Card className="p-6">
+            <Section title="Fit for your organization" icon={CircleCheck}>
+              <div className="grid grid-cols-2 gap-3">
+                {FIT_LABELS.map((f) => {
+                  const ok = opp.fit[f.key];
+                  return (
+                    <div key={f.key} className="flex items-center gap-2.5 text-sm">
+                      {ok ? <CircleCheck className="h-4 w-4 text-build" /> : <CircleX className="h-4 w-4 text-critical" />}
+                      <span className={ok ? "text-fg" : "text-muted"}>{f.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </Section>
+          </Card>
 
           {/* blockers */}
           {opp.blockers.length > 0 && (
-            <div className="mt-5 rounded-xl border border-fix/30 bg-fix/[0.05] p-4">
+            <div className="rounded-xl border border-fix/30 bg-fix/[0.05] p-5">
               <div className="flex items-center gap-2 text-sm font-medium text-fix">
-                <span className="grid h-4 w-4 place-items-center rounded-full bg-fix/20 text-[0.65rem]">!</span>
+                <span className="grid h-5 w-5 place-items-center rounded-full bg-fix/20 text-xs">!</span>
                 Blockers to resolve
               </div>
-              <ul className="mt-2 space-y-1">
+              <ul className="mt-3 space-y-1.5">
                 {opp.blockers.map((b) => (
                   <li key={b} className="text-sm text-muted">
                     • {b}
@@ -176,22 +189,23 @@ export function OpportunityDrawer({ opp, onClose }: { opp: Opportunity | null; o
             </div>
           )}
         </div>
+      </div>
 
-        {/* footer */}
-        <div className="flex items-center gap-2.5 border-t border-border bg-surface px-6 py-4">
-          <button
-            onClick={() => window.print()}
-            className="inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-ink text-sm font-semibold text-white transition-all hover:bg-[#3a322c]"
-          >
-            View Full Blueprint
-          </button>
-          <button
-            onClick={() => exportOpp(opp)}
-            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-border-strong px-4 text-sm font-medium text-fg transition-all hover:border-accent/50 hover:text-accent"
-          >
-            <Download className="h-4 w-4" /> Export
-          </button>
-        </div>
+      {/* footer actions */}
+      <div className="mt-8 flex flex-wrap items-center gap-3">
+        <button
+          onClick={onBookDemo}
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-ink px-6 text-sm font-semibold text-white transition-all hover:bg-[#3a322c]"
+        >
+          Talk to Us About This Agent
+          <ArrowRight className="h-4 w-4" />
+        </button>
+        <button
+          onClick={() => exportOpp(opp)}
+          className="inline-flex h-11 items-center justify-center gap-1.5 rounded-full border border-border-strong px-5 text-sm font-medium text-fg transition-all hover:border-accent/50 hover:text-accent"
+        >
+          <Download className="h-4 w-4" /> Export Blueprint
+        </button>
       </div>
     </div>
   );

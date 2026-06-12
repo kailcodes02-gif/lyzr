@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, ChevronDown, Loader2, Sparkles, TrendingUp, CircleCheck, X } from "lucide-react";
 import { Logo, Card, Eyebrow, Ring, Pill, Bar } from "@/components/ui";
 import { Radar, type RadarPoint } from "@/components/radar";
-import { OpportunityDrawer, PathToAE, DevBoardTab, DemandTab } from "@/components/result-extras";
+import { OpportunityBlueprint, PathToAE, DevBoardTab, DemandTab } from "@/components/result-extras";
 import { cn, formatUSD } from "@/lib/utils";
 import { buildAssessment, DEEPEN, DIMENSIONS } from "@/lib/content";
 import { LANE_META, SHORT, dimColor } from "@/lib/display";
@@ -178,33 +178,38 @@ export default function RoadmapPage() {
         ))}
       </div>
 
-      {/* tabs */}
-      <div className="mt-8 flex gap-1 overflow-x-auto border-b border-border">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={cn(
-              "relative whitespace-nowrap px-3.5 py-2.5 text-sm font-medium transition-colors",
-              tab === t ? "text-fg" : "text-faint hover:text-muted",
-            )}
-          >
-            {t}
-            {tab === t && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-accent" />}
-          </button>
-        ))}
-      </div>
+      {selected ? (
+        <OpportunityBlueprint opp={selected} onBack={() => setSelected(null)} onBookDemo={() => setDemoOpen(true)} />
+      ) : (
+        <>
+          {/* tabs */}
+          <div className="mt-8 flex gap-1 overflow-x-auto border-b border-border">
+            {TABS.map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={cn(
+                  "relative whitespace-nowrap px-3.5 py-2.5 text-sm font-medium transition-colors",
+                  tab === t ? "text-fg" : "text-faint hover:text-muted",
+                )}
+              >
+                {t}
+                {tab === t && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-accent" />}
+              </button>
+            ))}
+          </div>
 
-      <div className="mt-7">
-        {tab === "Scorecard" && <Scorecard a={a} intake={intake} onDeepen={applyDeepen} />}
-        {tab === "Roadmap" && <RoadmapTab a={a} onSelect={setSelected} />}
-        {tab === "Development Board" && <DevBoardTab a={a} onSelect={setSelected} />}
-        {tab === "Path to AE" && <PathToAE a={a} />}
-        {tab === "Opportunity Map" && <MapTab a={a} onSelect={setSelected} />}
-        {tab === "Demand Intelligence" && <DemandTab a={a} onSelect={setSelected} />}
-      </div>
+          <div className="mt-7">
+            {tab === "Scorecard" && <Scorecard a={a} intake={intake} onDeepen={applyDeepen} />}
+            {tab === "Roadmap" && <RoadmapTab a={a} onSelect={setSelected} />}
+            {tab === "Development Board" && <DevBoardTab a={a} onSelect={setSelected} />}
+            {tab === "Path to AE" && <PathToAE a={a} />}
+            {tab === "Opportunity Map" && <MapTab a={a} onSelect={setSelected} />}
+            {tab === "Demand Intelligence" && <DemandTab a={a} onSelect={setSelected} />}
+          </div>
+        </>
+      )}
 
-      <OpportunityDrawer opp={selected} onClose={() => setSelected(null)} />
       <BookDemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
     </main>
   );
