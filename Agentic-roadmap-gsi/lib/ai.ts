@@ -89,43 +89,77 @@ export async function enrichWithClaude(intake: IntakeData, base: Assessment): Pr
   const end = text.lastIndexOf("}");
   if (start === -1 || end === -1) return base;
 
-  let out: ClaudeOut;
+  let parsed: unknown;
   try {
-    out = JSON.parse(text.slice(start, end + 1)) as ClaudeOut;
+    parsed = JSON.parse(text.slice(start, end + 1));
   } catch {
     return base;
   }
+  if (!parsed || typeof parsed !== "object") return base;
+  const out = parsed as {
+    headline?: unknown;
+    dimensionInsights?: unknown;
+    opportunities?: unknown;
+    newOpportunities?: unknown;
+  };
+  const str = (v: unknown) => (typeof v === "string" ? v : "");
+  const obj = (v: unknown): Record<string, unknown> => (v && typeof v === "object" ? (v as Record<string, unknown>) : {});
 
-  // overlay dimension insights
-  const insightMap = new Map(out.dimensionInsights?.map((d) => [d.id, d.insight]) ?? []);
+  // headline
+  const headline = str(out.headline).trim() || base.headline;
+
+  // dimension insights — tolerate [{id,insight}] OR {id: insight}
+  const insightMap = new Map<string, string>();
+  if (Array.isArray(out.dimensionInsights)) {
+    for (const raw of out.dimensionInsights) {
+      const d = obj(raw);
+      if (typeof d.id === "string" && str(d.insight).trim()) insightMap.set(d.id, str(d.insight).trim());
+    }
+  } else if (out.dimensionInsights && typeof out.dimensionInsights === "object") {
+    for (const [k, v] of Object.entries(out.dimensionInsights as Record<string, unknown>)) {
+      if (str(v).trim()) insightMap.set(k, str(v).trim());
+    }
+  }
   const dimensions = base.dimensions.map((d) =>
     insightMap.has(d.id) ? { ...d, insight: insightMap.get(d.id)! } : d,
   );
 
-  // overlay opportunity prose
-  const oppMap = new Map(out.opportunities?.map((o) => [o.id, o]) ?? []);
+  // opportunity prose
+  const oppMap = new Map<string, Record<string, unknown>>();
+  if (Array.isArray(out.opportunities)) {
+    for (const raw of out.opportunities) {
+      const o = obj(raw);
+      if (typeof o.id === "string") oppMap.set(o.id, o);
+    }
+  }
+  const strArr = (v: unknown, n: number) =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, n) : null;
   let opportunities = base.opportunities.map((o) => {
     const e = oppMap.get(o.id);
     if (!e) return o;
+    const benefits = strArr(e.keyBenefits, 4);
     return {
       ...o,
-      description: e.description?.trim() ? e.description.trim() : o.description,
-      blockers: o.lane === "build_now" ? [] : (e.blockers ?? o.blockers).slice(0, 2),
-      keyBenefits: e.keyBenefits && e.keyBenefits.length ? e.keyBenefits.slice(0, 4) : o.keyBenefits,
+      description: str(e.description).trim() || o.description,
+      blockers: o.lane === "build_now" ? [] : strArr(e.blockers, 2) ?? o.blockers,
+      keyBenefits: benefits && benefits.length ? benefits : o.keyBenefits,
     };
   });
 
-  // add AI-discovered opportunities from the free-text
+  // AI-discovered opportunities from the free-text
   const validFuncs = new Set(FUNCTIONS.map((f) => f.value));
-  const newOpps = (out.newOpportunities ?? []).slice(0, 2).map((n, i) => {
-    const func = validFuncs.has(n.func) ? n.func : "operations";
+  const newList = Array.isArray(out.newOpportunities) ? out.newOpportunities : [];
+  const newOpps = newList.slice(0, 2).map((raw, i) => {
+    const n = obj(raw);
+    const func = typeof n.func === "string" && validFuncs.has(n.func) ? n.func : "operations";
     const complexity: Complexity = n.complexity === "Low" || n.complexity === "High" ? n.complexity : "Medium";
-    const value = Math.max(20_000, Math.round((n.annualValueUSD || 150_000) / 5000) * 5000);
+    const rawVal = typeof n.annualValueUSD === "number" ? n.annualValueUSD : 150_000;
+    const value = Math.max(20_000, Math.round(rawVal / 5000) * 5000);
     const scored = scoreOpportunity({
       id: `ai-${i}`,
       func,
-      name: n.name || "Custom Agent Opportunity",
-      description: n.description || "",
+      name: str(n.name) || "Custom Agent Opportunity",
+      description: str(n.description),
       baseValue: value,
       complexity,
       baseReadiness: 0.6,
@@ -144,13 +178,5 @@ export async function enrichWithClaude(intake: IntakeData, base: Assessment): Pr
   const estAnnualValueUSD = opportunities.reduce((s, o) => s + o.annualValueUSD, 0);
   const functionsCount = new Set(opportunities.map((o) => o.func)).size;
 
-  return {
-    ...base,
-    headline: out.headline?.trim() || base.headline,
-    dimensions,
-    opportunities,
-    estAnnualValueUSD,
-    functionsCount,
-    source: "ai",
-  };
+  return { ...base, headline, dimensions, opportunities, estAnnualValueUSD, functionsCount, source: "ai" };
 }
