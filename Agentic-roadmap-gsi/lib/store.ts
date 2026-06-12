@@ -20,6 +20,9 @@ const WEEK = 7 * DAY;
 export const LIMITS = { domainPerDay: 10, emailPerDay: 2, emailPerWeek: 5 };
 export type LimitReason = "domain_daily" | "email_daily" | "email_weekly";
 
+/** Domains exempt from rate limiting (internal team). */
+const WHITELISTED_DOMAINS = new Set(["lyzr.ai"]);
+
 export interface LeadRecord {
   id: string;
   email: string;
@@ -44,6 +47,7 @@ const newId = (now: number) => "s_" + Math.random().toString(36).slice(2, 11) + 
 /* ------------------------------------------------------------------ */
 
 async function checkLimitsRedis(r: Redis, email: string): Promise<{ ok: boolean; reason?: LimitReason }> {
+  if (WHITELISTED_DOMAINS.has(domainOf(email))) return { ok: true };
   const dom = domainOf(email);
   const now = Date.now();
 
@@ -104,6 +108,7 @@ function writeFile(d: { records: LeadRecord[] }): void {
 }
 
 function checkLimitsFile(email: string): { ok: boolean; reason?: LimitReason } {
+  if (WHITELISTED_DOMAINS.has(domainOf(email))) return { ok: true };
   const dom = domainOf(email);
   const now = Date.now();
   const recs = readFile().records;

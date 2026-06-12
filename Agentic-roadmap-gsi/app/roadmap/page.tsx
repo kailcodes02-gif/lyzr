@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, ChevronDown, Loader2, Sparkles, TrendingUp, CircleCheck } from "lucide-react";
+import { ArrowRight, ChevronDown, Loader2, Sparkles, TrendingUp, CircleCheck, X } from "lucide-react";
 import { Logo, Card, Eyebrow, Ring, Pill, Bar } from "@/components/ui";
 import { Radar, type RadarPoint } from "@/components/radar";
 import { OpportunityDrawer, PathToAE, DevBoardTab, DemandTab } from "@/components/result-extras";
@@ -22,6 +22,7 @@ export default function RoadmapPage() {
   const [tab, setTab] = useState<Tab>("Scorecard");
   const [selected, setSelected] = useState<Opportunity | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [demoOpen, setDemoOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -131,13 +132,13 @@ export default function RoadmapPage() {
               <>Rule-based estimate</>
             )}
           </span>
-          <a
-            href="mailto:hello@lyzr.ai?subject=Agentic%20Roadmap%20demo"
+          <button
+            onClick={() => setDemoOpen(true)}
             className="inline-flex h-9 items-center gap-1.5 rounded-full bg-ink px-4 text-sm font-semibold text-white transition-all hover:bg-[#3a322c]"
           >
             Book a demo
             <ArrowRight className="h-4 w-4" />
-          </a>
+          </button>
         </div>
       </header>
 
@@ -204,6 +205,7 @@ export default function RoadmapPage() {
       </div>
 
       <OpportunityDrawer opp={selected} onClose={() => setSelected(null)} />
+      <BookDemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
     </main>
   );
 }
@@ -570,5 +572,74 @@ function MapTab({ a, onSelect }: { a: Assessment; onSelect: (o: Opportunity) => 
         ))}
       </div>
     </Card>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Book a Demo modal (same iframe as lyzr.ai)                         */
+/* ------------------------------------------------------------------ */
+
+function BookDemoModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const iframeRef = useCallback(
+    (node: HTMLIFrameElement | null) => {
+      if (!node || !open) return;
+      // Once loaded, tell the iframe to open with UTM attribution
+      const onLoad = () => {
+        node.contentWindow?.postMessage(
+          {
+            type: "OPEN_DEMO_MODAL",
+            email: "",
+            source: window.location.href,
+            utmSource: "agentic-roadmap",
+            utmMedium: "product",
+            utmCampaign: "ai-readiness-assessment",
+            firstTouchUrl: window.location.href,
+            lastTouchPage: window.location.href,
+            referrer: document.referrer || "",
+          },
+          "*",
+        );
+      };
+      node.addEventListener("load", onLoad);
+      return () => node.removeEventListener("load", onLoad);
+    },
+    [open],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === "CLOSE_DEMO_MODAL") onClose();
+      if (e.data?.type === "OPEN_BOOKING_LINK" && e.data.url) {
+        window.open(e.data.url, "_blank");
+        onClose();
+      }
+    };
+    window.addEventListener("message", handler);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("message", handler);
+      document.body.style.overflow = "";
+    };
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <button
+        onClick={onClose}
+        className="absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full bg-surface/80 text-fg transition-colors hover:bg-surface-2"
+      >
+        <X className="h-5 w-5" />
+      </button>
+      <iframe
+        ref={iframeRef}
+        src="https://lead-scoring-agent-by-lyzr.vercel.app/book-demo-modal?page=agentic-roadmap&utm_source=agentic-roadmap&utm_medium=product&utm_campaign=ai-readiness-assessment"
+        className="h-full w-full max-w-2xl rounded-2xl border-0"
+        style={{ maxHeight: "90vh" }}
+        allow="clipboard-write"
+      />
+    </div>
   );
 }
