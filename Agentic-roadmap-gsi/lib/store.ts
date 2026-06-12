@@ -31,7 +31,10 @@ export interface LeadRecord {
 }
 
 const redis =
-  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN ? Redis.fromEnv() : null;
+  (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) ||
+  (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN)
+    ? Redis.fromEnv()
+    : null;
 
 const domainOf = (email: string) => email.toLowerCase().split("@")[1] ?? "";
 const newId = (now: number) => "s_" + Math.random().toString(36).slice(2, 11) + now.toString(36);
