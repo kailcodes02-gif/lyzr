@@ -76,7 +76,7 @@ async function createRecordRedis(
   const id = newId(now);
   const record: LeadRecord = { id, email, domain: dom, createdAt: now, updatedAt: now, intake };
 
-  await r.set(`rec:${id}`, record, { ex: 60 * 60 * 24 * 30 }); // 30-day TTL
+  await r.set(`rec:${id}`, record); // no TTL — leads persist indefinitely
   await r.zadd(`em:${email}`, { score: now, member: id });
   await r.zadd(`dom:${dom}`, { score: now, member: id });
   // self-prune the counter sets so they don't grow unbounded
@@ -154,7 +154,7 @@ export async function saveAssessment(id: string, intake: IntakeData, assessment:
     rec.intake = intake;
     rec.assessment = assessment;
     rec.updatedAt = Date.now();
-    await redis.set(`rec:${id}`, rec, { ex: 60 * 60 * 24 * 30 });
+    await redis.set(`rec:${id}`, rec); // no TTL — leads persist indefinitely
     return;
   }
   const d = readFile();
@@ -169,4 +169,27 @@ export async function saveAssessment(id: string, intake: IntakeData, assessment:
 export async function getRecord(id: string): Promise<LeadRecord | undefined> {
   if (redis) return ((await redis.get(`rec:${id}`)) as LeadRecord | null) ?? undefined;
   return readFile().records.find((x) => x.id === id);
+}
+
+/**
+ * Every lead, newest first. Scans all `rec:*` keys directly so it catches every
+ * record in the store — including ones written before this listing existed —
+ * with no index to maintain or backfill. Fine at lead-tracker volumes.
+ */
+export async function listRecords(): Promise<LeadRecord[]> {
+  if (redis) {
+    const keys: string[] = [];
+    let cursor = "0";
+    do {
+      const [next, batch] = await redis.scan(cursor, { match: "rec:*", count: 200 });
+      cursor = String(next);
+      keys.push(...(batch as string[]));
+    } while (cursor !== "0");
+    if (!keys.length) return [];
+    const recs = (await redis.mget<LeadRecord[]>(...keys)) as (LeadRecord | null)[];
+    return recs
+      .filter((r): r is LeadRecord => r != null)
+      .sort((a, b) => b.createdAt - a.createdAt);
+  }
+  return readFile().records.slice().sort((a, b) => b.createdAt - a.createdAt);
 }
