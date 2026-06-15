@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GSI &amp; SI — Brand Awareness Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F2F3F5;--paper:#FFFFFF;--ink:#16181F;--muted:#1E2126;--faint:#3A3F4A;
+    --line:#E6E8EC;--line2:#EFF0F3;
+    --accent:#4F46E5;--win:#0E9F6E;--win-soft:#E4F5EE;--warn:#B45309;--li:#3D5A8A;
+    --display:'Space Grotesk',ui-sans-serif,system-ui,sans-serif;
+    --body:'Inter',ui-sans-serif,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;
+    line-height:1.55;-webkit-font-smoothing:antialiased;padding:28px 18px 60px;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  .masthead{background:var(--ink);color:#fff;border-radius:18px;padding:30px 32px 28px;position:relative;overflow:hidden;}
+  .masthead::after{content:"";position:absolute;right:-60px;top:-60px;width:260px;height:260px;border-radius:50%;
+    background:radial-gradient(circle,rgba(79,70,229,.4),transparent 68%);}
+  .mast-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;position:relative;z-index:1;flex-wrap:wrap;}
+  .preparedby{font-family:var(--display);font-size:13px;font-weight:600;color:#fff;}
+  .preparedby span{color:#B9B6F4;}
+  .report-tag{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8A90A0;
+    border:1px solid rgba(255,255,255,.18);padding:5px 12px;border-radius:999px;white-space:nowrap;}
+  h1{font-family:var(--display);font-weight:600;font-size:34px;line-height:1.1;margin-top:20px;position:relative;z-index:1;letter-spacing:-.01em;}
+  h1 .client{color:#B9B6F4;}
+  .mast-sub{position:relative;z-index:1;margin-top:9px;color:#B6BBC7;font-size:14px;}
+  .mast-range{display:inline-flex;align-items:center;gap:8px;margin-top:15px;position:relative;z-index:1;
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);padding:7px 14px;border-radius:10px;font-size:13px;font-weight:500;color:#E7E9EE;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--win);display:inline-block;flex-shrink:0;}
+  section{margin-top:34px;}
+  .eyebrow{font-family:var(--display);font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:6px;}
+  h2{font-family:var(--display);font-weight:600;font-size:22px;letter-spacing:-.01em;}
+  .sec-intro{color:var(--muted);font-size:14px;margin-top:7px;max-width:74ch;}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-top:18px;}
+  .kpi{padding:20px;border-right:1px solid var(--line2);}
+  .kpi:last-child{border-right:none;}
+  .kpi-label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600;}
+  .kpi-val{font-family:var(--display);font-size:27px;font-weight:600;margin-top:7px;letter-spacing:-.01em;font-variant-numeric:tabular-nums;}
+  .kpi-note{font-size:12px;color:var(--muted);margin-top:4px;}
+  .panels{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px;}
+  .panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:20px 22px;}
+  .panel.win{border-top:3px solid var(--win);}
+  .panel.exp{border-top:3px solid var(--warn);}
+  .panel h3{font-family:var(--display);font-size:15px;font-weight:600;margin-bottom:12px;}
+  .panel ul{list-style:none;}
+  .panel li{font-size:13.5px;color:var(--ink);padding:7px 0 7px 18px;position:relative;line-height:1.5;border-bottom:1px dashed var(--line2);}
+  .panel li:last-child{border-bottom:none;}
+  .panel li::before{content:"";position:absolute;left:1px;top:14px;width:6px;height:6px;border-radius:50%;}
+  .panel.win li::before{background:var(--win);}
+  .panel.exp li::before{background:var(--warn);}
+  .panel li b{color:var(--ink);}
+  .block{background:var(--paper);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-top:16px;}
+  .block-head{padding:17px 22px 15px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;}
+  .block-title{font-family:var(--display);font-weight:600;font-size:17px;letter-spacing:-.01em;}
+  .block-sub{font-size:12.5px;color:var(--faint);margin-top:3px;}
+  .pill{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:6px;white-space:nowrap;}
+  .pill.on{background:var(--win-soft);color:var(--win);}
+  .pill.off{background:#F3F4F6;color:var(--faint);}
+  .outer-summary{padding:16px 22px;}
+  .stat-chips{display:flex;gap:7px;flex-wrap:wrap;}
+  .chip{display:flex;flex-direction:column;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:8px 13px;min-width:84px;}
+  .cl{font-size:10px;color:var(--faint);font-weight:600;letter-spacing:.03em;text-transform:uppercase;}
+  .cv{font-family:var(--display);font-size:15px;font-weight:600;margin-top:3px;font-variant-numeric:tabular-nums;}
+  .cv.pos{color:var(--win);}.cv.warn{color:var(--warn);}
+  .toggle-btn{display:flex;align-items:center;gap:7px;width:100%;padding:12px 22px;background:transparent;border:none;border-top:1px solid var(--line2);
+    font-family:var(--body);font-size:13px;font-weight:600;color:var(--accent);cursor:pointer;text-align:left;transition:background .15s;}
+  .toggle-btn:hover{background:#FAFAFA;}
+  .toggle-label{flex:1;}
+  .arrow{display:inline-block;transition:transform .25s;font-size:11px;margin-left:auto;}
+  .arrow.open{transform:rotate(180deg);}
+  .details{overflow:hidden;max-height:0;transition:max-height .4s ease;}
+  .details.open{max-height:3000px;}
+  .details-inner{padding:4px 22px 18px;}
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{text-align:right;font-size:10.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--faint);font-weight:600;
+    padding:10px 11px;border-bottom:1px solid var(--line);background:#FAFAFB;white-space:nowrap;}
+  thead th:first-child{text-align:left;}
+  tbody td{padding:10px 11px;text-align:right;border-bottom:1px solid var(--line2);white-space:nowrap;font-variant-numeric:tabular-nums;}
+  tbody td:first-child{text-align:left;white-space:normal;font-variant-numeric:normal;}
+  tbody tr:last-child td{border-bottom:none;}
+  .nm{font-weight:600;}.idm{font-size:10.5px;color:var(--faint);}
+  .pos{color:var(--win);font-weight:600;}.warn{color:var(--warn);font-weight:600;}
+  .cre{font-size:11px;color:var(--li);font-weight:600;}
+  .row-total td{font-weight:700;background:#FAFAFB;border-top:1px solid var(--line);}
+  .row-total td:first-child{font-family:var(--display);}
+  .note-row td{background:#FCFCFD;color:var(--faint);font-size:11.5px;font-style:italic;text-align:left;white-space:normal;padding:8px 11px;}
+  footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--faint);}
+  footer .fa{font-family:var(--display);font-weight:600;color:var(--muted);}
+  .rec{background:linear-gradient(180deg,#fff,#FDFAF4);border:1px solid #F0E3CC;border-left:4px solid var(--warn);
+    border-radius:14px;padding:20px 24px;margin-top:18px;}
+  .rec-eyebrow{font-family:var(--display);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--warn);}
+  .rec p{font-size:14px;color:var(--ink);margin-top:7px;max-width:80ch;line-height:1.55;}
+  .steps{list-style:none;margin-top:16px;display:grid;gap:10px;}
+  .steps li{display:flex;gap:13px;align-items:flex-start;background:var(--paper);border:1px solid var(--line);
+    border-radius:12px;padding:15px 18px;font-size:13.5px;line-height:1.5;}
+  .steps .sn{flex:0 0 auto;width:24px;height:24px;border-radius:7px;background:var(--accent-soft,#EEEDFC);color:var(--accent);
+    font-family:var(--display);font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+  .steps b{color:var(--ink);}
+  @media(max-width:760px){
+    body{padding:16px 12px 48px;}h1{font-size:26px;}
+    .kpis{grid-template-columns:1fr 1fr;}.kpi{border-bottom:1px solid var(--line2);}
+    .kpi:nth-child(2n){border-right:none;}.panels{grid-template-columns:1fr;}table{min-width:620px;}
+  }
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="masthead">
+  <div class="mast-top">
+    <div class="preparedby">White Path &nbsp;×&nbsp; <span>GSI &amp; SI</span></div>
+    <div class="report-tag">GSI &amp; SI · LinkedIn</div>
+  </div>
+  <h1>GSI &amp; SI<br><span class="client">Performance Report</span></h1>
+  <p class="mast-sub">LinkedIn — Brand Awareness, Playbooks &amp; Conversation (Sponsored Messaging) ads.</p>
+  <div class="mast-range"><span class="dot"></span>&nbsp; Reporting period &nbsp;·&nbsp; 1 – 15 Jun 2026</div>
+</div>
+
+<section>
+  <div class="eyebrow">All GSI &amp; SI campaigns · at a glance</div>
+  <h2>Account totals</h2>
+  <div class="kpis">
+    <div class="kpi"><div class="kpi-label">Total Spend</div><div class="kpi-val">$837.59</div><div class="kpi-note">Awareness $525.58 · Playbooks $88.78 · Conversation $223.23</div></div>
+    <div class="kpi"><div class="kpi-label">Impressions</div><div class="kpi-val">5,928</div><div class="kpi-note">46 clicks · Sponsored Content + Playbooks</div></div>
+    <div class="kpi"><div class="kpi-label">Total Engagements</div><div class="kpi-val">92</div><div class="kpi-note">across all formats</div></div>
+    <div class="kpi"><div class="kpi-label">Leads / Results</div><div class="kpi-val">0</div><div class="kpi-note">0 leads · 0 website visits · 41 sends, 15 opens</div></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">The window in short</div>
+  <h2>Key takeaways</h2>
+  <div class="panels">
+    <div class="panel win">
+      <h3>What's working</h3>
+      <ul>
+        <li><b>Native targeting is the efficient path.</b> The 2 active native sets (Fujitsu, KPMG) deliver volume at far lower cost — KPMG Native hit <b>$41 CPM</b> and <b>$5.47 CPC</b>, the account's best paid efficiency.</li>
+        <li><b>NTT Data creative is performing well across both active ad sets</b>, delivering a <b>~5% CTR</b> overall — significantly above the account average of 0.81%, making it the strongest performing unit in the native targeting sets.</li>
+        <li><b>Creative refresh underway.</b> Native sets launched on the CB Insights creative; the <b>two new final assets were activated later</b>, so all active sets now run <b>3 creative variations</b>.</li>
+        <li><b>Kaushik List was the lone scale exception.</b> Its custom audience exceeded <b>5,000 members</b>, so the pool was large enough to deliver <b>1,536 reach / 2,565 impressions at just $22 CPM</b> — the cheapest in the account. The narrower lists never reached that scale, which kept their CPMs high.</li>
+      </ul>
+    </div>
+    <div class="panel exp">
+      <h3>Why we paused the lists</h3>
+      <ul>
+        <li><b>Narrow custom lists pushed CPM 2–3× above benchmark</b> — most list sets ran $190–$275 CPM vs. the $92 average, as tight targeting shrank the deliverable pool.</li>
+        <li><b>Low engagement compounded it</b> — 46 clicks &amp; 50 engagements across 5,705 impressions, with <b>0 leads or conversions</b>.</li>
+        <li><b>Worst outliers:</b> Fujitsu List ($273 CPM, $39.94 CPC) and Bharat List ($239 CPM, $25.91 CPC).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">Ad set performance</div>
+  <h2>Metrics breakdown</h2>
+  <p class="sec-intro">Grouped by status. Combined figures stay visible — click <b>View breakdown</b> to expand the full per-ad-set metrics.</p>
+
+  <div class="block">
+    <div class="block-head">
+      <div>
+        <div class="block-title">Active · Native targeting</div>
+        <div class="block-sub">2 ad sets · CB Insights + 2 new final creatives (activated later)</div>
+      </div>
+      <span class="pill on">Active</span>
+    </div>
+    <div class="outer-summary">
+      <div class="stat-chips">
+        <div class="chip"><span class="cl">Spend</span><span class="cv">$91.60</span></div>
+        <div class="chip"><span class="cl">Impr.</span><span class="cv">1,174</span></div>
+        <div class="chip"><span class="cl">Clicks</span><span class="cv">13</span></div>
+        <div class="chip"><span class="cl">CTR</span><span class="cv pos">1.11%</span></div>
+        <div class="chip"><span class="cl">Avg CPM</span><span class="cv pos">$78.02</span></div>
+        <div class="chip"><span class="cl">Engmt</span><span class="cv">14</span></div>
+      </div>
+    </div>
+    <button class="toggle-btn" onclick="toggle(this)"><span class="toggle-label">View breakdown</span><span class="arrow">▾</span></button>
+    <div class="details">
+      <div class="details-inner table-scroll">
+        <table>
+          <thead><tr><th>Ad set</th><th>Creative</th><th>Spend</th><th>Reach</th><th>Impr.</th><th>Clicks</th><th>CTR</th><th>CPM</th><th>CPC</th><th>Eng.</th><th>Eng. rate</th></tr></thead>
+          <tbody>
+            <tr><td><span class="nm">WP | Fujitsu Aud | Native</span><br><span class="idm">ID 792603884</span></td><td class="cre">CB + 2 new</td><td>$53.33</td><td>126</td><td>248</td><td>6</td><td class="pos">2.42%</td><td class="warn">$215.03</td><td>$8.89</td><td>6</td><td>2.42%</td></tr>
+            <tr><td><span class="nm">WP | KPMG Aud | Native</span><br><span class="idm">ID 794005254</span></td><td class="cre">CB + 2 new</td><td>$38.27</td><td>324</td><td>926</td><td>7</td><td>0.76%</td><td class="pos">$41.33</td><td class="pos">$5.47</td><td>8</td><td>0.86%</td></tr>
+            <tr class="row-total"><td>Subtotal</td><td>—</td><td>$91.60</td><td>450</td><td>1,174</td><td>13</td><td>1.11%</td><td>$78.02</td><td>$7.05</td><td>14</td><td>1.19%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-head">
+      <div>
+        <div class="block-title">Paused · Custom audience lists</div>
+        <div class="block-sub">7 ad sets · CB Insights &amp; "Accenture invested in Lyzr" creatives</div>
+      </div>
+      <span class="pill off">Paused</span>
+    </div>
+    <div class="outer-summary">
+      <div class="stat-chips">
+        <div class="chip"><span class="cl">Spend</span><span class="cv">$433.98</span></div>
+        <div class="chip"><span class="cl">Impr.</span><span class="cv">4,531</span></div>
+        <div class="chip"><span class="cl">Clicks</span><span class="cv">33</span></div>
+        <div class="chip"><span class="cl">CTR</span><span class="cv">0.73%</span></div>
+        <div class="chip"><span class="cl">Avg CPM</span><span class="cv warn">$95.78</span></div>
+        <div class="chip"><span class="cl">Engmt</span><span class="cv">36</span></div>
+      </div>
+    </div>
+    <button class="toggle-btn" onclick="toggle(this)"><span class="toggle-label">View breakdown</span><span class="arrow">▾</span></button>
+    <div class="details">
+      <div class="details-inner table-scroll">
+        <table>
+          <thead><tr><th>Ad set</th><th>Creative</th><th>Spend</th><th>Reach</th><th>Impr.</th><th>Clicks</th><th>CTR</th><th>CPM</th><th>CPC</th><th>Eng.</th><th>Eng. rate</th></tr></thead>
+          <tbody>
+            <tr><td><span class="nm">WP | Accenture AU | Playbook</span><br><span class="idm">ID 783805224</span></td><td class="cre">Accenture×Lyzr</td><td>$22.39</td><td>101</td><td>115</td><td>3</td><td class="pos">2.61%</td><td class="warn">$194.70</td><td>$7.46</td><td>5</td><td class="pos">4.35%</td></tr>
+            <tr><td><span class="nm">WP | Accenture AU | List</span><br><span class="idm">ID 784104144</span></td><td class="cre">Accenture×Lyzr</td><td>$63.08</td><td>154</td><td>278</td><td>7</td><td class="pos">2.52%</td><td class="warn">$226.91</td><td>$9.01</td><td>7</td><td>2.52%</td></tr>
+            <tr><td><span class="nm">WP | Fujitsu Aud | List</span><br><span class="idm">ID 784402514</span></td><td class="cre">CB insights</td><td>$79.87</td><td>143</td><td>292</td><td>2</td><td>0.68%</td><td class="warn">$273.53</td><td class="warn">$39.94</td><td>2</td><td>0.68%</td></tr>
+            <tr><td><span class="nm">WP | Bharat | List</span><br><span class="idm">ID 784403734</span></td><td class="cre">CB insights</td><td>$77.74</td><td>169</td><td>325</td><td>3</td><td>0.92%</td><td class="warn">$239.20</td><td class="warn">$25.91</td><td>3</td><td>0.92%</td></tr>
+            <tr><td><span class="nm">WP | KPMG Aud | List</span><br><span class="idm">ID 785203974</span></td><td class="cre">CB insights</td><td>$56.51</td><td>305</td><td>549</td><td>3</td><td>0.55%</td><td>$102.93</td><td class="warn">$18.84</td><td>3</td><td>0.55%</td></tr>
+            <tr><td><span class="nm">WP | Kaushik | List</span><br><span class="idm">ID 785503824</span></td><td class="cre">CB insights</td><td>$56.56</td><td class="pos">1,536</td><td class="pos">2,565</td><td class="pos">9</td><td>0.35%</td><td class="pos">$22.05</td><td class="pos">$6.28</td><td>10</td><td>0.39%</td></tr>
+            <tr><td><span class="nm">WP | TCS | List</span><br><span class="idm">ID 785603824</span></td><td class="cre">Accenture×Lyzr</td><td>$77.83</td><td>222</td><td>407</td><td>6</td><td class="pos">1.47%</td><td class="warn">$191.23</td><td>$12.97</td><td>6</td><td>1.47%</td></tr>
+            <tr class="row-total"><td>Subtotal</td><td>—</td><td>$433.98</td><td>2,630</td><td>4,531</td><td>33</td><td>0.73%</td><td>$95.78</td><td>$13.15</td><td>36</td><td>0.79%</td></tr>
+            <tr class="note-row"><td colspan="11">Pooja List (CB Insights) is in the account but had no recorded delivery in this window. Green = strongest in column · Amber = cost / efficiency flag.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">Separate campaign · Lead Gen</div>
+  <h2>Playbook lead-gen ads</h2>
+  <p class="sec-intro">Two Playbook ad sets ran under <b>GSI &amp; SI | Lead Gen | Playbooks</b>, then paused — CPM came in around <b>$398</b>, ~4× the brand-awareness average, with 0 leads and 0 clicks despite a strong 11.66% engagement rate.</p>
+
+  <div class="block">
+    <div class="block-head">
+      <div>
+        <div class="block-title">Paused · Playbook lead-gen</div>
+        <div class="block-sub">2 ad sets · Lead Gen objective · paused for high CPM</div>
+      </div>
+      <span class="pill off">Paused</span>
+    </div>
+    <div class="outer-summary">
+      <div class="stat-chips">
+        <div class="chip"><span class="cl">Spend</span><span class="cv">$88.78</span></div>
+        <div class="chip"><span class="cl">Impr.</span><span class="cv">223</span></div>
+        <div class="chip"><span class="cl">Avg CPM</span><span class="cv warn">$398.12</span></div>
+        <div class="chip"><span class="cl">Leads</span><span class="cv warn">0</span></div>
+        <div class="chip"><span class="cl">Engmt</span><span class="cv">26</span></div>
+        <div class="chip"><span class="cl">Eng. rate</span><span class="cv pos">11.66%</span></div>
+      </div>
+    </div>
+    <button class="toggle-btn" onclick="toggle(this)"><span class="toggle-label">View breakdown</span><span class="arrow">▾</span></button>
+    <div class="details">
+      <div class="details-inner table-scroll">
+        <table>
+          <thead><tr><th>Ad set</th><th>Spend</th><th>Impr.</th><th>Clicks</th><th>CTR</th><th>CPM</th><th>Leads</th><th>Dwell</th><th>Eng.</th><th>Eng. rate</th></tr></thead>
+          <tbody>
+            <tr><td><span class="nm">WP | Accenture AU List | Playbook</span><br><span class="idm">ID 855254046 · Jun 8</span></td><td>$49.93</td><td>125</td><td>0</td><td>0%</td><td class="warn">$399.44</td><td>0</td><td>6.03s</td><td>14</td><td class="pos">11.2%</td></tr>
+            <tr><td><span class="nm">WP | TCS List | Playbook</span><br><span class="idm">ID 855274186 · Jun 9</span></td><td>$38.85</td><td>98</td><td>0</td><td>0%</td><td class="warn">$396.43</td><td>0</td><td>4.58s</td><td>12</td><td class="pos">12.24%</td></tr>
+            <tr class="row-total"><td>Subtotal</td><td>$88.78</td><td>223</td><td>0</td><td>0%</td><td>$398.12</td><td>0</td><td>5.39s</td><td>26</td><td>11.66%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">Separate campaign · Sponsored Messaging</div>
+  <h2>Conversation ads</h2>
+  <p class="sec-intro">Two conversation ads ran via Sponsored Messaging, then paused. Opens were healthy (~37% open rate) but <b>no message clicks converted</b> — 0 leads and 0 website visits. <b>ANI</b> pointed to a lead-gen form; <b>Jessica</b> directed opens to the Accenture booking-demo site.</p>
+
+  <div class="block">
+    <div class="block-head">
+      <div>
+        <div class="block-title">Paused · Conversation ads</div>
+        <div class="block-sub">2 ad sets · Sponsored Messaging · to relaunch with revised copy</div>
+      </div>
+      <span class="pill off">Paused</span>
+    </div>
+    <div class="outer-summary">
+      <div class="stat-chips">
+        <div class="chip"><span class="cl">Spend</span><span class="cv">$223.23</span></div>
+        <div class="chip"><span class="cl">Sends</span><span class="cv">41</span></div>
+        <div class="chip"><span class="cl">Opens</span><span class="cv">15</span></div>
+        <div class="chip"><span class="cl">Open rate</span><span class="cv pos">36.6%</span></div>
+        <div class="chip"><span class="cl">Clicks</span><span class="cv warn">0</span></div>
+        <div class="chip"><span class="cl">Engmt</span><span class="cv">16</span></div>
+      </div>
+    </div>
+    <button class="toggle-btn" onclick="toggle(this)"><span class="toggle-label">View breakdown</span><span class="arrow">▾</span></button>
+    <div class="details">
+      <div class="details-inner table-scroll">
+        <table>
+          <thead><tr><th>Ad set</th><th>Destination</th><th>Spend</th><th>Sends</th><th>Opens</th><th>Open rate</th><th>Clicks</th><th>Cost/send</th><th>Cost/open</th><th>Engmt</th><th>Result</th></tr></thead>
+          <tbody>
+            <tr><td><span class="nm">WP | Accenture Aud | ANI | Lead Gen</span><br><span class="idm">ID 784601754 · Jun 8</span></td><td class="cre">Lead-gen form</td><td>$151.49</td><td>29</td><td>11</td><td class="pos">37.93%</td><td class="warn">0</td><td>$5.22</td><td>$13.77</td><td>12</td><td>0 leads</td></tr>
+            <tr><td><span class="nm">WP | Jessica | Website visits</span><br><span class="idm">ID 790301084 · Jun 10</span></td><td class="cre">Accenture booking-demo site</td><td>$71.74</td><td>12</td><td>4</td><td class="pos">33.33%</td><td class="warn">0</td><td>$5.98</td><td>$17.94</td><td>4</td><td>0 visits</td></tr>
+            <tr class="row-total"><td>Subtotal</td><td>—</td><td>$223.23</td><td>41</td><td>15</td><td>36.6%</td><td>0</td><td>$5.45</td><td>$14.88</td><td>16</td><td>0</td></tr>
+            <tr class="note-row"><td colspan="11">An earlier ad set (Accenture | India | Lead Gen, ID 689709884, Apr 22) is in the account but had no delivery in this window. Click-to-open rate was 0% on both active sets — opens did not progress to clicks.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">Where we go from here</div>
+  <h2>Action steps — GSI &amp; SI</h2>
+
+  <div class="rec">
+    <div class="rec-eyebrow">Budget direction</div>
+    <p>Shift the main focus to <b>conversation ads</b>, with roughly <b>20% of budget</b> held back for awareness campaigns. Spreading spend across too many top-of-funnel campaigns is diluting impact at the current spend level.</p>
+  </div>
+
+  <ol class="steps">
+    <li><span class="sn">1</span><div><b>Launch conversation ads today.</b> Activate the conversation ads with the revised ad copies.</div></li>
+    <li><span class="sn">2</span><div><b>Consolidate awareness targeting.</b> Combine audiences into fewer awareness campaigns instead of diversifying spend across many top-of-funnel sets, so each can deliver tangible impact.</div></li>
+    <li><span class="sn">3</span><div><b>Build a retargeting layer.</b> Over the month, retarget post-engagers and website visitors with multiple impressions and drive them to download a resource such as a playbook.</div></li>
+    <li><span class="sn">4</span><div><b>Concentrate on a few target companies.</b> Given limited spend, focus on cracking the funnel for a small set of priority accounts first, then expand to the rest.</div></li>
+  </ol>
+</section>
+
+<footer>
+  <span class="fa">GSI &amp; SI · Brand Awareness</span>
+  <span>LinkedIn Sponsored Content · 1–15 Jun 2026 · Draft for review</span>
+</footer>
+
+</div>
+<script>
+function toggle(btn){
+  const details = btn.nextElementSibling;
+  const arrow = btn.querySelector('.arrow');
+  const label = btn.querySelector('.toggle-label');
+  const isOpen = details.classList.contains('open');
+  details.classList.toggle('open', !isOpen);
+  arrow.classList.toggle('open', !isOpen);
+  label.textContent = isOpen ? 'View breakdown' : 'Hide breakdown';
+}
+</script>
+</body>
+</html>
