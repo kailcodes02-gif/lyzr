@@ -4,12 +4,37 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:   # lets you deploy manually from the Actions tab (no commit needed)
+
+concurrency:
+  group: deploy-pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write        # needed so a failed deploy can open an alert issue
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # Fail early with a clear message if the Cloudflare credentials are absent,
+      # instead of dying deep inside wrangler with a cryptic auth error.
+      - name: Check required secrets
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=0
+          if [ -z "$CF_TOKEN" ]; then echo "::error::CLOUDFLARE_API_TOKEN secret is empty or missing"; missing=1; fi
+          if [ -z "$CF_ACCT" ]; then echo "::error::CLOUDFLARE_ACCOUNT_ID secret is empty or missing"; missing=1; fi
+          if [ "$missing" = "1" ]; then
+            echo "::error::Add them in Settings → Secrets and variables → Actions, then re-run this workflow."
+            exit 1
+          fi
+          echo "Required Cloudflare secrets are present."
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
@@ -51,3 +76,31 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         if: ${{ env.PAT != '' }}
         run: echo "${{ secrets.PAT }}" | npx wrangler pages secret put GITHUB_TOKEN --project-name=lyzr-work-os
+
+      # If anything above failed, open (or update) a GitHub issue so the broken
+      # deploy is visible instead of silently freezing the live site for days.
+      - name: Alert on deploy failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          gh label create deploy-failure --color B60205 --description "Cloudflare deploy is failing" 2>/dev/null || true
+          EXISTING=$(gh issue list --state open --label deploy-failure --json number --jq '.[0].number' 2>/dev/null || true)
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "Still failing on \`${{ github.sha }}\` — $RUN_URL"
+          else
+            gh issue create \
+              --title "🚨 Cloudflare Pages deploy is failing — site not updating" \
+              --label deploy-failure \
+              --body "The **Deploy to Cloudflare Pages** workflow failed on commit \`${{ github.sha }}\`, so the live site (lyzr.kailash-gm.com) is frozen on the last successful build.
+
+          **Most likely cause:** the \`CLOUDFLARE_API_TOKEN\` repo secret expired or was removed.
+
+          **Fix:**
+          1. Create a Cloudflare API token with **Account → Cloudflare Pages → Edit** permission and **no expiry**.
+          2. Update the \`CLOUDFLARE_API_TOKEN\` secret (Settings → Secrets and variables → Actions); confirm \`CLOUDFLARE_ACCOUNT_ID\` is set.
+          3. Re-run this workflow (Actions tab → Run workflow).
+
+          Failed run: $RUN_URL"
+          fi
