@@ -1,18 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, ChevronDown, Loader2, Sparkles, TrendingUp, CircleCheck, X } from "lucide-react";
-import { Logo, Card, Eyebrow, Ring, Pill, Bar } from "@/components/ui";
+import { ArrowRight, Check, ChevronDown, Link2, Loader2, Plus, Sparkles, TrendingUp, CircleCheck, X } from "lucide-react";
+import { Logo, Card, Eyebrow, Ring, Pill, Bar, InfoTip } from "@/components/ui";
 import { Radar, type RadarPoint } from "@/components/radar";
 import { OpportunityDrawer, OpportunityBlueprint, PathToAE, DevBoardTab, DemandTab } from "@/components/result-extras";
+import { ValuesShownProvider, useValuesShown } from "@/components/value-context";
 import { cn, formatUSD } from "@/lib/utils";
-import { buildAssessment, DEEPEN, DIMENSIONS } from "@/lib/content";
+import { buildAssessment, DEEPEN, DIMENSIONS, FUNCTIONS } from "@/lib/content";
 import { LANE_META, SHORT, dimColor } from "@/lib/display";
 import type { Assessment, DimensionId, IntakeData, Lane, Opportunity } from "@/lib/types";
 
 const TABS = ["Scorecard", "Roadmap", "Development Board", "Path to AE", "Opportunity Map", "Demand Intelligence"] as const;
 type Tab = (typeof TABS)[number];
+
+const VALUE_INFO =
+  "A directional estimate from a library of typical agent values, scaled to your company size. It is a relative size-of-prize for comparing opportunities, not a quote based on your actual numbers.";
 
 export default function RoadmapPage() {
   const router = useRouter();
@@ -24,6 +28,9 @@ export default function RoadmapPage() {
   const [blueprintOpp, setBlueprintOpp] = useState<Opportunity | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [demoOpen, setDemoOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  // $ value figures are hidden until the user explicitly asks for them.
+  const [showValues, setShowValues] = useState(false);
   // User's manual roadmap arrangement (oppId -> lane), persisted per session.
   const [laneOverrides, setLaneOverrides] = useState<Record<string, Lane>>({});
 
@@ -35,8 +42,20 @@ export default function RoadmapPage() {
       const it = JSON.parse(raw) as IntakeData;
       setSessionId(sid);
       setIntake(it);
-      setAssessment(buildAssessment(it));
-      refetch(it, sid);
+      setAssessment(buildAssessment(it)); // instant deterministic view
+      // Use the already-enriched assessment if one is saved (avoids a Claude call
+      // on refresh); only generate when none exists yet (first load).
+      fetch(`/api/roadmap?session=${encodeURIComponent(sid)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (d?.assessment) {
+            setAssessment(d.assessment);
+            if (d.intake) setIntake(d.intake);
+          } else {
+            refetch(it, sid);
+          }
+        })
+        .catch(() => refetch(it, sid));
       return;
     }
     // resume a saved assessment (returning visitor / new tab)
@@ -50,6 +69,11 @@ export default function RoadmapPage() {
             setSessionId(resumeId);
             setIntake(d.intake);
             setAssessment(d.assessment);
+            try {
+              localStorage.setItem("agentic_last_session", resumeId);
+            } catch {
+              /* ignore */
+            }
           } else {
             router.replace("/onboarding");
           }
@@ -77,14 +101,26 @@ export default function RoadmapPage() {
     }
   }
 
-  // Load the saved roadmap arrangement once we know the session.
+  // Load the saved roadmap arrangement + value visibility once we know the session.
   useEffect(() => {
     if (!sessionId || typeof window === "undefined") return;
     try {
       const raw = localStorage.getItem(`agentic_roadmap_plan_${sessionId}`);
       if (raw) setLaneOverrides(JSON.parse(raw) as Record<string, Lane>);
+      if (localStorage.getItem(`agentic_show_values_${sessionId}`) === "1") setShowValues(true);
     } catch {
       /* ignore */
+    }
+  }, [sessionId]);
+
+  const revealValues = useCallback(() => {
+    setShowValues(true);
+    if (sessionId) {
+      try {
+        localStorage.setItem(`agentic_show_values_${sessionId}`, "1");
+      } catch {
+        /* ignore */
+      }
     }
   }, [sessionId]);
 
@@ -105,6 +141,90 @@ export default function RoadmapPage() {
     },
     [sessionId],
   );
+
+  // Browser-back guard: keep refs of the current view so the popstate handler
+  // always sees the latest tab / blueprint state without re-binding.
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
+  const blueprintRef = useRef(blueprintOpp);
+  blueprintRef.current = blueprintOpp;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    // Push a guard entry so the first Back is absorbed by the app, not the browser.
+    window.history.pushState(null, "");
+    const onPop = () => {
+      // 1st back from a blueprint → close it and stay on the roadmap.
+      if (blueprintRef.current) {
+        setBlueprintOpp(null);
+        window.history.pushState(null, "");
+        return;
+      }
+      // 1st back from any other tab → return to the Scorecard.
+      if (tabRef.current !== "Scorecard") {
+        setTab("Scorecard");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        window.history.pushState(null, "");
+        return;
+      }
+      // Already on the Scorecard → confirm before leaving for the questions.
+      const leave = window.confirm("Go back to the questions? Your roadmap is saved, so you can return to it anytime.");
+      if (leave) {
+        window.removeEventListener("popstate", onPop);
+        window.history.back();
+      } else {
+        window.history.pushState(null, "");
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function copyShareLink() {
+    if (!sessionId || typeof window === "undefined") return;
+    const url = `${window.location.origin}/roadmap?s=${encodeURIComponent(sessionId)}`;
+    navigator.clipboard
+      ?.writeText(url)
+      .then(() => {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(() => {
+        /* clipboard blocked — ignore */
+      });
+  }
+
+  // On-demand: generate agents for another area the user describes from the roadmap.
+  function addCustomRequest(text: string) {
+    const t = text.trim();
+    if (!t) return;
+    setIntake((prev) => {
+      if (!prev) return prev;
+      const existing = prev.quick.customRequests ?? [];
+      const updated: IntakeData = {
+        ...prev,
+        quick: { ...prev.quick, customRequests: [...existing, t] },
+      };
+      setAssessment(buildAssessment(updated));
+      refetch(updated, sessionId);
+      return updated;
+    });
+  }
+
+  // Suggestion: pull in a function the user didn't originally pick.
+  function addFunction(func: string) {
+    setIntake((prev) => {
+      if (!prev || prev.quick.functions.includes(func)) return prev;
+      const updated: IntakeData = {
+        ...prev,
+        quick: { ...prev.quick, functions: [...prev.quick.functions, func] },
+      };
+      setAssessment(buildAssessment(updated));
+      refetch(updated, sessionId);
+      return updated;
+    });
+  }
 
   function applyDeepen(dim: DimensionId, answers: Record<string, string>) {
     setIntake((prev) => {
@@ -150,6 +270,7 @@ export default function RoadmapPage() {
     .reduce((s, o) => s + o.annualValueUSD, 0);
 
   return (
+    <ValuesShownProvider value={showValues}>
     <main className="mx-auto max-w-6xl px-5 pb-24">
       {/* top bar */}
       <header className="flex items-center justify-between py-5">
@@ -177,6 +298,23 @@ export default function RoadmapPage() {
               <>Rule-based estimate</>
             )}
           </span>
+          {sessionId && (
+            <button
+              onClick={copyShareLink}
+              className="hidden h-9 items-center gap-1.5 rounded-full border border-border-strong px-3.5 text-sm font-medium text-fg transition-all hover:border-accent/50 hover:text-accent sm:inline-flex"
+              title="Copy a link to this roadmap"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-4 w-4 text-build" /> Copied
+                </>
+              ) : (
+                <>
+                  <Link2 className="h-4 w-4" /> Copy link
+                </>
+              )}
+            </button>
+          )}
           <button
             onClick={() => setDemoOpen(true)}
             className="inline-flex h-9 items-center gap-1.5 rounded-full bg-ink px-4 text-sm font-semibold text-white transition-all hover:bg-[#3a322c]"
@@ -199,14 +337,28 @@ export default function RoadmapPage() {
         <p className="mt-2 max-w-3xl text-[0.98rem] leading-relaxed text-muted">{a.headline}</p>
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Near-term value" value={formatUSD(nearTermValue)} sub="Build Now + Fix First" accent />
+          {showValues ? (
+            <Stat label="Near-term value" value={formatUSD(nearTermValue)} sub="Build Now + Fix First" accent info={VALUE_INFO} />
+          ) : (
+            <div className="relative flex flex-col items-start justify-center rounded-2xl border border-dashed border-accent/40 bg-accent/[0.04] px-4 py-3">
+              <span className="absolute right-2 top-2">
+                <InfoTip text={VALUE_INFO} />
+              </span>
+              <button onClick={revealValues} className="flex items-center gap-1.5 text-sm font-semibold text-accent">
+                <TrendingUp className="h-4 w-4" /> Estimate value
+              </button>
+              <span className="mt-0.5 text-[0.7rem] text-faint">Tap to reveal value estimates</span>
+            </div>
+          )}
           <Stat label="Ready to build" value={`${counts.build_now}`} />
           <Stat label="Functions" value={`${a.functionsCount}`} />
           <Stat label="Opportunities" value={`${a.opportunities.length}`} />
         </div>
-        <p className="mt-2.5 text-xs leading-relaxed text-faint">
-          Full catalog potential: up to {formatUSD(a.estAnnualValueUSD)} across all {a.opportunities.length} opportunities over a multi-year horizon.
-        </p>
+        {showValues && (
+          <p className="mt-2.5 text-xs leading-relaxed text-faint">
+            Full catalog potential: up to {formatUSD(a.estAnnualValueUSD)} across all {a.opportunities.length} opportunities over a multi-year horizon. These are illustrative library estimates, not a quote.
+          </p>
+        )}
       </section>
 
       {/* lane counters */}
@@ -249,7 +401,17 @@ export default function RoadmapPage() {
 
           <div className="mt-7">
             {tab === "Scorecard" && <Scorecard a={a} intake={intake} onDeepen={applyDeepen} />}
-            {tab === "Roadmap" && <RoadmapTab a={a} onSelect={setSelected} onMove={moveOpp} />}
+            {tab === "Roadmap" && (
+              <RoadmapTab
+                a={a}
+                onSelect={setSelected}
+                onMove={moveOpp}
+                onAdd={addCustomRequest}
+                onAddFunction={addFunction}
+                chosenFuncs={intake.quick.functions}
+                busy={enriching}
+              />
+            )}
             {tab === "Development Board" && <DevBoardTab a={a} onSelect={setSelected} />}
             {tab === "Path to AE" && <PathToAE a={a} />}
             {tab === "Opportunity Map" && <MapTab a={a} onSelect={setSelected} />}
@@ -268,6 +430,7 @@ export default function RoadmapPage() {
       />
       <BookDemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
     </main>
+    </ValuesShownProvider>
   );
 }
 
@@ -275,10 +438,13 @@ export default function RoadmapPage() {
 /* Stat                                                               */
 /* ------------------------------------------------------------------ */
 
-function Stat({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: boolean }) {
+function Stat({ label, value, sub, accent, info }: { label: string; value: string; sub?: string; accent?: boolean; info?: string }) {
   return (
     <Card className="px-4 py-3">
-      <div className="text-xs text-faint">{label}</div>
+      <div className="flex items-center gap-1 text-xs text-faint">
+        {label}
+        {info && <InfoTip text={info} />}
+      </div>
       <div className={cn("num mt-1 font-display text-xl font-semibold", accent ? "text-accent" : "text-fg")}>{value}</div>
       {sub && <div className="mt-0.5 text-[0.62rem] uppercase tracking-wide text-faint">{sub}</div>}
     </Card>
@@ -303,68 +469,70 @@ function Scorecard({
   const toFix = [...a.dimensions].sort((x, y) => x.score - y.score).filter((d) => d.status !== "strong").slice(0, 3);
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
-      <Card className="p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <Eyebrow>Readiness scorecard</Eyebrow>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="num font-display text-3xl font-semibold text-fg">{a.maturityScore}</span>
-              <span className="text-sm text-faint">/100 · {a.maturityStage}</span>
-            </div>
-          </div>
-          <Ring value={a.maturityScore} size={72} color="var(--color-accent)" />
-        </div>
-        <div className="mx-auto mt-2 aspect-square w-full max-w-[340px]">
-          <Radar points={radarPoints} />
-        </div>
-        <div className="mt-2 flex items-center justify-center gap-4 text-xs text-faint">
-          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-build" />Strong</span>
-          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-fix" />Developing</span>
-          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-critical" />Gap</span>
-        </div>
-      </Card>
-
-      <div className="space-y-5">
-        <Card className="p-6">
-          <div className="mb-1 flex items-center justify-between">
-            <Eyebrow>Dimension breakdown</Eyebrow>
-            <span className="text-xs text-faint">
-              Confidence <span className="num font-medium text-muted">{a.confidence}%</span>
-            </span>
-          </div>
-          <div className="mt-4 space-y-4">
-            {dimsByScore.map((d) => (
-              <div key={d.id}>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <span className="text-sm font-medium text-fg">{d.label}</span>
-                  <span className="num text-sm text-muted">{d.score}</span>
-                </div>
-                <Bar value={d.score} color={dimColor(d.status)} />
-                <p className="mt-1.5 text-xs leading-relaxed text-faint">{d.insight}</p>
+    <div className="space-y-5">
+      <div className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
+        <Card className="flex flex-col p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <Eyebrow>Readiness scorecard</Eyebrow>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="num font-display text-3xl font-semibold text-fg">{a.maturityScore}</span>
+                <span className="text-sm text-faint">/100 · {a.maturityStage}</span>
               </div>
-            ))}
+            </div>
+            <Ring value={a.maturityScore} size={72} color="var(--color-accent)" />
+          </div>
+          <div className="mx-auto mt-3 aspect-square w-full max-w-[300px]">
+            <Radar points={radarPoints} />
+          </div>
+          <div className="mt-3 flex items-center justify-center gap-4 text-xs text-faint">
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-build" />Strong</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-fix" />Developing</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-critical" />Gap</span>
           </div>
         </Card>
 
-        {toFix.length > 0 && (
-          <Card className="border-fix/25 bg-fix/[0.04] p-6">
-            <Eyebrow className="text-fix">Close these first</Eyebrow>
-            <ul className="mt-3 space-y-2">
-              {toFix.map((d) => (
-                <li key={d.id} className="flex gap-2.5 text-sm text-muted">
-                  <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: dimColor(d.status) }} />
-                  <span>
-                    <span className="font-medium text-fg">{d.label}.</span> {d.insight}
-                  </span>
-                </li>
+        <div className="space-y-5">
+          <Card className="p-6">
+            <div className="mb-1 flex items-center justify-between">
+              <Eyebrow>Dimension breakdown</Eyebrow>
+              <span className="text-xs text-faint">
+                Confidence <span className="num font-medium text-muted">{a.confidence}%</span>
+              </span>
+            </div>
+            <div className="mt-4 space-y-4">
+              {dimsByScore.map((d) => (
+                <div key={d.id}>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-sm font-medium text-fg">{d.label}</span>
+                    <span className="num text-sm text-muted">{d.score}</span>
+                  </div>
+                  <Bar value={d.score} color={dimColor(d.status)} />
+                  <p className="mt-1.5 text-xs leading-relaxed text-faint">{d.insight}</p>
+                </div>
               ))}
-            </ul>
+            </div>
           </Card>
-        )}
 
-        <DeepenPanel intake={intake} onDeepen={onDeepen} />
+          <DeepenPanel intake={intake} onDeepen={onDeepen} />
+        </div>
       </div>
+
+      {toFix.length > 0 && (
+        <Card className="border-fix/25 bg-fix/[0.04] p-6">
+          <Eyebrow className="text-fix">Close these first</Eyebrow>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-3">
+            {toFix.map((d) => (
+              <li key={d.id} className="flex gap-2.5 text-sm text-muted">
+                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: dimColor(d.status) }} />
+                <span>
+                  <span className="font-medium text-fg">{d.label}.</span> {d.insight}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
     </div>
   );
 }
@@ -479,13 +647,126 @@ function DeepenForm({
 /* Roadmap tab                                                        */
 /* ------------------------------------------------------------------ */
 
-function RoadmapTab({ a, onSelect, onMove }: { a: Assessment; onSelect: (o: Opportunity) => void; onMove: (id: string, lane: Lane) => void }) {
+function SuggestFunctions({ chosen, onAdd, busy }: { chosen: string[]; onAdd: (func: string) => void; busy: boolean }) {
+  const remaining = FUNCTIONS.filter((f) => !chosen.includes(f.value));
+  if (remaining.length === 0) return null;
+  return (
+    <Card className="mb-4 p-4">
+      <div className="mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+        <span className="text-sm font-medium text-fg">Also worth automating</span>
+        <span className="text-xs text-faint">add an area you didn&apos;t pick to generate its agents</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {remaining.map((f) => (
+          <button
+            key={f.value}
+            onClick={() => onAdd(f.value)}
+            disabled={busy}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border-strong px-3 py-1.5 text-xs font-medium text-muted transition-all hover:border-accent/60 hover:text-accent disabled:pointer-events-none disabled:opacity-50"
+          >
+            <Plus className="h-3 w-3" /> {f.label}
+          </button>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function GenerateMore({ onAdd, busy }: { onAdd: (text: string) => void; busy: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+
+  function submit() {
+    const t = text.trim();
+    if (!t || busy) return;
+    onAdd(t);
+    setText("");
+  }
+
+  return (
+    <Card className="mb-4 p-4">
+      {!open ? (
+        <button onClick={() => setOpen(true)} className="flex w-full items-center gap-2.5 text-left text-sm font-medium text-fg">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent/10 text-accent">
+            <Sparkles className="h-4 w-4" />
+          </span>
+          Want agents for another area?
+          <span className="text-accent">Describe it and we&apos;ll generate one →</span>
+        </button>
+      ) : (
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2 text-sm font-medium text-fg">
+            <Sparkles className="h-4 w-4 text-accent" /> Generate an agent for another area
+          </div>
+          <textarea
+            autoFocus
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
+            }}
+            rows={2}
+            placeholder="e.g. Automate our vendor onboarding and compliance checks"
+            className="w-full resize-none rounded-xl border border-border-strong bg-surface-2 p-3 text-sm text-fg outline-none transition-colors placeholder:text-faint focus:border-accent/60"
+          />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={submit}
+              disabled={!text.trim() || busy}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-ink px-4 text-sm font-semibold text-white transition-all hover:bg-[#3a322c] disabled:pointer-events-none disabled:opacity-40"
+            >
+              {busy ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Generating…
+                </>
+              ) : (
+                <>
+                  Generate agent <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                setOpen(false);
+                setText("");
+              }}
+              className="text-sm text-faint transition-colors hover:text-muted"
+            >
+              Close
+            </button>
+          </div>
+          <p className="text-xs text-faint">New agents appear in the lanes below once generated.</p>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function RoadmapTab({
+  a,
+  onSelect,
+  onMove,
+  onAdd,
+  onAddFunction,
+  chosenFuncs,
+  busy,
+}: {
+  a: Assessment;
+  onSelect: (o: Opportunity) => void;
+  onMove: (id: string, lane: Lane) => void;
+  onAdd: (text: string) => void;
+  onAddFunction: (func: string) => void;
+  chosenFuncs: string[];
+  busy: boolean;
+}) {
   const lanes: Lane[] = ["build_now", "fix_first", "not_now"];
   const [dragId, setDragId] = useState<string | null>(null);
   const [overLane, setOverLane] = useState<Lane | null>(null);
 
   return (
     <div>
+      <GenerateMore onAdd={onAdd} busy={busy} />
+      <SuggestFunctions chosen={chosenFuncs} onAdd={onAddFunction} busy={busy} />
       <p className="mb-3 px-1 text-xs text-faint">Drag a card between lanes to shape your own plan — your arrangement is saved to this session.</p>
       <div className="grid gap-4 lg:grid-cols-3">
         {lanes.map((lane) => {
@@ -560,6 +841,7 @@ function CompactOppCard({
   dragging: boolean;
 }) {
   const priorityTone = o.priority === "Critical" ? "critical" : o.priority === "High" ? "fix" : "muted";
+  const shown = useValuesShown();
   return (
     <div
       draggable
@@ -584,7 +866,11 @@ function CompactOppCard({
       </div>
       <h4 className="mt-1.5 font-display text-[0.9rem] font-semibold leading-snug text-fg">{o.name}</h4>
       <div className="mt-2.5 flex items-center justify-between gap-2">
-        <span className="num font-display text-base font-semibold text-accent">{formatUSD(o.annualValueUSD)}</span>
+        {shown ? (
+          <span className="num font-display text-base font-semibold text-accent">{formatUSD(o.annualValueUSD)}</span>
+        ) : (
+          <span className="text-[0.7rem] text-faint">{o.timeToValue}</span>
+        )}
         <div className="flex items-center gap-2 text-[0.7rem] text-faint">
           <span className="h-1.5 w-14 overflow-hidden rounded-full bg-surface-2">
             <span className="block h-full rounded-full" style={{ width: `${o.readinessScore}%`, backgroundColor: LANE_META[o.lane].cssVar }} />
@@ -601,6 +887,7 @@ function CompactOppCard({
 /* ------------------------------------------------------------------ */
 
 function MapTab({ a, onSelect }: { a: Assessment; onSelect: (o: Opportunity) => void }) {
+  const shown = useValuesShown();
   const values = a.opportunities.map((o) => o.annualValueUSD);
   const max = Math.max(...values);
   const min = Math.min(...values);
@@ -650,7 +937,8 @@ function MapTab({ a, onSelect }: { a: Assessment; onSelect: (o: Opportunity) => 
               }}
             />
             <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-border-strong bg-surface px-2 py-1 text-[0.66rem] text-fg shadow-lg group-hover:block">
-              {o.name} · {formatUSD(o.annualValueUSD)}
+              {o.name}
+              {shown ? ` · ${formatUSD(o.annualValueUSD)}` : ""}
             </span>
           </button>
         ))}

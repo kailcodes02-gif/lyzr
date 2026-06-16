@@ -15,6 +15,8 @@ export interface QuickScan {
   company: { name: string; industry: string; size: string };
   /** Practice areas / functions they want to automate. */
   functions: string[];
+  /** Extra areas the user asks to generate agents for, added on demand from the roadmap. */
+  customRequests: string[];
   /** Free-text problem scoping — parsed by Claude into tailored opportunities. */
   processFreeText: string;
   priorityPain: string;

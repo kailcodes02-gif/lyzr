@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Building2, Compass, Sparkles, Target } from "lucide-react";
 import { Logo, Eyebrow, Card, Pill } from "@/components/ui";
+import { ResumeLink } from "@/components/resume";
 
 const ctaPrimary =
   "inline-flex h-12 items-center justify-center gap-2 rounded-full bg-ink px-6 text-[0.95rem] font-semibold text-white transition-all hover:bg-[#3a322c] shadow-[0_10px_24px_-14px_rgba(38,33,28,0.6)]";
@@ -79,6 +80,9 @@ export default function Home() {
             <span>6-dimension readiness score</span>
             <span className="h-1 w-1 rounded-full bg-border-strong" />
             <span>No sign-up to start</span>
+          </div>
+          <div className="mt-6 border-t border-border pt-5">
+            <ResumeLink />
           </div>
         </div>
 

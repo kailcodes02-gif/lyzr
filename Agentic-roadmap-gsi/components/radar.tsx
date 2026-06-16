@@ -9,7 +9,7 @@ export interface RadarPoint {
 export function Radar({ points, size = 320 }: { points: RadarPoint[]; size?: number }) {
   const cx = size / 2;
   const cy = size / 2;
-  const R = size * 0.32;
+  const R = size * 0.4;
   const n = points.length;
 
   const angle = (i: number) => -Math.PI / 2 + (i * 2 * Math.PI) / n;
@@ -53,7 +53,7 @@ export function Radar({ points, size = 320 }: { points: RadarPoint[]; size?: num
       })}
       {/* labels */}
       {points.map((p, i) => {
-        const [lx, ly] = at(i, R + 22);
+        const [lx, ly] = at(i, R + 16);
         const dx = lx - cx;
         const anchor = dx < -6 ? "end" : dx > 6 ? "start" : "middle";
         return (

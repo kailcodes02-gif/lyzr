@@ -675,13 +675,10 @@ export function buildAssessment(intake: IntakeData): Assessment {
   const maturity = Math.round(DIMENSIONS.reduce((sum, d) => sum + dimScores[d.id] * d.weight, 0));
   const stage = stageOf(maturity);
 
-  // opportunities — selected functions first & boosted, but full library shown
+  // opportunities — only the functions the user actually selected (AI may add
+  // tailored ones from their free-text / "Other" answer on top of these).
   const selectedSet = new Set(q.functions);
-  const items = [...LIBRARY].sort((a, b) => {
-    const sa = selectedSet.has(a.func) ? 0 : 1;
-    const sb = selectedSet.has(b.func) ? 0 : 1;
-    return sa - sb;
-  });
+  const items = LIBRARY.filter((it) => selectedSet.has(it.func));
   const opportunities = items.map((it) =>
     scoreOpportunity({
       ...it,
@@ -738,6 +735,7 @@ export function emptyIntake(): IntakeData {
       email: "",
       company: { name: "", industry: "", size: "" },
       functions: [],
+      customRequests: [],
       processFreeText: "",
       priorityPain: "",
       data: { location: "", structure: "", quality: "" },

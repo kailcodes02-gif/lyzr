@@ -20,7 +20,7 @@ Return JSON only:
 - headline: one or two sentences naming where they are and the single most valuable next move. Concrete, grounded in their answers.
 - dimensionInsights: for each dimension id provided, one sentence tailored to their specific answers and industry (what's strong or exactly what to fix). Keep it under ~22 words.
 - opportunities: for each opportunity id provided, rewrite the description in one concise sentence tailored to their industry and processes. Return blockers as an empty array.
-- newOpportunities: up to 2 NEW agent opportunities derived ONLY from their free-text process description (skip if it is empty or generic). For each, pick the closest function id from the allowed list, give a specific name, a one-sentence description, a realistic annual value in USD for their company size, and a complexity of Low, Medium, or High.
+- newOpportunities: generate ONE tailored agent for EACH item in "customRequests" (keep the same order), plus up to 1 more derived from their free-text process description if it names a distinct process not already covered. Skip only if there is nothing to work from. For each, pick the closest function id from the allowed list, give a specific name, a one-sentence description, a realistic annual value in USD for their company size, and a complexity of Low, Medium, or High.
 
 Allowed function ids: ${FUNCTIONS.map((f) => f.value).join(", ")}.
 Do not invent value numbers for existing opportunities — only for newOpportunities. Be conservative and realistic.
@@ -47,6 +47,7 @@ export async function enrichWithClaude(intake: IntakeData, base: Assessment): Pr
   const payload = {
     company: intake.quick.company,
     selectedFunctions: intake.quick.functions,
+    customRequests: intake.quick.customRequests ?? [],
     priorityPain: intake.quick.priorityPain,
     processFreeText: intake.quick.processFreeText,
     dimensions: base.dimensions.map((d) => ({ id: d.id, label: d.label, score: d.score })),
@@ -149,7 +150,7 @@ export async function enrichWithClaude(intake: IntakeData, base: Assessment): Pr
   // AI-discovered opportunities from the free-text
   const validFuncs = new Set(FUNCTIONS.map((f) => f.value));
   const newList = Array.isArray(out.newOpportunities) ? out.newOpportunities : [];
-  const newOpps = newList.slice(0, 2).map((raw, i) => {
+  const newOpps = newList.slice(0, 8).map((raw, i) => {
     const n = obj(raw);
     const func = typeof n.func === "string" && validFuncs.has(n.func) ? n.func : "operations";
     const complexity: Complexity = n.complexity === "Low" || n.complexity === "High" ? n.complexity : "Medium";

@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { Card, Eyebrow, Pill } from "@/components/ui";
+import { useValuesShown } from "@/components/value-context";
 import { cn, formatUSD } from "@/lib/utils";
 import { LANE_META, laneTone } from "@/lib/display";
 import type { Assessment, Lane, Opportunity } from "@/lib/types";
@@ -60,6 +61,7 @@ export function OpportunityDrawer({
   onClose: () => void;
   onViewBlueprint: () => void;
 }) {
+  const shown = useValuesShown();
   if (!opp) return null;
   const meta = LANE_META[opp.lane];
   const priorityTone = opp.priority === "Critical" ? "critical" : opp.priority === "High" ? "fix" : "muted";
@@ -93,7 +95,7 @@ export function OpportunityDrawer({
 
           {/* stat tiles */}
           <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-            <StatTile icon={TrendingUp} value={formatUSD(opp.annualValueUSD)} label="Est. value" />
+            {shown && <StatTile icon={TrendingUp} value={formatUSD(opp.annualValueUSD)} label="Est. value" />}
             <StatTile icon={Gauge} value={`${opp.impactScore}`} label="Impact" />
             <StatTile icon={Gauge} value={`${opp.complexityScore}`} label="Complexity" />
             <StatTile icon={Clock} value={opp.timeToValue} label="Timeline" />
@@ -206,6 +208,7 @@ export function OpportunityDrawer({
 }
 
 export function OpportunityBlueprint({ opp, onBack, onBookDemo }: { opp: Opportunity; onBack: () => void; onBookDemo: () => void }) {
+  const shown = useValuesShown();
   const meta = LANE_META[opp.lane];
   const priorityTone = opp.priority === "Critical" ? "critical" : opp.priority === "High" ? "fix" : "muted";
 
@@ -238,7 +241,7 @@ export function OpportunityBlueprint({ opp, onBack, onBookDemo }: { opp: Opportu
 
         {/* stat tiles */}
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-          <StatTile icon={TrendingUp} value={formatUSD(opp.annualValueUSD)} label="Est. value" />
+          {shown && <StatTile icon={TrendingUp} value={formatUSD(opp.annualValueUSD)} label="Est. value" />}
           <StatTile icon={Gauge} value={`${opp.impactScore}`} label="Impact" />
           <StatTile icon={Gauge} value={`${opp.complexityScore}`} label="Complexity" />
           <StatTile icon={Clock} value={opp.timeToValue} label="Timeline" />
@@ -454,6 +457,7 @@ function JourneyChart({ start, target }: { start: number; target: number }) {
 }
 
 export function PathToAE({ a }: { a: Assessment }) {
+  const shown = useValuesShown();
   const byLane = (lane: Lane) => a.opportunities.filter((o) => o.lane === lane);
   const buildNow = byLane("build_now");
   const fixFirst = byLane("fix_first");
@@ -506,8 +510,17 @@ export function PathToAE({ a }: { a: Assessment }) {
               </span>
               <Pill tone={p.tone}>{p.key.split(" ")[0]}</Pill>
             </div>
-            <div className="num mt-3 font-display text-2xl font-semibold text-build">{formatUSD(p.cumulative)}</div>
-            <div className="text-xs text-faint">cumulative value · {p.auto}% automation</div>
+            {shown ? (
+              <>
+                <div className="num mt-3 font-display text-2xl font-semibold text-build">{formatUSD(p.cumulative)}</div>
+                <div className="text-xs text-faint">cumulative value · {p.auto}% automation</div>
+              </>
+            ) : (
+              <>
+                <div className="num mt-3 font-display text-2xl font-semibold text-build">{p.auto}%</div>
+                <div className="text-xs text-faint">projected automation</div>
+              </>
+            )}
             <div className="mt-3 text-xs text-faint">
               {p.agents.length} agent{p.agents.length === 1 ? "" : "s"} in this phase:
             </div>
@@ -538,6 +551,7 @@ const COLUMNS: { key: string; lane: Lane | null; hint: string }[] = [
 ];
 
 export function DevBoardTab({ a, onSelect }: { a: Assessment; onSelect: (o: Opportunity) => void }) {
+  const shown = useValuesShown();
   return (
     <div>
       <div className="mb-4">
@@ -565,7 +579,7 @@ export function DevBoardTab({ a, onSelect }: { a: Assessment; onSelect: (o: Oppo
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-[0.7rem] text-faint">{o.funcLabel}</span>
-                      <span className="num text-xs text-accent">{formatUSD(o.annualValueUSD)}</span>
+                      {shown && <span className="num text-xs text-accent">{formatUSD(o.annualValueUSD)}</span>}
                     </div>
                     <div className="mt-1 text-sm font-medium leading-snug text-fg">{o.name}</div>
                     <div className="mt-2 flex items-center gap-2">

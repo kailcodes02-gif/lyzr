@@ -77,6 +77,7 @@ async function createRecordRedis(
   const record: LeadRecord = { id, email, domain: dom, createdAt: now, updatedAt: now, intake };
 
   await r.set(`rec:${id}`, record); // no TTL — leads persist indefinitely
+  await r.set(`emidx:${email}`, id); // durable email -> latest session pointer (for email resume)
   await r.zadd(`em:${email}`, { score: now, member: id });
   await r.zadd(`dom:${dom}`, { score: now, member: id });
   // self-prune the counter sets so they don't grow unbounded
@@ -169,6 +170,23 @@ export async function saveAssessment(id: string, intake: IntakeData, assessment:
 export async function getRecord(id: string): Promise<LeadRecord | undefined> {
   if (redis) return ((await redis.get(`rec:${id}`)) as LeadRecord | null) ?? undefined;
   return readFile().records.find((x) => x.id === id);
+}
+
+/**
+ * The most recent saved session id for an email, or null. Powers "resume with
+ * your email". Uses the durable `emidx:` pointer; falls back to the rolling
+ * `em:` counter set for records created before the pointer existed.
+ */
+export async function getLatestSessionByEmail(email: string): Promise<string | null> {
+  const e = email.toLowerCase();
+  if (redis) {
+    const id = (await redis.get(`emidx:${e}`)) as string | null;
+    if (id) return id;
+    const latest = (await redis.zrange(`em:${e}`, -1, -1)) as string[];
+    return latest?.[0] ?? null;
+  }
+  const recs = readFile().records.filter((x) => x.email === e).sort((a, b) => b.createdAt - a.createdAt);
+  return recs[0]?.id ?? null;
 }
 
 /**

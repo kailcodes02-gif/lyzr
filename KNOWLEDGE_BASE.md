@@ -399,6 +399,37 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-06-16, ai-roadmap (Agentic-roadmap-gsi): selected-only roadmap, on-demand generation, gated values, email resume
+Second review pass. Builds on the same-day "manager-feedback UI revisions" entry below.
+- **Roadmap shows only chosen functions** (`lib/content.ts`): `buildAssessment` filters the
+  agent library to the user's selected functions instead of scoring the whole catalog, so no
+  unrequested Finance/Legal/etc. appear and value figures follow from that user-relevant set.
+- **On-demand generation on the roadmap** (`app/roadmap/page.tsx`, `lib/ai.ts`, `lib/types.ts`):
+  replaced the onboarding "Other" field with `customRequests: string[]`. The Roadmap tab has a
+  free-text "generate an agent for another area" box (calls Claude) and an "Also worth automating"
+  section that pulls in any unchosen function on click. Claude prompt emits one new opportunity per
+  custom request (cap raised 2 -> 8).
+- **Value figures hidden by default** (`components/value-context.tsx` + gating in
+  `app/roadmap/page.tsx` and `components/result-extras.tsx`): a `ValuesShownProvider` hides all $
+  amounts until the user clicks "Estimate value" in the hero; choice persists per session. An
+  `InfoTip` (i) icon (hover or click, `components/ui.tsx`) explains the estimate is directional,
+  not a quote.
+- **Email resume + share link** (`lib/store.ts`, `app/api/session/route.ts`, `components/resume.tsx`,
+  `app/page.tsx`, `app/roadmap/page.tsx`): durable `emidx:<email>` pointer + `getLatestSessionByEmail`;
+  new `GET /api/session?email=` returns the latest session id; landing-page "Resume with your email";
+  roadmap "Copy link" button for the `?s=` share URL. Resume is unverified by design; the lookup
+  never calls Claude. Open item: no rate limit on the lookup (enumerable) or on `/api/roadmap`.
+- **Cost: refresh no longer re-enriches** (`app/roadmap/page.tsx`): same-tab load reads the cached
+  saved assessment (GET) before falling back to a Claude POST, so refreshes are free. Claude now runs
+  only on first generation, Deepen, generate-another-area, and add-suggested-function.
+- **Scorecard** (`app/roadmap/page.tsx`, `components/radar.tsx`): dimension breakdown sorted
+  descending; radar enlarged (R 0.32 -> 0.40) to cut whitespace; "Close these first" moved to a
+  full-width section below the grid.
+- **Back-button guard** (`app/roadmap/page.tsx`): browser Back returns to the Scorecard (closing a
+  blueprint first), and only a second Back, with a confirm, leaves for the questions.
+- Verified with `tsc --noEmit` and `next build` (clean). Deploys via the Vercel `ai-roadmap` project.
+- Commit(s): pushed to `main` (kailcodes02-gif/lyzr).
+
 ### 2026-06-16, ai-roadmap (Agentic-roadmap-gsi): manager-feedback UI revisions
 Reworked the results experience and intake after manager review.
 - **Intake shortened 6 to 4 steps** (`app/onboarding/page.tsx`): merged Data + Technology

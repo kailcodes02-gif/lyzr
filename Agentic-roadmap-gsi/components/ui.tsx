@@ -1,7 +1,42 @@
 "use client";
 
 import * as React from "react";
+import { Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/* ------------------------------------------------------------------ */
+/* Info tooltip — small (i) icon, opens on hover or click             */
+/* ------------------------------------------------------------------ */
+
+export function InfoTip({ text, className }: { text: string; className?: string }) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <span className={cn("relative inline-flex align-middle", className)}>
+      <button
+        type="button"
+        aria-label="More information"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        className="grid h-4 w-4 place-items-center rounded-full text-faint transition-colors hover:text-accent"
+      >
+        <Info className="h-3.5 w-3.5" />
+      </button>
+      {open && (
+        <span
+          role="tooltip"
+          className="absolute left-1/2 top-full z-40 mt-2 w-60 -translate-x-1/2 rounded-xl border border-border-strong bg-surface p-3 text-left text-[0.72rem] font-normal normal-case leading-relaxed tracking-normal text-muted shadow-xl"
+        >
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /* Logo                                                               */

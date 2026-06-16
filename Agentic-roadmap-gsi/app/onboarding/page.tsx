@@ -251,6 +251,9 @@ export default function Onboarding() {
             <>
               <Field label="Which functions do you want agents to help with?" hint="select all that apply">
                 <MultiChipGroup options={FUNCTIONS} values={q.functions} onChange={(v) => set("functions", v)} />
+                <p className="mt-2 text-xs text-faint">
+                  Pick the areas that matter now. You can generate agents for anything else once you&apos;re in your roadmap.
+                </p>
               </Field>
               <Field label="What's the biggest pain you'd fix first?">
                 <ChipGroup options={PAINS} value={q.priorityPain} onChange={(v) => set("priorityPain", v)} cols={2} />

@@ -1,9 +1,22 @@
 import { NextResponse } from "next/server";
-import { createRecord } from "@/lib/store";
+import { createRecord, getLatestSessionByEmail } from "@/lib/store";
 import { EMAIL_RE, isFreeEmail } from "@/lib/email";
 import type { IntakeData } from "@/lib/types";
 
 export const runtime = "nodejs";
+
+/** Resume by email: returns the most recent saved session id for a work email. */
+export async function GET(req: Request) {
+  const email = (new URL(req.url).searchParams.get("email") ?? "").trim().toLowerCase();
+  if (!EMAIL_RE.test(email) || isFreeEmail(email)) {
+    return NextResponse.json({ error: "Please enter the work email you used." }, { status: 400 });
+  }
+  const sessionId = await getLatestSessionByEmail(email);
+  if (!sessionId) {
+    return NextResponse.json({ error: "No saved roadmap found for that email." }, { status: 404 });
+  }
+  return NextResponse.json({ sessionId });
+}
 
 const MESSAGES: Record<string, string> = {
   domain_daily:
