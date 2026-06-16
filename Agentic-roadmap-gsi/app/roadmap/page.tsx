@@ -469,8 +469,9 @@ function Scorecard({
   const toFix = [...a.dimensions].sort((x, y) => x.score - y.score).filter((d) => d.status !== "strong").slice(0, 3);
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
+    <div className="grid items-start gap-5 lg:grid-cols-[0.95fr_1.05fr]">
+      {/* left column: scorecard + close these first (fills the space under the radar) */}
+      <div className="space-y-5">
         <Card className="flex flex-col p-6">
           <div className="flex items-start justify-between">
             <div>
@@ -492,47 +493,48 @@ function Scorecard({
           </div>
         </Card>
 
-        <div className="space-y-5">
-          <Card className="p-6">
-            <div className="mb-1 flex items-center justify-between">
-              <Eyebrow>Dimension breakdown</Eyebrow>
-              <span className="text-xs text-faint">
-                Confidence <span className="num font-medium text-muted">{a.confidence}%</span>
-              </span>
-            </div>
-            <div className="mt-4 space-y-4">
-              {dimsByScore.map((d) => (
-                <div key={d.id}>
-                  <div className="mb-1.5 flex items-center justify-between">
-                    <span className="text-sm font-medium text-fg">{d.label}</span>
-                    <span className="num text-sm text-muted">{d.score}</span>
-                  </div>
-                  <Bar value={d.score} color={dimColor(d.status)} />
-                  <p className="mt-1.5 text-xs leading-relaxed text-faint">{d.insight}</p>
-                </div>
+        {toFix.length > 0 && (
+          <Card className="border-fix/25 bg-fix/[0.04] p-6">
+            <Eyebrow className="text-fix">Close these first</Eyebrow>
+            <ul className="mt-3 space-y-2.5">
+              {toFix.map((d) => (
+                <li key={d.id} className="flex gap-2.5 text-sm text-muted">
+                  <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: dimColor(d.status) }} />
+                  <span>
+                    <span className="font-medium text-fg">{d.label}.</span> {d.insight}
+                  </span>
+                </li>
               ))}
-            </div>
+            </ul>
           </Card>
-
-          <DeepenPanel intake={intake} onDeepen={onDeepen} />
-        </div>
+        )}
       </div>
 
-      {toFix.length > 0 && (
-        <Card className="border-fix/25 bg-fix/[0.04] p-6">
-          <Eyebrow className="text-fix">Close these first</Eyebrow>
-          <ul className="mt-3 grid gap-2 sm:grid-cols-3">
-            {toFix.map((d) => (
-              <li key={d.id} className="flex gap-2.5 text-sm text-muted">
-                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: dimColor(d.status) }} />
-                <span>
-                  <span className="font-medium text-fg">{d.label}.</span> {d.insight}
-                </span>
-              </li>
+      {/* right column: dimension breakdown + strengthen */}
+      <div className="space-y-5">
+        <Card className="p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <Eyebrow>Dimension breakdown</Eyebrow>
+            <span className="text-xs text-faint">
+              Confidence <span className="num font-medium text-muted">{a.confidence}%</span>
+            </span>
+          </div>
+          <div className="mt-4 space-y-4">
+            {dimsByScore.map((d) => (
+              <div key={d.id}>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="text-sm font-medium text-fg">{d.label}</span>
+                  <span className="num text-sm text-muted">{d.score}</span>
+                </div>
+                <Bar value={d.score} color={dimColor(d.status)} />
+                <p className="mt-1.5 text-xs leading-relaxed text-faint">{d.insight}</p>
+              </div>
             ))}
-          </ul>
+          </div>
         </Card>
-      )}
+
+        <DeepenPanel intake={intake} onDeepen={onDeepen} />
+      </div>
     </div>
   );
 }
