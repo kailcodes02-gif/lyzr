@@ -13,7 +13,7 @@
 >
 > | | |
 > |---|---|
-> | **Last updated** | 2026-06-09 |
+> | **Last updated** | 2026-06-16 |
 > | **Maintained by** | subs@lyzr.ai (with Claude Code) |
 > | **Git repo** | `github.com/kailcodes02-gif/lyzr` (branch `main`) |
 > | **Live domain** | `https://lyzr.kailash-gm.com` |
@@ -398,6 +398,57 @@ Access if the data ever becomes confidential.
 
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
+
+### 2026-06-16, ai-roadmap (Agentic-roadmap-gsi): manager-feedback UI revisions
+Reworked the results experience and intake after manager review.
+- **Intake shortened 6 to 4 steps** (`app/onboarding/page.tsx`): merged Data + Technology
+  into one step, and Team + Strategy + the production-gate questions into another, with
+  subsection dividers. Step count, progress bar, validation, and the "Step X of N" label
+  now derive from `STEP_META` / `LAST_STEP` instead of hard-coded indexes.
+- **Hero value reframed** (`app/roadmap/page.tsx`): leads with near-term value
+  (Build Now + Fix First) instead of the full catalog sum, which produced an
+  indefensible ~$6M headline. Full catalog now shown as a muted "up to $X across N
+  opportunities" range. Added an optional `sub` line to the `Stat` card.
+- **Dimension breakdown sorted descending** by score (`app/roadmap/page.tsx`); the
+  "Close these first" list still surfaces the three weakest.
+- **Roadmap is now a draggable board** (`app/roadmap/page.tsx`): compact cards, native
+  HTML5 drag between lanes, arrangement saved per session in localStorage
+  (`agentic_roadmap_plan_<sessionId>`) and applied across the page via lane overrides.
+  Replaced the large `OppCard` with `CompactOppCard`.
+- **Path to AE chart fixed** (`components/result-extras.tsx`): the journey curve now
+  climbs monotonically from today's readiness to the target (it previously dipped at
+  Year 2). Added a "% of operations automated" axis title, a "Today" marker with the
+  starting value, and phase-card automation numbers derived from the same climb.
+- **Opportunity Map shrunk** to a centered fixed-height panel (`app/roadmap/page.tsx`).
+- **Demand Intelligence reframed as illustrative** (`components/result-extras.tsx`):
+  removed the fabricated "X apps" count (it was a string hash) and the circular value
+  share %; added an "Illustrative" tag and honest framing. A real peer-demand version
+  is a follow-up that needs an anonymized Lyzr adoption dataset by industry and size.
+- Verified with `tsc --noEmit` and `next build` (both clean). Deploys via the Vercel
+  `ai-roadmap` project, not the Cloudflare Pages Action.
+- Commit(s): pushed to `main` (kailcodes02-gif/lyzr).
+
+### 2026-06-14, ai-roadmap (Agentic-roadmap-gsi): durable lead capture + admin leads endpoint
+- **Lead persistence fix** (`lib/store.ts`): dropped the 30-day Redis TTL on `rec:*`
+  records in both `createRecord` and `saveAssessment` so signups now persist
+  indefinitely. Previously every lead auto-expired after 30 days and there was no way
+  to list them.
+- **`listRecords()`** added (`lib/store.ts`): enumerates all leads via `SCAN rec:*` +
+  `MGET`, newest first (reads the JSON file on the local backend). Index-free, so it
+  surfaces records written before the listing existed — no backfill needed.
+- **`GET /api/admin/leads`** (`app/api/admin/leads/route.ts`): lists every signup
+  (email, domain, company, industry, priority pain, maturity stage/score, timestamp,
+  sessionId). Guarded by `ADMIN_TOKEN` (unset → 404, wrong/missing → 401); accepts
+  the token via `Authorization: Bearer`, `x-admin-token`, or `?token=`. `?format=csv`
+  returns a spreadsheet export.
+- **Vercel (`ai-roadmap` project)**: Upstash Redis store `AgenticRoadmap-GSI` was
+  already connected to Production + Preview, so leads were already persisting; only new
+  env var required is `ADMIN_TOKEN`. A redeploy is needed for the code + env var to
+  take effect.
+- **Correction / open item**: leads written before this deploy still carry the old
+  30-day TTL and will expire ~28 days out unless persisted. A "strip TTL on view"
+  rescue was discussed but not implemented.
+- Commit(s): pushed to `main` (kailcodes02-gif/lyzr).
 
 ### 2026-06-08, Week 7 GSI report (1–8 June) published to `/reports`
 - Added `reports/gsi-report-jun1-8.html` — the 1–8 June weekly GSI/SI marketing report.

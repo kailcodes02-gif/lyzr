@@ -34,11 +34,11 @@ import { isFreeEmail, isWorkEmail } from "@/lib/email";
 const STEP_META = [
   { label: "Company", sub: "Tell us about your organization" },
   { label: "Use-Case", sub: "What work do you want agents to do?" },
-  { label: "Data", sub: "Where your data lives and how clean it is" },
-  { label: "Technology", sub: "The systems and tools you run today" },
-  { label: "Team", sub: "Capacity, skills, and how you govern AI" },
-  { label: "Strategy", sub: "Investment and a quick production reality check" },
+  { label: "Data & Tech", sub: "Where your data lives and the systems you run" },
+  { label: "Team & Strategy", sub: "Capacity, governance, and a quick reality check" },
 ];
+
+const LAST_STEP = STEP_META.length - 1;
 
 /* ---- field helpers ---- */
 
@@ -140,20 +140,24 @@ export default function Onboarding() {
       case 1:
         return q.functions.length > 0;
       case 2:
-        return !!q.data.location && !!q.data.structure && !!q.data.quality;
+        return !!q.data.location && !!q.data.structure && !!q.data.quality && !!q.tech.deployment && !!q.tech.existingAI;
       case 3:
-        return !!q.tech.deployment && !!q.tech.existingAI;
-      case 4:
-        return !!q.team.size && !!q.team.skill && !!q.team.aiExperience && !!q.governance.compliance && !!q.governance.riskAppetite;
-      case 5:
-        return !!q.strategy.timeline && !!q.strategy.budget;
+        return (
+          !!q.team.size &&
+          !!q.team.skill &&
+          !!q.team.aiExperience &&
+          !!q.governance.compliance &&
+          !!q.governance.riskAppetite &&
+          !!q.strategy.timeline &&
+          !!q.strategy.budget
+        );
       default:
         return false;
     }
   })();
 
   const next = async () => {
-    if (step < 5) {
+    if (step < LAST_STEP) {
       setStep((s) => s + 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
@@ -205,7 +209,7 @@ export default function Onboarding() {
 
       <div key={step} className="animate-fade-up flex-1">
         <Eyebrow>
-          Step {step + 1} of 6 · {STEP_META[step].label}
+          Step {step + 1} of {STEP_META.length} · {STEP_META[step].label}
         </Eyebrow>
         <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-fg">{STEP_META[step].sub}</h1>
 
@@ -274,24 +278,22 @@ export default function Onboarding() {
               <Field label="How would you rate data quality?">
                 <ChipGroup options={DATA_QUALITY} value={q.data.quality} onChange={(v) => set("data", { ...q.data, quality: v })} />
               </Field>
+              <div className="space-y-7 border-t border-border pt-7">
+                <Eyebrow>Technology</Eyebrow>
+                <Field label="Which core systems do you run?" hint="select all that apply">
+                  <MultiChipGroup options={SYSTEMS} values={q.tech.systems} onChange={(v) => set("tech", { ...q.tech, systems: v })} />
+                </Field>
+                <Field label="How do you deploy software?">
+                  <ChipGroup options={DEPLOYMENT} value={q.tech.deployment} onChange={(v) => set("tech", { ...q.tech, deployment: v })} />
+                </Field>
+                <Field label="Where are you with AI today?">
+                  <ChipGroup options={EXISTING_AI} value={q.tech.existingAI} onChange={(v) => set("tech", { ...q.tech, existingAI: v })} />
+                </Field>
+              </div>
             </>
           )}
 
           {step === 3 && (
-            <>
-              <Field label="Which core systems do you run?" hint="select all that apply">
-                <MultiChipGroup options={SYSTEMS} values={q.tech.systems} onChange={(v) => set("tech", { ...q.tech, systems: v })} />
-              </Field>
-              <Field label="How do you deploy software?">
-                <ChipGroup options={DEPLOYMENT} value={q.tech.deployment} onChange={(v) => set("tech", { ...q.tech, deployment: v })} />
-              </Field>
-              <Field label="Where are you with AI today?">
-                <ChipGroup options={EXISTING_AI} value={q.tech.existingAI} onChange={(v) => set("tech", { ...q.tech, existingAI: v })} />
-              </Field>
-            </>
-          )}
-
-          {step === 4 && (
             <>
               <Field label="Team available to deliver">
                 <ChipGroup options={TEAM_SIZES} value={q.team.size} onChange={(v) => set("team", { ...q.team, size: v })} />
@@ -308,24 +310,22 @@ export default function Onboarding() {
               <Field label="Risk appetite">
                 <ChipGroup options={RISK_APPETITE} value={q.governance.riskAppetite} onChange={(v) => set("governance", { ...q.governance, riskAppetite: v })} />
               </Field>
-            </>
-          )}
-
-          {step === 5 && (
-            <>
-              <Field label="Target win window">
-                <ChipGroup options={TIMELINES} value={q.strategy.timeline} onChange={(v) => set("strategy", { ...q.strategy, timeline: v })} />
-              </Field>
-              <Field label="AI investment budget">
-                <ChipGroup options={BUDGETS} value={q.strategy.budget} onChange={(v) => set("strategy", { ...q.strategy, budget: v })} cols={2} />
-              </Field>
-              <Field label="Production reality check" hint="be honest — this sharpens your roadmap">
-                <div className="space-y-2.5">
-                  {GATE_QUESTIONS.map((g) => (
-                    <TriRow key={g.id} label={g.label} hint={g.hint} value={q.gates[g.id]} onChange={(v) => set("gates", { ...q.gates, [g.id]: v })} />
-                  ))}
-                </div>
-              </Field>
+              <div className="space-y-7 border-t border-border pt-7">
+                <Eyebrow>Strategy &amp; reality check</Eyebrow>
+                <Field label="Target win window">
+                  <ChipGroup options={TIMELINES} value={q.strategy.timeline} onChange={(v) => set("strategy", { ...q.strategy, timeline: v })} />
+                </Field>
+                <Field label="AI investment budget">
+                  <ChipGroup options={BUDGETS} value={q.strategy.budget} onChange={(v) => set("strategy", { ...q.strategy, budget: v })} cols={2} />
+                </Field>
+                <Field label="Production reality check" hint="be honest — this sharpens your roadmap">
+                  <div className="space-y-2.5">
+                    {GATE_QUESTIONS.map((g) => (
+                      <TriRow key={g.id} label={g.label} hint={g.hint} value={q.gates[g.id]} onChange={(v) => set("gates", { ...q.gates, [g.id]: v })} />
+                    ))}
+                  </div>
+                </Field>
+              </div>
             </>
           )}
         </div>
@@ -354,8 +354,8 @@ export default function Onboarding() {
             </>
           ) : (
             <>
-              {step === 5 ? "Generate my roadmap" : "Continue"}
-              {step === 5 ? <Check className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+              {step === LAST_STEP ? "Generate my roadmap" : "Continue"}
+              {step === LAST_STEP ? <Check className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
             </>
           )}
         </button>

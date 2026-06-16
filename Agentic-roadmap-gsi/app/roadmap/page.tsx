@@ -24,6 +24,8 @@ export default function RoadmapPage() {
   const [blueprintOpp, setBlueprintOpp] = useState<Opportunity | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [demoOpen, setDemoOpen] = useState(false);
+  // User's manual roadmap arrangement (oppId -> lane), persisted per session.
+  const [laneOverrides, setLaneOverrides] = useState<Record<string, Lane>>({});
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -75,6 +77,35 @@ export default function RoadmapPage() {
     }
   }
 
+  // Load the saved roadmap arrangement once we know the session.
+  useEffect(() => {
+    if (!sessionId || typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem(`agentic_roadmap_plan_${sessionId}`);
+      if (raw) setLaneOverrides(JSON.parse(raw) as Record<string, Lane>);
+    } catch {
+      /* ignore */
+    }
+  }, [sessionId]);
+
+  const moveOpp = useCallback(
+    (id: string, lane: Lane) => {
+      setLaneOverrides((prev) => {
+        if (prev[id] === lane) return prev;
+        const next = { ...prev, [id]: lane };
+        if (sessionId) {
+          try {
+            localStorage.setItem(`agentic_roadmap_plan_${sessionId}`, JSON.stringify(next));
+          } catch {
+            /* ignore */
+          }
+        }
+        return next;
+      });
+    },
+    [sessionId],
+  );
+
   function applyDeepen(dim: DimensionId, answers: Record<string, string>) {
     setIntake((prev) => {
       if (!prev) return prev;
@@ -97,13 +128,26 @@ export default function RoadmapPage() {
     );
   }
 
-  const a = assessment;
+  // Effective assessment with the user's manual lane arrangement applied.
+  const a: Assessment = Object.keys(laneOverrides).length
+    ? {
+        ...assessment,
+        opportunities: assessment.opportunities.map((o) =>
+          laneOverrides[o.id] ? { ...o, lane: laneOverrides[o.id] } : o,
+        ),
+      }
+    : assessment;
   const name = intake.quick.company.name?.trim() || "Your";
   const counts: Record<Lane, number> = {
     build_now: a.opportunities.filter((o) => o.lane === "build_now").length,
     fix_first: a.opportunities.filter((o) => o.lane === "fix_first").length,
     not_now: a.opportunities.filter((o) => o.lane === "not_now").length,
   };
+  // Lead with credible near-term value (Build Now + Fix First); the full
+  // catalog is shown separately as a longer-horizon range, not the headline.
+  const nearTermValue = a.opportunities
+    .filter((o) => o.lane !== "not_now")
+    .reduce((s, o) => s + o.annualValueUSD, 0);
 
   return (
     <main className="mx-auto max-w-6xl px-5 pb-24">
@@ -155,11 +199,14 @@ export default function RoadmapPage() {
         <p className="mt-2 max-w-3xl text-[0.98rem] leading-relaxed text-muted">{a.headline}</p>
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Est. annual value" value={formatUSD(a.estAnnualValueUSD)} accent />
-          <Stat label="Opportunities" value={`${a.opportunities.length}`} />
+          <Stat label="Near-term value" value={formatUSD(nearTermValue)} sub="Build Now + Fix First" accent />
+          <Stat label="Ready to build" value={`${counts.build_now}`} />
           <Stat label="Functions" value={`${a.functionsCount}`} />
-          <Stat label="Apps analyzed" value={`${a.appsAnalyzed}`} />
+          <Stat label="Opportunities" value={`${a.opportunities.length}`} />
         </div>
+        <p className="mt-2.5 text-xs leading-relaxed text-faint">
+          Full catalog potential: up to {formatUSD(a.estAnnualValueUSD)} across all {a.opportunities.length} opportunities over a multi-year horizon.
+        </p>
       </section>
 
       {/* lane counters */}
@@ -202,7 +249,7 @@ export default function RoadmapPage() {
 
           <div className="mt-7">
             {tab === "Scorecard" && <Scorecard a={a} intake={intake} onDeepen={applyDeepen} />}
-            {tab === "Roadmap" && <RoadmapTab a={a} onSelect={setSelected} />}
+            {tab === "Roadmap" && <RoadmapTab a={a} onSelect={setSelected} onMove={moveOpp} />}
             {tab === "Development Board" && <DevBoardTab a={a} onSelect={setSelected} />}
             {tab === "Path to AE" && <PathToAE a={a} />}
             {tab === "Opportunity Map" && <MapTab a={a} onSelect={setSelected} />}
@@ -228,11 +275,12 @@ export default function RoadmapPage() {
 /* Stat                                                               */
 /* ------------------------------------------------------------------ */
 
-function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function Stat({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: boolean }) {
   return (
     <Card className="px-4 py-3">
       <div className="text-xs text-faint">{label}</div>
       <div className={cn("num mt-1 font-display text-xl font-semibold", accent ? "text-accent" : "text-fg")}>{value}</div>
+      {sub && <div className="mt-0.5 text-[0.62rem] uppercase tracking-wide text-faint">{sub}</div>}
     </Card>
   );
 }
@@ -251,6 +299,7 @@ function Scorecard({
   onDeepen: (dim: DimensionId, answers: Record<string, string>) => void;
 }) {
   const radarPoints: RadarPoint[] = a.dimensions.map((d) => ({ label: SHORT[d.id], score: d.score, color: dimColor(d.status) }));
+  const dimsByScore = [...a.dimensions].sort((x, y) => y.score - x.score);
   const toFix = [...a.dimensions].sort((x, y) => x.score - y.score).filter((d) => d.status !== "strong").slice(0, 3);
 
   return (
@@ -285,7 +334,7 @@ function Scorecard({
             </span>
           </div>
           <div className="mt-4 space-y-4">
-            {a.dimensions.map((d) => (
+            {dimsByScore.map((d) => (
               <div key={d.id}>
                 <div className="mb-1.5 flex items-center justify-between">
                   <span className="text-sm font-medium text-fg">{d.label}</span>
@@ -430,85 +479,120 @@ function DeepenForm({
 /* Roadmap tab                                                        */
 /* ------------------------------------------------------------------ */
 
-function RoadmapTab({ a, onSelect }: { a: Assessment; onSelect: (o: Opportunity) => void }) {
+function RoadmapTab({ a, onSelect, onMove }: { a: Assessment; onSelect: (o: Opportunity) => void; onMove: (id: string, lane: Lane) => void }) {
   const lanes: Lane[] = ["build_now", "fix_first", "not_now"];
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overLane, setOverLane] = useState<Lane | null>(null);
+
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
-      {lanes.map((lane) => {
-        const items = a.opportunities.filter((o) => o.lane === lane);
-        const meta = LANE_META[lane];
-        return (
-          <div key={lane} className="space-y-3">
-            <div className="flex items-center justify-between rounded-xl border border-border bg-surface/70 px-4 py-3">
-              <span className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: meta.cssVar }} />
-                <span className="font-display text-sm font-semibold text-fg">{meta.label}</span>
-              </span>
-              <span className="num text-sm text-faint">{items.length}</span>
+    <div>
+      <p className="mb-3 px-1 text-xs text-faint">Drag a card between lanes to shape your own plan — your arrangement is saved to this session.</p>
+      <div className="grid gap-4 lg:grid-cols-3">
+        {lanes.map((lane) => {
+          const items = a.opportunities.filter((o) => o.lane === lane);
+          const meta = LANE_META[lane];
+          const isOver = overLane === lane;
+          return (
+            <div
+              key={lane}
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (overLane !== lane) setOverLane(lane);
+              }}
+              onDragLeave={(e) => {
+                if (e.currentTarget === e.target) setOverLane(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (dragId) onMove(dragId, lane);
+                setDragId(null);
+                setOverLane(null);
+              }}
+              className={cn("space-y-3 rounded-2xl p-1.5 transition-colors", isOver && "bg-accent/[0.06] ring-1 ring-accent/30")}
+            >
+              <div className="flex items-center justify-between rounded-xl border border-border bg-surface/70 px-4 py-3">
+                <span className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: meta.cssVar }} />
+                  <span className="font-display text-sm font-semibold text-fg">{meta.label}</span>
+                </span>
+                <span className="num text-sm text-faint">{items.length}</span>
+              </div>
+              <p className="px-1 text-xs text-faint">{meta.blurb}</p>
+              <div className="space-y-2.5">
+                {items.map((o) => (
+                  <CompactOppCard
+                    key={o.id}
+                    o={o}
+                    onSelect={onSelect}
+                    onDragStart={() => setDragId(o.id)}
+                    onDragEnd={() => {
+                      setDragId(null);
+                      setOverLane(null);
+                    }}
+                    dragging={dragId === o.id}
+                  />
+                ))}
+                {items.length === 0 && (
+                  <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-xs text-faint">
+                    {isOver ? "Drop here" : "Nothing here yet."}
+                  </div>
+                )}
+              </div>
             </div>
-            <p className="px-1 text-xs text-faint">{meta.blurb}</p>
-            <div className="space-y-3">
-              {items.map((o) => (
-                <OppCard key={o.id} o={o} onSelect={onSelect} />
-              ))}
-              {items.length === 0 && (
-                <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-xs text-faint">Nothing here yet.</div>
-              )}
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-function OppCard({ o, onSelect }: { o: Opportunity; onSelect: (o: Opportunity) => void }) {
+function CompactOppCard({
+  o,
+  onSelect,
+  onDragStart,
+  onDragEnd,
+  dragging,
+}: {
+  o: Opportunity;
+  onSelect: (o: Opportunity) => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  dragging: boolean;
+}) {
   const priorityTone = o.priority === "Critical" ? "critical" : o.priority === "High" ? "fix" : "muted";
   return (
-    <button onClick={() => onSelect(o)} className="w-full text-left">
-      <Card className="p-4 transition-colors hover:border-accent/40">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="truncate text-xs text-faint">{o.funcLabel}</span>
-          <div className="flex items-center gap-1.5">
-            {o.aiGenerated && (
-              <Pill tone="accent">
-                <Sparkles className="mr-1 h-2.5 w-2.5" /> AI
-              </Pill>
-            )}
-            <Pill tone={priorityTone as "critical" | "fix" | "muted"}>{o.priority}</Pill>
-          </div>
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onClick={() => onSelect(o)}
+      className={cn(
+        "group cursor-grab rounded-xl border border-border bg-surface p-3 transition-all hover:border-accent/40 active:cursor-grabbing",
+        dragging && "opacity-40",
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate text-[0.7rem] text-faint">{o.funcLabel}</span>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {o.aiGenerated && (
+            <Pill tone="accent">
+              <Sparkles className="mr-1 h-2.5 w-2.5" /> AI
+            </Pill>
+          )}
+          <Pill tone={priorityTone as "critical" | "fix" | "muted"}>{o.priority}</Pill>
         </div>
-        <h4 className="font-display text-[0.95rem] font-semibold leading-snug text-fg">{o.name}</h4>
-        <p className="mt-1.5 text-xs leading-relaxed text-muted">{o.description}</p>
-
-        <div className="mt-3 flex items-center justify-between">
-          <div>
-            <div className="num font-display text-lg font-semibold text-accent">{formatUSD(o.annualValueUSD)}</div>
-            <div className="text-[0.7rem] text-faint">est. annual value</div>
-          </div>
-          <Ring value={o.readinessScore} size={52} stroke={5} color={LANE_META[o.lane].cssVar} />
+      </div>
+      <h4 className="mt-1.5 font-display text-[0.9rem] font-semibold leading-snug text-fg">{o.name}</h4>
+      <div className="mt-2.5 flex items-center justify-between gap-2">
+        <span className="num font-display text-base font-semibold text-accent">{formatUSD(o.annualValueUSD)}</span>
+        <div className="flex items-center gap-2 text-[0.7rem] text-faint">
+          <span className="h-1.5 w-14 overflow-hidden rounded-full bg-surface-2">
+            <span className="block h-full rounded-full" style={{ width: `${o.readinessScore}%`, backgroundColor: LANE_META[o.lane].cssVar }} />
+          </span>
+          <span className="num">{o.readinessScore}</span>
         </div>
-
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-3 text-[0.7rem] text-faint">
-          <span style={{ color: LANE_META[o.lane].cssVar }}>{o.readinessLabel}</span>
-          <span className="h-1 w-1 rounded-full bg-border-strong" />
-          <span>{o.complexity} complexity</span>
-          <span className="h-1 w-1 rounded-full bg-border-strong" />
-          <span>{o.timeToValue}</span>
-        </div>
-
-        {o.blockers.length > 0 && (
-          <div className="mt-3 space-y-1">
-            {o.blockers.map((b) => (
-              <div key={b} className="flex items-start gap-1.5 text-[0.7rem] text-fix">
-                <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-fix" />
-                {b}
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
-    </button>
+      </div>
+    </div>
   );
 }
 
@@ -541,7 +625,7 @@ function MapTab({ a, onSelect }: { a: Assessment; onSelect: (o: Opportunity) => 
         </div>
       </div>
 
-      <div className="relative aspect-[16/9] w-full rounded-xl border border-border bg-surface-2/30">
+      <div className="relative mx-auto h-[260px] w-full max-w-2xl rounded-xl border border-border bg-surface-2/30 sm:h-[300px]">
         <span className="absolute inset-y-0 left-1/2 w-px bg-border" />
         <span className="absolute inset-x-0 top-1/2 h-px bg-border" />
         {quadrants.map((qd) => (

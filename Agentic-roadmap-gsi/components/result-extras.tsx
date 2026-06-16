@@ -382,37 +382,47 @@ function Section({ title, icon: Icon, children }: { title: string; icon: React.E
 /* Path to AE — journey curve + phase cards                           */
 /* ------------------------------------------------------------------ */
 
-function JourneyChart({ start }: { start: number }) {
+function JourneyChart({ start, target }: { start: number; target: number }) {
   const W = 720;
   const H = 240;
-  const padL = 44;
-  const padR = 20;
-  const padT = 16;
+  const padL = 58;
+  const padR = 24;
+  const padT = 26;
   const padB = 34;
   const chartW = W - padL - padR;
   const chartH = H - padT - padB;
 
-  const ys = [start, Math.max(35, start + 6), 56, 76, 89, 95];
-  const n = ys.length;
+  // A monotonic climb from today's readiness to the automation target —
+  // the path never regresses year over year.
+  const n = 6;
+  const ys = Array.from({ length: n }, (_, i) => Math.round(start + ((target - start) * i) / (n - 1)));
   const x = (i: number) => padL + (i * chartW) / (n - 1);
   const y = (v: number) => padT + (1 - v / 100) * chartH;
   const pts = ys.map((v, i) => `${x(i)},${y(v)}`).join(" ");
   const area = `${padL},${padT + chartH} ${pts} ${padL + chartW},${padT + chartH}`;
-  const xLabels = ["Start", "Year 1", "Year 2", "Year 3", "Year 4", "Year 5"];
+  const xLabels = ["Today", "Year 1", "Year 2", "Year 3", "Year 4", "Year 5"];
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full">
       <defs>
         <linearGradient id="journey" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%" stopColor="var(--color-build)" />
-          <stop offset="60%" stopColor="var(--color-fix)" />
-          <stop offset="100%" stopColor="var(--color-build)" />
+          <stop offset="100%" stopColor="var(--color-fix)" />
         </linearGradient>
         <linearGradient id="journeyFill" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="rgba(62,156,114,0.16)" />
           <stop offset="100%" stopColor="rgba(62,156,114,0)" />
         </linearGradient>
       </defs>
+      {/* y-axis title */}
+      <text
+        transform={`translate(15 ${padT + chartH / 2}) rotate(-90)`}
+        textAnchor="middle"
+        fontSize={10}
+        fill="var(--color-faint)"
+      >
+        % of operations automated
+      </text>
       {/* gridlines */}
       {[0, 25, 50, 75, 100].map((g) => (
         <g key={g}>
@@ -425,8 +435,15 @@ function JourneyChart({ start }: { start: number }) {
       <polygon points={area} fill="url(#journeyFill)" />
       <polyline points={pts} fill="none" stroke="url(#journey)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
       {ys.map((v, i) => (
-        <circle key={i} cx={x(i)} cy={y(v)} r={5} fill="var(--color-surface)" stroke={i >= 3 ? "var(--color-fix)" : "var(--color-build)"} strokeWidth={2.5} />
+        <circle key={i} cx={x(i)} cy={y(v)} r={5} fill="var(--color-surface)" stroke={i === n - 1 ? "var(--color-fix)" : "var(--color-build)"} strokeWidth={2.5} />
       ))}
+      {/* endpoint value callouts: where you are today vs. the target */}
+      <text x={x(0)} y={y(ys[0]) - 12} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--color-build)">
+        {ys[0]}%
+      </text>
+      <text x={x(n - 1)} y={y(ys[n - 1]) - 12} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--color-fix)">
+        {ys[n - 1]}%
+      </text>
       {xLabels.map((l, i) => (
         <text key={l} x={x(i)} y={H - 10} textAnchor="middle" fontSize={10} fill="var(--color-faint)">
           {l}
@@ -445,11 +462,17 @@ export function PathToAE({ a }: { a: Assessment }) {
   const vB = sum(buildNow);
   const vF = sum(fixFirst);
 
+  // Climb from today's readiness to the automation target — shared by the
+  // curve and the phase cards so the story stays consistent.
+  const start = a.maturityScore;
+  const target = start >= 90 ? Math.min(100, start + 4) : 95;
+  const lerp = (t: number) => Math.round(start + (target - start) * t);
+
   const phases = [
-    { key: "Foundation", auto: Math.max(25, a.maturityScore), agents: buildNow, cumulative: vB, tone: "build" as const },
-    { key: "Expansion", auto: 55, agents: fixFirst, cumulative: vB + vF, tone: "fix" as const },
-    { key: "Optimization", auto: 78, agents: notNow, cumulative: a.estAnnualValueUSD, tone: "fix" as const },
-    { key: "Autonomous Enterprise", auto: 95, agents: a.opportunities, cumulative: a.estAnnualValueUSD, tone: "build" as const },
+    { key: "Foundation", auto: lerp(0), agents: buildNow, cumulative: vB, tone: "build" as const },
+    { key: "Expansion", auto: lerp(0.45), agents: fixFirst, cumulative: vB + vF, tone: "fix" as const },
+    { key: "Optimization", auto: lerp(0.75), agents: notNow, cumulative: a.estAnnualValueUSD, tone: "fix" as const },
+    { key: "Autonomous Enterprise", auto: lerp(1), agents: a.opportunities, cumulative: a.estAnnualValueUSD, tone: "build" as const },
   ];
 
   return (
@@ -466,11 +489,11 @@ export function PathToAE({ a }: { a: Assessment }) {
             <p className="text-xs text-faint">5-year progression from foundation to full automation</p>
           </div>
           <span className="hidden items-center gap-1.5 rounded-full border border-border-strong px-3 py-1 text-xs text-muted sm:inline-flex">
-            <Sparkles className="h-3 w-3 text-accent" /> Target: 95% automation
+            <Sparkles className="h-3 w-3 text-accent" /> Target: {target}% automation
           </span>
         </div>
         <div className="aspect-[16/6] w-full">
-          <JourneyChart start={a.maturityScore} />
+          <JourneyChart start={start} target={target} />
         </div>
       </Card>
 
@@ -605,29 +628,24 @@ const THEMES: { id: string; label: string; funcs: string[]; desc: string; reques
   },
 ];
 
-function hashStr(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return h;
-}
-
 export function DemandTab({ a, onSelect }: { a: Assessment; onSelect: (o: Opportunity) => void }) {
   const [open, setOpen] = useState<string | null>(THEMES[0].id);
-  const total = a.opportunities.reduce((s, o) => s + o.annualValueUSD, 0) || 1;
 
   const groups = THEMES.map((t) => {
     const items = a.opportunities.filter((o) => t.funcs.includes(o.func));
-    const value = items.reduce((s, o) => s + o.annualValueUSD, 0);
-    const share = (value / total) * 100;
-    const apps = 30 + (hashStr(t.id) % 36);
-    return { ...t, items, share, apps };
+    return { ...t, items };
   }).filter((g) => g.items.length > 0);
 
   return (
     <div>
       <div className="mb-4">
-        <Eyebrow>Demand intelligence</Eyebrow>
-        <p className="mt-1 text-sm text-muted">What teams like yours are already asking for — explore the related agents.</p>
+        <div className="flex items-center gap-2">
+          <Eyebrow>Demand intelligence</Eyebrow>
+          <Pill tone="muted">Illustrative</Pill>
+        </div>
+        <p className="mt-1 text-sm text-muted">
+          Common agent patterns we see across teams like yours, grouped by theme — explore the agents mapped to each.
+        </p>
       </div>
 
       <div className="space-y-3">
@@ -643,15 +661,14 @@ export function DemandTab({ a, onSelect }: { a: Assessment; onSelect: (o: Opport
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-display text-sm font-semibold text-fg">{g.label}</span>
-                      <span className="num text-xs text-accent">{g.share.toFixed(1)}%</span>
                     </div>
                     <p className="mt-0.5 max-w-xl text-xs text-muted">{g.desc}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <div className="num text-sm font-medium text-fg">{g.apps} apps</div>
-                    <div className="text-[0.7rem] text-faint">{g.items.length} agents</div>
+                    <div className="num text-sm font-medium text-fg">{g.items.length}</div>
+                    <div className="text-[0.7rem] text-faint">agent{g.items.length === 1 ? "" : "s"}</div>
                   </div>
                   <ChevronDown className={cn("h-4 w-4 text-faint transition-transform", isOpen && "rotate-180")} />
                 </div>
@@ -659,7 +676,7 @@ export function DemandTab({ a, onSelect }: { a: Assessment; onSelect: (o: Opport
 
               {isOpen && (
                 <div className="border-t border-border px-5 py-4">
-                  <div className="mb-3 text-[0.7rem] text-faint">Top requests from teams:</div>
+                  <div className="mb-3 text-[0.7rem] text-faint">Example requests these agents handle:</div>
                   <div className="mb-4 flex flex-wrap gap-2">
                     {g.requests.map((r) => (
                       <span key={r} className="rounded-lg border border-border bg-surface-2/50 px-3 py-1.5 text-xs text-muted">
