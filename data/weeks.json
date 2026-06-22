@@ -1,5 +1,5 @@
 {
-  "current_week": 8,
+  "current_week": 9,
   "start_date": "2026-04-18",
   "timezone": "Asia/Kolkata",
   "weeks": [
@@ -58,7 +58,14 @@
       "path": "gsi-report-jun9-14",
       "status": "complete",
       "meetings_processed": 0
+    },
+    {
+      "number": 9,
+      "date_range": "June 15 to June 21",
+      "path": "gsi-report-jun15-21",
+      "status": "complete",
+      "meetings_processed": 0
     }
   ],
-  "last_updated": "2026-06-15"
+  "last_updated": "2026-06-22"
 }

@@ -399,6 +399,24 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-06-22, reports: Week 9 GSI report (15-21 June) + White Path ads report
+New weekly report, mirroring the `gsi-report-jun9-14/` directory layout (index + ads).
+- **New `reports/gsi-report-jun15-21/`**: `index.html` (the 15-21 June weekly report) and
+  `ads.html` (the Lyzr x White Path brand-awareness performance report). The ads report is
+  embedded under the LinkedIn Ads section via `<iframe src="ads">` (clean URL, resolves on
+  Cloudflare Pages); the Open link points to `/reports/gsi-report-jun15-21/ads`.
+- **Pipeline widget** data refreshed to 123 conversations (16 Win / 41 Demo / 48 In-conversation
+  / 18 Lost; closed ACV $3.27M, open pipeline $17.5M). CSS, chart JS and footer JS reused verbatim
+  from the jun9-14 report.
+- **Registered the week** in `data/weeks.json` (added Week 9, `current_week` 8 -> 9,
+  `last_updated` -> 2026-06-22) so the card renders on the data-driven `/reports` listing.
+- **Fallback** card for Week 9 added to the no-JS / AI-scraper block in `reports/index.html`.
+- Validated both files: no mojibake, balanced tags, embedded JSON re-parses, `node --check`
+  clean on all inline scripts.
+- Correction to earlier behavior: the `/reports` cards are driven by the deployed `data/weeks.json`,
+  so a new report does not appear until pushed and Cloudflare redeploys (`pages deploy .`).
+- Commit(s): pushed to `main` (kailcodes02-gif/lyzr). Deploys via Cloudflare Pages `lyzr-work-os`.
+
 ### 2026-06-16, ai-roadmap (Agentic-roadmap-gsi): selected-only roadmap, on-demand generation, gated values, email resume
 Second review pass. Builds on the same-day "manager-feedback UI revisions" entry below.
 - **Roadmap shows only chosen functions** (`lib/content.ts`): `buildAssessment` filters the
