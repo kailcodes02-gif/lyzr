@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-24T07:15:10.960Z",
+  "generated_at": "2026-06-24T07:25:56.235Z",
   "source_file": "tracker.xlsx",
   "rows": [
     {
@@ -597,7 +597,7 @@
       "company": "Accenture",
       "industry": "R&D",
       "project": "Ge Vernova",
-      "use_case": "The use case focuses on building an AI-powered engineering knowledge hub for GE Vernova R&D teams that centralizes internal and external technical data and enables intelligent, context-aware search. The goal is to reduce information retrieval time from 10ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ15 minutes to seconds by using an agent that refines queries and pulls precise insights from distributed, access-controlled data sources.",
+      "use_case": "The use case focuses on building an AI-powered engineering knowledge hub for GE Vernova R&D teams that centralizes internal and external technical data and enables intelligent, context-aware search. The goal is to reduce information retrieval time from 10ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ15 minutes to seconds by using an agent that refines queries and pulls precise insights from distributed, access-controlled data sources.",
       "category": "Custom Implementation",
       "stage": "in-conversation",
       "prototype_owners": [
@@ -643,7 +643,7 @@
       "company": "Accenture",
       "industry": null,
       "project": "Workload Manager Agent",
-      "use_case": "The use case focuses on building an Agentic AIÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂdriven workload management solution that generates and continuously updates project workload forecasts by leveraging pipeline data, ongoing contracts, historical benchmarks, and resource master data",
+      "use_case": "The use case focuses on building an Agentic AIÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂdriven workload management solution that generates and continuously updates project workload forecasts by leveraging pipeline data, ongoing contracts, historical benchmarks, and resource master data",
       "category": "Custom Implementation",
       "stage": "Demo",
       "prototype_owners": [
@@ -4161,7 +4161,7 @@
       "sn": 17,
       "company": "Crown Castle",
       "industry": "TeleCommunication",
-      "project": "Crown Castle - ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Drone Image Analysis",
+      "project": "Crown Castle - ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Drone Image Analysis",
       "use_case": null,
       "category": "RPT Prototype",
       "stage": "win",
@@ -7652,7 +7652,7 @@
       "company": "Hunt Military Company",
       "industry": "Property Management",
       "project": "Tech Project Management Agent",
-      "use_case": "Meeting intelligence for technical program managers â plans, RAID logs, Jira issues, and minutes from your transcripts",
+      "use_case": "Meeting intelligence for technical program managers Ã¢ÂÂ plans, RAID logs, Jira issues, and minutes from your transcripts",
       "category": "RPT Prototype",
       "stage": "Demo",
       "prototype_owners": [
@@ -7700,17 +7700,45 @@
       "created_by": "Aravind D",
       "created_at": "2026-06-24T07:15:10.960Z",
       "edit_history": []
+    },
+    {
+      "id": "ENT-0349",
+      "segment": "Enterprises",
+      "sn": 176,
+      "company": "Live Nation",
+      "industry": "Event Management",
+      "project": "Event Planning App",
+      "use_case": "Centralized AI workspace for tour planning, venue analysis, and approvals.",
+      "category": "RPT Prototype",
+      "stage": "Demo",
+      "prototype_owners": [
+        "Monisha",
+        "Aravind"
+      ],
+      "opportunity_owners": [
+        "Jesse"
+      ],
+      "prototype_link": "https://main.d2dbg4bfak2ahi.amplifyapp.com/",
+      "prototype_link_text": "https://main.d2dbg4bfak2ahi.amplifyapp.com/",
+      "acv": 250000,
+      "acv_raw": "250000",
+      "time_period": null,
+      "close_date_raw": null,
+      "close_quarter": null,
+      "created_by": "Aravind D",
+      "created_at": "2026-06-24T07:25:56.235Z",
+      "edit_history": []
     }
   ],
   "aggregates": {
-    "total_rows": 348,
-    "total_acv": 36904000,
-    "acv_open": 30166000,
+    "total_rows": 349,
+    "total_acv": 37154000,
+    "acv_open": 30416000,
     "acv_won": 3630000,
     "acv_lost": 3108000,
     "unique_companies": 199,
     "by_stage": {
-      "Demo": 55,
+      "Demo": 56,
       "in-conversation": 214,
       "win": 13,
       "customer": 29,
@@ -7747,11 +7775,11 @@
         }
       },
       "Enterprises": {
-        "count": 175,
-        "acv": 17959000,
+        "count": 176,
+        "acv": 18209000,
         "stages": {
           "lost": 31,
-          "Demo": 34,
+          "Demo": 35,
           "in-conversation": 83,
           "win": 7,
           "customer": 20
@@ -7796,8 +7824,8 @@
       },
       {
         "name": "Jesse",
-        "deals": 2,
-        "acv": 1120000
+        "deals": 3,
+        "acv": 1370000
       },
       {
         "name": "Siva",
@@ -7895,6 +7923,11 @@
         "company": "Publicis",
         "deals": 7,
         "acv": 620000
+      },
+      {
+        "company": "Live Nation",
+        "deals": 2,
+        "acv": 500000
       },
       {
         "company": "Avanade",
@@ -8043,11 +8076,6 @@
       },
       {
         "company": "Korn Ferry Digital",
-        "deals": 1,
-        "acv": 250000
-      },
-      {
-        "company": "Live Nation",
         "deals": 1,
         "acv": 250000
       },
@@ -8880,6 +8908,7 @@
       "Banking",
       "Cross-Industry Enterprise Sales & Procurement",
       "Customer Support",
+      "Event Management",
       "FMCG",
       "Finance",
       "HR",
