@@ -42,7 +42,7 @@ export function ResumeLink() {
         onClick={() => setOpen(true)}
         className="text-sm font-medium text-muted transition-colors hover:text-fg"
       >
-        Already have a roadmap? <span className="text-accent">Resume with your email</span>
+        Already started your roadmap here? <span className="text-accent">Pick up where you left off</span>
       </button>
     );
   }

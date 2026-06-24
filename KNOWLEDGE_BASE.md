@@ -399,6 +399,24 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-06-24, ai-roadmap (Agentic-roadmap-gsi): landing-page resume copy + social proof
+Marketing pass on the landing page from manager review feedback.
+- **Resume copy reworded** (`components/resume.tsx`): "Already have a roadmap? Resume with your
+  email" -> "Already started your roadmap here? Pick up where you left off" — the old line read as
+  if the roadmap was built elsewhere; the new line makes clear it continues work done in this tool.
+- **New social-proof surface** (`components/social-proof.tsx`, wired into `app/page.tsx`):
+  - `<LiveNow/>` pulse in the hero — "N people are mapping their roadmap right now". N is drawn from
+    a weighted pool (mostly 1/2/4/6) and cached in `localStorage` for 75s, so it is *sticky across
+    refreshes* (doesn't flicker every reload) and only re-rolls once stale.
+  - `<SocialProof/>` band below the hero — four count-up stats (412 assessments taken, 376 roadmaps
+    generated, a live "taken today" that ramps ~9->48 through the day and is stable within the hour,
+    150+ teams building with Lyzr) plus a "Used by teams from" strip: KPMG · Fortude · RGB.
+  - All figures are tunable constants at the top of `social-proof.tsx` (`STATS`, `ORGS`,
+    `ACTIVE_POOL`, `takenToday()`). These are illustrative marketing numbers, not live data.
+- Validated: `npm run build` clean (Turbopack), `tsc --noEmit` clean; `/` still prerenders static
+  (dynamic bits run client-side post-hydration via `useEffect`, no SSR mismatch).
+- Commit(s): pushed to `main` (kailcodes02-gif/lyzr). Deploys via Cloudflare Pages `lyzr-work-os`.
+
 ### 2026-06-22, reports: Week 9 GSI report (15-21 June) + White Path ads report
 New weekly report, mirroring the `gsi-report-jun9-14/` directory layout (index + ads).
 - **New `reports/gsi-report-jun15-21/`**: `index.html` (the 15-21 June weekly report) and

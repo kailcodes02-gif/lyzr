@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Building2, Compass, Sparkles, Target } from "lucide-react";
 import { Logo, Eyebrow, Card, Pill } from "@/components/ui";
 import { ResumeLink } from "@/components/resume";
+import { LiveNow, SocialProof } from "@/components/social-proof";
 
 const ctaPrimary =
   "inline-flex h-12 items-center justify-center gap-2 rounded-full bg-ink px-6 text-[0.95rem] font-semibold text-white transition-all hover:bg-[#3a322c] shadow-[0_10px_24px_-14px_rgba(38,33,28,0.6)]";
@@ -81,6 +82,9 @@ export default function Home() {
             <span className="h-1 w-1 rounded-full bg-border-strong" />
             <span>No sign-up to start</span>
           </div>
+          <div className="mt-5">
+            <LiveNow />
+          </div>
           <div className="mt-6 border-t border-border pt-5">
             <ResumeLink />
           </div>
@@ -127,6 +131,11 @@ export default function Home() {
           </div>
           <p className="mt-4 text-center text-[0.7rem] text-faint">Illustrative — your roadmap is generated from your answers.</p>
         </Card>
+      </section>
+
+      {/* social proof */}
+      <section className="pt-16 lg:pt-20">
+        <SocialProof className="animate-fade-up" />
       </section>
 
       {/* how it works */}
