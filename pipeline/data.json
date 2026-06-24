@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-24T07:25:56.235Z",
+  "generated_at": "2026-06-24T07:28:29.692Z",
   "source_file": "tracker.xlsx",
   "rows": [
     {
@@ -597,7 +597,7 @@
       "company": "Accenture",
       "industry": "R&D",
       "project": "Ge Vernova",
-      "use_case": "The use case focuses on building an AI-powered engineering knowledge hub for GE Vernova R&D teams that centralizes internal and external technical data and enables intelligent, context-aware search. The goal is to reduce information retrieval time from 10ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ15 minutes to seconds by using an agent that refines queries and pulls precise insights from distributed, access-controlled data sources.",
+      "use_case": "The use case focuses on building an AI-powered engineering knowledge hub for GE Vernova R&D teams that centralizes internal and external technical data and enables intelligent, context-aware search. The goal is to reduce information retrieval time from 10ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ15 minutes to seconds by using an agent that refines queries and pulls precise insights from distributed, access-controlled data sources.",
       "category": "Custom Implementation",
       "stage": "in-conversation",
       "prototype_owners": [
@@ -643,7 +643,7 @@
       "company": "Accenture",
       "industry": null,
       "project": "Workload Manager Agent",
-      "use_case": "The use case focuses on building an Agentic AIÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂdriven workload management solution that generates and continuously updates project workload forecasts by leveraging pipeline data, ongoing contracts, historical benchmarks, and resource master data",
+      "use_case": "The use case focuses on building an Agentic AIÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂdriven workload management solution that generates and continuously updates project workload forecasts by leveraging pipeline data, ongoing contracts, historical benchmarks, and resource master data",
       "category": "Custom Implementation",
       "stage": "Demo",
       "prototype_owners": [
@@ -4161,7 +4161,7 @@
       "sn": 17,
       "company": "Crown Castle",
       "industry": "TeleCommunication",
-      "project": "Crown Castle - ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Drone Image Analysis",
+      "project": "Crown Castle - ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Drone Image Analysis",
       "use_case": null,
       "category": "RPT Prototype",
       "stage": "win",
@@ -7652,7 +7652,7 @@
       "company": "Hunt Military Company",
       "industry": "Property Management",
       "project": "Tech Project Management Agent",
-      "use_case": "Meeting intelligence for technical program managers Ã¢ÂÂ plans, RAID logs, Jira issues, and minutes from your transcripts",
+      "use_case": "Meeting intelligence for technical program managers ÃÂ¢ÃÂÃÂ plans, RAID logs, Jira issues, and minutes from your transcripts",
       "category": "RPT Prototype",
       "stage": "Demo",
       "prototype_owners": [
@@ -7728,17 +7728,45 @@
       "created_by": "Aravind D",
       "created_at": "2026-06-24T07:25:56.235Z",
       "edit_history": []
+    },
+    {
+      "id": "ENT-0350",
+      "segment": "Enterprises",
+      "sn": 177,
+      "company": "CohnReznick",
+      "industry": "Finance",
+      "project": "Financial Services Agent",
+      "use_case": "AI Powered trial balance sheets analyzer with anomaly detection, driver analysis, follow-up question generation",
+      "category": "RPT Prototype",
+      "stage": "Demo",
+      "prototype_owners": [
+        "Monisha",
+        "Aravind"
+      ],
+      "opportunity_owners": [
+        "Joel"
+      ],
+      "prototype_link": "https://cohn-reznick-new.vercel.app/",
+      "prototype_link_text": "https://cohn-reznick-new.vercel.app/",
+      "acv": 120000,
+      "acv_raw": "120000",
+      "time_period": null,
+      "close_date_raw": null,
+      "close_quarter": null,
+      "created_by": "Aravind D",
+      "created_at": "2026-06-24T07:28:29.692Z",
+      "edit_history": []
     }
   ],
   "aggregates": {
-    "total_rows": 349,
-    "total_acv": 37154000,
-    "acv_open": 30416000,
+    "total_rows": 350,
+    "total_acv": 37274000,
+    "acv_open": 30536000,
     "acv_won": 3630000,
     "acv_lost": 3108000,
-    "unique_companies": 199,
+    "unique_companies": 200,
     "by_stage": {
-      "Demo": 56,
+      "Demo": 57,
       "in-conversation": 214,
       "win": 13,
       "customer": 29,
@@ -7775,11 +7803,11 @@
         }
       },
       "Enterprises": {
-        "count": 176,
-        "acv": 18209000,
+        "count": 177,
+        "acv": 18329000,
         "stages": {
           "lost": 31,
-          "Demo": 35,
+          "Demo": 36,
           "in-conversation": 83,
           "win": 7,
           "customer": 20
@@ -7851,6 +7879,11 @@
         "name": "Kushal",
         "deals": 2,
         "acv": 145000
+      },
+      {
+        "name": "Joel",
+        "deals": 1,
+        "acv": 120000
       },
       {
         "name": "Bharath Bhat",
@@ -8236,6 +8269,11 @@
       },
       {
         "company": "Hunt Military Company",
+        "deals": 1,
+        "acv": 120000
+      },
+      {
+        "company": "CohnReznick",
         "deals": 1,
         "acv": 120000
       },
