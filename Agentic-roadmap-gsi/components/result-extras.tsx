@@ -456,8 +456,59 @@ function JourneyChart({ start, target }: { start: number; target: number }) {
   );
 }
 
+const PHASE_NARRATIVE: Record<string, string> = {
+  Foundation:
+    "The agents that are ready now — lowest blockers, fastest payback. Shipping these proves value and frees up budget for the next wave.",
+  Expansion:
+    "Agents that needed a readiness gap closed first. With the foundation live and your data and processes in place, these now come online.",
+  Optimization:
+    "Higher-complexity or lower-priority agents. By now your platform, data, and governance are mature enough to take them on.",
+  "Autonomous Enterprise":
+    "Every function has agents running with people supervising rather than doing the work — the compounding end state where the value across all phases is live at once.",
+};
+
+type Phase = { key: string; auto: number; agents: Opportunity[]; cumulative: number };
+
+function PhaseDetail({ phase, start, shown }: { phase: Phase; start: number; shown: boolean }) {
+  const added = phase.agents.reduce((s, o) => s + o.annualValueUSD, 0);
+  return (
+    <Card className="animate-fade p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h4 className="font-display text-base font-semibold text-fg">{phase.key} — what gets you here</h4>
+        <span className="text-xs text-muted">
+          Automation {start}% → <span className="font-semibold text-fg">{phase.auto}%</span>
+        </span>
+      </div>
+      <p className="mt-1.5 text-sm leading-relaxed text-muted">{PHASE_NARRATIVE[phase.key]}</p>
+      {shown && phase.agents.length > 0 && (
+        <p className="mt-2 text-sm leading-relaxed text-muted">
+          Building {phase.agents.length} agent{phase.agents.length === 1 ? "" : "s"} here adds about{" "}
+          <span className="num font-semibold text-accent">{formatUSD(added)}/yr</span> — for a cumulative{" "}
+          <span className="num font-semibold text-build">{formatUSD(phase.cumulative)}/yr</span> once it&apos;s live.
+        </p>
+      )}
+      <div className="mt-3 space-y-1.5">
+        {phase.agents.length === 0 ? (
+          <p className="text-xs text-faint">No agents in this phase for your current selection.</p>
+        ) : (
+          phase.agents.map((o) => (
+            <div key={o.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-2/40 px-3 py-2">
+              <span className="truncate text-sm text-fg">{o.name}</span>
+              <span className="flex shrink-0 items-center gap-2.5 text-xs text-faint">
+                <span className="hidden sm:inline">{o.funcLabel}</span>
+                {shown && <span className="num font-semibold text-accent">{formatUSD(o.annualValueUSD)}</span>}
+              </span>
+            </div>
+          ))
+        )}
+      </div>
+    </Card>
+  );
+}
+
 export function PathToAE({ a }: { a: Assessment }) {
   const shown = useValuesShown();
+  const [open, setOpen] = useState<number | null>(0);
   const byLane = (lane: Lane) => a.opportunities.filter((o) => o.lane === lane);
   const buildNow = byLane("build_now");
   const fixFirst = byLane("fix_first");
@@ -499,42 +550,46 @@ export function PathToAE({ a }: { a: Assessment }) {
         <div className="aspect-[16/6] w-full">
           <JourneyChart start={start} target={target} />
         </div>
+        <p className="mt-3 text-xs leading-relaxed text-faint">
+          The curve is your projected automation level climbing from {start}% today to {target}% as each wave of agents goes
+          live. Tap a year below to see exactly which agents get you there and what they&apos;re worth.
+        </p>
       </Card>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {phases.map((p, i) => (
-          <Card key={p.key} className="p-5">
-            <div className="flex items-center justify-between">
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-surface-2 text-sm font-semibold text-muted">
-                {i === 3 ? <Sparkles className="h-4 w-4 text-accent" /> : `Y${i + 1}`}
-              </span>
-              <Pill tone={p.tone}>{p.key.split(" ")[0]}</Pill>
-            </div>
-            {shown ? (
-              <>
-                <div className="num mt-3 font-display text-2xl font-semibold text-build">{formatUSD(p.cumulative)}</div>
-                <div className="text-xs text-faint">cumulative value · {p.auto}% automation</div>
-              </>
-            ) : (
-              <>
-                <div className="num mt-3 font-display text-2xl font-semibold text-build">{p.auto}%</div>
-                <div className="text-xs text-faint">projected automation</div>
-              </>
-            )}
-            <div className="mt-3 text-xs text-faint">
-              {p.agents.length} agent{p.agents.length === 1 ? "" : "s"} in this phase:
-            </div>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {p.agents.slice(0, 2).map((o) => (
-                <span key={o.id} className="rounded-lg border border-border bg-surface-2/60 px-2 py-1 text-[0.66rem] text-muted">
-                  {o.name.split(" ").slice(0, 2).join(" ")}
-                </span>
-              ))}
-              {p.agents.length > 2 && <span className="px-1 py-1 text-[0.66rem] text-faint">+{p.agents.length - 2}</span>}
-            </div>
-          </Card>
-        ))}
+        {phases.map((p, i) => {
+          const isOpen = open === i;
+          return (
+            <button key={p.key} type="button" onClick={() => setOpen(isOpen ? null : i)} className="text-left">
+              <Card className={cn("h-full p-5 transition-all hover:border-accent/40", isOpen && "ring-1 ring-accent/40")}>
+                <div className="flex items-center justify-between">
+                  <span className="grid h-9 w-9 place-items-center rounded-full bg-surface-2 text-sm font-semibold text-muted">
+                    {i === 3 ? <Sparkles className="h-4 w-4 text-accent" /> : `Y${i + 1}`}
+                  </span>
+                  <Pill tone={p.tone}>{p.key.split(" ")[0]}</Pill>
+                </div>
+                {shown ? (
+                  <>
+                    <div className="num mt-3 font-display text-2xl font-semibold text-build">{formatUSD(p.cumulative)}</div>
+                    <div className="text-xs text-faint">cumulative value · {p.auto}% automation</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="num mt-3 font-display text-2xl font-semibold text-build">{p.auto}%</div>
+                    <div className="text-xs text-faint">projected automation</div>
+                  </>
+                )}
+                <div className="mt-3 flex items-center gap-1 text-[0.72rem] font-medium text-accent">
+                  {isOpen ? "Hide details" : "What gets you here"}
+                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
+                </div>
+              </Card>
+            </button>
+          );
+        })}
       </div>
+
+      {open !== null && <PhaseDetail phase={phases[open]} start={start} shown={shown} />}
     </div>
   );
 }
@@ -550,19 +605,64 @@ const COLUMNS: { key: string; lane: Lane | null; hint: string }[] = [
   { key: "Live", lane: null, hint: "Shipped to production" },
 ];
 
-export function DevBoardTab({ a, onSelect }: { a: Assessment; onSelect: (o: Opportunity) => void }) {
+export function DevBoardTab({
+  a,
+  onSelect,
+  shipped,
+  onMove,
+  onShip,
+}: {
+  a: Assessment;
+  onSelect: (o: Opportunity) => void;
+  shipped: Record<string, true>;
+  onMove: (id: string, lane: Lane) => void;
+  onShip: (id: string, shipped: boolean) => void;
+}) {
   const shown = useValuesShown();
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overCol, setOverCol] = useState<string | null>(null);
+
+  const itemsFor = (col: { lane: Lane | null }) =>
+    col.lane === null
+      ? a.opportunities.filter((o) => shipped[o.id])
+      : a.opportunities.filter((o) => o.lane === col.lane && !shipped[o.id]);
+
+  const drop = (col: { lane: Lane | null }) => {
+    if (!dragId) return;
+    if (col.lane === null) onShip(dragId, true);
+    else onMove(dragId, col.lane); // parent un-ships on a lane move
+    setDragId(null);
+    setOverCol(null);
+  };
+
   return (
     <div>
       <div className="mb-4">
         <Eyebrow>Development board</Eyebrow>
-        <p className="mt-1 text-sm text-muted">Your agent portfolio as a delivery pipeline. Click a card for the full blueprint.</p>
+        <p className="mt-1 text-sm text-muted">
+          Your agent portfolio as a delivery pipeline. Drag a card across stages — drop it in Live when it ships. Click a card for the full blueprint.
+        </p>
       </div>
       <div className="grid gap-4 lg:grid-cols-4">
         {COLUMNS.map((col) => {
-          const items = col.lane ? a.opportunities.filter((o) => o.lane === col.lane) : [];
+          const items = itemsFor(col);
+          const isOver = overCol === col.key;
           return (
-            <div key={col.key} className="space-y-3">
+            <div
+              key={col.key}
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (overCol !== col.key) setOverCol(col.key);
+              }}
+              onDragLeave={(e) => {
+                if (e.currentTarget === e.target) setOverCol(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                drop(col);
+              }}
+              className={cn("space-y-3 rounded-2xl p-1.5 transition-colors", isOver && "bg-accent/[0.06] ring-1 ring-accent/30")}
+            >
               <div className="rounded-xl border border-border bg-surface/70 px-4 py-3">
                 <div className="flex items-center justify-between">
                   <span className="font-display text-sm font-semibold text-fg">{col.key}</span>
@@ -572,10 +672,19 @@ export function DevBoardTab({ a, onSelect }: { a: Assessment; onSelect: (o: Oppo
               </div>
               <div className="space-y-2.5">
                 {items.map((o) => (
-                  <button
+                  <div
                     key={o.id}
+                    draggable
+                    onDragStart={() => setDragId(o.id)}
+                    onDragEnd={() => {
+                      setDragId(null);
+                      setOverCol(null);
+                    }}
                     onClick={() => onSelect(o)}
-                    className="w-full rounded-xl border border-border bg-surface p-3 text-left transition-colors hover:border-border-strong"
+                    className={cn(
+                      "cursor-grab rounded-xl border border-border bg-surface p-3 text-left transition-all hover:border-accent/40 active:cursor-grabbing",
+                      dragId === o.id && "opacity-40",
+                    )}
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-[0.7rem] text-faint">{o.funcLabel}</span>
@@ -586,16 +695,16 @@ export function DevBoardTab({ a, onSelect }: { a: Assessment; onSelect: (o: Oppo
                       <span className="h-1 w-full overflow-hidden rounded-full bg-surface-2">
                         <span
                           className="block h-full rounded-full"
-                          style={{ width: `${o.readinessScore}%`, backgroundColor: LANE_META[o.lane].cssVar }}
+                          style={{ width: `${o.readinessScore}%`, backgroundColor: col.lane === null ? "var(--color-build)" : LANE_META[o.lane].cssVar }}
                         />
                       </span>
                       <span className="num text-[0.7rem] text-faint">{o.readinessScore}</span>
                     </div>
-                  </button>
+                  </div>
                 ))}
                 {items.length === 0 && (
                   <div className="rounded-xl border border-dashed border-border px-3 py-8 text-center text-xs text-faint">
-                    Fills as you ship.
+                    {isOver ? "Drop here" : col.key === "Live" ? "Drag here when shipped." : "Nothing here yet."}
                   </div>
                 )}
               </div>

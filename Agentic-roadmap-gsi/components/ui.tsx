@@ -43,14 +43,11 @@ export function InfoTip({ text, className }: { text: string; className?: string 
 /* ------------------------------------------------------------------ */
 
 export function Logo({ className }: { className?: string }) {
+  // Official Lyzr wordmark (from lyzr.ai), self-hosted in /public.
   return (
-    <span className={cn("inline-flex items-center gap-2", className)}>
-      <span className="relative grid h-7 w-7 place-items-center rounded-[8px] bg-ink text-white">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path d="M5 4v13a3 3 0 0 0 3 3h11" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </span>
-      <span className="text-[1.15rem] font-semibold tracking-tight text-fg">lyzr</span>
+    <span className={cn("inline-flex items-center", className)}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/lyzr-logo.png" alt="Lyzr" className="h-7 w-auto" width={441} height={170} />
     </span>
   );
 }

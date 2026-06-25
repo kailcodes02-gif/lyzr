@@ -399,6 +399,35 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-06-25, ai-roadmap (Agentic-roadmap-gsi): Kanban + catalog + draggable dev board + official logo
+Third manager-review pass on the roadmap subpage, plus the real Lyzr logo.
+- **Roadmap tab → function bubbles + per-function Kanban** (`app/roadmap/page.tsx`): replaced the
+  vertical per-function *listing* (from the prior build) with a horizontal row of **function bubbles**;
+  selecting one shows that function's **3-lane Kanban** (Build Now / Fix First / Not Now). Restored
+  **drag-and-drop** between lanes (the `moveOpp` + `agentic_roadmap_plan_<sid>` persistence that the
+  prior build removed). Drag stays within the selected function. New `KanbanCard`; dropped
+  `FunctionBoard`/`OppRow`.
+- **New "Use-case catalog" tab** (`app/roadmap/page.tsx`, `lib/content.ts`, `lib/types.ts`): added
+  `EXTRA_USE_CASES` (~33 more real Lyzr use cases, ~2–4 per function) and a `quick.extraUseCases:
+  string[]` intake field. `buildAssessment` now also scores any added catalog ids into that
+  function's board. `CatalogTab` lists extras for the chosen functions with **"+ Add to board"**
+  (`addUseCase`, deterministic — no Claude). Exported `sizeMult` to scale catalog values to company
+  size. Verified via `POST /api/roadmap` that added ids appear as scored opportunities.
+- **Development Board now fully drag-and-drop** (`components/result-extras.tsx`, `app/roadmap/page.tsx`):
+  all four columns (Backlog/Scoped/Building → lanes; **Live** → a per-session `agentic_shipped_<sid>`
+  flag via `setShipped`). Cards are draggable; dropping on Live marks shipped, dropping back into a
+  lane un-ships (handled in `moveOpp`).
+- **Path to AE → clickable phase cards** (`components/result-extras.tsx`): added a one-line graph
+  explainer and made each Year/Autonomous card expand (`PhaseDetail`) to show which agents get you
+  there, the value math (phase add vs cumulative), and what the automation % / curve mean.
+- **Official Lyzr logo** (`components/ui.tsx`, `public/`): replaced the hand-drawn SVG mark with the
+  real wordmark from lyzr.ai (`Lyzr-logo_dark.png`). That asset is white (for dark headers), so it was
+  inverted pixel-for-pixel to black (logo is monochrome) for the cream theme and self-hosted at
+  `public/lyzr-logo.png` (white original kept as `lyzr-logo-white.png`). `Logo` now renders an
+  `<img>` at `h-7`.
+- Validated: `tsc --noEmit` + `npm run build` clean; logo asset serves 200 and is referenced.
+- Commit(s): pushed to `main` (kailcodes02-gif/lyzr). Deploys via Cloudflare Pages `lyzr-work-os`.
+
 ### 2026-06-25, ai-roadmap (Agentic-roadmap-gsi): survey trim + function-centric roadmap
 Second manager-review pass. Shorter survey, function-organized results with real Lyzr agents.
 - **Survey trim** (`app/onboarding/page.tsx`, `lib/types.ts`, `lib/content.ts`): "Where does your

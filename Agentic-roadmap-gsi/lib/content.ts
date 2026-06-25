@@ -365,6 +365,64 @@ export const LIBRARY: LibItem[] = [
   { id: "proc-contract", func: "procurement", name: "Procurement Contract Review", description: "Reviews supplier contracts and flags risk and savings opportunities.", baseValue: 200_000, complexity: "Medium", baseReadiness: 0.62, timeToValue: "5–8 weeks" },
 ];
 
+// Additional Lyzr use cases per function — the broader catalog shown in the
+// "Use-case catalog" tab. These are NOT auto-placed on a board; the user adds
+// the ones they want (by id, via quick.extraUseCases) and buildAssessment then
+// scores them into that function's Kanban.
+export const EXTRA_USE_CASES: LibItem[] = [
+  // Marketing
+  { id: "mkt-comms", func: "marketing", name: "AI Internal Communication Agent", description: "Drafts and distributes internal updates, newsletters, and announcements on-brand.", baseValue: 160_000, complexity: "Low", baseReadiness: 0.74, timeToValue: "2–4 weeks" },
+  { id: "mkt-brand", func: "marketing", name: "Brand & Reputation Monitoring Agent", description: "Watches mentions across the web and social, flags sentiment shifts and risks.", baseValue: 190_000, complexity: "Medium", baseReadiness: 0.66, timeToValue: "4–6 weeks" },
+  { id: "mkt-email", func: "marketing", name: "Email Campaign Agent", description: "Builds, segments, and optimizes lifecycle email campaigns end to end.", baseValue: 260_000, complexity: "Medium", baseReadiness: 0.7, timeToValue: "4–6 weeks" },
+  { id: "mkt-competitor", func: "marketing", name: "Competitor Intelligence Agent", description: "Tracks competitor messaging, pricing, and launches into a live brief.", baseValue: 210_000, complexity: "Medium", baseReadiness: 0.64, timeToValue: "5–8 weeks" },
+
+  // Sales & BD
+  { id: "sales-account", func: "sales", name: "Account Intelligence Agent", description: "Researches target accounts, maps buying committees, and surfaces in-market signals.", baseValue: 340_000, complexity: "Medium", baseReadiness: 0.72, timeToValue: "4–6 weeks" },
+  { id: "sales-notes", func: "sales", name: "Meeting Notes & Follow-up Agent", description: "Captures call notes, logs to CRM, and drafts the follow-up automatically.", baseValue: 200_000, complexity: "Low", baseReadiness: 0.8, timeToValue: "2–4 weeks" },
+  { id: "sales-quote", func: "sales", name: "Quote & Pricing Agent", description: "Generates quotes and pricing from your rules and approval workflows.", baseValue: 280_000, complexity: "Medium", baseReadiness: 0.66, timeToValue: "5–8 weeks" },
+  { id: "sales-renewal", func: "sales", name: "Renewal & Upsell Agent", description: "Flags renewal risk and surfaces upsell plays from usage and account data.", baseValue: 360_000, complexity: "Medium", baseReadiness: 0.68, timeToValue: "5–8 weeks" },
+
+  // Customer Service
+  { id: "cs-kb", func: "customer", name: "Knowledge Base Builder Agent", description: "Turns resolved tickets into maintained help-center articles automatically.", baseValue: 180_000, complexity: "Low", baseReadiness: 0.74, timeToValue: "3–5 weeks" },
+  { id: "cs-csat", func: "customer", name: "CSAT & Feedback Analysis Agent", description: "Analyzes survey and ticket feedback into themes and coaching insights.", baseValue: 160_000, complexity: "Low", baseReadiness: 0.72, timeToValue: "2–4 weeks" },
+  { id: "cs-returns", func: "customer", name: "Returns / RMA Agent", description: "Handles return requests, eligibility checks, and status updates end to end.", baseValue: 240_000, complexity: "Medium", baseReadiness: 0.64, timeToValue: "5–8 weeks" },
+
+  // Finance & Billing
+  { id: "fin-invoice", func: "finance", name: "Invoice Processing Agent", description: "Captures, codes, and routes supplier invoices for approval automatically.", baseValue: 320_000, complexity: "Medium", baseReadiness: 0.74, timeToValue: "4–6 weeks" },
+  { id: "fin-expense", func: "finance", name: "Expense Audit Agent", description: "Audits expense reports against policy and flags anomalies for review.", baseValue: 220_000, complexity: "Low", baseReadiness: 0.72, timeToValue: "3–5 weeks" },
+  { id: "fin-collections", func: "finance", name: "Collections & AR Agent", description: "Chases overdue invoices with personalized, escalating outreach.", baseValue: 300_000, complexity: "Medium", baseReadiness: 0.68, timeToValue: "5–8 weeks" },
+  { id: "fin-fraud", func: "finance", name: "Fraud Detection Agent", description: "Monitors transactions for fraud patterns and flags for investigation.", baseValue: 520_000, complexity: "High", baseReadiness: 0.6, timeToValue: "8–12 weeks" },
+
+  // Operations
+  { id: "ops-supply", func: "operations", name: "Supply Chain Monitoring Agent", description: "Tracks shipments and supplier signals, flags disruptions early.", baseValue: 360_000, complexity: "Medium", baseReadiness: 0.64, timeToValue: "6–9 weeks" },
+  { id: "ops-inventory", func: "operations", name: "Inventory Optimization Agent", description: "Forecasts demand and recommends reorder points to cut stockouts.", baseValue: 330_000, complexity: "High", baseReadiness: 0.6, timeToValue: "8–12 weeks" },
+  { id: "ops-sop", func: "operations", name: "SOP Generation Agent", description: "Drafts and maintains standard operating procedures from your workflows.", baseValue: 150_000, complexity: "Low", baseReadiness: 0.74, timeToValue: "2–4 weeks" },
+
+  // Research & Knowledge
+  { id: "know-competitive", func: "knowledge", name: "Competitive Research Agent", description: "Compiles market and competitor research into structured, cited reports.", baseValue: 260_000, complexity: "Medium", baseReadiness: 0.7, timeToValue: "4–6 weeks" },
+  { id: "know-meeting", func: "knowledge", name: "Meeting Summarizer Agent", description: "Summarizes meetings into decisions, action items, and owners.", baseValue: 160_000, complexity: "Low", baseReadiness: 0.8, timeToValue: "2–4 weeks" },
+  { id: "know-policy", func: "knowledge", name: "Policy Q&A Agent", description: "Answers staff questions from policies, handbooks, and SOPs with citations.", baseValue: 210_000, complexity: "Low", baseReadiness: 0.76, timeToValue: "3–5 weeks" },
+
+  // HR & Talent
+  { id: "hr-payroll", func: "hr", name: "Payroll Query Agent", description: "Answers employee payroll and pay-slip questions instantly.", baseValue: 120_000, complexity: "Low", baseReadiness: 0.72, timeToValue: "2–4 weeks" },
+  { id: "hr-benefits", func: "hr", name: "Benefits Helpdesk Agent", description: "Guides employees through benefits enrolment and questions.", baseValue: 110_000, complexity: "Low", baseReadiness: 0.72, timeToValue: "2–4 weeks" },
+  { id: "hr-attrition", func: "hr", name: "Attrition Prediction Agent", description: "Flags flight risk from engagement and HRIS signals for proactive retention.", baseValue: 200_000, complexity: "High", baseReadiness: 0.58, timeToValue: "8–12 weeks" },
+
+  // IT
+  { id: "it-access", func: "it", name: "Access Provisioning Agent", description: "Handles access requests and de-provisioning against policy.", baseValue: 220_000, complexity: "Medium", baseReadiness: 0.66, timeToValue: "5–8 weeks" },
+  { id: "it-secalert", func: "it", name: "Security Alert Triage Agent", description: "Triages security alerts, enriches context, and escalates real threats.", baseValue: 340_000, complexity: "High", baseReadiness: 0.58, timeToValue: "8–12 weeks" },
+  { id: "it-asset", func: "it", name: "Asset Management Agent", description: "Tracks hardware and software assets, licenses, and renewals.", baseValue: 160_000, complexity: "Low", baseReadiness: 0.72, timeToValue: "3–5 weeks" },
+
+  // Legal & Compliance
+  { id: "legal-nda", func: "legal", name: "NDA Generation Agent", description: "Generates and redlines NDAs from your templates and playbook.", baseValue: 180_000, complexity: "Medium", baseReadiness: 0.7, timeToValue: "4–6 weeks" },
+  { id: "legal-compliance", func: "legal", name: "Compliance Q&A Agent", description: "Answers policy and regulatory questions from your compliance library.", baseValue: 220_000, complexity: "Medium", baseReadiness: 0.66, timeToValue: "5–8 weeks" },
+
+  // Procurement
+  { id: "proc-spend", func: "procurement", name: "Spend Analysis Agent", description: "Classifies spend and surfaces savings and consolidation opportunities.", baseValue: 240_000, complexity: "Medium", baseReadiness: 0.66, timeToValue: "5–8 weeks" },
+  { id: "proc-match", func: "procurement", name: "Invoice–PO Matching Agent", description: "Three-way matches invoices, POs, and receipts and flags exceptions.", baseValue: 260_000, complexity: "Medium", baseReadiness: 0.7, timeToValue: "4–6 weeks" },
+  { id: "proc-risk", func: "procurement", name: "Supplier Risk Monitoring Agent", description: "Monitors suppliers for financial, compliance, and delivery risk.", baseValue: 220_000, complexity: "Medium", baseReadiness: 0.62, timeToValue: "6–9 weeks" },
+];
+
 /** Which dimensions most affect each function's readiness. */
 const FUNC_DIMS: Record<string, DimensionId[]> = {
   finance: ["data", "strategy"],
@@ -470,7 +528,7 @@ const W = {
 const w = (map: Record<string, number>, key: string, fallback = 0.5) =>
   map[key] ?? fallback;
 
-const sizeMult = (size: string) => w(W.size, size, 1);
+export const sizeMult = (size: string) => w(W.size, size, 1);
 
 function avg(nums: number[]): number {
   if (!nums.length) return 0;
@@ -714,14 +772,19 @@ export function buildAssessment(intake: IntakeData): Assessment {
   // opportunities — only the functions the user actually selected (AI may add
   // tailored ones from their free-text / "Other" answer on top of these).
   const selectedSet = new Set(q.functions);
-  const items = LIBRARY.filter((it) => selectedSet.has(it.func));
+  const extraSet = new Set(q.extraUseCases ?? []);
+  // Core agents for the chosen functions + any catalog use cases the user added.
+  const items = [
+    ...LIBRARY.filter((it) => selectedSet.has(it.func)),
+    ...EXTRA_USE_CASES.filter((it) => extraSet.has(it.id)),
+  ];
   const opportunities = items.map((it) =>
     scoreOpportunity({
       ...it,
       dims: dimScores,
       maturity,
       q,
-      selected: selectedSet.has(it.func),
+      selected: true,
     }),
   );
 
@@ -782,6 +845,7 @@ export function emptyIntake(): IntakeData {
       company: { name: "", industry: "", size: "" },
       functions: [],
       customRequests: [],
+      extraUseCases: [],
       processFreeText: "",
       priorityPain: "",
       data: { location: [], structure: "", quality: "" },

@@ -17,6 +17,8 @@ export interface QuickScan {
   functions: string[];
   /** Extra areas the user asks to generate agents for, added on demand from the roadmap. */
   customRequests: string[];
+  /** Catalog use-case ids the user added to their board from the Use-case catalog tab. */
+  extraUseCases: string[];
   /** Free-text problem scoping — parsed by Claude into tailored opportunities. */
   processFreeText: string;
   priorityPain: string;

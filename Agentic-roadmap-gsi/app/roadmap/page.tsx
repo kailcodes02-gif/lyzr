@@ -8,11 +8,11 @@ import { Radar, type RadarPoint } from "@/components/radar";
 import { OpportunityDrawer, OpportunityBlueprint, PathToAE, DevBoardTab, DemandTab } from "@/components/result-extras";
 import { ValuesShownProvider, useValuesShown } from "@/components/value-context";
 import { cn, formatUSD } from "@/lib/utils";
-import { buildAssessment, DEEPEN, DIMENSIONS, FUNCTIONS } from "@/lib/content";
+import { buildAssessment, DEEPEN, DIMENSIONS, EXTRA_USE_CASES, FUNCTIONS, sizeMult } from "@/lib/content";
 import { LANE_META, SHORT, dimColor } from "@/lib/display";
 import type { Assessment, DimensionId, IntakeData, Lane, Opportunity } from "@/lib/types";
 
-const TABS = ["Scorecard", "Roadmap", "Development Board", "Path to AE", "Opportunity Map", "Demand Intelligence"] as const;
+const TABS = ["Scorecard", "Roadmap", "Use-case catalog", "Development Board", "Path to AE", "Opportunity Map", "Demand Intelligence"] as const;
 type Tab = (typeof TABS)[number];
 
 const VALUE_INFO =
@@ -31,6 +31,8 @@ export default function RoadmapPage() {
   const [copied, setCopied] = useState(false);
   // User's manual roadmap arrangement (oppId -> lane), persisted per session.
   const [laneOverrides, setLaneOverrides] = useState<Record<string, Lane>>({});
+  // Opportunities the user dragged to "Live" on the development board (shipped).
+  const [shippedIds, setShippedIds] = useState<Record<string, true>>({});
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -105,6 +107,8 @@ export default function RoadmapPage() {
     try {
       const raw = localStorage.getItem(`agentic_roadmap_plan_${sessionId}`);
       if (raw) setLaneOverrides(JSON.parse(raw) as Record<string, Lane>);
+      const ship = localStorage.getItem(`agentic_shipped_${sessionId}`);
+      if (ship) setShippedIds(JSON.parse(ship) as Record<string, true>);
     } catch {
       /* ignore */
     }
@@ -173,6 +177,68 @@ export default function RoadmapPage() {
       const updated: IntakeData = {
         ...prev,
         quick: { ...prev.quick, customRequests: [...existing, t] },
+      };
+      setAssessment(buildAssessment(updated));
+      refetch(updated, sessionId);
+      return updated;
+    });
+  }
+
+  // Drag-to-rearrange: move an opportunity to a different lane, saved per session.
+  function moveOpp(id: string, lane: Lane) {
+    setLaneOverrides((prev) => {
+      if (prev[id] === lane) return prev;
+      const next = { ...prev, [id]: lane };
+      if (sessionId) {
+        try {
+          localStorage.setItem(`agentic_roadmap_plan_${sessionId}`, JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+      }
+      return next;
+    });
+    // Moving a card out of "Live" un-ships it.
+    setShippedIds((prev) => {
+      if (!prev[id]) return prev;
+      const next = { ...prev };
+      delete next[id];
+      if (sessionId) {
+        try {
+          localStorage.setItem(`agentic_shipped_${sessionId}`, JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+      }
+      return next;
+    });
+  }
+
+  // Development board: drag a card to "Live" (shipped) or back into a lane.
+  function setShipped(id: string, shipped: boolean) {
+    setShippedIds((prev) => {
+      if (!!prev[id] === shipped) return prev;
+      const next = { ...prev };
+      if (shipped) next[id] = true;
+      else delete next[id];
+      if (sessionId) {
+        try {
+          localStorage.setItem(`agentic_shipped_${sessionId}`, JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+      }
+      return next;
+    });
+  }
+
+  // Add a specific catalog use case to its function's board (deterministic, no Claude needed).
+  function addUseCase(id: string) {
+    setIntake((prev) => {
+      if (!prev || prev.quick.extraUseCases.includes(id)) return prev;
+      const updated: IntakeData = {
+        ...prev,
+        quick: { ...prev.quick, extraUseCases: [...prev.quick.extraUseCases, id] },
       };
       setAssessment(buildAssessment(updated));
       refetch(updated, sessionId);
@@ -359,13 +425,26 @@ export default function RoadmapPage() {
               <RoadmapTab
                 a={a}
                 onSelect={setSelected}
+                onMove={moveOpp}
                 onAdd={addCustomRequest}
                 onAddFunction={addFunction}
                 chosenFuncs={intake.quick.functions}
                 busy={enriching}
               />
             )}
-            {tab === "Development Board" && <DevBoardTab a={a} onSelect={setSelected} />}
+            {tab === "Use-case catalog" && (
+              <CatalogTab
+                chosenFuncs={intake.quick.functions}
+                addedIds={intake.quick.extraUseCases}
+                companySize={intake.quick.company.size}
+                onAdd={addUseCase}
+                onGoToBoard={() => setTab("Roadmap")}
+                busy={enriching}
+              />
+            )}
+            {tab === "Development Board" && (
+              <DevBoardTab a={a} onSelect={setSelected} shipped={shippedIds} onMove={moveOpp} onShip={setShipped} />
+            )}
             {tab === "Path to AE" && <PathToAE a={a} />}
             {tab === "Opportunity Map" && <MapTab a={a} onSelect={setSelected} />}
             {tab === "Demand Intelligence" && <DemandTab a={a} onSelect={setSelected} />}
@@ -698,13 +777,10 @@ function GenerateMore({ onAdd, busy }: { onAdd: (text: string) => void; busy: bo
 }
 
 // Build-order display: lane -> human label, sort weight, and pill tone.
-const LANE_LABEL: Record<Lane, string> = { build_now: "Build now", fix_first: "Next", not_now: "Later" };
-const LANE_ORDER: Record<Lane, number> = { build_now: 0, fix_first: 1, not_now: 2 };
-const LANE_PILL: Record<Lane, "build" | "fix" | "hold"> = { build_now: "build", fix_first: "fix", not_now: "hold" };
-
 function RoadmapTab({
   a,
   onSelect,
+  onMove,
   onAdd,
   onAddFunction,
   chosenFuncs,
@@ -712,126 +788,268 @@ function RoadmapTab({
 }: {
   a: Assessment;
   onSelect: (o: Opportunity) => void;
+  onMove: (id: string, lane: Lane) => void;
   onAdd: (text: string) => void;
   onAddFunction: (func: string) => void;
   chosenFuncs: string[];
   busy: boolean;
 }) {
-  // One board per function. Keep the user's chosen order first, then any extra
-  // functions that appeared (added on demand / AI-generated).
+  // Functions present (chosen first, then any added / AI-generated), shown as bubbles.
   const present = Array.from(new Set(a.opportunities.map((o) => o.func)));
   const funcOrder = [
     ...chosenFuncs.filter((f) => present.includes(f)),
     ...present.filter((f) => !chosenFuncs.includes(f)),
   ];
+  const labelOf = (f: string) => FUNCTIONS.find((x) => x.value === f)?.label ?? f;
+
+  const [activeFunc, setActiveFunc] = useState<string>(funcOrder[0] ?? "");
+  const active = funcOrder.includes(activeFunc) ? activeFunc : (funcOrder[0] ?? "");
+
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overLane, setOverLane] = useState<Lane | null>(null);
+
+  const funcItems = a.opportunities.filter((o) => o.func === active);
+  const nearTerm = funcItems.filter((o) => o.lane !== "not_now").reduce((s, o) => s + o.annualValueUSD, 0);
+  const lanes: Lane[] = ["build_now", "fix_first", "not_now"];
 
   return (
     <div>
       <GenerateMore onAdd={onAdd} busy={busy} />
       <SuggestFunctions chosen={chosenFuncs} onAdd={onAddFunction} busy={busy} />
-      <p className="mb-4 px-1 text-xs text-faint">
-        Each function has its own board. Agents are ordered the way we&apos;d build them — start at the top and work down.
-      </p>
-      <div className="space-y-4">
-        {funcOrder.map((func) => {
-          const items = a.opportunities
-            .filter((o) => o.func === func)
-            .sort(
-              (x, y) =>
-                LANE_ORDER[x.lane] - LANE_ORDER[y.lane] ||
-                y.readinessScore - x.readinessScore ||
-                y.annualValueUSD - x.annualValueUSD,
-            );
-          if (!items.length) return null;
-          return <FunctionBoard key={func} items={items} onSelect={onSelect} />;
+
+      {/* function bubbles — pick one to see its board */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        {funcOrder.map((f) => {
+          const count = a.opportunities.filter((o) => o.func === f).length;
+          const selected = f === active;
+          return (
+            <button
+              key={f}
+              onClick={() => setActiveFunc(f)}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all",
+                selected
+                  ? "border-accent/70 bg-accent/10 text-fg ring-1 ring-accent/25"
+                  : "border-border-strong bg-surface text-muted hover:bg-surface-2 hover:text-fg",
+              )}
+            >
+              {labelOf(f)}
+              <span className={cn("num rounded-full px-1.5 text-[0.7rem]", selected ? "bg-accent/20 text-accent" : "bg-surface-2 text-faint")}>
+                {count}
+              </span>
+            </button>
+          );
         })}
       </div>
+
+      {active && (
+        <>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1">
+            <p className="text-xs text-faint">Drag a card between lanes to shape {labelOf(active)}&apos;s plan — saved to this session.</p>
+            <span className="text-xs text-muted">
+              Near-term value <span className="num font-semibold text-accent">{formatUSD(nearTerm)}/yr</span>
+            </span>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-3">
+            {lanes.map((lane) => {
+              const items = funcItems
+                .filter((o) => o.lane === lane)
+                .sort((x, y) => y.readinessScore - x.readinessScore || y.annualValueUSD - x.annualValueUSD);
+              const meta = LANE_META[lane];
+              const isOver = overLane === lane;
+              return (
+                <div
+                  key={lane}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (overLane !== lane) setOverLane(lane);
+                  }}
+                  onDragLeave={(e) => {
+                    if (e.currentTarget === e.target) setOverLane(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (dragId) onMove(dragId, lane);
+                    setDragId(null);
+                    setOverLane(null);
+                  }}
+                  className={cn("space-y-3 rounded-2xl p-1.5 transition-colors", isOver && "bg-accent/[0.06] ring-1 ring-accent/30")}
+                >
+                  <div className="flex items-center justify-between rounded-xl border border-border bg-surface/70 px-4 py-3">
+                    <span className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: meta.cssVar }} />
+                      <span className="font-display text-sm font-semibold text-fg">{meta.label}</span>
+                    </span>
+                    <span className="num text-sm text-faint">{items.length}</span>
+                  </div>
+                  <p className="px-1 text-xs text-faint">{meta.blurb}</p>
+                  <div className="space-y-2.5">
+                    {items.map((o) => (
+                      <KanbanCard
+                        key={o.id}
+                        o={o}
+                        onSelect={onSelect}
+                        onDragStart={() => setDragId(o.id)}
+                        onDragEnd={() => {
+                          setDragId(null);
+                          setOverLane(null);
+                        }}
+                        dragging={dragId === o.id}
+                      />
+                    ))}
+                    {items.length === 0 && (
+                      <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-xs text-faint">
+                        {isOver ? "Drop here" : "Nothing here yet."}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-function FunctionBoard({ items, onSelect }: { items: Opportunity[]; onSelect: (o: Opportunity) => void }) {
-  const funcLabel = items[0].funcLabel;
-  const nearTerm = items.filter((o) => o.lane !== "not_now").reduce((s, o) => s + o.annualValueUSD, 0);
-  const total = items.reduce((s, o) => s + o.annualValueUSD, 0);
-  const startCount = Math.max(1, items.filter((o) => o.lane === "build_now").length);
-
-  return (
-    <Card className="overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-surface-2/40 px-5 py-3.5">
-        <div className="flex items-center gap-2.5">
-          <span className="num grid h-7 w-7 place-items-center rounded-lg bg-ink text-[0.72rem] font-semibold text-white">
-            {items.length}
-          </span>
-          <h3 className="font-display text-base font-semibold text-fg">{funcLabel}</h3>
-        </div>
-        <div className="text-right">
-          <div className="text-[0.62rem] uppercase tracking-wide text-faint">Near-term value</div>
-          <div className="num font-display text-base font-semibold text-accent">{formatUSD(nearTerm)}/yr</div>
-        </div>
-      </div>
-
-      <div className="divide-y divide-border">
-        {items.map((o, i) => (
-          <OppRow key={o.id} o={o} rank={i + 1} first={i === 0} onSelect={onSelect} />
-        ))}
-      </div>
-
-      <div className="flex items-start gap-2 border-t border-border bg-surface-2/30 px-5 py-3 text-xs leading-relaxed text-muted">
-        <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
-        <span>
-          Start with the {startCount === 1 ? "first agent" : `first ${startCount} agents`} → about{" "}
-          <span className="font-semibold text-accent">{formatUSD(nearTerm)}/yr</span>. Build out the full set and{" "}
-          {funcLabel.toLowerCase()} runs as an autonomous function worth up to{" "}
-          <span className="font-semibold text-accent">{formatUSD(total)}/yr</span>.
-        </span>
-      </div>
-    </Card>
-  );
-}
-
-function OppRow({
+function KanbanCard({
   o,
-  rank,
-  first,
   onSelect,
+  onDragStart,
+  onDragEnd,
+  dragging,
 }: {
   o: Opportunity;
-  rank: number;
-  first: boolean;
   onSelect: (o: Opportunity) => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  dragging: boolean;
 }) {
+  const priorityTone = o.priority === "Critical" ? "critical" : o.priority === "High" ? "fix" : "muted";
   return (
-    <button
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       onClick={() => onSelect(o)}
-      className="group flex w-full items-center gap-3 px-5 py-3 text-left transition-colors hover:bg-accent/[0.04]"
+      className={cn(
+        "group cursor-grab rounded-xl border border-border bg-surface p-3 transition-all hover:border-accent/40 active:cursor-grabbing",
+        dragging && "opacity-40",
+      )}
     >
-      <span className="num grid h-6 w-6 shrink-0 place-items-center rounded-full border border-border-strong text-[0.7rem] font-semibold text-muted">
-        {rank}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="truncate font-display text-[0.9rem] font-semibold text-fg">{o.name}</span>
-          {first && <Pill tone="accent">Start here</Pill>}
+      <div className="flex items-center justify-between gap-2">
+        <span className="num font-display text-base font-semibold text-accent">{formatUSD(o.annualValueUSD)}</span>
+        <div className="flex shrink-0 items-center gap-1.5">
           {o.aiGenerated && (
             <Pill tone="accent">
               <Sparkles className="mr-1 h-2.5 w-2.5" /> AI
             </Pill>
           )}
-        </div>
-        <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[0.7rem] text-faint">
-          <Pill tone={LANE_PILL[o.lane]}>{LANE_LABEL[o.lane]}</Pill>
-          <span>{o.timeToValue}</span>
-          <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-12 overflow-hidden rounded-full bg-surface-2">
-              <span className="block h-full rounded-full" style={{ width: `${o.readinessScore}%`, backgroundColor: LANE_META[o.lane].cssVar }} />
-            </span>
-            <span className="num">{o.readinessScore}% ready</span>
-          </span>
+          <Pill tone={priorityTone as "critical" | "fix" | "muted"}>{o.priority}</Pill>
         </div>
       </div>
-      <span className="num shrink-0 font-display text-base font-semibold text-accent">{formatUSD(o.annualValueUSD)}</span>
-    </button>
+      <h4 className="mt-1.5 font-display text-[0.9rem] font-semibold leading-snug text-fg">{o.name}</h4>
+      <div className="mt-2.5 flex items-center justify-between gap-2 text-[0.7rem] text-faint">
+        <span>{o.timeToValue}</span>
+        <div className="flex items-center gap-2">
+          <span className="h-1.5 w-14 overflow-hidden rounded-full bg-surface-2">
+            <span className="block h-full rounded-full" style={{ width: `${o.readinessScore}%`, backgroundColor: LANE_META[o.lane].cssVar }} />
+          </span>
+          <span className="num">{o.readinessScore}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Use-case catalog tab                                               */
+/* ------------------------------------------------------------------ */
+
+function CatalogTab({
+  chosenFuncs,
+  addedIds,
+  companySize,
+  onAdd,
+  onGoToBoard,
+  busy,
+}: {
+  chosenFuncs: string[];
+  addedIds: string[];
+  companySize: string;
+  onAdd: (id: string) => void;
+  onGoToBoard: () => void;
+  busy: boolean;
+}) {
+  const labelOf = (f: string) => FUNCTIONS.find((x) => x.value === f)?.label ?? f;
+  // Mirror scoreOpportunity's value math (selected use case → 1.15x), scaled to size.
+  const estValue = (base: number) => Math.round((base * sizeMult(companySize) * 1.15) / 5000) * 5000;
+  const groups = chosenFuncs
+    .map((f) => ({ func: f, items: EXTRA_USE_CASES.filter((u) => u.func === f) }))
+    .filter((g) => g.items.length > 0);
+
+  return (
+    <div>
+      <div className="mb-4">
+        <Eyebrow>Use-case catalog</Eyebrow>
+        <p className="mt-1 text-sm text-muted">
+          More agents from Lyzr&apos;s catalog for your functions — add any to your roadmap board.
+          {addedIds.length > 0 && (
+            <>
+              {" "}
+              {addedIds.length} added so far —{" "}
+              <button onClick={onGoToBoard} className="font-medium text-accent hover:underline">
+                view on your board →
+              </button>
+            </>
+          )}
+        </p>
+      </div>
+      {groups.length === 0 ? (
+        <Card className="p-6 text-sm text-muted">No additional use cases for your selected functions.</Card>
+      ) : (
+        <div className="space-y-6">
+          {groups.map((g) => (
+            <div key={g.func}>
+              <h3 className="mb-2.5 font-display text-base font-semibold text-fg">{labelOf(g.func)}</h3>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {g.items.map((u) => {
+                  const added = addedIds.includes(u.id);
+                  return (
+                    <Card key={u.id} className="flex flex-col p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="font-display text-[0.92rem] font-semibold leading-snug text-fg">{u.name}</h4>
+                        <span className="num shrink-0 text-sm font-semibold text-accent">{formatUSD(estValue(u.baseValue))}</span>
+                      </div>
+                      <p className="mt-1.5 flex-1 text-xs leading-relaxed text-muted">{u.description}</p>
+                      <div className="mt-3 flex items-center justify-between gap-2">
+                        <span className="text-[0.7rem] text-faint">
+                          {u.complexity} · {u.timeToValue}
+                        </span>
+                        {added ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-build">
+                            <CircleCheck className="h-3.5 w-3.5" /> Added
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => onAdd(u.id)}
+                            disabled={busy}
+                            className="inline-flex h-8 items-center gap-1 rounded-full border border-border-strong px-3 text-xs font-medium text-muted transition-all hover:border-accent/60 hover:text-accent disabled:pointer-events-none disabled:opacity-50"
+                          >
+                            <Plus className="h-3 w-3" /> Add to board
+                          </button>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
