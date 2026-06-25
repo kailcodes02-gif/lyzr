@@ -5,26 +5,70 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Check, ChevronDown, Link2, Loader2, Plus, Sparkles, TrendingUp, CircleCheck, X } from "lucide-react";
 import { Logo, Card, Eyebrow, Ring, Pill, Bar, InfoTip } from "@/components/ui";
 import { Radar, type RadarPoint } from "@/components/radar";
-import { OpportunityDrawer, OpportunityBlueprint, PathToAE, DevBoardTab, DemandTab } from "@/components/result-extras";
+import { OpportunityDrawer, OpportunityBlueprint, DevBoardTab, DemandTab } from "@/components/result-extras";
 import { ValuesShownProvider, useValuesShown } from "@/components/value-context";
 import { cn, formatUSD } from "@/lib/utils";
 import { buildAssessment, DEEPEN, DIMENSIONS, EXTRA_USE_CASES, FUNCTIONS, sizeMult } from "@/lib/content";
 import { LANE_META, SHORT, dimColor } from "@/lib/display";
 import type { Assessment, DimensionId, IntakeData, Lane, Opportunity } from "@/lib/types";
 
-const TABS = ["Scorecard", "Roadmap", "Use-case catalog", "Development Board", "Path to AE", "Opportunity Map", "Demand Intelligence"] as const;
+const TABS = ["Scorecard", "Roadmap", "Use-case catalog", "Development Board", "Opportunity Map", "Demand Intelligence"] as const;
 type Tab = (typeof TABS)[number];
 
 const VALUE_INFO =
-  "A directional estimate from a library of typical agent values, scaled to your company size. It is a relative size-of-prize for comparing opportunities, not a quote based on your actual numbers.";
+  "Money saved = the labor cost this automation avoids each year — roughly the full-time-equivalents of manual work it removes × a fully-loaded cost per person in your market, scaled to your company size. Directional, not a quote.";
+
+const LOADER_MSGS = [
+  "Scoring your six readiness dimensions…",
+  "Matching Lyzr agents to your functions…",
+  "Estimating money saved in your market…",
+  "Sequencing your build order…",
+  "Tailoring blueprints to your stack…",
+];
+
+/** Engaging full-screen loader shown once, right after the survey. */
+function RoadmapLoader() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setI((v) => (v + 1) % LOADER_MSGS.length), 1600);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <main className="grid min-h-screen place-items-center px-6">
+      <div className="w-full max-w-sm text-center">
+        <div className="mx-auto mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-ink">
+          <Loader2 className="h-6 w-6 animate-spin text-white" />
+        </div>
+        <div className="font-display text-lg font-semibold text-fg">Building your roadmap</div>
+        <p key={i} className="animate-fade mt-2 text-sm text-muted">{LOADER_MSGS[i]}</p>
+        <div className="mx-auto mt-5 h-1 w-full max-w-xs overflow-hidden rounded-full bg-surface-2">
+          <div
+            className="h-full rounded-full bg-accent transition-[width] duration-700 ease-out"
+            style={{ width: `${((i + 1) / LOADER_MSGS.length) * 100}%` }}
+          />
+        </div>
+      </div>
+    </main>
+  );
+}
 
 export default function RoadmapPage() {
   const router = useRouter();
   const [intake, setIntake] = useState<IntakeData | null>(null);
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [enriching, setEnriching] = useState(false);
-  const [tab, setTab] = useState<Tab>("Scorecard");
+  // First-generation engaging loader (shown once, right after the survey).
+  const [booting, setBooting] = useState(false);
+  const [bootMinDone, setBootMinDone] = useState(false);
+  const [tab, setTabState] = useState<Tab>("Scorecard");
+  // Switching tabs should always land at the top, not mid-scroll.
+  const setTab = (t: Tab) => {
+    setTabState(t);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+  };
   const [selected, setSelected] = useState<Opportunity | null>(null);
+  // Which hero stat is expanded into a breakdown (null = none).
+  const [activeStat, setActiveStat] = useState<null | "value" | "build" | "functions" | "opps">(null);
   const [blueprintOpp, setBlueprintOpp] = useState<Opportunity | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [demoOpen, setDemoOpen] = useState(false);
@@ -34,10 +78,29 @@ export default function RoadmapPage() {
   // Opportunities the user dragged to "Live" on the development board (shipped).
   const [shippedIds, setShippedIds] = useState<Record<string, true>>({});
 
+  // Engaging loader timing: hold for at least 3s, hard-cap at 7s.
+  useEffect(() => {
+    if (!booting) return;
+    const min = setTimeout(() => setBootMinDone(true), 3000);
+    const max = setTimeout(() => setBooting(false), 7000);
+    return () => {
+      clearTimeout(min);
+      clearTimeout(max);
+    };
+  }, [booting]);
+  useEffect(() => {
+    // Reveal once enrichment is done and the minimum hold has elapsed.
+    if (booting && bootMinDone && !enriching) setBooting(false);
+  }, [booting, bootMinDone, enriching]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const raw = sessionStorage.getItem("agentic_intake");
     const sid = sessionStorage.getItem("agentic_session");
+    if (sessionStorage.getItem("agentic_fresh")) {
+      sessionStorage.removeItem("agentic_fresh");
+      setBooting(true);
+    }
     if (raw && sid) {
       const it = JSON.parse(raw) as IntakeData;
       setSessionId(sid);
@@ -271,6 +334,8 @@ export default function RoadmapPage() {
     });
   }
 
+  if (booting) return <RoadmapLoader />;
+
   if (!assessment || !intake) {
     return (
       <main className="grid min-h-screen place-items-center">
@@ -353,7 +418,7 @@ export default function RoadmapPage() {
             onClick={() => setDemoOpen(true)}
             className="inline-flex h-9 items-center gap-1.5 rounded-full bg-ink px-4 text-sm font-semibold text-white transition-all hover:bg-[#3a322c]"
           >
-            Build with Lyzr
+            Let&apos;s build it together
             <ArrowRight className="h-4 w-4" />
           </button>
         </div>
@@ -371,13 +436,21 @@ export default function RoadmapPage() {
         <p className="mt-2 max-w-3xl text-[0.98rem] leading-relaxed text-muted">{a.headline}</p>
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Near-term value" value={formatUSD(nearTermValue)} sub="Build Now + Next" accent info={VALUE_INFO} />
-          <Stat label="Ready to build" value={`${counts.build_now}`} />
-          <Stat label="Functions" value={`${a.functionsCount}`} />
-          <Stat label="Opportunities" value={`${a.opportunities.length}`} />
+          <Stat label="Money saved / yr" value={formatUSD(nearTermValue)} sub="Build Now + Next" accent info={VALUE_INFO}
+            active={activeStat === "value"} onClick={() => setActiveStat((s) => (s === "value" ? null : "value"))} />
+          <Stat label="Ready to build" value={`${counts.build_now}`}
+            active={activeStat === "build"} onClick={() => setActiveStat((s) => (s === "build" ? null : "build"))} />
+          <Stat label="Functions" value={`${a.functionsCount}`}
+            active={activeStat === "functions"} onClick={() => setActiveStat((s) => (s === "functions" ? null : "functions"))} />
+          <Stat label="Opportunities" value={`${a.opportunities.length}`}
+            active={activeStat === "opps"} onClick={() => setActiveStat((s) => (s === "opps" ? null : "opps"))} />
         </div>
+        {activeStat && <HeroBreakdown a={a} stat={activeStat} onSelect={setSelected} />}
         <p className="mt-2.5 text-xs leading-relaxed text-faint">
-          Full catalog potential: up to {formatUSD(a.estAnnualValueUSD)} across all {a.opportunities.length} opportunities over a multi-year horizon. These are illustrative library estimates, not a quote.
+          {intake.quick.market
+            ? <>Estimated for {intake.quick.market.countryName} · </>
+            : null}
+          Full catalog potential: up to {formatUSD(a.estAnnualValueUSD)} across all {a.opportunities.length} opportunities over a multi-year horizon. Illustrative labor-cost estimates, not a quote.
         </p>
       </section>
 
@@ -439,13 +512,11 @@ export default function RoadmapPage() {
                 companySize={intake.quick.company.size}
                 onAdd={addUseCase}
                 onGoToBoard={() => setTab("Roadmap")}
-                busy={enriching}
               />
             )}
             {tab === "Development Board" && (
               <DevBoardTab a={a} onSelect={setSelected} shipped={shippedIds} onMove={moveOpp} onShip={setShipped} />
             )}
-            {tab === "Path to AE" && <PathToAE a={a} />}
             {tab === "Opportunity Map" && <MapTab a={a} onSelect={setSelected} />}
             {tab === "Demand Intelligence" && <DemandTab a={a} onSelect={setSelected} />}
           </div>
@@ -458,9 +529,22 @@ export default function RoadmapPage() {
         onViewBlueprint={() => {
           setBlueprintOpp(selected);
           setSelected(null);
+          if (typeof window !== "undefined") window.scrollTo({ top: 0 });
         }}
       />
       <BookDemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
+
+      {/* Sticky "build with us" CTA on the Roadmap + planning boards */}
+      {(tab === "Roadmap" || tab === "Development Board") && !blueprintOpp && (
+        <button
+          onClick={() => setDemoOpen(true)}
+          className="fixed bottom-5 right-5 z-40 inline-flex h-12 items-center gap-2 rounded-full bg-ink px-5 text-sm font-semibold text-white shadow-[0_14px_34px_-10px_rgba(38,33,28,0.75)] transition-all hover:scale-[1.03] hover:bg-[#3a322c] sm:bottom-6 sm:right-6"
+        >
+          <Sparkles className="h-4 w-4 text-accent" />
+          Let&apos;s build it together
+          <ArrowRight className="h-4 w-4" />
+        </button>
+      )}
     </main>
     </ValuesShownProvider>
   );
@@ -470,15 +554,109 @@ export default function RoadmapPage() {
 /* Stat                                                               */
 /* ------------------------------------------------------------------ */
 
-function Stat({ label, value, sub, accent, info }: { label: string; value: string; sub?: string; accent?: boolean; info?: string }) {
+function Stat({
+  label,
+  value,
+  sub,
+  accent,
+  info,
+  onClick,
+  active,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  accent?: boolean;
+  info?: string;
+  onClick?: () => void;
+  active?: boolean;
+}) {
   return (
-    <Card className="px-4 py-3">
+    <Card
+      onClick={onClick}
+      className={cn(
+        "px-4 py-3",
+        onClick && "cursor-pointer transition-all hover:border-accent/50",
+        active && "border-accent/60 ring-1 ring-accent/20",
+      )}
+    >
       <div className="flex items-center gap-1 text-xs text-faint">
         {label}
         {info && <InfoTip text={info} />}
+        {onClick && <ChevronDown className={cn("ml-auto h-3.5 w-3.5 transition-transform", active && "rotate-180 text-accent")} />}
       </div>
       <div className={cn("num mt-1 font-display text-xl font-semibold", accent ? "text-accent" : "text-fg")}>{value}</div>
       {sub && <div className="mt-0.5 text-[0.62rem] uppercase tracking-wide text-faint">{sub}</div>}
+    </Card>
+  );
+}
+
+/** Expanded breakdown shown under the hero stats when one is clicked. */
+function HeroBreakdown({
+  a,
+  stat,
+  onSelect,
+}: {
+  a: Assessment;
+  stat: "value" | "build" | "functions" | "opps";
+  onSelect: (o: Opportunity) => void;
+}) {
+  if (stat === "functions") {
+    const present = Array.from(new Set(a.opportunities.map((o) => o.func)));
+    return (
+      <Card className="mt-3 animate-fade p-4">
+        <div className="mb-2 text-xs font-medium text-fg">Functions in your portfolio</div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {present.map((f) => {
+            const items = a.opportunities.filter((o) => o.func === f);
+            const near = items.filter((o) => o.lane !== "not_now").reduce((s, o) => s + o.annualValueUSD, 0);
+            return (
+              <div key={f} className="flex items-center justify-between rounded-lg border border-border bg-surface-2/40 px-3 py-2 text-sm">
+                <span className="text-fg">{items[0].funcLabel}</span>
+                <span className="text-xs text-faint">
+                  {items.length} agents · <span className="num font-semibold text-accent">{formatUSD(near)}/yr</span>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+    );
+  }
+
+  const items =
+    stat === "value"
+      ? a.opportunities.filter((o) => o.lane !== "not_now")
+      : stat === "build"
+        ? a.opportunities.filter((o) => o.lane === "build_now")
+        : a.opportunities;
+  const title =
+    stat === "value"
+      ? "Agents counted in your money saved (Build Now + Next)"
+      : stat === "build"
+        ? "Agents ready to build now"
+        : "All opportunities";
+  const sorted = [...items].sort((x, y) => y.annualValueUSD - x.annualValueUSD);
+
+  return (
+    <Card className="mt-3 animate-fade p-4">
+      <div className="mb-2 text-xs font-medium text-fg">{title}</div>
+      <div className="space-y-1.5">
+        {sorted.map((o) => (
+          <button
+            key={o.id}
+            onClick={() => onSelect(o)}
+            className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2 text-left transition-colors hover:border-accent/40"
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: LANE_META[o.lane].cssVar }} />
+              <span className="truncate text-sm text-fg">{o.name}</span>
+              <span className="hidden shrink-0 text-[0.7rem] text-faint sm:inline">{o.funcLabel}</span>
+            </span>
+            <span className="num shrink-0 text-sm font-semibold text-accent">{formatUSD(o.annualValueUSD)}/yr</span>
+          </button>
+        ))}
+      </div>
     </Card>
   );
 }
@@ -817,39 +995,45 @@ function RoadmapTab({
       <GenerateMore onAdd={onAdd} busy={busy} />
       <SuggestFunctions chosen={chosenFuncs} onAdd={onAddFunction} busy={busy} />
 
-      {/* function bubbles — pick one to see its board */}
-      <div className="mb-4 flex flex-wrap gap-2">
-        {funcOrder.map((f) => {
-          const count = a.opportunities.filter((o) => o.func === f).length;
-          const selected = f === active;
-          return (
-            <button
-              key={f}
-              onClick={() => setActiveFunc(f)}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all",
-                selected
-                  ? "border-accent/70 bg-accent/10 text-fg ring-1 ring-accent/25"
-                  : "border-border-strong bg-surface text-muted hover:bg-surface-2 hover:text-fg",
-              )}
-            >
-              {labelOf(f)}
-              <span className={cn("num rounded-full px-1.5 text-[0.7rem]", selected ? "bg-accent/20 text-accent" : "bg-surface-2 text-faint")}>
-                {count}
-              </span>
-            </button>
-          );
-        })}
+      {/* function selector — pick one to see its board (sticky so it stays in view) */}
+      <div className="sticky top-0 z-20 mb-4 rounded-xl border border-border bg-canvas/95 px-3 py-2.5 backdrop-blur">
+        <div className="mb-2 text-[0.7rem] font-semibold uppercase tracking-wide text-faint">Choose a function</div>
+        <div className="flex flex-wrap gap-2">
+          {funcOrder.map((f) => {
+            const count = a.opportunities.filter((o) => o.func === f).length;
+            const selected = f === active;
+            return (
+              <button
+                key={f}
+                onClick={() => setActiveFunc(f)}
+                className={cn(
+                  "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all",
+                  selected
+                    ? "border-accent bg-accent text-white shadow-[0_6px_16px_-10px_rgba(201,106,90,0.9)]"
+                    : "border-border-strong bg-surface text-muted hover:border-accent/50 hover:bg-surface-2 hover:text-fg",
+                )}
+              >
+                {labelOf(f)}
+                <span className={cn("num rounded-full px-1.5 text-[0.7rem]", selected ? "bg-white/25 text-white" : "bg-surface-2 text-faint")}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {active && (
         <>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1">
-            <p className="text-xs text-faint">Drag a card between lanes to shape {labelOf(active)}&apos;s plan — saved to this session.</p>
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 px-1">
+            <h3 className="font-display text-base font-semibold text-fg">
+              {labelOf(active)} <span className="text-sm font-normal text-faint">· {funcItems.length} agents</span>
+            </h3>
             <span className="text-xs text-muted">
-              Near-term value <span className="num font-semibold text-accent">{formatUSD(nearTerm)}/yr</span>
+              Near-term money saved <span className="num font-semibold text-accent">{formatUSD(nearTerm)}/yr</span>
             </span>
           </div>
+          <p className="mb-3 px-1 text-xs text-faint">Drag a card between lanes to shape your plan — saved to this session.</p>
           <div className="grid gap-4 lg:grid-cols-3">
             {lanes.map((lane) => {
               const items = funcItems
@@ -876,9 +1060,10 @@ function RoadmapTab({
                   className={cn("space-y-3 rounded-2xl p-1.5 transition-colors", isOver && "bg-accent/[0.06] ring-1 ring-accent/30")}
                 >
                   <div className="flex items-center justify-between rounded-xl border border-border bg-surface/70 px-4 py-3">
-                    <span className="flex items-center gap-2">
+                    <span className="flex items-center gap-1.5">
                       <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: meta.cssVar }} />
                       <span className="font-display text-sm font-semibold text-fg">{meta.label}</span>
+                      <InfoTip text={meta.info} />
                     </span>
                     <span className="num text-sm text-faint">{items.length}</span>
                   </div>
@@ -973,14 +1158,12 @@ function CatalogTab({
   companySize,
   onAdd,
   onGoToBoard,
-  busy,
 }: {
   chosenFuncs: string[];
   addedIds: string[];
   companySize: string;
   onAdd: (id: string) => void;
   onGoToBoard: () => void;
-  busy: boolean;
 }) {
   const labelOf = (f: string) => FUNCTIONS.find((x) => x.value === f)?.label ?? f;
   // Mirror scoreOpportunity's value math (selected use case → 1.15x), scaled to size.
@@ -1034,8 +1217,7 @@ function CatalogTab({
                         ) : (
                           <button
                             onClick={() => onAdd(u.id)}
-                            disabled={busy}
-                            className="inline-flex h-8 items-center gap-1 rounded-full border border-border-strong px-3 text-xs font-medium text-muted transition-all hover:border-accent/60 hover:text-accent disabled:pointer-events-none disabled:opacity-50"
+                            className="inline-flex h-8 items-center gap-1 rounded-full border border-border-strong px-3 text-xs font-medium text-muted transition-all hover:border-accent/60 hover:text-accent hover:bg-accent/5 cursor-pointer"
                           >
                             <Plus className="h-3 w-3" /> Add to board
                           </button>

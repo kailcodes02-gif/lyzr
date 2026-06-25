@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, Loader2, X } from "lucide-react";
@@ -29,6 +29,7 @@ import {
 } from "@/lib/content";
 import type { QuickScan, Tri } from "@/lib/types";
 import { isFreeEmail, isWorkEmail } from "@/lib/email";
+import { detectMarket } from "@/lib/geo";
 
 const STEP_META = [
   { label: "Company", sub: "Tell us about your organization" },
@@ -96,26 +97,29 @@ function TriRow({ label, hint, value, onChange }: { label: string; hint: string;
         <div className="text-sm font-medium text-fg">{label}</div>
         <div className="text-xs text-faint">{hint}</div>
       </div>
-      <div className="flex gap-1.5">
-        {TRI.map((t) => (
-          <button
-            key={t.value}
-            type="button"
-            onClick={() => onChange(t.value)}
-            className={cn(
-              "h-8 rounded-lg border px-3 text-xs font-medium transition-all",
-              value === t.value
-                ? t.value === "yes"
-                  ? "border-build/50 bg-build/10 text-build"
-                  : t.value === "no"
-                    ? "border-critical/50 bg-critical/10 text-critical"
-                    : "border-fix/50 bg-fix/10 text-fix"
-                : "border-border-strong text-muted hover:text-fg",
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="inline-flex shrink-0 self-start rounded-lg border border-border-strong bg-surface p-0.5 sm:self-auto">
+        {TRI.map((t) => {
+          const on = value === t.value;
+          return (
+            <button
+              key={t.value}
+              type="button"
+              onClick={() => onChange(t.value)}
+              className={cn(
+                "h-8 cursor-pointer rounded-md px-3.5 text-xs font-semibold transition-all",
+                on
+                  ? t.value === "yes"
+                    ? "bg-build/15 text-build ring-1 ring-build/40"
+                    : t.value === "no"
+                      ? "bg-critical/15 text-critical ring-1 ring-critical/40"
+                      : "bg-fix/15 text-fix ring-1 ring-fix/40"
+                  : "text-muted hover:bg-surface-2 hover:text-fg",
+              )}
+            >
+              {t.label}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -131,6 +135,18 @@ export default function Onboarding() {
   const [error, setError] = useState<string | null>(null);
 
   const set = <K extends keyof QuickScan>(key: K, value: QuickScan[K]) => setQ((prev) => ({ ...prev, [key]: value }));
+
+  // Best-effort market detection (IP geo) so the "money saved" estimate is sized to
+  // the user's market. Runs once; email-TLD fallback is re-checked at submit.
+  useEffect(() => {
+    let cancelled = false;
+    detectMarket("").then((m) => {
+      if (m && !cancelled) setQ((prev) => (prev.market ? prev : { ...prev, market: m }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const canContinue = (() => {
     switch (step) {
@@ -162,7 +178,10 @@ export default function Onboarding() {
     }
     setError(null);
     setSubmitting(true);
-    const intake = { quick: q, deepen: {}, completedDeepen: [] };
+    // Ensure a market is attached (email-TLD fallback if IP geo didn't resolve).
+    const market = q.market ?? (await detectMarket(q.email)) ?? undefined;
+    const quick = market ? { ...q, market } : q;
+    const intake = { quick, deepen: {}, completedDeepen: [] };
     try {
       const r = await fetch("/api/session", {
         method: "POST",
@@ -177,6 +196,7 @@ export default function Onboarding() {
       }
       sessionStorage.setItem("agentic_intake", JSON.stringify(intake));
       sessionStorage.setItem("agentic_session", data.sessionId);
+      sessionStorage.setItem("agentic_fresh", "1"); // first generation → show the engaging loader once
       try {
         localStorage.setItem("agentic_last_session", data.sessionId);
       } catch {}

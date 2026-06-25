@@ -19,7 +19,7 @@ Your job is to make the assessment specific and credible to THIS firm. Write in 
 Return JSON only:
 - headline: one or two sentences naming where they are and the single most valuable next move. Concrete, grounded in their answers.
 - dimensionInsights: for each dimension id provided, one sentence tailored to their specific answers and industry (what's strong or exactly what to fix). Keep it under ~22 words.
-- opportunities: for each opportunity id provided, rewrite the description in one concise sentence tailored to their industry and processes. Return blockers as an empty array.
+- opportunities: for each opportunity id provided, return: "description" rewritten in one concise sentence tailored to their industry/process; "keyBenefits" (3-4 specific business outcomes for THIS agent); "workflow" (4 short implementation steps specific to this agent); "technologies" (4 concrete capabilities or integrations this agent uses). Make all of these DISTINCT per agent — two agents in the same function must NOT share identical benefits, workflow, or technologies. Return blockers as an empty array.
 - newOpportunities: generate ONE tailored agent for EACH item in "customRequests" (keep the same order), plus up to 1 more derived from their free-text process description if it names a distinct process not already covered. Skip only if there is nothing to work from. For each, pick the closest function id from the allowed list, give a specific name, a one-sentence description, a realistic annual value in USD for their company size, and a complexity of Low, Medium, or High.
 
 Allowed function ids: ${FUNCTIONS.map((f) => f.value).join(", ")}.
@@ -30,7 +30,7 @@ Respond with ONLY a single raw JSON object containing the keys: headline, dimens
 interface ClaudeOut {
   headline: string;
   dimensionInsights: { id: string; insight: string }[];
-  opportunities: { id: string; description: string; blockers: string[]; keyBenefits?: string[] }[];
+  opportunities: { id: string; description: string; blockers: string[]; keyBenefits?: string[]; workflow?: string[]; technologies?: string[] }[];
   newOpportunities: { func: string; name: string; description: string; annualValueUSD: number; complexity: string }[];
 }
 
@@ -52,9 +52,12 @@ export async function enrichWithClaude(intake: IntakeData, base: Assessment): Pr
     processFreeText: intake.quick.processFreeText,
     dimensions: base.dimensions.map((d) => ({ id: d.id, label: d.label, score: d.score })),
     maturity: { score: base.maturityScore, stage: base.maturityStage },
+    // Keep the per-agent enrichment request lean so it completes well within the
+    // timeout (richer per-agent benefits/workflow/tech for the Build Now set).
     opportunities: base.opportunities
       .filter((o) => o.lane === "build_now")
-      .map((o) => ({ id: o.id, name: o.name, func: o.func, lane: o.lane, value: o.annualValueUSD })),
+      .slice(0, 6)
+      .map((o) => ({ id: o.id, name: o.name, func: o.func, lane: o.lane, description: o.description, value: o.annualValueUSD })),
   };
 
   let text = "";
@@ -68,7 +71,7 @@ export async function enrichWithClaude(intake: IntakeData, base: Assessment): Pr
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 2000,
+        max_tokens: 3200,
         system: SYSTEM,
         messages: [{ role: "user", content: JSON.stringify(payload) }],
       }),
@@ -139,11 +142,15 @@ export async function enrichWithClaude(intake: IntakeData, base: Assessment): Pr
     const e = oppMap.get(o.id);
     if (!e) return o;
     const benefits = strArr(e.keyBenefits, 4);
+    const workflow = strArr(e.workflow, 5);
+    const technologies = strArr(e.technologies, 6);
     return {
       ...o,
       description: str(e.description).trim() || o.description,
       blockers: o.lane === "build_now" ? [] : strArr(e.blockers, 2) ?? o.blockers,
       keyBenefits: benefits && benefits.length ? benefits : o.keyBenefits,
+      workflow: workflow && workflow.length ? workflow : o.workflow,
+      technologies: technologies && technologies.length ? technologies : o.technologies,
     };
   });
 

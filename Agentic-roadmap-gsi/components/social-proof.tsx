@@ -92,7 +92,7 @@ const STATS: Stat[] = [
   { value: 150, suffix: "+", label: "Teams building with Lyzr" },
 ];
 
-const ORGS = ["KPMG", "Fortude", "RPG"];
+const ORGS = ["Accenture", "KPMG", "Deloitte", "Crown Castle"];
 
 // "Taken today" ramps believably through the day and is stable within the hour,
 // so it doesn't bounce on every refresh.

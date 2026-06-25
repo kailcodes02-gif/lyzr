@@ -132,10 +132,10 @@ export function Chip({
     <button
       type="button"
       className={cn(
-        "rounded-xl border px-4 py-3 text-left text-sm transition-all duration-150",
+        "cursor-pointer rounded-xl border px-4 py-3 text-left text-sm transition-all duration-150",
         selected
-          ? "border-accent/70 bg-accent/10 text-fg ring-1 ring-accent/25"
-          : "border-border-strong bg-surface text-muted hover:bg-surface-2 hover:text-fg",
+          ? "border-accent bg-accent/10 text-fg ring-1 ring-accent/30 shadow-[0_4px_14px_-8px_rgba(201,106,90,0.7)]"
+          : "border-border-strong bg-surface text-muted hover:-translate-y-px hover:border-accent/50 hover:bg-surface-2 hover:text-fg hover:shadow-sm",
         className,
       )}
       {...props}

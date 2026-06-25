@@ -13,6 +13,8 @@ export interface QuickScan {
   /** Work email — the account key for saved state and rate limiting. */
   email: string;
   company: { name: string; industry: string; size: string };
+  /** Detected market (browser IP geo / email TLD) — scales the labor-cost estimate. */
+  market?: { country: string; countryName: string; mult: number };
   /** Practice areas / functions they want to automate. */
   functions: string[];
   /** Extra areas the user asks to generate agents for, added on demand from the roadmap. */
@@ -75,7 +77,9 @@ export interface Opportunity {
   name: string;
   description: string;
   priority: Priority;
-  annualValueUSD: number;
+  annualValueUSD: number; // "money saved / yr" — labor cost avoided
+  effectiveFTEs: number; // full-time-equivalents of manual work automated
+  loadedCostPerPerson: number; // fully-loaded annual cost per person in this market
   readinessScore: number; // 0-100
   impactScore: number; // 0-100
   complexityScore: number; // 0-100

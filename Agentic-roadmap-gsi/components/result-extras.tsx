@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   ChevronDown,
@@ -15,7 +15,7 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
-import { Card, Eyebrow, Pill } from "@/components/ui";
+import { Card, Eyebrow, InfoTip, Pill } from "@/components/ui";
 import { useValuesShown } from "@/components/value-context";
 import { cn, formatUSD } from "@/lib/utils";
 import { LANE_META, laneTone } from "@/lib/display";
@@ -35,15 +35,79 @@ function exportOpp(o: Opportunity) {
   URL.revokeObjectURL(url);
 }
 
-function StatTile({ icon: Icon, value, label }: { icon: React.ElementType; value: string; label: string }) {
+/** Lowest number in a "3–5 weeks" string (first-value estimate). */
+function weeksOf(timeToValue: string): number {
+  const m = timeToValue.match(/\d+/);
+  return m ? Number(m[0]) : 8;
+}
+
+/**
+ * A stat shown against an illustrative global benchmark: a bar for the actual
+ * value, a tick for the benchmark, a one-word verdict, and an (i) with the math.
+ * `good` is computed by the caller (since "lower is better" for some metrics).
+ */
+function StatGauge({
+  icon: Icon,
+  label,
+  value,
+  pct,
+  benchmark,
+  good,
+  info,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  pct?: number;
+  benchmark?: number;
+  good?: boolean;
+  info: string;
+}) {
+  const color = good ? "var(--color-build)" : "var(--color-fix)";
   return (
-    <div className="rounded-xl border border-border bg-surface-2/60 p-3 text-center">
-      <Icon className="mx-auto h-4 w-4 text-faint" />
-      <div className="num mt-1.5 font-display text-base font-semibold text-fg">{value}</div>
-      <div className="mt-0.5 text-[0.6rem] uppercase tracking-wide text-faint">{label}</div>
+    <div className="rounded-xl border border-border bg-surface-2/60 p-3">
+      <div className="flex items-center justify-between">
+        <Icon className="h-4 w-4 text-faint" />
+        <InfoTip text={info} />
+      </div>
+      <div className="num mt-1 font-display text-base font-semibold text-fg">{value}</div>
+      <div className="text-[0.6rem] uppercase tracking-wide text-faint">{label}</div>
+      {pct != null && (
+        <>
+          <div className="relative mt-2 h-1.5 w-full rounded-full bg-surface">
+            <div className="h-full rounded-full" style={{ width: `${Math.max(3, Math.min(100, pct))}%`, backgroundColor: color }} />
+            {benchmark != null && (
+              <span
+                className="absolute -top-[3px] h-[12px] w-px bg-fg/45"
+                style={{ left: `${Math.max(0, Math.min(100, benchmark))}%` }}
+                title="global benchmark"
+              />
+            )}
+          </div>
+          {good != null && (
+            <div className="mt-1 text-[0.6rem] font-medium" style={{ color }}>
+              {good ? "Better than typical" : "Below typical"}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
+
+/** One stack-specific question per function — its answer tailors the blueprint. */
+const FUNC_QUESTIONS: Record<string, { q: string; key: string; options: string[] }> = {
+  hr: { q: "Which ATS / HRIS do you run?", key: "hr-sys", options: ["Workday", "Greenhouse", "SuccessFactors", "Other"] },
+  sales: { q: "Which CRM do you use?", key: "sales-crm", options: ["Salesforce", "HubSpot", "Pipedrive", "Other"] },
+  marketing: { q: "Where do you run campaigns?", key: "mkt-sys", options: ["HubSpot", "Marketo", "Mailchimp", "Other"] },
+  finance: { q: "Which ERP / finance system?", key: "fin-erp", options: ["SAP", "Oracle", "NetSuite", "Other"] },
+  customer: { q: "Which support desk?", key: "cs-desk", options: ["Zendesk", "Intercom", "Freshdesk", "Other"] },
+  operations: { q: "Where do your workflows live?", key: "ops-sys", options: ["SAP", "ServiceNow", "Custom", "Other"] },
+  it: { q: "Which ITSM tool?", key: "it-itsm", options: ["ServiceNow", "Jira SM", "Zendesk", "Other"] },
+  legal: { q: "Where are contracts stored?", key: "legal-clm", options: ["Ironclad", "DocuSign CLM", "SharePoint", "Other"] },
+  knowledge: { q: "Where does knowledge live?", key: "know-kb", options: ["Confluence", "SharePoint", "Notion", "Other"] },
+  procurement: { q: "Which procurement system?", key: "proc-sys", options: ["Coupa", "SAP Ariba", "Custom", "Other"] },
+};
 
 const FIT_LABELS: { key: keyof Opportunity["fit"]; label: string }[] = [
   { key: "budgetAligned", label: "Budget aligned" },
@@ -61,10 +125,32 @@ export function OpportunityDrawer({
   onClose: () => void;
   onViewBlueprint: () => void;
 }) {
-  const shown = useValuesShown();
+  // Per-function "tailor this" answer (e.g. which ATS) — persisted, applies to the function.
+  const question = opp ? FUNC_QUESTIONS[opp.func] : undefined;
+  const [tailor, setTailor] = useState<string | null>(null);
+  useEffect(() => {
+    if (!question) return setTailor(null);
+    try {
+      setTailor(localStorage.getItem(`agentic_tailor_${question.key}`));
+    } catch {
+      setTailor(null);
+    }
+  }, [question?.key]);
+  const chooseTailor = (v: string) => {
+    if (!question) return;
+    setTailor(v);
+    try {
+      localStorage.setItem(`agentic_tailor_${question.key}`, v);
+    } catch {
+      /* ignore */
+    }
+  };
+
   if (!opp) return null;
   const meta = LANE_META[opp.lane];
   const priorityTone = opp.priority === "Critical" ? "critical" : opp.priority === "High" ? "fix" : "muted";
+  const named = tailor && tailor !== "Other" ? tailor : null;
+  const workflowSteps = named ? [`Connect your ${named}`, ...opp.workflow] : opp.workflow;
 
   return (
     <div className="fixed inset-0 z-50">
@@ -93,12 +179,41 @@ export function OpportunityDrawer({
           <h2 className="font-display text-xl font-semibold leading-snug text-fg">{opp.name}</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted">{opp.description}</p>
 
-          {/* stat tiles */}
+          {/* stat gauges — actual vs an illustrative global benchmark */}
           <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-            {shown && <StatTile icon={TrendingUp} value={formatUSD(opp.annualValueUSD)} label="Est. value" />}
-            <StatTile icon={Gauge} value={`${opp.impactScore}`} label="Impact" />
-            <StatTile icon={Gauge} value={`${opp.complexityScore}`} label="Complexity" />
-            <StatTile icon={Clock} value={opp.timeToValue} label="Timeline" />
+            <StatGauge
+              icon={TrendingUp}
+              label="Money saved / yr"
+              value={formatUSD(opp.annualValueUSD)}
+              info={`Labor cost avoided ≈ ${opp.effectiveFTEs} full-time-equivalents of manual work × ~${formatUSD(opp.loadedCostPerPerson)}/yr fully-loaded cost per person in your market = ${formatUSD(opp.annualValueUSD)}/yr. Directional, not a quote.`}
+            />
+            <StatGauge
+              icon={Gauge}
+              label="Impact"
+              value={`${opp.impactScore}/100`}
+              pct={opp.impactScore}
+              benchmark={60}
+              good={opp.impactScore >= 60}
+              info="Impact = how much value this agent moves, derived from its readiness and money saved. Typical agent ≈ 60/100; higher is better."
+            />
+            <StatGauge
+              icon={Gauge}
+              label="Complexity"
+              value={`${opp.complexityScore}/100`}
+              pct={opp.complexityScore}
+              benchmark={60}
+              good={opp.complexityScore <= 60}
+              info="Complexity = build effort and delivery risk. Typical agent ≈ 60/100; LOWER is better — simpler to ship."
+            />
+            <StatGauge
+              icon={Clock}
+              label="Timeline"
+              value={opp.timeToValue}
+              pct={(weeksOf(opp.timeToValue) / 16) * 100}
+              benchmark={50}
+              good={weeksOf(opp.timeToValue) <= 8}
+              info="Estimated time to first value. Typical agent ≈ 8 weeks (the benchmark tick); sooner is better."
+            />
           </div>
 
           {/* department + risk */}
@@ -117,6 +232,35 @@ export function OpportunityDrawer({
               </div>
             </div>
           </div>
+
+          {/* tailor-this — one stack question per function, woven into the workflow */}
+          {question && (
+            <div className="mt-4 rounded-xl border border-accent/30 bg-accent/[0.04] p-4">
+              <div className="text-sm font-medium text-fg">Tailor this for your stack</div>
+              <div className="mt-0.5 text-xs text-faint">{question.q}</div>
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                {question.options.map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => chooseTailor(opt)}
+                    className={cn(
+                      "cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition-all",
+                      tailor === opt
+                        ? "border-accent bg-accent text-white"
+                        : "border-border-strong bg-surface text-muted hover:border-accent/50 hover:text-fg",
+                    )}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+              {named && (
+                <div className="mt-2 text-xs text-muted">
+                  We&apos;ll wire this agent into your <span className="font-medium text-fg">{named}</span> — see step 1 below.
+                </div>
+              )}
+            </div>
+          )}
 
           {/* business outcomes */}
           <Section title="Business outcomes" icon={Sparkles}>
@@ -143,7 +287,7 @@ export function OpportunityDrawer({
 
           <Section title="Implementation workflow" icon={ListChecks}>
             <ol className="space-y-2.5">
-              {opp.workflow.map((step, i) => (
+              {workflowSteps.map((step, i) => (
                 <li key={step} className="flex items-start gap-3 text-sm text-muted">
                   <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-border-strong text-[0.65rem] text-faint">
                     {i + 1}
@@ -208,7 +352,6 @@ export function OpportunityDrawer({
 }
 
 export function OpportunityBlueprint({ opp, onBack, onBookDemo }: { opp: Opportunity; onBack: () => void; onBookDemo: () => void }) {
-  const shown = useValuesShown();
   const meta = LANE_META[opp.lane];
   const priorityTone = opp.priority === "Critical" ? "critical" : opp.priority === "High" ? "fix" : "muted";
 
@@ -241,10 +384,14 @@ export function OpportunityBlueprint({ opp, onBack, onBookDemo }: { opp: Opportu
 
         {/* stat tiles */}
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-          {shown && <StatTile icon={TrendingUp} value={formatUSD(opp.annualValueUSD)} label="Est. value" />}
-          <StatTile icon={Gauge} value={`${opp.impactScore}`} label="Impact" />
-          <StatTile icon={Gauge} value={`${opp.complexityScore}`} label="Complexity" />
-          <StatTile icon={Clock} value={opp.timeToValue} label="Timeline" />
+          <StatGauge icon={TrendingUp} label="Money saved / yr" value={formatUSD(opp.annualValueUSD)}
+            info={`Labor cost avoided ≈ ${opp.effectiveFTEs} full-time-equivalents × ~${formatUSD(opp.loadedCostPerPerson)}/yr fully-loaded cost per person in your market. Directional, not a quote.`} />
+          <StatGauge icon={Gauge} label="Impact" value={`${opp.impactScore}/100`} pct={opp.impactScore} benchmark={60} good={opp.impactScore >= 60}
+            info="Impact = value moved, from readiness and money saved. Typical ≈ 60/100; higher is better." />
+          <StatGauge icon={Gauge} label="Complexity" value={`${opp.complexityScore}/100`} pct={opp.complexityScore} benchmark={60} good={opp.complexityScore <= 60}
+            info="Build effort & risk. Typical ≈ 60/100; lower is better." />
+          <StatGauge icon={Clock} label="Timeline" value={opp.timeToValue} pct={(weeksOf(opp.timeToValue) / 16) * 100} benchmark={50} good={weeksOf(opp.timeToValue) <= 8}
+            info="Time to first value. Typical ≈ 8 weeks; sooner is better." />
           <div className="rounded-xl border border-border bg-surface-2/60 p-3 text-center">
             <FileText className="mx-auto h-4 w-4 text-faint" />
             <div className="mt-1.5 text-sm font-medium text-fg">{opp.funcLabel}</div>
@@ -382,228 +529,17 @@ function Section({ title, icon: Icon, children }: { title: string; icon: React.E
 }
 
 /* ------------------------------------------------------------------ */
-/* Path to AE — journey curve + phase cards                           */
-/* ------------------------------------------------------------------ */
-
-function JourneyChart({ start, target }: { start: number; target: number }) {
-  const W = 720;
-  const H = 240;
-  const padL = 58;
-  const padR = 24;
-  const padT = 26;
-  const padB = 34;
-  const chartW = W - padL - padR;
-  const chartH = H - padT - padB;
-
-  // A monotonic climb from today's readiness to the automation target —
-  // the path never regresses year over year.
-  const n = 6;
-  const ys = Array.from({ length: n }, (_, i) => Math.round(start + ((target - start) * i) / (n - 1)));
-  const x = (i: number) => padL + (i * chartW) / (n - 1);
-  const y = (v: number) => padT + (1 - v / 100) * chartH;
-  const pts = ys.map((v, i) => `${x(i)},${y(v)}`).join(" ");
-  const area = `${padL},${padT + chartH} ${pts} ${padL + chartW},${padT + chartH}`;
-  const xLabels = ["Today", "Year 1", "Year 2", "Year 3", "Year 4", "Year 5"];
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full">
-      <defs>
-        <linearGradient id="journey" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="var(--color-build)" />
-          <stop offset="100%" stopColor="var(--color-fix)" />
-        </linearGradient>
-        <linearGradient id="journeyFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgba(62,156,114,0.16)" />
-          <stop offset="100%" stopColor="rgba(62,156,114,0)" />
-        </linearGradient>
-      </defs>
-      {/* y-axis title */}
-      <text
-        transform={`translate(15 ${padT + chartH / 2}) rotate(-90)`}
-        textAnchor="middle"
-        fontSize={10}
-        fill="var(--color-faint)"
-      >
-        % of operations automated
-      </text>
-      {/* gridlines */}
-      {[0, 25, 50, 75, 100].map((g) => (
-        <g key={g}>
-          <line x1={padL} y1={y(g)} x2={padL + chartW} y2={y(g)} stroke="var(--color-border)" strokeWidth={1} />
-          <text x={padL - 8} y={y(g)} textAnchor="end" dominantBaseline="middle" fontSize={10} fill="var(--color-faint)">
-            {g}%
-          </text>
-        </g>
-      ))}
-      <polygon points={area} fill="url(#journeyFill)" />
-      <polyline points={pts} fill="none" stroke="url(#journey)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-      {ys.map((v, i) => (
-        <circle key={i} cx={x(i)} cy={y(v)} r={5} fill="var(--color-surface)" stroke={i === n - 1 ? "var(--color-fix)" : "var(--color-build)"} strokeWidth={2.5} />
-      ))}
-      {/* endpoint value callouts: where you are today vs. the target */}
-      <text x={x(0)} y={y(ys[0]) - 12} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--color-build)">
-        {ys[0]}%
-      </text>
-      <text x={x(n - 1)} y={y(ys[n - 1]) - 12} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--color-fix)">
-        {ys[n - 1]}%
-      </text>
-      {xLabels.map((l, i) => (
-        <text key={l} x={x(i)} y={H - 10} textAnchor="middle" fontSize={10} fill="var(--color-faint)">
-          {l}
-        </text>
-      ))}
-    </svg>
-  );
-}
-
-const PHASE_NARRATIVE: Record<string, string> = {
-  Foundation:
-    "The agents that are ready now — lowest blockers, fastest payback. Shipping these proves value and frees up budget for the next wave.",
-  Expansion:
-    "Agents that needed a readiness gap closed first. With the foundation live and your data and processes in place, these now come online.",
-  Optimization:
-    "Higher-complexity or lower-priority agents. By now your platform, data, and governance are mature enough to take them on.",
-  "Autonomous Enterprise":
-    "Every function has agents running with people supervising rather than doing the work — the compounding end state where the value across all phases is live at once.",
-};
-
-type Phase = { key: string; auto: number; agents: Opportunity[]; cumulative: number };
-
-function PhaseDetail({ phase, start, shown }: { phase: Phase; start: number; shown: boolean }) {
-  const added = phase.agents.reduce((s, o) => s + o.annualValueUSD, 0);
-  return (
-    <Card className="animate-fade p-5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h4 className="font-display text-base font-semibold text-fg">{phase.key} — what gets you here</h4>
-        <span className="text-xs text-muted">
-          Automation {start}% → <span className="font-semibold text-fg">{phase.auto}%</span>
-        </span>
-      </div>
-      <p className="mt-1.5 text-sm leading-relaxed text-muted">{PHASE_NARRATIVE[phase.key]}</p>
-      {shown && phase.agents.length > 0 && (
-        <p className="mt-2 text-sm leading-relaxed text-muted">
-          Building {phase.agents.length} agent{phase.agents.length === 1 ? "" : "s"} here adds about{" "}
-          <span className="num font-semibold text-accent">{formatUSD(added)}/yr</span> — for a cumulative{" "}
-          <span className="num font-semibold text-build">{formatUSD(phase.cumulative)}/yr</span> once it&apos;s live.
-        </p>
-      )}
-      <div className="mt-3 space-y-1.5">
-        {phase.agents.length === 0 ? (
-          <p className="text-xs text-faint">No agents in this phase for your current selection.</p>
-        ) : (
-          phase.agents.map((o) => (
-            <div key={o.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-2/40 px-3 py-2">
-              <span className="truncate text-sm text-fg">{o.name}</span>
-              <span className="flex shrink-0 items-center gap-2.5 text-xs text-faint">
-                <span className="hidden sm:inline">{o.funcLabel}</span>
-                {shown && <span className="num font-semibold text-accent">{formatUSD(o.annualValueUSD)}</span>}
-              </span>
-            </div>
-          ))
-        )}
-      </div>
-    </Card>
-  );
-}
-
-export function PathToAE({ a }: { a: Assessment }) {
-  const shown = useValuesShown();
-  const [open, setOpen] = useState<number | null>(0);
-  const byLane = (lane: Lane) => a.opportunities.filter((o) => o.lane === lane);
-  const buildNow = byLane("build_now");
-  const fixFirst = byLane("fix_first");
-  const notNow = byLane("not_now");
-  const sum = (arr: Opportunity[]) => arr.reduce((s, o) => s + o.annualValueUSD, 0);
-  const vB = sum(buildNow);
-  const vF = sum(fixFirst);
-
-  // Climb from today's readiness to the automation target — shared by the
-  // curve and the phase cards so the story stays consistent.
-  const start = a.maturityScore;
-  const target = start >= 90 ? Math.min(100, start + 4) : 95;
-  const lerp = (t: number) => Math.round(start + (target - start) * t);
-
-  const phases = [
-    { key: "Foundation", auto: lerp(0), agents: buildNow, cumulative: vB, tone: "build" as const },
-    { key: "Expansion", auto: lerp(0.45), agents: fixFirst, cumulative: vB + vF, tone: "fix" as const },
-    { key: "Optimization", auto: lerp(0.75), agents: notNow, cumulative: a.estAnnualValueUSD, tone: "fix" as const },
-    { key: "Autonomous Enterprise", auto: lerp(1), agents: a.opportunities, cumulative: a.estAnnualValueUSD, tone: "build" as const },
-  ];
-
-  return (
-    <div className="space-y-5">
-      <div>
-        <Eyebrow>Path to autonomous enterprise</Eyebrow>
-        <p className="mt-1 text-sm text-muted">Your strategic roadmap to AI-powered operations across every function.</p>
-      </div>
-
-      <Card className="p-6">
-        <div className="mb-3 flex items-center justify-between">
-          <div>
-            <h3 className="font-display text-base font-semibold text-fg">Journey to Autonomous Enterprise</h3>
-            <p className="text-xs text-faint">5-year progression from foundation to full automation</p>
-          </div>
-          <span className="hidden items-center gap-1.5 rounded-full border border-border-strong px-3 py-1 text-xs text-muted sm:inline-flex">
-            <Sparkles className="h-3 w-3 text-accent" /> Target: {target}% automation
-          </span>
-        </div>
-        <div className="aspect-[16/6] w-full">
-          <JourneyChart start={start} target={target} />
-        </div>
-        <p className="mt-3 text-xs leading-relaxed text-faint">
-          The curve is your projected automation level climbing from {start}% today to {target}% as each wave of agents goes
-          live. Tap a year below to see exactly which agents get you there and what they&apos;re worth.
-        </p>
-      </Card>
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {phases.map((p, i) => {
-          const isOpen = open === i;
-          return (
-            <button key={p.key} type="button" onClick={() => setOpen(isOpen ? null : i)} className="text-left">
-              <Card className={cn("h-full p-5 transition-all hover:border-accent/40", isOpen && "ring-1 ring-accent/40")}>
-                <div className="flex items-center justify-between">
-                  <span className="grid h-9 w-9 place-items-center rounded-full bg-surface-2 text-sm font-semibold text-muted">
-                    {i === 3 ? <Sparkles className="h-4 w-4 text-accent" /> : `Y${i + 1}`}
-                  </span>
-                  <Pill tone={p.tone}>{p.key.split(" ")[0]}</Pill>
-                </div>
-                {shown ? (
-                  <>
-                    <div className="num mt-3 font-display text-2xl font-semibold text-build">{formatUSD(p.cumulative)}</div>
-                    <div className="text-xs text-faint">cumulative value · {p.auto}% automation</div>
-                  </>
-                ) : (
-                  <>
-                    <div className="num mt-3 font-display text-2xl font-semibold text-build">{p.auto}%</div>
-                    <div className="text-xs text-faint">projected automation</div>
-                  </>
-                )}
-                <div className="mt-3 flex items-center gap-1 text-[0.72rem] font-medium text-accent">
-                  {isOpen ? "Hide details" : "What gets you here"}
-                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
-                </div>
-              </Card>
-            </button>
-          );
-        })}
-      </div>
-
-      {open !== null && <PhaseDetail phase={phases[open]} start={start} shown={shown} />}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /* Development Board — kanban by delivery stage                        */
 /* ------------------------------------------------------------------ */
 
-const COLUMNS: { key: string; lane: Lane | null; hint: string }[] = [
-  { key: "Backlog", lane: "not_now", hint: "Parked until ready" },
-  { key: "Scoped", lane: "fix_first", hint: "Gaps to close first" },
-  { key: "Building", lane: "build_now", hint: "Ready to ship" },
-  { key: "Live", lane: null, hint: "Shipped to production" },
+const COLUMNS: { key: string; lane: Lane | null; hint: string; info: string }[] = [
+  { key: "Backlog", lane: "not_now", hint: "Ideas parked for later", info: "Agents to revisit once your readiness or priorities shift." },
+  { key: "Planned", lane: "fix_first", hint: "Queued — close a gap first", info: "On the plan, but close one readiness gap (data, sponsorship, a clearer use case) before building." },
+  { key: "In progress", lane: "build_now", hint: "Ready / building now", info: "Ready to build — start these first." },
+  { key: "Live", lane: null, hint: "Shipped to production", info: "Agents you've shipped. Drag a card here when it goes live." },
 ];
+
+const PRIO: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 };
 
 export function DevBoardTab({
   a,
@@ -622,10 +558,14 @@ export function DevBoardTab({
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
 
-  const itemsFor = (col: { lane: Lane | null }) =>
-    col.lane === null
-      ? a.opportunities.filter((o) => shipped[o.id])
-      : a.opportunities.filter((o) => o.lane === col.lane && !shipped[o.id]);
+  const itemsFor = (col: { lane: Lane | null }) => {
+    const base =
+      col.lane === null
+        ? a.opportunities.filter((o) => shipped[o.id])
+        : a.opportunities.filter((o) => o.lane === col.lane && !shipped[o.id]);
+    // Priority-ordered so the most important agents sit at the top of each column.
+    return [...base].sort((x, y) => (PRIO[x.priority] - PRIO[y.priority]) || y.annualValueUSD - x.annualValueUSD);
+  };
 
   const drop = (col: { lane: Lane | null }) => {
     if (!dragId) return;
@@ -638,9 +578,9 @@ export function DevBoardTab({
   return (
     <div>
       <div className="mb-4">
-        <Eyebrow>Development board</Eyebrow>
+        <Eyebrow>Your planning board</Eyebrow>
         <p className="mt-1 text-sm text-muted">
-          Your agent portfolio as a delivery pipeline. Drag a card across stages — drop it in Live when it ships. Click a card for the full blueprint.
+          Plan and sequence your agentic rollout — drag agents across stages as you go, and drop one in Live when it ships. Cards are ordered by priority; click any card for the full blueprint.
         </p>
       </div>
       <div className="grid gap-4 lg:grid-cols-4">
@@ -665,7 +605,10 @@ export function DevBoardTab({
             >
               <div className="rounded-xl border border-border bg-surface/70 px-4 py-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-display text-sm font-semibold text-fg">{col.key}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="font-display text-sm font-semibold text-fg">{col.key}</span>
+                    <InfoTip text={col.info} />
+                  </span>
                   <span className="num text-sm text-faint">{items.length}</span>
                 </div>
                 <div className="text-[0.7rem] text-faint">{col.hint}</div>

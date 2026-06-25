@@ -18,9 +18,9 @@
   --color-violet: #6e51e4; /* secondary accent */
 
   --color-build: #3e9c72; /* lane: build now */
-  --color-fix: #cc8a3a; /* lane: fix first */
+  --color-fix: #6e51e4; /* lane: fix next — purple (red/orange reserved for blocked) */
   --color-hold: #8c7b70; /* lane: not now */
-  --color-critical: #c0473b;
+  --color-critical: #c0473b; /* blocked / critical only */
 
   --font-display: var(--font-dm), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-dm), ui-sans-serif, system-ui, sans-serif;

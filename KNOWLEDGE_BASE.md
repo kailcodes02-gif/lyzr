@@ -399,6 +399,43 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-06-25, ai-roadmap (Agentic-roadmap-gsi): round-3 polish (money-saved, geo, blueprint depth, UX)
+17-item manager punch list + a sticky CTA. New `lib/geo.ts`; touches most of the app.
+- **Money saved + geo** (`lib/geo.ts`, `lib/content.ts`, `lib/types.ts`, `app/onboarding/page.tsx`):
+  "Est. value" → **"Money saved / yr"**, recomputed as a labor model — `effectiveFTEs ×
+  loadedCostPerPerson`, where loaded cost = US-baseline $130k × a **market multiplier**. Market is
+  detected client-side (browser → `cloudflare.com/cdn-cgi/trace`, email-TLD fallback), stored on
+  `quick.market`. New Opportunity fields `effectiveFTEs`/`loadedCostPerPerson` feed the (i). Verified:
+  US $365k vs IN $115k for the same agent (ratio 0.32).
+- **Stages**: "Fix First" → **"Fix Next"**; `--color-fix` orange → **purple** (`#6e51e4`, one-token
+  swap; red reserved for blocked/critical); per-stage **(i)** tooltips from `LANE_META.info` on the
+  Kanban + dev-board columns.
+- **Roadmap tab** (`app/roadmap/page.tsx`): hero stats are **clickable → breakdown panel**
+  (`HeroBreakdown`); **scroll-to-top** on tab switch + blueprint open; **Path to AE tab removed**
+  (and its components deleted from `result-extras.tsx`); top CTA → **"Let's build it together"**;
+  function selector is **sticky + filled-selected + "Choose a function"** label + active header;
+  **sticky floating CTA** on the Roadmap + Development Board tabs (opens the demo modal).
+- **Use-case catalog bug** fixed: "Add to board" no longer disabled by the global `enriching` flag, so
+  adding one no longer freezes the rest.
+- **Development board** → **planning board**: columns **Backlog / Planned / In progress / Live**,
+  priority-ordered, per-column (i).
+- **Engaging post-survey loader** (`RoadmapLoader`): shown once (sessionStorage `agentic_fresh`),
+  rotating copy, 3s min / 7s cap.
+- **Blueprint depth** (`lib/ai.ts`, `components/result-extras.tsx`): Claude now returns per-agent
+  `keyBenefits`/`workflow`/`technologies` (Build-Now set, lean payload so it completes in time);
+  stat tiles → **benchmark gauges** (`StatGauge`: actual vs an illustrative benchmark + good/below
+  read + (i) with the formula); a per-function **"Tailor this"** question (e.g. "Which ATS/HRIS?")
+  woven into the workflow.
+- **Clickability** (`components/ui.tsx`, onboarding): chips lift/highlight w/ pointer; Yes/Partial/No
+  is a clear segmented control.
+- **Home logos** (`components/social-proof.tsx`): Accenture, KPMG, Deloitte, Crown Castle.
+- Smoke test (pre-push): routes 200, logos present, session + roadmap generate, money-saved/lanes/
+  build-now-guarantee correct, graceful fallback verified. Claude enrichment could NOT be exercised in
+  the sandbox (external API call to api.anthropic.com times out at the 45s cap regardless of payload —
+  a dev-runtime/network limit noted in `lib/ai.ts`, not a regression); it degrades to the deterministic
+  roadmap. `tsc` + `npm run build` clean.
+- Commit(s): pushed to `main` (kailcodes02-gif/lyzr). Deploys via Cloudflare Pages `lyzr-work-os`.
+
 ### 2026-06-25, ai-roadmap (Agentic-roadmap-gsi): Kanban + catalog + draggable dev board + official logo
 Third manager-review pass on the roadmap subpage, plus the real Lyzr logo.
 - **Roadmap tab → function bubbles + per-function Kanban** (`app/roadmap/page.tsx`): replaced the

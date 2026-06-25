@@ -11,6 +11,7 @@ import type {
   QuickScan,
   Tri,
 } from "./types";
+import { BASELINE_LOADED, marketMult } from "./geo";
 
 /* ------------------------------------------------------------------ */
 /* Option sets (intake)                                               */
@@ -672,7 +673,13 @@ export function scoreOpportunity(args: {
   const readinessScore = Math.round(readiness01 * 100);
   const lane: Lane = readinessScore >= 70 ? "build_now" : readinessScore >= 48 ? "fix_first" : "not_now";
 
-  const value = Math.round((args.baseValue * sizeMult(q.company.size) * (selected ? 1.15 : 1)) / 5000) * 5000;
+  // "Money saved / yr" = labor cost avoided. We treat each agent's baseValue as the
+  // US-baseline labor it removes, express it as full-time-equivalents, then re-price
+  // those FTEs at the user's market rate (size- and market-scaled).
+  const boost = selected ? 1.15 : 1;
+  const effectiveFTEs = Math.round((args.baseValue / BASELINE_LOADED) * sizeMult(q.company.size) * boost * 10) / 10;
+  const loadedCostPerPerson = Math.round(BASELINE_LOADED * marketMult(q.market));
+  const value = Math.round((effectiveFTEs * loadedCostPerPerson) / 5000) * 5000;
 
   const priority: Priority =
     value >= 800_000 ? "Critical" : value >= 300_000 ? "High" : value >= 120_000 ? "Medium" : "Low";
@@ -723,6 +730,8 @@ export function scoreOpportunity(args: {
     description: args.description,
     priority,
     annualValueUSD: value,
+    effectiveFTEs,
+    loadedCostPerPerson,
     readinessScore,
     impactScore,
     complexityScore,
