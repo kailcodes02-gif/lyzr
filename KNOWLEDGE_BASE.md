@@ -442,7 +442,7 @@ Marketing pass on the landing page from manager review feedback.
     refreshes* (doesn't flicker every reload) and only re-rolls once stale.
   - `<SocialProof/>` band below the hero — four count-up stats (412 assessments taken, 376 roadmaps
     generated, a live "taken today" that ramps ~9->48 through the day and is stable within the hour,
-    150+ teams building with Lyzr) plus a "Used by teams from" strip: KPMG · Fortude · GPG.
+    150+ teams building with Lyzr) plus a "Used by teams from" strip: KPMG · Fortude · RPG.
   - All figures are tunable constants at the top of `social-proof.tsx` (`STATS`, `ORGS`,
     `ACTIVE_POOL`, `takenToday()`). These are illustrative marketing numbers, not live data.
 - Validated: `npm run build` clean (Turbopack), `tsc --noEmit` clean; `/` still prerenders static
