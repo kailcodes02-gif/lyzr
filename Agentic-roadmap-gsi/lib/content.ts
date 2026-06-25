@@ -134,15 +134,9 @@ export const COMPLIANCE: Opt[] = [
   { value: "defined", label: "Defined policies in place" },
   { value: "regulated", label: "Heavily regulated" },
 ];
-export const RISK_APPETITE: Opt[] = [
-  { value: "conservative", label: "Conservative" },
-  { value: "balanced", label: "Balanced" },
-  { value: "aggressive", label: "Move fast" },
-];
 
 export const GATE_QUESTIONS: { id: keyof QuickScan["gates"]; label: string; hint: string }[] = [
   { id: "champion", label: "Executive champion identified?", hint: "Someone owns success" },
-  { id: "budgetOwner", label: "Budget owner aligned?", hint: "Funding is secured" },
   { id: "useCase", label: "Clear business use case?", hint: "Problem is defined" },
   { id: "dataSources", label: "Data sources identified?", hint: "You know where data lives" },
   { id: "successMetric", label: "Success metric defined?", hint: "You can measure impact" },
@@ -158,7 +152,7 @@ export const DIMENSIONS: { id: DimensionId; label: string; weight: number; blurb
   { id: "data", label: "Data Readiness", weight: 0.18, blurb: "Where data lives, structure, quality" },
   { id: "technology", label: "Technology & Integration", weight: 0.16, blurb: "Systems, deployment, existing AI" },
   { id: "team", label: "Team & Skills", weight: 0.14, blurb: "Capacity and technical depth" },
-  { id: "governance", label: "Governance & Risk", weight: 0.12, blurb: "Compliance posture and risk appetite" },
+  { id: "governance", label: "Governance & Risk", weight: 0.12, blurb: "Compliance posture and oversight readiness" },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -309,24 +303,66 @@ interface LibItem {
   timeToValue: string;
 }
 
+// Drawn from Lyzr's real agent catalog (lyzr.ai/use-cases), grouped by function.
+// baseValue is the illustrative annual value at the 201–1000 employee baseline.
 export const LIBRARY: LibItem[] = [
-  { id: "fin-risk", func: "finance", name: "Intelligent Financial Processing & Risk Automation", description: "Agents that ingest invoices, statements, and exposure data to automate processing, reconciliation, and risk flagging.", baseValue: 1_200_000, complexity: "High", baseReadiness: 0.74, timeToValue: "6–10 weeks" },
-  { id: "fin-billing", func: "finance", name: "Automated Billing & Revenue Reconciliation", description: "Close the gap between delivery and billing with agents that reconcile time, contracts, and invoices.", baseValue: 380_000, complexity: "Medium", baseReadiness: 0.8, timeToValue: "4–6 weeks" },
-  { id: "cs-support", func: "customer", name: "AI-Powered Customer Support Agent", description: "A grounded support agent that resolves tier-1 tickets across chat and email using your knowledge base.", baseValue: 380_000, complexity: "Medium", baseReadiness: 0.82, timeToValue: "3–5 weeks" },
-  { id: "cs-voice", func: "customer", name: "Voice AI Triage & Routing", description: "Voice agents that triage inbound calls, capture intent, and route or resolve.", baseValue: 210_000, complexity: "High", baseReadiness: 0.58, timeToValue: "8–12 weeks" },
-  { id: "sales-sdr", func: "sales", name: "Automated Sales Development & Lead Enrichment", description: "Agents that research accounts, enrich leads, and draft tailored outreach.", baseValue: 520_000, complexity: "Medium", baseReadiness: 0.78, timeToValue: "4–6 weeks" },
-  { id: "sales-rfp", func: "sales", name: "Proposal & RFP Response Generation", description: "Generate first-draft proposals and RFP responses from your past wins and capability library.", baseValue: 295_000, complexity: "Medium", baseReadiness: 0.7, timeToValue: "5–8 weeks" },
-  { id: "mkt-content", func: "marketing", name: "Multi-Agent Content & Campaign Engine", description: "Coordinated agents that plan, draft, and adapt campaign content on-brand at scale.", baseValue: 425_000, complexity: "High", baseReadiness: 0.64, timeToValue: "6–10 weeks" },
-  { id: "mkt-web", func: "marketing", name: "Website Personalization & Engagement", description: "Agents that personalize web journeys and qualify visitors in real time.", baseValue: 245_000, complexity: "Medium", baseReadiness: 0.6, timeToValue: "5–8 weeks" },
-  { id: "ops-docs", func: "operations", name: "Enterprise Document Intelligence", description: "Extract, classify, and route information from contracts, forms, and reports at scale.", baseValue: 285_000, complexity: "Medium", baseReadiness: 0.7, timeToValue: "5–8 weeks" },
-  { id: "ops-process", func: "operations", name: "Process Mining & Workflow Automation", description: "Discover high-friction workflows and deploy agents to automate the repetitive path.", baseValue: 340_000, complexity: "High", baseReadiness: 0.58, timeToValue: "8–12 weeks" },
-  { id: "know-research", func: "knowledge", name: "Research & Knowledge Synthesis Agent", description: "Agents that synthesize internal knowledge and external research into client-ready briefs.", baseValue: 410_000, complexity: "Medium", baseReadiness: 0.7, timeToValue: "5–8 weeks" },
-  { id: "hr-screen", func: "hr", name: "Talent Screening & Onboarding Assistant", description: "Screen candidates, schedule, and guide structured onboarding with an agent in the loop.", baseValue: 180_000, complexity: "Low", baseReadiness: 0.72, timeToValue: "3–5 weeks" },
-  { id: "hr-learn", func: "hr", name: "Adaptive L&D & Knowledge Quiz Generator", description: "Generate role-specific learning paths and assessments from your internal material.", baseValue: 95_000, complexity: "Low", baseReadiness: 0.55, timeToValue: "4–6 weeks" },
-  { id: "it-ops", func: "it", name: "IT Operations & Incident Copilot", description: "Agents that triage incidents, draft runbooks, and resolve common requests.", baseValue: 310_000, complexity: "Medium", baseReadiness: 0.62, timeToValue: "6–9 weeks" },
-  { id: "it-compliance", func: "it", name: "Compliance & Infrastructure Monitoring", description: "Continuous agents that monitor posture and flag drift against policy.", baseValue: 260_000, complexity: "High", baseReadiness: 0.55, timeToValue: "8–12 weeks" },
-  { id: "legal-contract", func: "legal", name: "Contract Review & Clause Intelligence", description: "Agents that review contracts, surface risky clauses, and compare against your playbook.", baseValue: 330_000, complexity: "High", baseReadiness: 0.6, timeToValue: "6–10 weeks" },
-  { id: "proc-vendor", func: "procurement", name: "Procurement & Vendor Intelligence", description: "Automate vendor research, spend analysis, and sourcing recommendations.", baseValue: 220_000, complexity: "Medium", baseReadiness: 0.62, timeToValue: "5–8 weeks" },
+  // Marketing
+  { id: "mkt-content", func: "marketing", name: "AI Content Creation Agent", description: "Generates on-brand blogs, emails, and campaign copy from your messaging and assets.", baseValue: 320_000, complexity: "Medium", baseReadiness: 0.76, timeToValue: "3–5 weeks" },
+  { id: "mkt-social", func: "marketing", name: "AI Social Media Agent", description: "Plans, drafts, and schedules social posts across channels — on-brand and on-cadence.", baseValue: 240_000, complexity: "Low", baseReadiness: 0.8, timeToValue: "2–4 weeks" },
+  { id: "mkt-abm", func: "marketing", name: "ABM Agent", description: "Runs account-based campaigns — researches target accounts and tailors outreach per buying committee.", baseValue: 360_000, complexity: "Medium", baseReadiness: 0.66, timeToValue: "5–8 weeks" },
+  { id: "mkt-seo", func: "marketing", name: "AEO / GEO Optimizer Agent", description: "Optimizes content to surface in AI answers and search across your target geographies.", baseValue: 210_000, complexity: "Medium", baseReadiness: 0.62, timeToValue: "4–6 weeks" },
+  { id: "mkt-web", func: "marketing", name: "Website Personalization Agent", description: "Personalizes web journeys and qualifies visitors in real time.", baseValue: 245_000, complexity: "Medium", baseReadiness: 0.6, timeToValue: "5–8 weeks" },
+
+  // Sales & BD
+  { id: "sales-sdr", func: "sales", name: "AI SDR", description: "Researches accounts, enriches leads, and drafts tailored outbound at scale.", baseValue: 520_000, complexity: "Medium", baseReadiness: 0.8, timeToValue: "4–6 weeks" },
+  { id: "sales-nurture", func: "sales", name: "AI Deal Nurturer", description: "Keeps every open opportunity warm with timely, personalized follow-ups.", baseValue: 300_000, complexity: "Medium", baseReadiness: 0.72, timeToValue: "4–6 weeks" },
+  { id: "sales-enrich", func: "sales", name: "Lead Enrichment Agent", description: "Enriches inbound and list leads with firmographic and intent data.", baseValue: 180_000, complexity: "Low", baseReadiness: 0.82, timeToValue: "2–4 weeks" },
+  { id: "sales-rfp", func: "sales", name: "Proposal & RFP Response Agent", description: "Drafts proposals and RFP responses from your past wins and capability library.", baseValue: 295_000, complexity: "Medium", baseReadiness: 0.7, timeToValue: "5–8 weeks" },
+
+  // Customer Service
+  { id: "cs-support", func: "customer", name: "AI Cross-Channel Support Agent", description: "Resolves tier-1 tickets across chat and email, grounded in your knowledge base.", baseValue: 380_000, complexity: "Medium", baseReadiness: 0.82, timeToValue: "3–5 weeks" },
+  { id: "cs-email", func: "customer", name: "Email Triage Agent", description: "Routes, prioritizes, and drafts replies for inbound support email automatically.", baseValue: 220_000, complexity: "Low", baseReadiness: 0.8, timeToValue: "2–4 weeks" },
+  { id: "cs-voice", func: "customer", name: "AI Phone / Voice Support", description: "Voice agents that triage inbound calls, capture intent, and route or resolve.", baseValue: 260_000, complexity: "High", baseReadiness: 0.58, timeToValue: "8–12 weeks" },
+  { id: "cs-assist", func: "customer", name: "Support Interaction Assistant", description: "Real-time agent-assist that suggests answers and next steps to your reps.", baseValue: 200_000, complexity: "Low", baseReadiness: 0.74, timeToValue: "3–5 weeks" },
+  { id: "cs-case", func: "customer", name: "CRM Case Generator", description: "Creates and updates CRM case records automatically from customer interactions.", baseValue: 150_000, complexity: "Low", baseReadiness: 0.76, timeToValue: "2–4 weeks" },
+
+  // Finance & Billing
+  { id: "fin-risk", func: "finance", name: "Financial Processing & Risk Automation", description: "Ingests invoices, statements, and exposure data to automate processing, reconciliation, and risk flagging.", baseValue: 1_200_000, complexity: "High", baseReadiness: 0.74, timeToValue: "6–10 weeks" },
+  { id: "fin-billing", func: "finance", name: "Billing & Revenue Reconciliation", description: "Reconciles time, contracts, and invoices to close the gap between delivery and billing.", baseValue: 380_000, complexity: "Medium", baseReadiness: 0.8, timeToValue: "4–6 weeks" },
+  { id: "fin-kyc", func: "finance", name: "KYC & Customer Onboarding Agent", description: "Validates identity and runs compliance checks to onboard customers faster.", baseValue: 420_000, complexity: "Medium", baseReadiness: 0.68, timeToValue: "6–9 weeks" },
+  { id: "fin-reg", func: "finance", name: "Regulatory Monitoring Agent", description: "Tracks regulatory changes and flags impact against your policies continuously.", baseValue: 300_000, complexity: "High", baseReadiness: 0.6, timeToValue: "8–12 weeks" },
+  { id: "fin-loan", func: "finance", name: "Loan Origination & Servicing Agent", description: "Processes applications and automates ongoing loan administration.", baseValue: 480_000, complexity: "High", baseReadiness: 0.6, timeToValue: "8–12 weeks" },
+
+  // Operations
+  { id: "ops-docs", func: "operations", name: "Enterprise Document Intelligence", description: "Extracts, classifies, and routes information from contracts, forms, and reports at scale.", baseValue: 285_000, complexity: "Medium", baseReadiness: 0.72, timeToValue: "5–8 weeks" },
+  { id: "ops-process", func: "operations", name: "Process Mining & Workflow Automation", description: "Finds high-friction workflows and deploys agents to automate the repetitive path.", baseValue: 340_000, complexity: "High", baseReadiness: 0.58, timeToValue: "8–12 weeks" },
+  { id: "ops-rpa", func: "operations", name: "Data Entry & Back-Office Automation", description: "Automates form-filling, data entry, and verification across back-office systems.", baseValue: 230_000, complexity: "Medium", baseReadiness: 0.7, timeToValue: "4–6 weeks" },
+
+  // Research & Knowledge
+  { id: "know-research", func: "knowledge", name: "Research & Knowledge Synthesis Agent", description: "Synthesizes internal knowledge and external research into client-ready briefs.", baseValue: 410_000, complexity: "Medium", baseReadiness: 0.72, timeToValue: "5–8 weeks" },
+  { id: "know-assist", func: "knowledge", name: "Internal Knowledge Assistant", description: "Answers employee questions instantly from your policies, wikis, and docs.", baseValue: 230_000, complexity: "Low", baseReadiness: 0.78, timeToValue: "3–5 weeks" },
+
+  // HR & Talent
+  { id: "hr-hire", func: "hr", name: "AI Hiring Assistant", description: "Screens candidates, ranks applicants, and schedules interviews with zero manual effort.", baseValue: 220_000, complexity: "Low", baseReadiness: 0.76, timeToValue: "3–5 weeks" },
+  { id: "hr-onboard", func: "hr", name: "Employee Onboarding Agent", description: "Guides new hires through docs, tasks, and setup automatically.", baseValue: 160_000, complexity: "Low", baseReadiness: 0.76, timeToValue: "3–5 weeks" },
+  { id: "hr-learn", func: "hr", name: "Adaptive L&D Agent", description: "Generates role-specific learning paths and assessments from your internal material.", baseValue: 120_000, complexity: "Low", baseReadiness: 0.62, timeToValue: "4–6 weeks" },
+  { id: "hr-review", func: "hr", name: "Performance Review Agent", description: "Streamlines review cycles with AI-drafted feedback and scoring.", baseValue: 140_000, complexity: "Medium", baseReadiness: 0.64, timeToValue: "5–8 weeks" },
+  { id: "hr-esat", func: "hr", name: "Employee Survey (ESAT) Agent", description: "Runs and analyzes employee-satisfaction surveys into actionable themes.", baseValue: 90_000, complexity: "Low", baseReadiness: 0.72, timeToValue: "2–4 weeks" },
+
+  // IT
+  { id: "it-ops", func: "it", name: "IT Operations & Incident Copilot", description: "Triages incidents, drafts runbooks, and resolves common requests.", baseValue: 310_000, complexity: "Medium", baseReadiness: 0.64, timeToValue: "6–9 weeks" },
+  { id: "it-helpdesk", func: "it", name: "Internal IT Helpdesk Agent", description: "Resolves employee IT requests — access, resets, how-to — end to end.", baseValue: 200_000, complexity: "Low", baseReadiness: 0.74, timeToValue: "3–5 weeks" },
+  { id: "it-compliance", func: "it", name: "Compliance & Infrastructure Monitoring", description: "Continuously monitors posture and flags drift against policy.", baseValue: 260_000, complexity: "High", baseReadiness: 0.55, timeToValue: "8–12 weeks" },
+
+  // Legal & Compliance
+  { id: "legal-contract", func: "legal", name: "Contract Review & Clause Intelligence", description: "Reviews contracts, surfaces risky clauses, and compares against your playbook.", baseValue: 330_000, complexity: "High", baseReadiness: 0.62, timeToValue: "6–10 weeks" },
+  { id: "legal-search", func: "legal", name: "Contract Search Agent", description: "Finds and retrieves clauses and contracts across your document store instantly.", baseValue: 180_000, complexity: "Medium", baseReadiness: 0.72, timeToValue: "4–6 weeks" },
+
+  // Procurement
+  { id: "proc-source", func: "procurement", name: "Supplier Sourcing Agent", description: "Identifies and evaluates potential vendors against your sourcing criteria.", baseValue: 240_000, complexity: "Medium", baseReadiness: 0.66, timeToValue: "5–8 weeks" },
+  { id: "proc-onboard", func: "procurement", name: "Supplier Onboarding Agent", description: "Onboards new vendors with automated checks and document collection.", baseValue: 180_000, complexity: "Low", baseReadiness: 0.72, timeToValue: "3–5 weeks" },
+  { id: "proc-perf", func: "procurement", name: "Supplier Performance Analysis", description: "Monitors vendor metrics, SLAs, and compliance continuously.", baseValue: 210_000, complexity: "Medium", baseReadiness: 0.64, timeToValue: "5–8 weeks" },
+  { id: "proc-contract", func: "procurement", name: "Procurement Contract Review", description: "Reviews supplier contracts and flags risk and savings opportunities.", baseValue: 200_000, complexity: "Medium", baseReadiness: 0.62, timeToValue: "5–8 weeks" },
 ];
 
 /** Which dimensions most affect each function's readiness. */
@@ -429,7 +465,6 @@ const W = {
   skill: { business: 0.45, mixed: 0.72, engineers: 1 } as Record<string, number>,
   aiExp: { none: 0.3, some: 0.65, deep: 1 } as Record<string, number>,
   compliance: { light: 0.6, defined: 1, regulated: 0.72 } as Record<string, number>,
-  risk: { conservative: 0.55, balanced: 0.85, aggressive: 0.7 } as Record<string, number>,
 };
 
 const w = (map: Record<string, number>, key: string, fallback = 0.5) =>
@@ -473,21 +508,25 @@ function quickDimScore(q: QuickScan, dim: DimensionId): number {
       return (
         avg([
           triVal(q.gates.champion),
-          triVal(q.gates.budgetOwner),
           triVal(q.gates.successMetric),
           w(W.budget, q.strategy.budget),
           w(W.timeline, q.strategy.timeline),
         ]) * 100
       );
-    case "data":
+    case "data": {
+      // Data can live in several places; score on the strongest source they have.
+      const locScore = q.data.location.length
+        ? Math.max(...q.data.location.map((l) => w(W.dataLoc, l)))
+        : 0.5;
       return (
         avg([
-          w(W.dataLoc, q.data.location),
+          locScore,
           w(W.dataStruct, q.data.structure),
           w(W.dataQual, q.data.quality),
           triVal(q.gates.dataSources),
         ]) * 100
       );
+    }
     case "technology":
       return (
         avg([
@@ -505,9 +544,7 @@ function quickDimScore(q: QuickScan, dim: DimensionId): number {
         ]) * 100
       );
     case "governance":
-      return (
-        avg([w(W.compliance, q.governance.compliance), w(W.risk, q.governance.riskAppetite)]) * 100
-      );
+      return w(W.compliance, q.governance.compliance) * 100;
   }
 }
 
@@ -583,11 +620,11 @@ export function scoreOpportunity(args: {
     value >= 800_000 ? "Critical" : value >= 300_000 ? "High" : value >= 120_000 ? "Medium" : "Low";
 
   // readiness label
-  const yesCount = [q.gates.champion, q.gates.budgetOwner, q.gates.useCase, q.gates.dataSources].filter(
+  const yesCount = [q.gates.champion, q.gates.useCase, q.gates.dataSources].filter(
     (t) => t === "yes",
   ).length;
   const readinessLabel =
-    lane === "build_now" ? "Ready" : lane === "not_now" ? "Not Ready" : `${Math.min(3, Math.max(1, yesCount))}/4 Ready`;
+    lane === "build_now" ? "Ready" : lane === "not_now" ? "Not Ready" : `${Math.min(3, Math.max(1, yesCount))}/3 Ready`;
 
   // blockers
   const blockers: string[] = [];
@@ -598,7 +635,7 @@ export function scoreOpportunity(args: {
     if (q.data.quality === "low" && relDims.includes("data")) blockers.push("Improve data quality & coverage");
     if (q.tech.existingAI === "none" && relDims.includes("technology")) blockers.push("Stand up an agent platform");
     if (q.gates.champion !== "yes") blockers.push("Secure an executive champion");
-    if ((func === "legal" || func === "it") && q.governance.riskAppetite === "conservative")
+    if ((func === "legal" || func === "it") && q.governance.compliance === "regulated")
       blockers.push("Complete a security & compliance review");
     if (complexity === "High") blockers.push("Scope a phased pilot");
   }
@@ -614,8 +651,7 @@ export function scoreOpportunity(args: {
 
   const tpl = FUNC_TEMPLATES[func] ?? FUNC_TEMPLATES.operations;
   const fit = {
-    budgetAligned:
-      q.gates.budgetOwner === "yes" || q.strategy.budget === "250k_plus" || q.strategy.budget === "100_250k",
+    budgetAligned: q.strategy.budget === "250k_plus" || q.strategy.budget === "100_250k",
     teamSkillFit: dims.team >= 58 && (q.team.skill === "mixed" || q.team.skill === "engineers"),
     championAssigned: q.gates.champion === "yes",
     dataAvailable: q.gates.dataSources === "yes" && dims.data >= 55,
@@ -697,6 +733,16 @@ export function buildAssessment(intake: IntakeData): Assessment {
   const baseConf = 50 + (q.processFreeText.trim().length > 40 ? 5 : 0) + Math.min(8, q.functions.length * 2);
   const confidence = Math.min(96, baseConf + intake.completedDeepen.length * 6);
 
+  // Always lead with at least one immediate win. If scoring left Build Now empty,
+  // promote the single most-ready opportunity so the roadmap never opens with
+  // "nothing to do" — the whole point is to give them a first agent to build.
+  if (opportunities.length > 0 && !opportunities.some((o) => o.lane === "build_now")) {
+    const top = opportunities.reduce((best, o) => (o.readinessScore > best.readinessScore ? o : best));
+    top.lane = "build_now";
+    top.readinessLabel = "Ready";
+    top.blockers = [];
+  }
+
   const buildNow = opportunities.filter((o) => o.lane === "build_now");
   const buildValue = buildNow.reduce((s, o) => s + o.annualValueUSD, 0);
   const name = q.company.name?.trim() || "Your firm";
@@ -738,12 +784,12 @@ export function emptyIntake(): IntakeData {
       customRequests: [],
       processFreeText: "",
       priorityPain: "",
-      data: { location: "", structure: "", quality: "" },
+      data: { location: [], structure: "", quality: "" },
       tech: { systems: [], deployment: "", existingAI: "" },
       team: { size: "", skill: "", aiExperience: "" },
       strategy: { timeline: "", budget: "" },
-      gates: { champion: "partial", budgetOwner: "partial", useCase: "partial", dataSources: "partial", successMetric: "partial" },
-      governance: { compliance: "", riskAppetite: "" },
+      gates: { champion: "partial", useCase: "partial", dataSources: "partial", successMetric: "partial" },
+      governance: { compliance: "" },
     },
     deepen: {},
     completedDeepen: [],

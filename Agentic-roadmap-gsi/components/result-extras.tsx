@@ -355,7 +355,7 @@ export function OpportunityBlueprint({ opp, onBack, onBookDemo }: { opp: Opportu
           onClick={onBookDemo}
           className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-ink px-6 text-sm font-semibold text-white transition-all hover:bg-[#3a322c]"
         >
-          Talk to Us About This Agent
+          Build this with Lyzr
           <ArrowRight className="h-4 w-4" />
         </button>
         <button

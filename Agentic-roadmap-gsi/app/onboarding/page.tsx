@@ -22,7 +22,6 @@ import {
   INDUSTRIES,
   Opt,
   PAINS,
-  RISK_APPETITE,
   SKILL_LEVELS,
   SYSTEMS,
   TEAM_SIZES,
@@ -140,14 +139,13 @@ export default function Onboarding() {
       case 1:
         return q.functions.length > 0;
       case 2:
-        return !!q.data.location && !!q.data.structure && !!q.data.quality && !!q.tech.deployment && !!q.tech.existingAI;
+        return q.data.location.length > 0 && !!q.data.structure && !!q.data.quality && !!q.tech.deployment && !!q.tech.existingAI;
       case 3:
         return (
           !!q.team.size &&
           !!q.team.skill &&
           !!q.team.aiExperience &&
           !!q.governance.compliance &&
-          !!q.governance.riskAppetite &&
           !!q.strategy.timeline &&
           !!q.strategy.budget
         );
@@ -272,8 +270,8 @@ export default function Onboarding() {
 
           {step === 2 && (
             <>
-              <Field label="Where does most of your data live?">
-                <ChipGroup options={DATA_LOCATION} value={q.data.location} onChange={(v) => set("data", { ...q.data, location: v })} cols={2} />
+              <Field label="Where does your data live?" hint="select all that apply">
+                <MultiChipGroup options={DATA_LOCATION} values={q.data.location} onChange={(v) => set("data", { ...q.data, location: v })} cols={2} />
               </Field>
               <Field label="How is it structured?">
                 <ChipGroup options={DATA_STRUCTURE} value={q.data.structure} onChange={(v) => set("data", { ...q.data, structure: v })} />
@@ -309,9 +307,6 @@ export default function Onboarding() {
               </Field>
               <Field label="Compliance posture">
                 <ChipGroup options={COMPLIANCE} value={q.governance.compliance} onChange={(v) => set("governance", { ...q.governance, compliance: v })} />
-              </Field>
-              <Field label="Risk appetite">
-                <ChipGroup options={RISK_APPETITE} value={q.governance.riskAppetite} onChange={(v) => set("governance", { ...q.governance, riskAppetite: v })} />
               </Field>
               <div className="space-y-7 border-t border-border pt-7">
                 <Eyebrow>Strategy &amp; reality check</Eyebrow>

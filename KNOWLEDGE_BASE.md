@@ -399,6 +399,38 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-06-25, ai-roadmap (Agentic-roadmap-gsi): survey trim + function-centric roadmap
+Second manager-review pass. Shorter survey, function-organized results with real Lyzr agents.
+- **Survey trim** (`app/onboarding/page.tsx`, `lib/types.ts`, `lib/content.ts`): "Where does your
+  data live?" is now **multi-select** (`data.location: string` → `string[]`, rendered with the
+  existing `MultiChipGroup`). Removed the **budget-owner** gate (`gates.budgetOwner`) and the
+  **risk-appetite** question (`governance.riskAppetite`) — and their step-2/step-3 validation.
+- **Scoring rewire** (`lib/content.ts`): Strategy dim no longer reads `budgetOwner`; Governance dim
+  now derives from `compliance` alone (dropped `W.risk`); the data dim aggregates multi-select
+  locations by **max** (best source). `scoreOpportunity` updated (yesCount `/3`, legal/IT
+  security-review blocker keyed off `compliance==="regulated"`, `fit.budgetAligned` from budget only).
+- **Always a Build Now** (`buildAssessment`): if no opportunity lands in `build_now`, the highest-
+  readiness one is promoted in (label "Ready", blockers cleared) so the roadmap never opens empty.
+  Verified against a worst-case profile (tiny firm, all gates "no") → 1 Build Now item.
+- **Real Lyzr catalog** (`LIBRARY`): replaced the 18 generic items with **38 real agents** mapped
+  from lyzr.ai/use-cases, ~2–5 per function (Marketing: Content Creation, Social Media, ABM,
+  AEO/GEO, Personalization; Sales: AI SDR, Deal Nurturer, Lead Enrichment, RFP; Support, Finance,
+  HR, Ops, IT, Legal, Procurement). `FUNC_TEMPLATES` unchanged — new items inherit drawer content.
+- **Function-centric Roadmap tab** (`app/roadmap/page.tsx`): replaced the 3-lane drag board with
+  **one board per chosen function** (`FunctionBoard` + `OppRow`), each showing a numbered build
+  order, a "Start here" marker, lane chips (Build now / Next / Later), per-item value, a near-term
+  value, and a "Leads to →" payoff line. Dropped the drag-to-rearrange + `moveOpp`; the other 5 tabs
+  are unchanged. Lane labels in boards differ from the canonical `LANE_META` used by the diagnostic
+  tabs (intentional — friendlier ordering language).
+- **Values un-gated** (`app/roadmap/page.tsx`, `components/value-context.tsx`): removed the
+  click-to-reveal `showValues`/`revealValues` gate; `ValuesShownProvider` is always `true`, so every
+  $ figure shows directly in terracotta-red (USD). CTA "Book a demo" → **"Build with Lyzr"** (header
+  + blueprint footer).
+- Validated: `tsc --noEmit` and `npm run build` clean; drove the real `buildAssessment` via
+  `POST /api/roadmap` for worst-case + normal multi-function profiles (lane spread, per-function
+  grouping, value totals all correct).
+- Commit(s): pushed to `main` (kailcodes02-gif/lyzr). Deploys via Cloudflare Pages `lyzr-work-os`.
+
 ### 2026-06-24, ai-roadmap (Agentic-roadmap-gsi): landing-page resume copy + social proof
 Marketing pass on the landing page from manager review feedback.
 - **Resume copy reworded** (`components/resume.tsx`): "Already have a roadmap? Resume with your

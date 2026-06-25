@@ -20,19 +20,19 @@ export interface QuickScan {
   /** Free-text problem scoping — parsed by Claude into tailored opportunities. */
   processFreeText: string;
   priorityPain: string;
-  data: { location: string; structure: string; quality: string };
+  /** Where data lives — multi-select (a firm usually spans more than one). */
+  data: { location: string[]; structure: string; quality: string };
   tech: { systems: string[]; deployment: string; existingAI: string };
   team: { size: string; skill: string; aiExperience: string };
   strategy: { timeline: string; budget: string };
   /** Production reality gates. */
   gates: {
     champion: Tri;
-    budgetOwner: Tri;
     useCase: Tri;
     dataSources: Tri;
     successMetric: Tri;
   };
-  governance: { compliance: string; riskAppetite: string };
+  governance: { compliance: string };
 }
 
 /** Optional "Deepen this dimension" answers: dimensionId -> questionId -> value. */
