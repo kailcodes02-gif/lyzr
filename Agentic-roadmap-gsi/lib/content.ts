@@ -851,7 +851,7 @@ export function emptyIntake(): IntakeData {
   return {
     quick: {
       email: "",
-      company: { name: "", industry: "", size: "" },
+      company: { name: "", industry: "", industryOther: "", size: "" },
       functions: [],
       customRequests: [],
       extraUseCases: [],

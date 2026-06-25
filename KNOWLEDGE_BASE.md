@@ -399,6 +399,15 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-06-25, ai-roadmap (Agentic-roadmap-gsi): Industry "Other" → mandatory specify field
+- Onboarding step 0: choosing **Industry → Other** now reveals a required text box ("Which industry?").
+  New `company.industryOther` on `QuickScan` (`lib/types.ts`) + `emptyIntake` default (`lib/content.ts`);
+  step-0 validation blocks Continue until it's filled (`app/onboarding/page.tsx`). The value rides
+  along in the Claude payload (`company` object) for industry-specific tailoring. Industry is the only
+  option set with an "Other", so no other questions change.
+- `tsc` + `npm run build` clean; `/onboarding` renders 200.
+- Commit(s): pushed to `main` (kailcodes02-gif/lyzr). Deploys via Cloudflare Pages `lyzr-work-os`.
+
 ### 2026-06-25, ai-roadmap (Agentic-roadmap-gsi): round-3 polish (money-saved, geo, blueprint depth, UX)
 17-item manager punch list + a sticky CTA. New `lib/geo.ts`; touches most of the app.
 - **Money saved + geo** (`lib/geo.ts`, `lib/content.ts`, `lib/types.ts`, `app/onboarding/page.tsx`):

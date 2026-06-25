@@ -151,7 +151,12 @@ export default function Onboarding() {
   const canContinue = (() => {
     switch (step) {
       case 0:
-        return isWorkEmail(q.email) && !!q.company.industry && !!q.company.size;
+        return (
+          isWorkEmail(q.email) &&
+          !!q.company.industry &&
+          (q.company.industry !== "other" || !!q.company.industryOther.trim()) &&
+          !!q.company.size
+        );
       case 1:
         return q.functions.length > 0;
       case 2:
@@ -258,6 +263,15 @@ export default function Onboarding() {
               </Field>
               <Field label="Industry">
                 <ChipGroup options={INDUSTRIES} value={q.company.industry} onChange={(v) => set("company", { ...q.company, industry: v })} />
+                {q.company.industry === "other" && (
+                  <input
+                    autoFocus
+                    value={q.company.industryOther}
+                    onChange={(e) => set("company", { ...q.company, industryOther: e.target.value })}
+                    placeholder="Which industry? (required)"
+                    className="mt-2.5 h-11 w-full rounded-xl border border-border-strong bg-surface-2 px-3.5 text-sm text-fg outline-none transition-colors placeholder:text-faint focus:border-accent/60"
+                  />
+                )}
               </Field>
               <Field label="Company size" hint="employees">
                 <ChipGroup options={COMPANY_SIZES} value={q.company.size} onChange={(v) => set("company", { ...q.company, size: v })} />

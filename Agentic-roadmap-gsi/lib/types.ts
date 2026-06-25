@@ -12,7 +12,7 @@ export type DimensionId =
 export interface QuickScan {
   /** Work email — the account key for saved state and rate limiting. */
   email: string;
-  company: { name: string; industry: string; size: string };
+  company: { name: string; industry: string; industryOther: string; size: string };
   /** Detected market (browser IP geo / email TLD) — scales the labor-cost estimate. */
   market?: { country: string; countryName: string; mult: number };
   /** Practice areas / functions they want to automate. */
