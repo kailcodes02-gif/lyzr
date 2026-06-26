@@ -399,6 +399,26 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-06-26, ai-roadmap (Agentic-roadmap-gsi): trim landing header + first-party usage tracking
+- **Landing header trimmed** (`app/page.tsx`): removed the "Agentic Roadmap" label + "Talk to Lyzr"
+  link; header is now logo-only.
+- **First-party usage tracking (no external analytics).** One localStorage blob per browser
+  (`lib/activity.ts`) accumulates LIFETIME, de-duplicated: **screens visited** (landing, onboarding,
+  each roadmap tab), **blueprint views** (the agent/use-case name), and **first-touch UTM**
+  (`utm_*` + gclid/fbclid/ref + referrer). Synced to the signup's record via new `POST /api/track`
+  → `mergeActivity` in `lib/store.ts` (union + size-cap + first-touch-UTM kept; `Activity` type in
+  `lib/types.ts`, new `LeadRecord.activity`). Wired: `components/landing-tracker.tsx` (UTM + "landing"),
+  onboarding (`trackScreen` + `syncActivity` after session create), roadmap (`setTab` → trackScreen,
+  blueprint open → `trackBlueprint`, initial sync on session). `/api/track` is unauthenticated but
+  only merges clamped/deduped data into an existing record by sessionId.
+- **Admin** (`app/admin/page.tsx`, `app/api/admin/leads/route.ts`): new **Source** column + an
+  **"Activity (lifetime)"** group in the detail drawer (screens, blueprints viewed, UTM/source,
+  first→last seen). Note: activity is forward-looking — pre-existing signups show "direct/—" until
+  they next visit.
+- Verified: `tsc` + `npm run build` clean; smoke test confirmed dedup, first-touch UTM (linkedin kept
+  over a later google), blueprint capture, admin display, 400 on bad track, and 0 "Talk to Lyzr" on `/`.
+- Commit(s): pushed to `main` → Vercel auto-deploys the app; Cloudflare redeploys the static site.
+
 ### 2026-06-26, ai-roadmap (Agentic-roadmap-gsi): admin dashboard at /admin + deploy-target correction
 - **Admin dashboard** (`app/admin/page.tsx`, new): token-gated page listing every signup (email,
   company, industry, country, functions, maturity, # agents, money saved, completed?, created) with

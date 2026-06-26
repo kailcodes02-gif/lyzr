@@ -12,7 +12,7 @@
 import fs from "fs";
 import path from "path";
 import { Redis } from "@upstash/redis";
-import type { Assessment, IntakeData } from "./types";
+import type { Activity, Assessment, IntakeData } from "./types";
 
 const DAY = 24 * 60 * 60 * 1000;
 const WEEK = 7 * DAY;
@@ -31,6 +31,7 @@ export interface LeadRecord {
   updatedAt: number;
   intake: IntakeData;
   assessment?: Assessment;
+  activity?: Activity;
 }
 
 const redis =
@@ -164,6 +165,47 @@ export async function saveAssessment(id: string, intake: IntakeData, assessment:
   r.intake = intake;
   r.assessment = assessment;
   r.updatedAt = Date.now();
+  writeFile(d);
+}
+
+/**
+ * Merge a client-reported activity blob into a record (union screens/blueprints,
+ * keep first-touch UTM, widen the seen window). Idempotent — the client sends the
+ * full accumulated set each time. Caps array sizes so a record can't grow unbounded.
+ */
+export async function mergeActivity(id: string, incoming: Partial<Activity>): Promise<void> {
+  const dedupeCap = (arr: unknown, n: number): string[] =>
+    Array.from(
+      new Set((Array.isArray(arr) ? arr : []).filter((x): x is string => typeof x === "string").map((x) => x.slice(0, 120))),
+    ).slice(0, n);
+  const now = Date.now();
+
+  const apply = (rec: LeadRecord) => {
+    const cur: Activity = rec.activity ?? { screens: [], blueprints: [], utm: {}, firstSeen: now, lastSeen: now };
+    const incUtm = incoming.utm && typeof incoming.utm === "object" ? (incoming.utm as Record<string, string>) : {};
+    rec.activity = {
+      screens: dedupeCap([...(cur.screens ?? []), ...(incoming.screens ?? [])], 40),
+      blueprints: dedupeCap([...(cur.blueprints ?? []), ...(incoming.blueprints ?? [])], 100),
+      // first-touch: keep whatever we already have, else take the incoming.
+      utm: Object.keys(cur.utm ?? {}).length ? cur.utm : incUtm,
+      referrer: cur.referrer ?? (typeof incoming.referrer === "string" ? incoming.referrer.slice(0, 200) : undefined),
+      firstSeen: Math.min(cur.firstSeen || now, incoming.firstSeen || now),
+      lastSeen: Math.max(cur.lastSeen || 0, incoming.lastSeen || now),
+    };
+    rec.updatedAt = now;
+  };
+
+  if (redis) {
+    const rec = (await redis.get(`rec:${id}`)) as LeadRecord | null;
+    if (!rec) return;
+    apply(rec);
+    await redis.set(`rec:${id}`, rec);
+    return;
+  }
+  const d = readFile();
+  const r = d.records.find((x) => x.id === id);
+  if (!r) return;
+  apply(r);
   writeFile(d);
 }
 

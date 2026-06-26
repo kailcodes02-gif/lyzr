@@ -30,6 +30,7 @@ import {
 import type { QuickScan, Tri } from "@/lib/types";
 import { isFreeEmail, isWorkEmail } from "@/lib/email";
 import { detectMarket } from "@/lib/geo";
+import { trackScreen, syncActivity } from "@/lib/activity";
 
 const STEP_META = [
   { label: "Company", sub: "Tell us about your organization" },
@@ -139,6 +140,7 @@ export default function Onboarding() {
   // Best-effort market detection (IP geo) so the "money saved" estimate is sized to
   // the user's market. Runs once; email-TLD fallback is re-checked at submit.
   useEffect(() => {
+    trackScreen("onboarding");
     let cancelled = false;
     detectMarket("").then((m) => {
       if (m && !cancelled) setQ((prev) => (prev.market ? prev : { ...prev, market: m }));
@@ -201,6 +203,8 @@ export default function Onboarding() {
       }
       sessionStorage.setItem("agentic_intake", JSON.stringify(intake));
       sessionStorage.setItem("agentic_session", data.sessionId);
+      // Persist the lifetime activity (landing + onboarding + UTM) now that we have a session.
+      syncActivity(data.sessionId);
       sessionStorage.setItem("agentic_fresh", "1"); // first generation → show the engaging loader once
       try {
         localStorage.setItem("agentic_last_session", data.sessionId);

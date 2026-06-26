@@ -5,7 +5,7 @@ import { ArrowRight, Download, Loader2, RefreshCw, Search, X } from "lucide-reac
 import { Logo } from "@/components/ui";
 import { formatUSD } from "@/lib/utils";
 import { FUNCTIONS } from "@/lib/content";
-import type { Assessment, IntakeData, Lane } from "@/lib/types";
+import type { Activity, Assessment, IntakeData, Lane } from "@/lib/types";
 
 type LeadRow = {
   email: string;
@@ -24,6 +24,9 @@ type LeadRow = {
   customRequests: number;
   deepened: number;
   completedAssessment: string;
+  source: string;
+  screensVisited: number;
+  viewedBlueprint: string;
   createdAt: string;
   updatedAt: string;
   sessionId: string;
@@ -37,6 +40,7 @@ type FullRecord = {
   updatedAt: number;
   intake: IntakeData;
   assessment?: Assessment;
+  activity?: Activity;
 };
 
 const funcLabel = (v: string) => FUNCTIONS.find((f) => f.value === v)?.label ?? v;
@@ -135,7 +139,9 @@ export default function AdminPage() {
     const q = query.trim().toLowerCase();
     if (!q) return leads;
     return leads.filter((l) =>
-      [l.email, l.company, l.domain, l.country, l.industry, l.functions].some((v) => String(v).toLowerCase().includes(q)),
+      [l.email, l.company, l.domain, l.country, l.industry, l.functions, l.source].some((v) =>
+        String(v).toLowerCase().includes(q),
+      ),
     );
   }, [leads, query]);
 
@@ -225,6 +231,7 @@ export default function AdminPage() {
                 <th className="px-4 py-3 font-medium">Company</th>
                 <th className="px-4 py-3 font-medium">Industry</th>
                 <th className="px-4 py-3 font-medium">Country</th>
+                <th className="px-4 py-3 font-medium">Source</th>
                 <th className="px-4 py-3 font-medium">Functions</th>
                 <th className="px-4 py-3 font-medium">Maturity</th>
                 <th className="px-4 py-3 text-right font-medium">Agents</th>
@@ -244,6 +251,7 @@ export default function AdminPage() {
                   <td className="px-4 py-3 text-muted">{l.company || "—"}</td>
                   <td className="px-4 py-3 text-muted">{l.industry || "—"}</td>
                   <td className="px-4 py-3 text-muted">{l.country || "—"}</td>
+                  <td className="px-4 py-3 text-muted">{l.source || "direct"}</td>
                   <td className="px-4 py-3 text-muted">
                     {l.functions ? l.functions.split("|").map(funcLabel).join(", ") : "—"}
                   </td>
@@ -264,7 +272,7 @@ export default function AdminPage() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-4 py-16 text-center text-sm text-faint">
+                  <td colSpan={11} className="px-4 py-16 text-center text-sm text-faint">
                     {leads && leads.length ? "No signups match your search." : "No signups yet."}
                   </td>
                 </tr>
@@ -343,6 +351,32 @@ function LeadDetail({ record, loading, onClose }: { record: FullRecord | null; l
               >
                 Open their roadmap <ArrowRight className="h-4 w-4" />
               </a>
+
+              <Group title="Activity (lifetime)">
+                <Row k="Screens visited" v={record.activity?.screens?.length ? record.activity.screens.join(", ") : "—"} />
+                <Row
+                  k="Blueprints viewed"
+                  v={record.activity?.blueprints?.length ? record.activity.blueprints.join(", ") : "none"}
+                />
+                <Row
+                  k="UTM / source"
+                  v={
+                    record.activity && Object.keys(record.activity.utm ?? {}).length
+                      ? Object.entries(record.activity.utm)
+                          .map(([k, val]) => `${k.replace(/^utm_/, "")}=${val}`)
+                          .join(" · ")
+                      : record.activity?.referrer
+                        ? `referrer: ${record.activity.referrer}`
+                        : "direct / unknown"
+                  }
+                />
+                {record.activity && (
+                  <Row
+                    k="Seen"
+                    v={`${fmtDate(new Date(record.activity.firstSeen).toISOString())} → ${fmtDate(new Date(record.activity.lastSeen).toISOString())}`}
+                  />
+                )}
+              </Group>
 
               <Group title="Profile">
                 <Row k="Company" v={q.company.name} />

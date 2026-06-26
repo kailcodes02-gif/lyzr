@@ -9,6 +9,7 @@ import { OpportunityDrawer, OpportunityBlueprint, DevBoardTab, DemandTab } from 
 import { ValuesShownProvider, useValuesShown } from "@/components/value-context";
 import { cn, formatUSD } from "@/lib/utils";
 import { buildAssessment, DEEPEN, DIMENSIONS, EXTRA_USE_CASES, FUNCTIONS, sizeMult } from "@/lib/content";
+import { trackScreen, trackBlueprint, syncActivity } from "@/lib/activity";
 import { LANE_META, SHORT, dimColor } from "@/lib/display";
 import type { Assessment, DimensionId, IntakeData, Lane, Opportunity } from "@/lib/types";
 
@@ -61,10 +62,13 @@ export default function RoadmapPage() {
   const [booting, setBooting] = useState(false);
   const [bootMinDone, setBootMinDone] = useState(false);
   const [tab, setTabState] = useState<Tab>("Scorecard");
-  // Switching tabs should always land at the top, not mid-scroll.
+  // Switching tabs should always land at the top, not mid-scroll. Also record the
+  // visited screen (lifetime, deduped) and sync it for this session.
   const setTab = (t: Tab) => {
     setTabState(t);
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+    trackScreen(t);
+    syncActivity(sessionId);
   };
   const [selected, setSelected] = useState<Opportunity | null>(null);
   // Which hero stat is expanded into a breakdown (null = none).
@@ -175,6 +179,13 @@ export default function RoadmapPage() {
     } catch {
       /* ignore */
     }
+  }, [sessionId]);
+
+  // Mark the roadmap visited and flush the lifetime activity once we have a session.
+  useEffect(() => {
+    if (!sessionId) return;
+    trackScreen("roadmap");
+    syncActivity(sessionId);
   }, [sessionId]);
 
   // Browser-back guard: keep refs of the current view so the popstate handler
@@ -527,6 +538,10 @@ export default function RoadmapPage() {
         opp={selected}
         onClose={() => setSelected(null)}
         onViewBlueprint={() => {
+          if (selected) {
+            trackBlueprint(selected.name);
+            syncActivity(sessionId);
+          }
           setBlueprintOpp(selected);
           setSelected(null);
           if (typeof window !== "undefined") window.scrollTo({ top: 0 });

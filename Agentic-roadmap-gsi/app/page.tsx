@@ -3,6 +3,7 @@ import { ArrowRight, Building2, Compass, Sparkles, Target } from "lucide-react";
 import { Logo, Eyebrow, Card, Pill } from "@/components/ui";
 import { ResumeLink } from "@/components/resume";
 import { LiveNow, SocialProof } from "@/components/social-proof";
+import { LandingTracker } from "@/components/landing-tracker";
 
 const ctaPrimary =
   "inline-flex h-12 items-center justify-center gap-2 rounded-full bg-ink px-6 text-[0.95rem] font-semibold text-white transition-all hover:bg-[#3a322c] shadow-[0_10px_24px_-14px_rgba(38,33,28,0.6)]";
@@ -42,13 +43,8 @@ export default function Home() {
       {/* nav */}
       <header className="flex items-center justify-between py-6">
         <Logo />
-        <div className="flex items-center gap-3">
-          <span className="hidden text-sm text-muted sm:inline">Agentic Roadmap</span>
-          <Link href="/onboarding" className="text-sm font-medium text-muted transition-colors hover:text-fg">
-            Talk to Lyzr
-          </Link>
-        </div>
       </header>
+      <LandingTracker />
 
       {/* hero */}
       <section className="grid items-center gap-10 pt-12 lg:grid-cols-[1.1fr_0.9fr] lg:pt-20">

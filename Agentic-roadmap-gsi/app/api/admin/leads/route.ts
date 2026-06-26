@@ -13,9 +13,19 @@ export const runtime = "nodejs";
  * `x-admin-token: <token>`, or `?token=<token>`. If ADMIN_TOKEN is unset the
  * endpoint is disabled (404) so it can never be left wide open by accident.
  */
+function hostOf(url?: string): string {
+  if (!url) return "";
+  try {
+    return new URL(url).host;
+  } catch {
+    return url.slice(0, 40);
+  }
+}
+
 function row(r: LeadRecord) {
   const q = r.intake?.quick;
   const a = r.assessment;
+  const act = r.activity;
   const industry = q?.company?.industry === "other" ? q?.company?.industryOther || "Other" : (q?.company?.industry ?? "");
   const nearTerm = a ? a.opportunities.filter((o) => o.lane !== "not_now").reduce((s, o) => s + o.annualValueUSD, 0) : 0;
   return {
@@ -35,6 +45,9 @@ function row(r: LeadRecord) {
     customRequests: (q?.customRequests ?? []).length,
     deepened: (r.intake?.completedDeepen ?? []).length,
     completedAssessment: a ? "yes" : "no",
+    source: act?.utm?.utm_source ?? hostOf(act?.referrer) ?? "",
+    screensVisited: act?.screens?.length ?? 0,
+    viewedBlueprint: (act?.blueprints?.length ?? 0) > 0 ? "yes" : "no",
     createdAt: new Date(r.createdAt).toISOString(),
     updatedAt: new Date(r.updatedAt).toISOString(),
     sessionId: r.id,

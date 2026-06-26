@@ -48,6 +48,16 @@ export interface IntakeData {
   completedDeepen: DimensionId[];
 }
 
+/** Lightweight first-party usage tracking (no external analytics). */
+export interface Activity {
+  screens: string[]; // deduped screens/tabs visited over the user's lifetime
+  blueprints: string[]; // deduped agent names whose blueprint was opened
+  utm: Record<string, string>; // first-touch UTM / click ids from the landing URL
+  referrer?: string; // first-touch document.referrer
+  firstSeen: number;
+  lastSeen: number;
+}
+
 export type DimStatus = "strong" | "developing" | "gap";
 
 export interface DimensionScore {
