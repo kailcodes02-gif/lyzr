@@ -399,6 +399,26 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-06-26, ai-roadmap (Agentic-roadmap-gsi): admin dashboard at /admin + deploy-target correction
+- **Admin dashboard** (`app/admin/page.tsx`, new): token-gated page listing every signup (email,
+  company, industry, country, functions, maturity, # agents, money saved, completed?, created) with
+  search + CSV export; click a row → drawer with their full intake answers + generated roadmap +
+  an "Open their roadmap" link (`/roadmap?s=<id>`).
+- **Enriched admin API** (`app/api/admin/leads/route.ts`): richer per-lead columns + a new
+  `?id=<sessionId>` mode returning the full `LeadRecord` (intake + assessment). Still gated by
+  `ADMIN_TOKEN` (unset → 404 disabled; wrong → 401). Reuses `getRecord`/`listRecords` from `lib/store.ts`.
+- Verified: `tsc` + `npm run build` clean; smoke test confirmed 401 without token, list + `?id=`
+  detail + CSV all work with the token.
+- **DEPLOY-TARGET CORRECTION (important):** the Agentic-roadmap-gsi **Next.js app is hosted on Vercel**
+  (`https://ai-roadmap-git-main-subs-3909s-projects.vercel.app`, project `ai-roadmap`, auto-deploys
+  from `main`), NOT the Cloudflare Pages `lyzr-work-os` project. The Cloudflare push deploys the static
+  root Work OS site (`lyzr.kailash-gm.com`), which only *iframes* the Vercel app (see the weekly
+  reports). So earlier Build Log lines saying the roadmap app "Deploys via Cloudflare Pages" describe
+  the static-site trigger, not where this app actually runs. `ADMIN_TOKEN` (and `ANTHROPIC_API_KEY`,
+  Upstash, etc.) live on the **Vercel** project — `ADMIN_TOKEN` is already set there (prod
+  `/api/admin/leads` returns 401, not 404). Admin URL: `…vercel.app/admin`.
+- Commit(s): pushed to `main` → Vercel auto-deploys the app; Cloudflare redeploys the static site.
+
 ### 2026-06-25, ai-roadmap (Agentic-roadmap-gsi): Industry "Other" → mandatory specify field
 - Onboarding step 0: choosing **Industry → Other** now reveals a required text box ("Which industry?").
   New `company.industryOther` on `QuickScan` (`lib/types.ts`) + `emptyIntake` default (`lib/content.ts`);
