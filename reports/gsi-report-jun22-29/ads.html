@@ -1,0 +1,904 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lyzr × White Path — GSI & SI Brand Awareness Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ECEAE3; --panel:#FBFAF6; --panel2:#F4F2EB;
+  --ink:#1A1A1E; --muted:#75736B; --faint:#9C998F;
+  --line:#DBD8CF; --line2:#E8E5DC;
+  --indigo:#312E6B; --indigo-soft:#E7E6F2; --indigo-mid:#5B57A6;
+  --ochre:#B57214; --ochre-soft:#F2E7D2;
+  --green:#2E7152; --green-soft:#DDEBE2;
+  --brick:#9E3B2E; --brick-soft:#F0DED9;
+  --disp:'Space Grotesk',sans-serif; --body:'Inter',sans-serif; --mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.wrap{max-width:1060px;margin:0 auto;padding:0 22px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+a{color:var(--indigo);text-decoration:none;border-bottom:1px solid var(--indigo-mid)}
+a:hover{color:var(--ochre);border-color:var(--ochre)}
+
+/* ---- masthead ---- */
+.top{border-bottom:1px solid var(--line);background:var(--panel)}
+.toprow{display:flex;justify-content:space-between;align-items:center;padding:14px 0;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.toprow b{color:var(--ink);font-weight:700}
+.mast{padding:54px 0 46px;border-bottom:1px solid var(--line)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--ochre);margin:0 0 18px}
+.mast h1{font-family:var(--disp);font-weight:600;font-size:clamp(30px,5.4vw,52px);line-height:1.04;letter-spacing:-.02em;margin:0 0 22px;max-width:18ch}
+.mast .lede{font-size:18px;line-height:1.55;max-width:62ch;color:#34332E;margin:0}
+.mast .lede b{color:var(--ink);font-weight:600}
+.metaline{display:flex;flex-wrap:wrap;gap:26px;margin-top:30px;font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.04em}
+.metaline span b{color:var(--ink);font-weight:500}
+
+/* ---- section scaffolding ---- */
+section{padding:52px 0;border-bottom:1px solid var(--line)}
+.shead{display:flex;align-items:baseline;gap:16px;margin:0 0 8px}
+.snum{font-family:var(--mono);font-size:13px;color:var(--ochre);font-weight:500;letter-spacing:.1em}
+.shead h2{font-family:var(--disp);font-weight:600;font-size:clamp(22px,3.2vw,30px);letter-spacing:-.015em;margin:0}
+.sdek{color:var(--muted);max-width:64ch;margin:0 0 30px;font-size:15px}
+
+/* ---- KPI grid ---- */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.kpi{background:var(--panel);padding:20px 18px}
+.kpi .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+.kpi .v{font-family:var(--disp);font-weight:600;font-size:27px;letter-spacing:-.01em;line-height:1}
+.kpi .v small{font-size:15px;color:var(--faint);font-weight:500}
+.kpi .s{font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:7px}
+.kpi.accent{background:var(--indigo);color:#fff}
+.kpi.accent .k,.kpi.accent .s{color:#B9B7DC}
+.kpi.accent .v small{color:#9D9ACB}
+
+/* ---- experiment cards ---- */
+.exgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.ex{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 20px 18px;position:relative;overflow:hidden}
+.ex::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--indigo-mid)}
+.ex.win::before{background:var(--green)} .ex.warn::before{background:var(--ochre)} .ex.fail::before{background:var(--brick)}
+.ex .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;display:inline-block;padding:3px 8px;border-radius:20px;margin-bottom:12px}
+.tag.t-win{background:var(--green-soft);color:var(--green)} .tag.t-warn{background:var(--ochre-soft);color:var(--ochre)}
+.tag.t-fail{background:var(--brick-soft);color:var(--brick)} .tag.t-neu{background:var(--indigo-soft);color:var(--indigo)}
+.ex h3{font-family:var(--disp);font-weight:600;font-size:18px;margin:0 0 4px}
+.ex .meta{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-bottom:14px}
+.ex .mini{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:13px}
+.ex .mini div{display:flex;flex-direction:column}
+.ex .mini .mk{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.ex .mini .mv{font-family:var(--mono);font-weight:700;font-size:16px}
+.ex p{margin:0;font-size:13.5px;color:#43423C;line-height:1.5}
+
+/* ---- efficiency map ---- */
+.mapwrap{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:26px 24px 18px}
+.mapwrap svg{width:100%;height:auto;display:block}
+.maplegend{display:flex;flex-wrap:wrap;gap:16px 26px;margin-top:18px;font-size:12.5px;color:var(--muted)}
+.maplegend b{color:var(--ink);font-weight:600}
+.dotk{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:middle}
+
+/* ---- tables ---- */
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.tbl th{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:right;padding:13px 14px;border-bottom:1px solid var(--line);font-weight:500;background:var(--panel2)}
+.tbl th:first-child{text-align:left}
+.tbl td{padding:12px 14px;border-bottom:1px solid var(--line2);text-align:right}
+.tbl td:first-child{text-align:left}
+.tbl tr:last-child td{border-bottom:none}
+.tbl .total td{background:var(--indigo-soft);font-weight:700;border-top:2px solid var(--indigo-mid)}
+.barcell{position:relative;min-width:74px}
+.bar{position:absolute;left:14px;bottom:6px;height:3px;background:var(--indigo-mid);border-radius:2px}
+.verdict{color:var(--muted);font-size:12.5px;text-align:left!important}
+.pill{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:20px;letter-spacing:.04em}
+.pill.good{background:var(--green-soft);color:var(--green)} .pill.mid{background:var(--ochre-soft);color:var(--ochre)} .pill.bad{background:var(--brick-soft);color:var(--brick)}
+
+/* ---- ledger (nested) ---- */
+.ledger{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.lhead,.lset,.lcr{display:grid;grid-template-columns:2.4fr .8fr .9fr .8fr .7fr .8fr;gap:8px;align-items:center;padding:11px 16px}
+.lhead{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:var(--panel2);border-bottom:1px solid var(--line)}
+.lhead span:first-child{text-align:left}.lhead span{text-align:right}
+.lset{border-bottom:1px solid var(--line2);cursor:pointer;transition:background .12s}
+.lset:hover{background:var(--panel2)}
+.lset .nm{font-weight:600;font-size:14px;display:flex;align-items:center;gap:9px}
+.lset .nm .chev{font-family:var(--mono);font-size:11px;color:var(--indigo-mid);transition:transform .15s;display:inline-block;width:10px}
+.lset.open .chev{transform:rotate(90deg)}
+.lset .catdot{width:7px;height:7px;border-radius:50%;flex:none}
+.lset>span:not(.nm){text-align:right;font-family:var(--mono);font-size:13px}
+.lcr{background:var(--panel2);border-bottom:1px solid var(--line2);font-size:12.5px;padding-top:8px;padding-bottom:8px}
+.lcr .nm{padding-left:30px;color:#43423C;display:flex;align-items:center;gap:8px}
+.lcr .nm .twig{color:var(--faint);font-family:var(--mono)}
+.lcr>span:not(.nm){text-align:right;font-family:var(--mono);font-size:12px;color:#43423C}
+.crbox{display:none}.crbox.show{display:block}
+/* messaging ledger: 7 columns */
+.mledger .lhead,.mledger .lset,.mledger .lcr{grid-template-columns:2.1fr .85fr .7fr .7fr .75fr .65fr .65fr .6fr}
+.leadpill{font-family:var(--mono);font-size:10px;padding:1px 7px;border-radius:20px;background:var(--green-soft);color:var(--green);font-weight:700}
+@media(max-width:860px){
+  .mledger .lhead,.mledger .lset,.mledger .lcr{grid-template-columns:1.5fr .8fr .7fr .6fr}
+  .mledger .lhead span:nth-child(4),.mledger .lset>span:nth-child(4),.mledger .lcr>span:nth-child(4),
+  .mledger .lhead span:nth-child(6),.mledger .lset>span:nth-child(6),.mledger .lcr>span:nth-child(6){display:none}
+}
+.lcr .lab{border-bottom:1px dotted var(--indigo-mid)}
+.zero{color:var(--brick)}
+.muted-mono{font-family:var(--mono);font-size:11px;color:var(--faint)}
+
+/* ---- asset scorecard ---- */
+.assets{display:flex;flex-direction:column;gap:10px}
+.asset{display:grid;grid-template-columns:30px 1.5fr 1fr 1.4fr;gap:16px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.asset .rank{font-family:var(--disp);font-weight:600;font-size:22px;color:var(--faint)}
+.asset .who h4{font-family:var(--disp);font-weight:600;font-size:16px;margin:0 0 3px}
+.asset .who .lp{font-family:var(--mono);font-size:11px}
+.asset .figs{display:flex;gap:16px}
+.asset .figs div{display:flex;flex-direction:column}
+.asset .figs .fk{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.asset .figs .fv{font-family:var(--mono);font-weight:700;font-size:15px}
+.asset .note{font-size:12.5px;color:#43423C;line-height:1.45}
+.asset.lead{border-color:var(--green);box-shadow:inset 3px 0 0 var(--green)}
+
+/* ---- pointers / learnings ---- */
+.learn{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.lcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 22px}
+.lcard h3{font-family:var(--disp);font-weight:600;font-size:16px;margin:0 0 14px;display:flex;align-items:center;gap:9px}
+.lcard h3 .ic{font-family:var(--mono);font-size:12px;color:var(--ochre)}
+.lcard ul{margin:0;padding:0;list-style:none}
+.lcard li{position:relative;padding:0 0 12px 20px;font-size:13.5px;line-height:1.5;color:#3A3933}
+.lcard li:last-child{padding-bottom:0}
+.lcard li::before{content:"→";position:absolute;left:0;top:0;color:var(--indigo-mid);font-family:var(--mono)}
+.lcard li b{color:var(--ink);font-weight:600}
+
+/* ---- strategy + reach grids ---- */
+.strat2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:8px}
+.reach2{display:grid;grid-template-columns:1fr 1fr;gap:30px}
+.audrow{display:grid;grid-template-columns:1.5fr 2.2fr 96px;gap:16px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line2)}
+.audrow:last-child{border-bottom:none}
+.audrow .an{font-size:13.5px;font-weight:500}
+.audrow .atrack{height:14px;background:var(--panel2);border-radius:4px;overflow:hidden;border:1px solid var(--line2)}
+.audrow .afill{display:block;height:100%;background:var(--indigo-mid);border-radius:4px}
+.audrow.big .afill{background:var(--green)}
+.audrow .amem{font-family:var(--mono);font-size:12px;text-align:right;line-height:1.3}
+.audrow .amem b{font-weight:700}
+.audrow .amatch{font-family:var(--mono);font-size:10px;color:var(--faint)}
+.threshold{font-family:var(--mono);font-size:10.5px;color:var(--green);margin-top:8px}
+.compbar{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line2)}
+.compbar:last-child{border-bottom:none}
+.compbar .cn{width:130px;font-size:13.5px;font-weight:500;flex:none}
+.compbar .ctrack{flex:1;height:20px;background:var(--panel2);border-radius:4px;overflow:hidden;position:relative;border:1px solid var(--line2)}
+.compbar .cfill{height:100%;background:var(--indigo);display:flex;align-items:center;padding-left:8px;color:#fff;font-family:var(--mono);font-size:10.5px}
+.compbar.lead .cfill{background:var(--ochre)}
+.compbar .cclk{font-family:var(--mono);font-size:12px;width:96px;text-align:right;flex:none;color:var(--muted)}
+.compbar .cclk b{color:var(--ink);font-weight:700}
+/* ---- recommendations ---- */
+.recs{counter-reset:r;display:flex;flex-direction:column;gap:12px}
+.rec{display:grid;grid-template-columns:46px 1fr;gap:18px;align-items:start;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px}
+.rec::before{counter-increment:r;content:counter(r,decimal-leading-zero);font-family:var(--mono);font-weight:700;font-size:18px;color:var(--ochre)}
+.rec h3{font-family:var(--disp);font-weight:600;font-size:16px;margin:0 0 4px}
+.rec p{margin:0;font-size:13.5px;color:#43423C}
+
+/* ---- callout ---- */
+.call{background:var(--indigo);color:#EDECF7;border-radius:12px;padding:24px 26px;margin-top:6px}
+.call .ct{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#9D9ACB;margin:0 0 10px}
+.call p{margin:0;font-size:15.5px;line-height:1.55}
+.call p b{color:#fff;font-weight:600}
+
+.foot{padding:30px 0 60px;font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.04em}
+.foot b{color:var(--muted)}
+.caveat{font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:14px;line-height:1.6}
+.subhead{font-family:var(--disp);font-weight:600;font-size:18px;margin:30px 0 4px}
+.splitbar{margin:20px 0 4px}
+.splitbar .track{display:flex;height:30px;border-radius:7px;overflow:hidden;border:1px solid var(--line)}
+.splitbar .seg{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10.5px;color:#fff;white-space:nowrap;overflow:hidden}
+.splitbar .lg{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.splitbar .lg b{color:var(--ink)}
+.splitbar .lg .sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:middle}
+
+@media(max-width:860px){
+  .strat2,.reach2{grid-template-columns:1fr;gap:14px}
+  .compbar .cn{width:96px}
+  .audrow{grid-template-columns:1.2fr 1.6fr 70px}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .exgrid,.learn{grid-template-columns:1fr}
+  .asset{grid-template-columns:24px 1fr;row-gap:12px}.asset .figs{grid-column:1/-1}.asset .note{grid-column:1/-1}
+  .lhead,.lset,.lcr{grid-template-columns:1.6fr .8fr .7fr .7fr;font-size:12px}
+  .lhead span:nth-child(4),.lset>span:nth-child(4),.lcr>span:nth-child(4),
+  .lhead span:nth-child(6),.lset>span:nth-child(6),.lcr>span:nth-child(6){display:none}
+  .rec{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="top"><div class="wrap toprow">
+  <span><b>Lyzr</b> Ad Account · GSI &amp; SI</span>
+  <span>Prepared by <b>White Path</b></span>
+</div></div>
+
+<header class="mast"><div class="wrap">
+  <p class="eyebrow">GSI &amp; SI Campaign · Performance &amp; Experiment Report</p>
+  <h1>What we tested, what worked, and what it cost.</h1>
+  <p class="lede">Across an <b>11-day flight on LinkedIn</b>, we executed a structured testing roadmap spanning <b>brand awareness</b> and <b>lead generation</b> for Lyzr's GSI &amp; SI motion. Targeting, creative, and budget allocation were iterated in sequence to drive down delivery costs and isolate the highest-efficiency audience–creative combinations. This report documents every test, the full budget reconciliation, and the performance each layer returned.</p>
+  <div class="metaline">
+    <span><b>Window</b> &nbsp;Jun 8 – Jun 19, 2026</span>
+    <span><b>Objectives</b> &nbsp;Awareness · Lead Gen · Messaging</span>
+    <span><b>Total invested</b> &nbsp;$3,019</span>
+    <span><b>Ad sets run</b> &nbsp;29</span>
+  </div>
+</div></header>
+
+<main class="wrap">
+
+<!-- 01 SNAPSHOT -->
+<section id="snapshot">
+  <div class="shead"><span class="snum">01</span><h2>The snapshot</h2></div>
+  <p class="sdek">Full-funnel spend and outcomes across the flight. The allocation below reconciles the entire budget across awareness and lead generation — 29 ad sets, four campaign objectives.</p>
+  <div class="kpis" id="kpiGrid"></div>
+  <div class="splitbar" id="splitBar"></div>
+  <p class="caveat" id="reachNote"></p>
+</section>
+
+<!-- 02 EXPERIMENTS -->
+<section id="experiments">
+  <div class="shead"><span class="snum">02</span><h2>What we experimented with</h2></div>
+  <p class="sdek">The flight was structured as a sequence of controlled tests, each informing the next. Five distinct approaches were taken to market across awareness and lead generation.</p>
+  <div class="exgrid" id="exGrid"></div>
+</section>
+
+<!-- 03 EFFICIENCY MAP -->
+<section id="map">
+  <div class="shead"><span class="snum">03</span><h2>The efficiency map</h2></div>
+  <p class="sdek">Each targeting approach plotted by engagement (click rate, vertical) against delivery efficiency (cost per 1,000 impressions, horizontal). The upper-right quadrant is the optimal zone — high engagement at low cost. The trajectory from small custom lists toward pooled native audiences is the core efficiency story of the flight.</p>
+  <div class="mapwrap"><div id="mapSvg"></div>
+    <div class="maplegend">
+      <span><span class="dotk" style="background:#9E3B2E"></span><b>Small custom lists</b> — engaging but very expensive</span>
+      <span><span class="dotk" style="background:#B57214"></span><b>Native targeting</b> — most engaging, mid cost</span>
+      <span><span class="dotk" style="background:#5B57A6"></span><b>Combined custom</b> — balanced</span>
+      <span><span class="dotk" style="background:#2E7152"></span><b>Combined native</b> — cheapest reach at scale</span>
+    </div>
+  </div>
+</section>
+
+<!-- 04 TARGETING SCORECARD -->
+<section id="scorecard">
+  <div class="shead"><span class="snum">04</span><h2>Targeting scorecard</h2></div>
+  <p class="sdek">The four awareness targeting approaches, benchmarked side by side. CTR measures engagement; CPM measures the cost to deliver 1,000 impressions.</p>
+  <table class="tbl" id="catTbl"></table>
+</section>
+
+<!-- 05 AUDIENCE & BUDGET STRATEGY -->
+<section id="strategy">
+  <div class="shead"><span class="snum">05</span><h2>Audience strategy &amp; budget allocation</h2></div>
+  <p class="sdek">Two levers drove the efficiency gains: how budget was paced by objective, and a deliberate migration from uploaded custom lists to seniority-based native targeting once list economics proved unworkable at scale.</p>
+
+  <div class="strat2">
+    <div class="lcard"><h3><span class="ic">$</span> Budget pacing by objective</h3><ul>
+      <li><b>Brand awareness — $20–40 / day per ad set.</b> Daily budgets were set against audience size, then re-weighted toward the best-performing campaigns as delivery signal matured.</li>
+      <li><b>Conversation ads — $50–70 / day per ad set.</b> Sponsored Messaging send delivery is budget-gated: the LinkedIn delivery system scales send volume with spend, so a higher daily floor is required to grow sends and opens.</li>
+      <li><b>Reallocation discipline.</b> Underperforming custom-list and playbook sets were paused and their budget redeployed to the audiences clearing the auction efficiently.</li>
+    </ul></div>
+    <div class="lcard"><h3><span class="ic">⇄</span> Custom → native migration</h3><ul>
+      <li><b>Custom lists ran hot.</b> Match-rate-adjusted list sizes were small (see below), thinning the auction and inflating CPMs to $190–450.</li>
+      <li><b>Conversation ads → native, grouped in pairs</b> at the MD-1 / MD-2 seniority tier — <b>Group 1: Accenture (AU + Nordic) + Fujitsu</b>; <b>Group 2: KPMG + TCS</b> — to build the audience scale send delivery requires.</li>
+      <li><b>Brand awareness → native by seniority</b>, targeting MD-1 / MD-2-equivalent job titles mapped to the same GSI &amp; SI accounts.</li>
+    </ul></div>
+  </div>
+
+  <h3 class="subhead">Custom-list audience sizes (post-upload, match-adjusted)</h3>
+  <p class="sdek" style="margin-bottom:16px">The CPM story in one view. Only Kaushik cleared the ~5,000-member threshold where LinkedIn delivery becomes efficient; every other list was small enough to command a premium — which is precisely why we migrated to native.</p>
+  <div id="audSizes"></div>
+</section>
+<section id="leadgen">
+  <div class="shead"><span class="snum">06</span><h2>Lead generation: what we tried</h2></div>
+  <p class="sdek">Three lead-generation approaches ran in parallel with awareness. Sponsored Messaging achieved strong open rates against senior decision-makers, with conversion concentrated in a single native-targeted segment.</p>
+
+  <div class="exgrid" id="lgCards" style="margin-bottom:26px"></div>
+
+  <h3 class="subhead">The two messaging campaigns, ad set by ad set</h3>
+  <p class="sdek" style="margin-bottom:16px">Sponsored Messaging delivers a direct message from a sending profile (Jessica or Ani). The relevant metrics are open rate (inbox penetration), clicks (CTA performance), and leads (conversion). Select a campaign to expand its ad sets.</p>
+  <div class="ledger" id="msgLedger"></div>
+  <p class="caveat">Personas: <b>Jessica</b> and <b>Ani</b> are the sending profiles. "Native" = LinkedIn attribute-based targeting; "Custom" = uploaded lists. The single lead originated from <b>Ani · Accenture · Native</b>.</p>
+
+  <h3 class="subhead">Job titles reached — by persona &amp; audience</h3>
+  <p class="sdek" style="margin-bottom:16px">Delivery confirmed the seniority targeting worked: sends concentrated on Managing Director and Associate Director profiles — the MD-1 / MD-2 decision-maker tier the campaign was built to reach.</p>
+  <table class="tbl" id="msgTitleTbl"></table>
+
+
+</section>
+
+<!-- 06 SPEND LEDGER -->
+<section id="ledger">
+  <div class="shead"><span class="snum">07</span><h2>The full spend ledger</h2></div>
+  <p class="sdek">Complete budget reconciliation, top to bottom. Select any ad set to expand its creative-level allocation and performance. Sorted by spend within each targeting group.</p>
+  <div class="ledger" id="ledgerBox"></div>
+  <p class="caveat">Select an ad-set row to expand its creatives. Figures are flight totals for Jun 8–19. Creative-level reach is omitted, as LinkedIn reports it only partially at the ad level.</p>
+</section>
+
+<!-- 07 CREATIVE SCORECARD -->
+<section id="creatives">
+  <div class="shead"><span class="snum">08</span><h2>Creative performance</h2></div>
+  <p class="sdek">These six assets ran across the pooled (combined) audiences — the cleanest read on creative, as each competed for the same impressions. Ranked by clicks. Each title links to its destination page.</p>
+  <div class="assets" id="assetBox"></div>
+
+  <h3 class="subhead" style="margin-top:34px">Creative audience reach — by creative</h3>
+  <p class="sdek" style="margin-bottom:14px">Job titles and regions each creative reached. Select a creative to expand its demographic breakdown.</p>
+  <div id="creativeAccordion" style="display:flex;flex-direction:column;gap:10px;margin-top:4px"></div>
+
+  <h3 class="subhead" style="margin-top:34px">Asset × company split</h3>
+  <p class="sdek" style="margin-bottom:14px">Which creative ran against which target company and how it performed — directly comparable against the reach breakdown above.</p>
+  <div style="overflow-x:auto">
+    <table class="tbl" id="acTbl"></table>
+  </div>
+</section>
+
+<section id="reached">
+  <div class="shead"><span class="snum">09</span><h2>Who we reached &amp; who engaged</h2></div>
+  <p class="sdek">Demographic delivery across the brand-awareness ad sets confirms the campaign reached and engaged the intended GSI &amp; SI decision-makers — concentrated at the right seniority and the priority target accounts.</p>
+
+  <div class="reach2">
+    <div>
+      <h3 class="subhead">By seniority — who clicked</h3>
+      <p class="sdek" style="margin-bottom:14px">Director-level profiles produced the highest click share, confirming engagement skewed senior rather than broad.</p>
+      <table class="tbl" id="awTitleTbl"></table>
+    </div>
+    <div>
+      <h3 class="subhead">By company — engagement leaders</h3>
+      <p class="sdek" style="margin-bottom:14px"><b>Accenture led decisively</b> on both reach and engagement, followed by <b>KPMG</b> and <b>Fujitsu</b> — the core priority accounts for the GSI &amp; SI motion.</p>
+      <div id="awCompanyBox"></div>
+    </div>
+  </div>
+  <h3 class="subhead" style="margin-top:34px">Reach vs. contacts — by company</h3>
+  <p class="sdek" style="margin-bottom:16px">Program-wide reach mapped against the combined uploaded contacts. Contacts aggregate every list per account; the total reflects the full combined audience of 11,953 contacts across all lists, against program-wide reach across all campaigns. Where native targeting was layered (Accenture, KPMG), estimated reach extended well beyond the seed list; custom-only accounts (Fujitsu, TCS) under-penetrated. Per-company reach ≈ impressions ÷ blended frequency (1.72×), as LinkedIn does not report unique reach at company level.</p>
+  <table class="tbl" id="rvcTbl"></table>
+</section>
+
+<!-- 09B CROSS-TAB -->
+<section id="crosstab">
+  <div class="shead"><span class="snum">09B</span><h2>Geography × Seniority × Audience</h2></div>
+  <p class="sdek" style="margin-bottom:6px">How reach and engagement distributed across geography and seniority for each target audience. Accenture is broken out by native vs. custom targeting since the two routes reached different geographies and seniority mixes. Figures are from LinkedIn Professional Demographics; clicks below reporting minimum shown as <span style="color:#9CA3AF">—</span>.</p>
+
+  <div id="xtabWrap" style="display:flex;flex-direction:column;gap:12px;margin-top:18px"></div>
+</section>
+
+<!-- 10 LEARNINGS -->
+<section id="learnings" style="border-bottom:none">
+  <div class="shead"><span class="snum">10</span><h2>What we learned</h2></div>
+  <p class="sdek">Consolidated takeaways across audiences, creative, budget, and conversion.</p>
+  <div class="lcard" style="margin-top:18px">
+    <ul>
+      <li><b>Audience pool size is the primary CPM lever.</b> Custom lists below ~800 match-adjusted members pushed CPMs to <b>$190–$450</b>. The only efficient custom list (Kaushik, 7,695 members) cleared at <b>$22 CPM</b>. Pooling into combined sets compressed cost further — the combined-native set delivered at <b>$18 CPM</b>, roughly 5× cheaper than small lists.</li>
+      <li><b>Native targeting outperformed custom lists on every efficiency metric.</b> Attribute-based native sets produced the strongest CTR and the only qualified lead. Combined-native optimises cost and volume; native-only optimises engagement.</li>
+      <li><b>NTT Data and Accenture creatives anchored performance.</b> NTT Data-1 drove the highest click volume (32 clicks). The Accenture creative led on click rate (1.63% pooled; 3.35% standalone) — named-account social proof consistently outperformed generic category messaging. Playbook units contributed 31 combined awareness clicks.</li>
+      <li><b>Geography signal is clear.</b> India dominated impression volume, but Australia delivered 2.08–3.41% CTR on Playbook-1 and the Accenture creative. UK and Australia showed the strongest open rates in messaging (47–58%).</li>
+      <li><b>Conversation ads confirmed inbox access to the right seniority.</b> Managing Director and Associate Director received the majority of sends. Open rates of 38% (peaking at 57%) confirm delivery is working — but 0% click-to-open means the CTA is the gap, not targeting.</li>
+      <li><b>Ani outperformed Jessica across every conversion metric.</b> Ani delivered more sends, more opens, and the program's only qualified lead (Ani · Accenture · Native). Jessica's India-native sets were the weakest performers (17–24% open rate).</li>
+      <li><b>Budget dispersal across too many campaigns diluted impact.</b> Running awareness, playbook lead-gen, conversation ads, and website-visit messaging in parallel prevented any single objective from reaching the spend threshold needed to convert.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="nextmonth" style="border-bottom:none">
+  <div class="shead"><span class="snum">11</span><h2>Next month — campaign optimisation plan</h2></div>
+  <p class="sdek">Based on what the data showed, here is how we recommend restructuring the campaign for July to drive qualified leads.</p>
+
+  <div class="lcard" style="margin-top:18px;border-top:3px solid #4F46E5">
+    <ul>
+      <li><b>Concentrate ~80% of budget on conversation ads — lead-gen form only.</b> The single qualified lead came from Ani · Accenture · Native via a lead-gen form. Pause website-visit messaging (booking demo page returned 0 clicks) and redirect that budget entirely to the lead-gen form objective.</li>
+      <li><b>Increase daily budget to $80–$120 per ad set.</b> Sponsored Messaging delivery is spend-gated. Current budgets were too low to generate consistent send volume. A $80–$120 daily floor is required to drive meaningful sends and build pipeline, especially in markets outside India where the single lead originated.</li>
+      <li><b>Prioritise Ani on native targeting and run at least 3 message variations.</b> Ani · Accenture · Native is the only converting segment — optimise this before scaling Jessica. Open rates are strong (38%) but click-to-open is 0%, so the message copy and offer need testing across the same audience simultaneously.</li>
+      <li><b>Allocate ~20% of budget to brand awareness on combined-native targeting.</b> Run one combined-native ad set at MD-1 / MD-2 seniority level targeting GSI &amp; SI job functions — this format delivered $18 CPM, the most efficient in the program. Retire all custom lists below 1,000 match-adjusted members.</li>
+      <li><b>Drive awareness traffic to playbooks, case studies, and the GSI &amp; SI landing page.</b> Playbook-1, Playbook-2, and the NTT Data and Accenture case study pages are the highest-intent destinations. Routing awareness clicks to these pages — rather than the homepage — increases the chance of a tracked conversion from an awareness impression.</li>
+      <li><b>Lead with NTT Data and Accenture creatives; retire zero-click units.</b> These two creative formats drove the strongest CTR. Retire "Why GSIs Are Building on Lyzr?", "Startup Onboarding, Automated", and other zero-click units. New creatives should follow the same named-account, outcome-led format.</li>
+    </ul>
+  </div>
+</section>
+
+<div class="foot">
+  <b>Lyzr × White Path</b> &nbsp;|&nbsp; GSI &amp; SI Performance &amp; Experiment Report &nbsp;|&nbsp; Jun 8–23, 2026 &nbsp;|&nbsp; Source: LinkedIn Campaign Manager
+</div>
+</main>
+
+<script id="DATA" type="application/json">{"totals":{"aw":{"spend":1194.94,"impr":28324,"clicks":235,"reach":16509,"ctr":0.83,"cpm":42.19,"cpc":5.08},"lg":{"spend":88.78,"impr":223,"clicks":0,"reach":180,"ctr":0.0,"cpm":398.12,"cpc":null},"program_spend":1120.95},"cats":[{"cat":"Custom","nsets":8,"spend":596.75,"impr":8406,"clicks":108,"reach":6528,"ctr":1.28,"cpm":70.99,"cpc":5.53},{"cat":"Native","nsets":2,"spend":163.8,"impr":2117,"clicks":23,"reach":1613,"ctr":1.09,"cpm":77.37,"cpc":7.12},{"cat":"Combined-Custom","nsets":2,"spend":220.72,"impr":5942,"clicks":46,"reach":1864,"ctr":0.77,"cpm":37.15,"cpc":4.8},{"cat":"Combined-Native","nsets":1,"spend":213.67,"impr":11859,"clicks":58,"reach":6504,"ctr":0.49,"cpm":18.02,"cpc":3.68}],"sets":[{"id":783805224,"name":"WP|Accenture AU List |Playbook|Brand awareness - Jun 8, 2026","display":"Accenture AU List","cat":"Custom","budget":17.0,"start":"6/8/2026","spend":22.39,"impr":115,"clicks":3,"reach":108,"ctr":2.61,"cpm":194.7,"cpc":7.46,"creatives":[{"spend":22.39,"impr":115,"clicks":3,"reach":108,"ctr":2.61,"cpm":194.7,"cpc":7.46,"label":"How to Take your Agents to production. (2).pdf","url":null}]},{"id":784104144,"name":"WP|Accenture AU List |GSI&SI|Brand awareness - Jun 8, 2026","display":"Accenture AU List","cat":"Custom","budget":17.0,"start":"6/8/2026","spend":63.08,"impr":278,"clicks":7,"reach":234,"ctr":2.52,"cpm":226.91,"cpc":9.01,"creatives":[{"spend":48.55,"impr":209,"clicks":7,"reach":196,"ctr":3.35,"cpm":232.3,"cpc":6.94,"label":"Why Accenture Chose Lyzr?","url":"https://www.lyzr.ai/case-studies/accenture/"},{"spend":14.53,"impr":69,"clicks":0,"reach":65,"ctr":0.0,"cpm":210.58,"cpc":null,"label":"Startup Onboarding, Automated","url":"https://www.lyzr.ai/blog/lyzr-agents-simplified-startup-onboarding-for-accenture/"}]},{"id":784402514,"name":"WP|Fujitsu Aud|GSI&SI|Brand awareness - Jun 8, 2026","display":"Fujitsu Aud","cat":"Custom","budget":16.5,"start":"6/8/2026","spend":79.87,"impr":292,"clicks":2,"reach":234,"ctr":0.68,"cpm":273.53,"cpc":39.94,"creatives":[{"spend":31.86,"impr":97,"clicks":1,"reach":94,"ctr":1.03,"cpm":328.45,"cpc":31.86,"label":"NTT Data-2","url":"https://www.lyzr.ai/case-studies/ntt-data/"},{"spend":19.91,"impr":82,"clicks":1,"reach":74,"ctr":1.22,"cpm":242.8,"cpc":19.91,"label":"Turn AI Agents into Production-Ready Systems","url":"https://www.lyzr.ai/playbook"},{"spend":28.1,"impr":113,"clicks":0,"reach":106,"ctr":0.0,"cpm":248.67,"cpc":null,"label":"NTT Data-1","url":"https://www.lyzr.ai/landing-pages/ai-in-financial-services/"}]},{"id":784403734,"name":"WP|Bharat List|GSI&SI|Brand awareness - Jun 8, 2026","display":"Bharat List","cat":"Custom","budget":15.5,"start":"6/8/2026","spend":77.74,"impr":325,"clicks":3,"reach":275,"ctr":0.92,"cpm":239.2,"cpc":25.91,"creatives":[{"spend":51.91,"impr":268,"clicks":2,"reach":250,"ctr":0.75,"cpm":193.69,"cpc":25.96,"label":"What are the Top GSIs Building on Lyzr?","url":"https://www.lyzr.ai/partners/"},{"spend":25.83,"impr":57,"clicks":1,"reach":56,"ctr":1.75,"cpm":453.16,"cpc":25.83,"label":"Build Faster with Lyzr","url":"https://www.lyzr.ai/partners/"}]},{"id":785203974,"name":"WP|KPMG Aud|GSI&SI|Brand awareness - Jun 8, 2026","display":"KPMG Aud","cat":"Custom","budget":15.0,"start":"6/8/2026","spend":56.51,"impr":549,"clicks":3,"reach":482,"ctr":0.55,"cpm":102.93,"cpc":18.84,"creatives":[{"spend":33.68,"impr":325,"clicks":3,"reach":325,"ctr":0.92,"cpm":103.63,"cpc":11.23,"label":"How Analysts Verify AI Outputs?","url":"https://www.lyzr.ai/playbook/analyst-army-starter-pack/"},{"spend":0.02,"impr":2,"clicks":0,"reach":0,"ctr":0.0,"cpm":10.0,"cpc":null,"label":"What are the Top GSIs Building on Lyzr?","url":"https://www.lyzr.ai/playbook/analyst-army-starter-pack/"},{"spend":22.81,"impr":222,"clicks":0,"reach":221,"ctr":0.0,"cpm":102.75,"cpc":null,"label":"Why GSIs Are Building on Lyzr?","url":"https://www.lyzr.ai/case-studies/global-bank-reimagined-customer-experience/"}]},{"id":785503824,"name":"WP|Kaushik List|GSI&SI|Brand awareness - Jun 8, 2026","display":"Kaushik List","cat":"Custom","budget":15.5,"start":"6/8/2026","spend":56.56,"impr":2565,"clicks":9,"reach":2210,"ctr":0.35,"cpm":22.05,"cpc":6.28,"creatives":[{"spend":38.74,"impr":1722,"clicks":7,"reach":1627,"ctr":0.41,"cpm":22.5,"cpc":5.53,"label":"What are the Top GSIs Building on Lyzr?","url":"https://www.lyzr.ai/state-of-ai-agents/"},{"spend":17.82,"impr":843,"clicks":2,"reach":823,"ctr":0.24,"cpm":21.14,"cpc":8.91,"label":"How Leading GSIs Scale AI?","url":"https://www.lyzr.ai/blog/gsi-new-copilot-ai-agents/"}]},{"id":785603824,"name":"WP|TCS List |GSI&SI|Brand awareness - Jun 8, 2026","display":"TCS List","cat":"Custom","budget":15.0,"start":"6/8/2026","spend":77.83,"impr":407,"clicks":6,"reach":373,"ctr":1.47,"cpm":191.23,"cpc":12.97,"creatives":[{"spend":24.1,"impr":147,"clicks":3,"reach":141,"ctr":2.04,"cpm":163.95,"cpc":8.03,"label":"Playbook-1 (Agents to Production)","url":"https://www.lyzr.ai/playbook/how-to-take-agents-to-production/"},{"spend":39.22,"impr":206,"clicks":3,"reach":202,"ctr":1.46,"cpm":190.39,"cpc":13.07,"label":"See What Sets Lyzr Apart","url":"https://www.lyzr.ai/case-studies"},{"spend":14.51,"impr":54,"clicks":0,"reach":53,"ctr":0.0,"cpm":268.7,"cpc":null,"label":"NTT Data-2","url":"https://www.lyzr.ai/case-studies/ntt-data/"}]},{"id":792603884,"name":"WP|Fujitsu Aud|Native|GSI&SI|Brand awareness - Jun 12, 2026","display":"Fujitsu Aud","cat":"Native","budget":16.5,"start":"6/12/2026","spend":82.68,"impr":317,"clicks":8,"reach":286,"ctr":2.52,"cpm":260.82,"cpc":10.34,"creatives":[{"spend":38.14,"impr":136,"clicks":6,"reach":133,"ctr":4.41,"cpm":280.44,"cpc":6.36,"label":"NTT Data-2","url":"https://www.lyzr.ai/case-studies/ntt-data/"},{"spend":39.7,"impr":155,"clicks":2,"reach":152,"ctr":1.29,"cpm":256.13,"cpc":19.85,"label":"Turn AI Agents into Production-Ready Systems","url":"https://www.lyzr.ai/playbook"},{"spend":4.84,"impr":26,"clicks":0,"reach":26,"ctr":0.0,"cpm":186.15,"cpc":null,"label":"NTT Data-1","url":"https://www.lyzr.ai/landing-pages/ai-in-financial-services/"}]},{"id":794005254,"name":"WP|KPMG Aud|Native|GSI&SI|Brand awareness - Jun 12, 2026","display":"KPMG Aud","cat":"Native","budget":16.5,"start":"6/13/2026","spend":81.12,"impr":1800,"clicks":15,"reach":1327,"ctr":0.83,"cpm":45.07,"cpc":5.41,"creatives":[{"spend":43.47,"impr":921,"clicks":12,"reach":851,"ctr":1.3,"cpm":47.2,"cpc":3.62,"label":"NTT Data-1","url":"https://www.lyzr.ai/landing-pages/ai-in-financial-services/"},{"spend":20.67,"impr":457,"clicks":2,"reach":435,"ctr":0.44,"cpm":45.23,"cpc":10.34,"label":"NTT Data-2","url":"https://www.lyzr.ai/case-studies/ntt-data/"},{"spend":16.98,"impr":422,"clicks":1,"reach":400,"ctr":0.24,"cpm":40.24,"cpc":16.98,"label":"Turn AI Agents into Production-Ready Systems","url":"https://www.lyzr.ai/playbook"}]},{"id":795304114,"name":"Combined Company|Native|brand awareness- 15 June'26","display":"Combined Company Native","cat":"Combined-Native","budget":40.0,"start":"6/15/2026","spend":213.67,"impr":11859,"clicks":58,"reach":6504,"ctr":0.49,"cpm":18.02,"cpc":3.68,"creatives":[{"spend":83.87,"impr":4692,"clicks":28,"reach":3393,"ctr":0.6,"cpm":17.88,"cpc":3.0,"label":"NTT Data-1","url":"https://www.lyzr.ai/landing-pages/ai-in-financial-services/"},{"spend":47.8,"impr":2638,"clicks":11,"reach":1900,"ctr":0.42,"cpm":18.12,"cpc":4.35,"label":"CB Insights","url":"https://www.lyzr.ai/gsi-si/"},{"spend":12.46,"impr":580,"clicks":9,"reach":0,"ctr":1.55,"cpm":21.48,"cpc":1.38,"label":"Accenture","url":"https://www.lyzr.ai/gsi-si/"},{"spend":36.51,"impr":1920,"clicks":6,"reach":1247,"ctr":0.31,"cpm":19.02,"cpc":6.09,"label":"NTT Data-2","url":"https://www.lyzr.ai/case-studies/ntt-data/"},{"spend":14.77,"impr":921,"clicks":3,"reach":664,"ctr":0.33,"cpm":16.04,"cpc":4.92,"label":"Playbook-2 (Agentic AI Roadmap)","url":"https://www.lyzr.ai/playbook/agentic-ai-roadmap/"},{"spend":18.26,"impr":1108,"clicks":1,"reach":705,"ctr":0.09,"cpm":16.48,"cpc":18.26,"label":"Playbook-1 (Agents to Production)","url":"https://www.lyzr.ai/playbook/how-to-take-agents-to-production/"}]},{"id":799400814,"name":"Combined Folks|Custom|brand awareness- 17 June'26","display":"Combined Folks Custom","cat":"Combined-Custom","budget":45.0,"start":"6/17/2026","spend":124.17,"impr":4248,"clicks":30,"reach":1385,"ctr":0.71,"cpm":29.23,"cpc":4.14,"creatives":[{"spend":42.3,"impr":1462,"clicks":14,"reach":683,"ctr":0.96,"cpm":28.93,"cpc":3.02,"label":"Playbook-2 (Agentic AI Roadmap)","url":"https://www.lyzr.ai/playbook/agentic-ai-roadmap/"},{"spend":38.06,"impr":1320,"clicks":9,"reach":625,"ctr":0.68,"cpm":28.83,"cpc":4.23,"label":"Playbook-1 (Agents to Production)","url":"https://www.lyzr.ai/playbook/how-to-take-agents-to-production/"},{"spend":14.11,"impr":506,"clicks":3,"reach":185,"ctr":0.59,"cpm":27.89,"cpc":4.7,"label":"CB Insights","url":"https://www.lyzr.ai/gsi-si/"},{"spend":7.15,"impr":221,"clicks":2,"reach":0,"ctr":0.9,"cpm":32.35,"cpc":3.58,"label":"Accenture","url":"https://www.lyzr.ai/gsi-si/"},{"spend":11.4,"impr":337,"clicks":2,"reach":0,"ctr":0.59,"cpm":33.83,"cpc":5.7,"label":"NTT Data-1","url":"https://www.lyzr.ai/landing-pages/ai-in-financial-services/"},{"spend":11.16,"impr":402,"clicks":0,"reach":235,"ctr":0.0,"cpm":27.76,"cpc":null,"label":"NTT Data-2","url":"https://www.lyzr.ai/case-studies/ntt-data/"}]},{"id":799700754,"name":"Combined Company|Custom|brand awareness- 17 June'26","display":"Combined Company Custom","cat":"Combined-Custom","budget":45.0,"start":"6/17/2026","spend":96.55,"impr":1694,"clicks":16,"reach":479,"ctr":0.94,"cpm":57.0,"cpc":6.03,"creatives":[{"spend":7.94,"impr":122,"clicks":4,"reach":0,"ctr":3.28,"cpm":65.08,"cpc":1.98,"label":"Accenture","url":"https://www.lyzr.ai/gsi-si/"},{"spend":29.36,"impr":519,"clicks":3,"reach":214,"ctr":0.58,"cpm":56.57,"cpc":9.79,"label":"CB Insights","url":"https://www.lyzr.ai/gsi-si/"},{"spend":17.74,"impr":320,"clicks":3,"reach":108,"ctr":0.94,"cpm":55.44,"cpc":5.91,"label":"NTT Data-2","url":"https://www.lyzr.ai/case-studies/ntt-data/"},{"spend":12.7,"impr":229,"clicks":2,"reach":75,"ctr":0.87,"cpm":55.46,"cpc":6.35,"label":"NTT Data-1","url":"https://www.lyzr.ai/landing-pages/ai-in-financial-services/"},{"spend":16.58,"impr":290,"clicks":2,"reach":149,"ctr":0.69,"cpm":57.17,"cpc":8.29,"label":"Playbook-1 (Agents to Production)","url":"https://www.lyzr.ai/playbook/how-to-take-agents-to-production/"},{"spend":12.22,"impr":214,"clicks":2,"reach":82,"ctr":0.93,"cpm":57.1,"cpc":6.11,"label":"Playbook-2 (Agentic AI Roadmap)","url":"https://www.lyzr.ai/playbook/agentic-ai-roadmap/"}]},{"id":796600034,"name":"Sri's Target List|Brandawareness|Image Ads-13 June'26","display":"SRI List","cat":"Custom","budget":0,"start":"6/8/2026","spend":162.77,"impr":3875,"clicks":75,"reach":2612,"ctr":1.94,"cpm":42.01,"cpc":2.17,"creatives":[{"label":"Accenture (Invest in Lyzr)","spend":105.74,"impr":2366,"clicks":48,"ctr":2.03,"cpm":44.69,"url":"https://www.lyzr.ai/blog/gsi-building-on-lyzr"},{"label":"CB Insights","spend":57.03,"impr":1509,"clicks":27,"ctr":1.79,"cpm":37.79,"url":"https://www.lyzr.ai/partners/"}]}],"assets":[{"spend":107.97,"impr":5258,"clicks":32,"reach":3468,"ctr":0.61,"cpm":20.53,"cpc":3.37,"label":"NTT Data-1","url":"https://www.lyzr.ai/landing-pages/ai-in-financial-services/"},{"spend":69.29,"impr":2597,"clicks":19,"reach":1429,"ctr":0.73,"cpm":26.68,"cpc":3.65,"label":"Playbook-2 (Agentic AI Roadmap)","url":"https://www.lyzr.ai/playbook/agentic-ai-roadmap/"},{"spend":91.27,"impr":3663,"clicks":17,"reach":2299,"ctr":0.46,"cpm":24.92,"cpc":5.37,"label":"CB Insights","url":"https://www.lyzr.ai/gsi-si/"},{"spend":27.55,"impr":923,"clicks":15,"reach":0,"ctr":1.63,"cpm":29.85,"cpc":1.84,"label":"Accenture","url":"https://www.lyzr.ai/gsi-si/"},{"spend":72.9,"impr":2718,"clicks":12,"reach":1479,"ctr":0.44,"cpm":26.82,"cpc":6.08,"label":"Playbook-1 (Agents to Production)","url":"https://www.lyzr.ai/playbook/how-to-take-agents-to-production/"},{"spend":65.41,"impr":2642,"clicks":9,"reach":1590,"ctr":0.34,"cpm":24.76,"cpc":7.27,"label":"NTT Data-2","url":"https://www.lyzr.ai/case-studies/ntt-data/"}],"leadgen":{"sets":[{"name":"WP|Accenture AU List |Playbook- Jun 8, 2026","display":"Accenture AU List","spend":49.93,"impr":125,"clicks":0,"reach":97,"ctr":0.0,"cpm":399.44,"cpc":null,"leads":0,"start":"6/9/2026"},{"name":"WP|TCS list|Playbook- 9 June'26","display":"TCS list","spend":38.85,"impr":98,"clicks":0,"reach":83,"ctr":0.0,"cpm":396.43,"cpc":null,"leads":0,"start":"6/9/2026"}],"total":{"spend":88.78,"impr":223,"clicks":0,"reach":180,"ctr":0.0,"cpm":398.12,"cpc":null},"leads":0},"msg":{"conv":{"kind":"Conversation Lead-Gen","campaign":"GSI & SI Lead Gen|Conversion","sets":[{"id":798901354,"persona":"Jessica","aud":"Accenture","tgt":"Native","disp":"Jessica \u00b7 Accenture \u00b7 Native","spend":234.32,"sends":59,"opens":22,"openrate":37.3,"clicks":0,"leads":0,"cpo":10.65,"start":"6/17/2026"},{"id":799501284,"persona":"Ani","aud":"Accenture","tgt":"Native","disp":"Ani \u00b7 Accenture \u00b7 Native","spend":222.2,"sends":102,"opens":40,"openrate":39.2,"clicks":2,"leads":1,"cpo":5.56,"start":"6/17/2026"},{"id":784601754,"persona":"Ani","aud":"Accenture","tgt":"Custom","disp":"Ani \u00b7 Accenture \u00b7 Custom","spend":151.49,"sends":29,"opens":11,"openrate":37.9,"clicks":0,"leads":0,"cpo":13.77,"start":"6/10/2026"},{"id":797401694,"persona":"Ani","aud":"Accenture","tgt":"Custom","disp":"Ani \u00b7 Accenture \u00b7 Custom","spend":139.46,"sends":14,"opens":8,"openrate":57.1,"clicks":0,"leads":0,"cpo":17.43,"start":"6/15/2026"},{"id":797301924,"persona":"Jessica","aud":"Accenture","tgt":"Custom","disp":"Jessica \u00b7 Accenture \u00b7 Custom","spend":137.69,"sends":13,"opens":7,"openrate":53.8,"clicks":0,"leads":0,"cpo":19.67,"start":"6/15/2026"},{"id":798005124,"persona":"Ani","aud":"India","tgt":"Custom","disp":"Ani \u00b7 India \u00b7 Custom","spend":108.92,"sends":35,"opens":11,"openrate":31.4,"clicks":0,"leads":0,"cpo":9.9,"start":"6/18/2026"},{"id":798505174,"persona":"Jessica","aud":"India","tgt":"Custom","disp":"Jessica \u00b7 India \u00b7 Custom","spend":91.87,"sends":17,"opens":3,"openrate":17.6,"clicks":0,"leads":0,"cpo":30.62,"start":"6/18/2026"}],"total":{"spend":1085.95,"sends":269,"opens":102,"clicks":2,"leads":1,"openrate":37.9}},"web":{"kind":"Website-Visit Messaging","campaign":"GSI & SI Lead Gen| Website visits","sets":[{"id":799701504,"persona":"Ani","aud":"Accenture","tgt":"Native","disp":"Ani \u00b7 Accenture \u00b7 Native","spend":168.7,"sends":57,"opens":22,"openrate":38.6,"clicks":0,"leads":0,"cpo":7.67,"start":"6/17/2026"},{"id":798801294,"persona":"Jessica","aud":"Accenture","tgt":"Native","disp":"Jessica \u00b7 Accenture \u00b7 Native","spend":162.96,"sends":60,"opens":20,"openrate":33.3,"clicks":0,"leads":0,"cpo":8.15,"start":"6/17/2026"},{"id":798805084,"persona":"Ani","aud":"India","tgt":"Native","disp":"Ani \u00b7 India \u00b7 Native","spend":97.46,"sends":26,"opens":6,"openrate":23.1,"clicks":0,"leads":0,"cpo":16.24,"start":"6/18/2026"},{"id":798005164,"persona":"Jessica","aud":"India","tgt":"Native","disp":"Jessica \u00b7 India \u00b7 Native","spend":97.17,"sends":33,"opens":8,"openrate":24.2,"clicks":0,"leads":0,"cpo":12.15,"start":"6/18/2026"},{"id":790301084,"persona":"Jessica","aud":"GSI&SI","tgt":"Custom","disp":"Jessica \u00b7 GSI&SI \u00b7 Custom","spend":71.74,"sends":12,"opens":5,"openrate":41.7,"clicks":0,"leads":0,"cpo":14.35,"start":"6/10/2026"},{"id":795802004,"persona":"Ani","aud":"GSI&SI","tgt":"Custom","disp":"Ani \u00b7 GSI&SI \u00b7 Custom","spend":29.33,"sends":4,"opens":0,"openrate":0.0,"clicks":0,"leads":0,"cpo":null,"start":"6/16/2026"},{"id":795201974,"persona":"Jessica","aud":"GSI&SI","tgt":"Custom","disp":"Jessica \u00b7 GSI&SI \u00b7 Custom","spend":22.0,"sends":3,"opens":2,"openrate":66.7,"clicks":0,"leads":0,"cpo":11.0,"start":"6/16/2026"}],"total":{"spend":649.36,"sends":195,"opens":63,"clicks":0,"leads":0,"openrate":32.3}}},"program":{"spend":3019.03,"aw_spend":1194.94,"lg_spend":1824.09,"leads":1,"lg_breakdown":{"playbooks":88.78,"conversation":1085.95,"website":649.36},"cpl_conv":1085.95,"reach":17153,"reach_parts":{"awareness":16509,"playbooks":180,"conv_sends":269,"web_sends":195}},"audsizes":[{"name":"Kaushik Target List","members":7695,"match":"85%","big":true},{"name":"TCS India (Outbound+Ads)","members":835,"match":">90%"},{"name":"Fujitsu (Outbound+Ads)","members":749,"match":"70%"},{"name":"KPMG India (Outbound+Ads)","members":692,"match":"85%"},{"name":"Bharat SI Focused Leads","members":602,"match":"85%"},{"name":"Accenture Aus (Outbound+Ads)","members":421,"match":"85%"},{"name":"Accenture Aud \u2013 Conv Ads","members":399,"match":"85%"},{"name":"Pooja Target List","members":280,"match":"70%","lt":true},{"name":"Accenture Nordic (Outbound+Ads)","members":280,"match":"20%","lt":true}],"awTitles":[{"t":"Director","impr":1741,"imprp":7.12,"clk":18,"clkp":11.25},{"t":"Manager","impr":2917,"imprp":11.93,"clk":13,"clkp":8.13},{"t":"Senior Manager","impr":1982,"imprp":8.11,"clk":9,"clkp":5.63},{"t":"Associate Director","impr":1123,"imprp":4.59,"clk":9,"clkp":5.63},{"t":"Managing Director","impr":689,"imprp":2.82,"clk":8,"clkp":5.0}],"awCompanies":[{"c":"Accenture","impr":6571,"imprp":26.88,"clk":37,"clkp":23.13},{"c":"KPMG","impr":2999,"imprp":12.27,"clk":14,"clkp":8.75},{"c":"KPMG India","impr":1466,"imprp":6.0,"clk":13,"clkp":8.13},{"c":"Fujitsu","impr":770,"imprp":3.15,"clk":15,"clkp":9.38},{"c":"Tata Consultancy Services","impr":834,"imprp":3.41,"clk":7,"clkp":4.38}],"msgTitles":{"ani_accenture_native":{"titles":[{"t":"Managing Director","sends":42,"sendp":41.18,"opens":13,"openrate":30.95},{"t":"Associate Director","sends":28,"sendp":27.45,"opens":10,"openrate":35.71},{"t":"Principal Director","sends":3,"sendp":2.94,"opens":4,"openrate":133.33}],"regions":[{"r":"United Kingdom","sends":52,"sendp":50.98,"opens":21,"openrate":40.38},{"r":"India","sends":24,"sendp":23.53,"opens":10,"openrate":41.67},{"r":"Australia","sends":7,"sendp":6.86,"opens":3,"openrate":42.86}]},"ani_india_native":{"titles":[{"t":"India (native)","sends":26,"sendp":100,"opens":8,"openrate":30.77}],"regions":[{"r":"India","sends":26,"sendp":100,"opens":8,"openrate":30.77}]},"ani_custom":{"titles":[{"t":"Associate Director","sends":6,"sendp":13.95,"opens":3,"openrate":50}]},"jessica_accenture_native":{"titles":[{"t":"Managing Director","sends":28,"sendp":46.67,"opens":7,"openrate":25},{"t":"Associate Director","sends":17,"sendp":28.33,"opens":4,"openrate":23.53},{"t":"Senior Manager","sends":11,"sendp":18.33,"opens":5,"openrate":45.45}],"regions":[{"r":"United Kingdom","sends":23,"sendp":38.33,"opens":11,"openrate":47.83},{"r":"United States","sends":15,"sendp":25,"opens":4,"openrate":26.67},{"r":"Australia","sends":12,"sendp":20,"opens":6,"openrate":50}]},"jessica_india_native":{"titles":[{"t":"India (native)","sends":33,"sendp":100,"opens":8,"openrate":24.24}],"regions":[{"r":"India","sends":33,"sendp":100,"opens":8,"openrate":24.24}]},"jessica_conv_overall":{"titles":[{"t":"Managing Director","sends":37,"sendp":41.57,"opens":16,"openrate":43.24},{"t":"Associate Director","sends":14,"sendp":15.73,"opens":7,"openrate":50},{"t":"Senior Manager","sends":7,"sendp":7.87,"opens":4,"openrate":57.14}],"regions":[{"r":"India","sends":38,"sendp":42.7,"opens":12,"openrate":31.58},{"r":"United Kingdom","sends":21,"sendp":23.6,"opens":11,"openrate":52.38},{"r":"Australia","sends":12,"sendp":13.48,"opens":7,"openrate":58.33}]}},"reachVsContacts":{"rows":[{"c":"Accenture","contacts":1100,"impr":6571,"clk":37,"reach":3830},{"c":"KPMG","contacts":692,"impr":4465,"clk":27,"reach":2602},{"c":"Fujitsu","contacts":749,"impr":770,"clk":15,"reach":449},{"c":"TCS","contacts":835,"impr":834,"clk":7,"reach":486}],"total_contacts":11953,"total_reach":17153,"total_clicks":235},"blendedFreq":1.72}</script>
+<script>
+const D=JSON.parse(document.getElementById('DATA').textContent);
+const $=(s,el=document)=>el.querySelector(s);
+const usd=n=>'$'+Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const usd0=n=>'$'+Math.round(n).toLocaleString('en-US');
+const int=n=>Number(n).toLocaleString('en-US');
+const CATMETA={'Custom':{c:'#9E3B2E',label:'Small custom lists'},'Native':{c:'#B57214',label:'Native targeting'},'Combined-Custom':{c:'#5B57A6',label:'Combined · custom'},'Combined-Native':{c:'#2E7152',label:'Combined · native'}};
+
+/* KPIs */
+const aw=D.totals.aw, P=D.program;
+const kpis=[
+ {k:'Program spend',v:usd0(P.spend),s:'awareness + lead gen',a:1},
+ {k:'Awareness spend',v:usd0(P.aw_spend),s:'13 ad sets'},
+ {k:'People reached',v:'~'+int(P.reach),s:'all campaigns'},
+ {k:'Leads',v:int(P.leads),s:'Ani · native'},
+ {k:'Impressions',v:int(aw.impr),s:'awareness'},
+ {k:'Clicks',v:int(aw.clicks),s:'awareness'},
+ {k:'Click rate',v:aw.ctr+'<small>%</small>',s:'blended CTR'},
+ {k:'Cost / 1,000 views',v:'$'+aw.cpm,s:'blended CPM'}
+];
+$('#kpiGrid').innerHTML=kpis.map(x=>`<div class="kpi ${x.a?'accent':''}"><p class="k">${x.k}</p><div class="v num">${x.v}</div><div class="s">${x.s}</div></div>`).join('');
+$('#reachNote').textContent='Reach is additive across ad sets — the same person can sit in more than one audience, so ~13,900 reached is an upper bound, not unique people. Awareness CTR/CPM exclude messaging, which uses opens not impressions.';
+
+/* Split bar: where the money went */
+(function(){
+ const segs=[
+  {label:'Awareness',v:P.aw_spend,c:'#312E6B'},
+  {label:'Conversation',v:P.lg_breakdown.conversation,c:'#9E3B2E'},
+  {label:'Website msg',v:P.lg_breakdown.website,c:'#B57214'},
+  {label:'Playbooks',v:P.lg_breakdown.playbooks,c:'#75736B'}
+ ];
+ const tot=P.spend;
+ const track=segs.map(s=>`<div class="seg" style="width:${(s.v/tot*100).toFixed(1)}%;background:${s.c}" title="${s.label} ${usd(s.v)}">${s.v/tot>0.09?usd0(s.v):''}</div>`).join('');
+ const lg=segs.map(s=>`<span><span class="sw" style="background:${s.c}"></span>${s.label} <b>${usd0(s.v)}</b> · ${(s.v/tot*100).toFixed(0)}%</span>`).join('');
+ $('#splitBar').innerHTML=`<div class="track">${track}</div><div class="lg">${lg}</div>`;
+})();
+
+/* Experiments */
+const EX=[
+ {cat:'Custom',cls:'fail',tag:'t-fail',tg:'Expensive',name:'Small custom lists',meta:'7 ad sets · Jun 8 onward',copy:'Narrow named-account lists (Accenture, Fujitsu, KPMG, TCS, Bharat). Engaging, but tiny audiences meant LinkedIn charged a steep premium to reach them.'},
+ {cat:'Native',cls:'warn',tag:'t-warn',tg:'Most engaging',name:'Native targeting',meta:'2 ad sets · Jun 12 onward',copy:'Let LinkedIn target by role and company attributes instead of uploaded lists. Produced the best click rate of any approach.'},
+ {cat:'Combined-Custom',cls:'win',tag:'t-win',tg:'Best balance',name:'Combined custom lists',meta:'2 ad sets · Jun 17 onward',copy:'Merged the named-account lists into two larger pools. Cost dropped sharply while engagement held up — the sweet spot.'},
+ {cat:'Combined-Native',cls:'win',tag:'t-win',tg:'Cheapest reach',name:'Combined native',meta:'1 ad set · Jun 15 onward',copy:'A single large pooled-native set. Delivered nearly half of all impressions in the account at the lowest cost per view by far.'},
+ {cat:null,cls:'fail',tag:'t-fail',tg:'Cut early',name:'Lead-gen playbooks',meta:'2 ad sets · Jun 8–11 · paused',copy:'Two playbook ads with a lead-gen goal. Zero clicks, zero leads in 3 days — stopped, and budget moved to awareness.',custom:D.leadgen.total}
+];
+$('#exGrid').innerHTML=EX.map(e=>{
+ const m=e.custom?e.custom:D.cats.find(c=>c.cat===e.cat);
+ const mini=e.custom
+   ?`<div><span class="mk">Spend</span><span class="mv">${usd(m.spend)}</span></div><div><span class="mk">Clicks</span><span class="mv zero">0</span></div><div><span class="mk">Leads</span><span class="mv zero">0</span></div>`
+   :`<div><span class="mk">Spend</span><span class="mv">${usd(m.spend)}</span></div><div><span class="mk">CTR</span><span class="mv">${m.ctr}%</span></div><div><span class="mk">CPM</span><span class="mv">$${m.cpm}</span></div>`;
+ return `<div class="ex ${e.cls}"><span class="tag ${e.tag}">${e.tg}</span><h3>${e.name}</h3><div class="meta">${e.meta}</div><div class="mini">${mini}</div><p>${e.copy}</p></div>`;
+}).join('');
+
+/* Efficiency map */
+(function(){
+ const W=700,H=380,L=64,R=24,T=24,B=54;
+ const pts=D.cats.map(c=>({...c,...CATMETA[c.cat]}));
+ const cpm=pts.map(p=>p.cpm),ctr=pts.map(p=>p.ctr);
+ const xMin=0,xMax=110;           // CPM, reversed (cheap=right)
+ const yMin=0,yMax=1.25;          // CTR
+ const sx=v=>L+(1-(v-xMin)/(xMax-xMin))*(W-L-R);
+ const sy=v=>T+(1-(v-yMin)/(yMax-yMin))*(H-T-B);
+ const rad=s=>10+Math.sqrt(s)/2.0;
+ let g='';
+ // quadrant shading (top-right = cheap & engaging = ideal). cheap = low CPM = right side.
+ g+=`<rect x="${sx(50)}" y="${T}" width="${sx(0)-sx(50)}" height="${sy(0.55)-T}" fill="#2E7152" opacity="0.06"/>`;
+ g+=`<text x="${sx(2)}" y="${T+16}" font-family="JetBrains Mono" font-size="10" fill="#2E7152" text-anchor="end" opacity="0.85">IDEAL ◆ cheap &amp; engaging</text>`;
+ // gridlines
+ [0,25,50,75,100].forEach(v=>{g+=`<line x1="${sx(v)}" y1="${T}" x2="${sx(v)}" y2="${H-B}" stroke="#DBD8CF" stroke-width="1"/><text x="${sx(v)}" y="${H-B+18}" font-family="JetBrains Mono" font-size="10" fill="#9C998F" text-anchor="middle">$${v}</text>`;});
+ [0,.25,.5,.75,1,1.25].forEach(v=>{g+=`<line x1="${L}" y1="${sy(v)}" x2="${W-R}" y2="${sy(v)}" stroke="#E8E5DC" stroke-width="1"/><text x="${L-10}" y="${sy(v)+3}" font-family="JetBrains Mono" font-size="10" fill="#9C998F" text-anchor="end">${v}%</text>`;});
+ // axis titles
+ g+=`<text x="${L+(W-L-R)/2}" y="${H-6}" font-family="JetBrains Mono" font-size="10" fill="#75736B" text-anchor="middle" letter-spacing="1">COST PER 1,000 VIEWS  —  cheaper →</text>`;
+ g+=`<text transform="translate(16,${T+(H-T-B)/2}) rotate(-90)" font-family="JetBrains Mono" font-size="10" fill="#75736B" text-anchor="middle" letter-spacing="1">CLICK RATE  —  more engaging ↑</text>`;
+ // bubbles
+ pts.forEach(p=>{const x=sx(p.cpm),y=sy(p.ctr),r=rad(p.spend);
+  g+=`<circle cx="${x}" cy="${y}" r="${r}" fill="${p.c}" opacity="0.16"/><circle cx="${x}" cy="${y}" r="4" fill="${p.c}"/>`;
+  const mid=(L+(W-R))/2; const left = x>mid;
+  const lx = left ? x-r-6 : x+r+6; const anc = left?'end':'start';
+  g+=`<text x="${lx}" y="${y-3}" font-family="Space Grotesk" font-size="12.5" font-weight="600" fill="#1A1A1E" text-anchor="${anc}">${p.label}</text>`;
+  g+=`<text x="${lx}" y="${y+11}" font-family="JetBrains Mono" font-size="10" fill="#75736B" text-anchor="${anc}">${usd0(p.spend)} · ${int(p.impr)} impr</text>`;
+ });
+ $('#mapSvg').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Efficiency map: click rate versus cost per 1000 views">${g}</svg>`;
+})();
+
+/* Category scorecard */
+(function(){
+ const verdicts={'Custom':'Engaging clicks, but the priciest reach in the account. Best people, worst unit cost.','Native':'Highest click rate overall — strongest engagement. Mid-range cost.','Combined-Custom':'The balance winner: cheap reach and healthy engagement.','Combined-Native':'Cheapest reach by far and most volume — lighter on click rate.'};
+ const grade={'Custom':['bad','Costly'],'Native':['good','Engaging'],'Combined-Custom':['good','Balanced'],'Combined-Native':['mid','Volume']};
+ const maxCpm=Math.max(...D.cats.map(c=>c.cpm));
+ let rows=D.cats.map(c=>{
+   const bw=Math.round(c.cpm/maxCpm*60);
+   return `<tr><td><span style="display:inline-flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:${CATMETA[c.cat].c}"></span><b>${CATMETA[c.cat].label}</b></span></td>
+   <td class="num">${c.nsets}</td><td class="num">${usd(c.spend)}</td><td class="num">${int(c.impr)}</td><td class="num">${c.ctr}%</td>
+   <td class="num barcell">$${c.cpm}<span class="bar" style="width:${bw}px"></span></td>
+   <td><span class="pill ${grade[c.cat][0]}">${grade[c.cat][1]}</span></td>
+   <td class="verdict">${verdicts[c.cat]}</td></tr>`;
+ }).join('');
+ const tot=aw;
+ rows+=`<tr class="total"><td>All awareness</td><td class="num">13</td><td class="num">${usd(tot.spend)}</td><td class="num">${int(tot.impr)}</td><td class="num">${tot.ctr}%</td><td class="num">$${tot.cpm}</td><td></td><td class="verdict"></td></tr>`;
+ $('#catTbl').innerHTML=`<thead><tr><th>Approach</th><th>Sets</th><th>Spend</th><th>Impr.</th><th>CTR</th><th>CPM</th><th>Grade</th><th style="text-align:left">Verdict</th></tr></thead><tbody>${rows}</tbody>`;
+})();
+
+/* Lead-gen approach cards */
+(function(){
+ const conv=D.msg.conv.total, web=D.msg.web.total, pb=D.leadgen.total;
+ const cards=[
+  {tag:'t-warn',tg:'Opens, no clicks',name:'Conversation ads',meta:'7 ad sets · Jessica + Ani · paused',
+   mini:[['Spend',usd(conv.spend)],['Open rate',conv.openrate+'%'],['Leads',conv.leads,'green']],
+   copy:'DMs from real profiles to GSI &amp; SI targets. Strong open rates (~38%) but the click-through stalled — produced the program\u2019s only lead, from Ani on native targeting.'},
+  {tag:'t-fail',tg:'No result',name:'Website-visit messaging',meta:'7 ad sets · Accenture meeting page · paused',
+   mini:[['Spend',usd(web.spend)],['Open rate',web.openrate+'%'],['Clicks',web.clicks,'brick']],
+   copy:'DMs pushing people to an Accenture \u201cbook a meeting\u201d page. Opened fine (32%) but earned zero clicks — the booking CTA didn\u2019t convert.'},
+  {tag:'t-fail',tg:'Cut day 3',name:'Lead-gen playbooks',meta:'2 ad sets · Jun 8\u201311 · paused',
+   mini:[['Spend',usd(pb.spend)],['Clicks',pb.clicks,'brick'],['Leads','0','brick']],
+   copy:'Two single-image playbook ads with a lead-gen goal. Zero clicks, zero leads in three days — stopped fast, budget moved to awareness.'}
+ ];
+ $('#lgCards').innerHTML=cards.map(c=>{
+  const mini=c.mini.map(m=>`<div><span class="mk">${m[0]}</span><span class="mv ${m[2]==='brick'?'zero':''}" ${m[2]==='green'?'style="color:#2E7152"':''}>${m[1]}</span></div>`).join('');
+  return `<div class="ex ${c.tag==='t-warn'?'warn':'fail'}"><span class="tag ${c.tag}">${c.tg}</span><h3>${c.name}</h3><div class="meta">${c.meta}</div><div class="mini">${mini}</div><p>${c.copy}</p></div>`;
+ }).join('');
+})();
+
+/* Messaging dropdown ledger */
+(function(){
+ const box=$('#msgLedger'); box.classList.add('mledger');
+ const camps=[D.msg.conv,D.msg.web];
+ let html=`<div class="lhead"><span>Campaign / ad set</span><span>Spend</span><span>Sends</span><span>Opens</span><span>Open&nbsp;rate</span><span>Clicks</span><span>Cost/send</span><span>Leads</span></div>`;
+ camps.forEach((cm,i)=>{
+  const t=cm.total;
+  const kids=cm.sets.map(s=>{
+   const lead=s.leads>0?`<span class="leadpill">${s.leads}</span>`:`<span class="${s.leads?'':'muted-mono'}">0</span>`;
+   return `<div class="lcr"><span class="nm"><span class="twig">└</span>${s.disp}</span><span>${usd(s.spend)}</span><span>${int(s.sends)}</span><span>${int(s.opens)}</span><span>${s.openrate}%</span><span class="${s.clicks?'':'zero'}">${s.clicks}</span><span>${s.sends>0?usd((s.spend/s.sends).toFixed(2)):'-'}</span><span>${lead}</span></div>`;
+  }).join('');
+  const cc = i===0 ? '#9E3B2E' : '#B57214';
+  const leadTot = t.leads>0?`<span class="leadpill">${t.leads}</span>`:`<b>0</b>`;
+  html+=`<div class="lset" data-mi="${i}"><span class="nm"><span class="chev">▶</span><span class="catdot" style="background:${cc}"></span>${cm.campaign.replace('GSI & SI ','').replace('Lead Gen|','').trim()||cm.campaign} <span class="muted-mono">· ${cm.sets.length} sets</span></span><span>${usd(t.spend)}</span><span>${int(t.sends)}</span><span>${int(t.opens)}</span><span>${t.openrate}%</span><span>${t.clicks}</span><span>${t.sends>0?usd((t.spend/t.sends).toFixed(2)):'-'}</span><span>${leadTot}</span></div><div class="crbox" data-mbox="${i}">${kids}</div>`;
+ });
+ // grand total
+ const gs=D.msg.conv.total, gw=D.msg.web.total;
+ const tspend=usd(gs.spend+gw.spend), tsends=int(gs.sends+gw.sends), topens=int(gs.opens+gw.opens), tclk=gs.clicks+gw.clicks, tlead=gs.leads+gw.leads;
+ html+=`<div class="lset total" style="cursor:default"><span class="nm" style="padding-left:19px"><b>Messaging total · 14 ad sets</b></span><span><b>${tspend}</b></span><span><b>${tsends}</b></span><span><b>${topens}</b></span><span><b>${((gs.opens+gw.opens)/(gs.sends+gw.sends)*100).toFixed(1)}%</b></span><span><b>${tclk}</b></span><span><b>${usd(((gs.spend+gw.spend)/(gs.sends+gw.sends)).toFixed(2))}</b></span><span><b>${tlead}</b></span></div>`;
+ box.innerHTML=html;
+ box.querySelectorAll('.lset[data-mi]').forEach(row=>row.addEventListener('click',()=>{
+   const i=row.dataset.mi; row.classList.toggle('open'); box.querySelector(`[data-mbox="${i}"]`).classList.toggle('show');
+ }));
+ const f=box.querySelector('.lset[data-mi="0"]'); if(f){f.classList.add('open');box.querySelector('[data-mbox="0"]').classList.add('show');}
+})();
+
+/* Ledger (nested) */
+(function(){
+ const order={'Combined-Native':0,'Combined-Custom':1,'Native':2,'Custom':3};
+ const sets=[...D.sets].sort((a,b)=> (order[a.cat]-order[b.cat]) || (b.spend-a.spend));
+ let html=`<div class="lhead"><span>Ad set / creative</span><span>Spend</span><span>Impr.</span><span>Clicks</span><span>CTR</span><span>CPM</span></div>`;
+ sets.forEach((s,i)=>{
+  const dot=CATMETA[s.cat].c;
+  const crs=(s.creatives||[]).map(c=>{
+    const z=c.clicks===0?'zero':'';
+    const name=c.url?`<a class="lab" href="${c.url}" target="_blank" rel="noopener">${c.label}</a>`:`<span class="lab">${c.label}</span>`;
+    return `<div class="lcr"><span class="nm"><span class="twig">└</span>${name}</span><span>${usd(c.spend)}</span><span>${int(c.impr)}</span><span class="${z}">${c.clicks}</span><span>${c.ctr}%</span><span>$${c.cpm}</span></div>`;
+  }).join('');
+  html+=`<div class="lset" data-i="${i}"><span class="nm"><span class="chev">▶</span><span class="catdot" style="background:${dot}"></span>${s.display} <span class="muted-mono">· ${s.cat.replace('-',' ')}</span></span><span>${usd(s.spend)}</span><span>${int(s.impr)}</span><span>${s.clicks}</span><span>${s.ctr}%</span><span>$${s.cpm}</span></div><div class="crbox" data-box="${i}">${crs}</div>`;
+ });
+ // grand total
+ html+=`<div class="lset total" style="cursor:default"><span class="nm" style="padding-left:19px"><b>Awareness total · 13 ad sets</b></span><span><b>${usd(aw.spend)}</b></span><span><b>${int(aw.impr)}</b></span><span><b>${aw.clicks}</b></span><span><b>${aw.ctr}%</b></span><span><b>$${aw.cpm}</b></span></div>`;
+ const box=$('#ledgerBox'); box.innerHTML=html;
+ box.querySelectorAll('.lset[data-i]').forEach(row=>{
+   row.addEventListener('click',()=>{
+     const i=row.dataset.i; const b=box.querySelector(`[data-box="${i}"]`);
+     row.classList.toggle('open'); b.classList.toggle('show');
+   });
+ });
+ // open the top (best) set by default
+ const first=box.querySelector('.lset[data-i="0"]'); if(first){first.classList.add('open');box.querySelector('[data-box="0"]').classList.add('show');}
+})();
+
+/* Custom-list audience sizes */
+(function(){
+ if(!D.audsizes) return;
+ const max=Math.max(...D.audsizes.map(a=>a.members));
+ const rows=D.audsizes.map(a=>{
+  const w=Math.max(3,a.members/max*100);
+  const mem=(a.lt?'<':'')+int(a.members);
+  return `<div class="audrow ${a.big?'big':''}"><span class="an">${a.name}</span><span class="atrack"><span class="afill" style="width:${w}%"></span></span><span class="amem"><b>${mem}</b><br><span class="amatch">${a.match} match</span></span></div>`;
+ }).join('');
+ $('#audSizes').innerHTML=rows+`<div class="threshold">▰ Kaushik is the only list above the ~5,000-member efficiency threshold — and the only custom list to clear at a low CPM.</div>`;
+})();
+
+/* Messaging seniority table */
+(function(){
+ if(!D.msgTitles) return;
+ const mt=D.msgTitles;
+ const hdr=(label)=>`<thead><tr><th colspan="5" style="text-align:left;padding:10px 12px;background:#f8f7f4;border-bottom:1px solid #e8e4dc;border-top:2px solid #e8e4dc;font-size:13px;font-weight:600">${label}</th></tr></thead>`;
+ const titleRows=(rows)=>`<thead><tr><th>Job title</th><th>Sends</th><th>Send share</th><th>Opens</th><th>Open rate</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${r.t}</b></td><td class="num">${r.sends}</td><td class="num">${r.sendp}%</td><td class="num">${r.opens}</td><td class="num">${r.openrate}%</td></tr>`).join('')}</tbody>`;
+ const regionRows=(rows)=>`<thead><tr><th>Region</th><th>Sends</th><th>Send share</th><th>Opens</th><th>Open rate</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${r.r}</b></td><td class="num">${r.sends}</td><td class="num">${r.sendp}%</td><td class="num">${r.opens}</td><td class="num">${r.openrate}%</td></tr>`).join('')}</tbody>`;
+ $('#msgTitleTbl').innerHTML=`
+  ${hdr('Ani · Accenture Native — job titles reached')}${titleRows(mt.ani_accenture_native.titles)}
+  ${hdr('Ani · Accenture Native — regions reached')}${regionRows(mt.ani_accenture_native.regions)}
+  ${hdr('Ani · India Native — region reached')}${regionRows(mt.ani_india_native.regions)}
+  ${hdr('Ani · Custom (lead-gen form) — job titles reached')}${titleRows(mt.ani_custom.titles)}
+  ${hdr('Jessica · Accenture Native — job titles reached')}${titleRows(mt.jessica_accenture_native.titles)}
+  ${hdr('Jessica · Accenture Native — regions reached')}${regionRows(mt.jessica_accenture_native.regions)}
+  ${hdr('Jessica · India Native — region reached')}${regionRows(mt.jessica_india_native.regions)}
+  ${hdr('Jessica · Conversation Lead-Gen (overall) — job titles reached')}${titleRows(mt.jessica_conv_overall.titles)}
+  ${hdr('Jessica · Conversation Lead-Gen (overall) — regions reached')}${regionRows(mt.jessica_conv_overall.regions)}
+ `;
+})();
+
+/* Awareness job-title table */
+(function(){
+ if(!D.awTitles) return;
+ const rows=D.awTitles.map((t,i)=>`<tr><td><b>${t.t}</b></td><td class="num">${int(t.impr)} <span class="muted-mono">(${t.imprp}%)</span></td><td class="num">${t.clk} <span class="muted-mono">(${t.clkp}%)</span></td></tr>`).join('');
+ $('#awTitleTbl').innerHTML=`<thead><tr><th>Job title</th><th>Impressions</th><th>Clicks</th></tr></thead><tbody>${rows}</tbody>`;
+})();
+
+/* Awareness company engagement bars */
+(function(){
+ if(!D.awCompanies) return;
+ const max=Math.max(...D.awCompanies.map(c=>c.impr));
+ $('#awCompanyBox').innerHTML=D.awCompanies.map((c,i)=>{
+  const w=Math.max(8,c.impr/max*100);
+  return `<div class="compbar ${i===0?'lead':''}"><span class="cn">${c.c}</span><span class="ctrack"><span class="cfill" style="width:${w}%">${int(c.impr)}</span></span><span class="cclk"><b>${c.clk}</b> clicks</span></div>`;
+ }).join('');
+})();
+(function(){
+ const notes={
+  'NTT Data-1':'The workhorse. Biggest click driver in the program and one of the cheapest — the "80% fewer incidents" proof point landed.',
+  'Playbook-2 (Agentic AI Roadmap)':'Strong top-of-funnel pull. The roadmap lead-magnet angle earned solid clicks at low cost.',
+  'CB Insights':'Steady mid-pack performer across the pooled audiences. Reliable, not a standout.',
+  'Accenture':'Highest click rate of the six. Named-customer social proof clearly resonates — worth more variations.',
+  'Playbook-1 (Agents to Production)':'Decent volume from the "agents to production" angle. A dependable awareness asset.',
+  'NTT Data-2':'The case-study cut underperformed its sibling here — lowest click rate of the set.'
+ };
+ const short={'https://www.lyzr.ai/landing-pages/ai-in-financial-services/':'/ai-in-financial-services','https://www.lyzr.ai/case-studies/ntt-data/':'/case-studies/ntt-data','https://www.lyzr.ai/gsi-si/':'/gsi-si','https://www.lyzr.ai/playbook/how-to-take-agents-to-production/':'/playbook/agents-to-production','https://www.lyzr.ai/playbook/agentic-ai-roadmap/':'/playbook/agentic-ai-roadmap'};
+ $('#assetBox').innerHTML=D.assets.map((a,i)=>`
+   <div class="asset ${i===0?'lead':''}">
+     <span class="rank num">${i+1}</span>
+     <div class="who"><h4>${a.label}</h4><a class="lp num" href="${a.url}" target="_blank" rel="noopener">${short[a.url]||a.url} ↗</a></div>
+     <div class="figs">
+       <div><span class="fk">Clicks</span><span class="fv num">${a.clicks}</span></div>
+       <div><span class="fk">CTR</span><span class="fv num">${a.ctr}%</span></div>
+       <div><span class="fk">CPM</span><span class="fv num">$${a.cpm}</span></div>
+       <div><span class="fk">Spend</span><span class="fv num">${usd(a.spend)}</span></div>
+     </div>
+     <div class="note">${notes[a.label]||''}</div>
+   </div>`).join('');
+})();
+(function(){if(!D.reachVsContacts||!document.getElementById('rvcTbl'))return;
+ const RV=D.reachVsContacts;
+ const rows=RV.rows.map(r=>{const ra=Math.round(r.reach/r.contacts*100);const cls=ra>=100?'good':'mid';
+  return `<tr><td><b>${r.c}</b></td><td class="num">${int(r.contacts)}</td><td class="num">${int(r.impr)}</td><td class="num">~${int(r.reach)}</td><td class="num"><span class="pill ${cls}">${ra}%</span></td><td class="num">${r.clk}</td></tr>`;}).join('');
+  const tot=`<tr class="total"><td>All combined lists · all campaigns</td><td class="num">${int(RV.total_contacts)}</td><td class="num">—</td><td class="num">~${int(RV.total_reach)}</td><td class="num">—</td><td class="num">${RV.total_clicks}</td></tr>`;
+ document.getElementById('rvcTbl').innerHTML=`<thead><tr><th>Company</th><th>Contacts</th><th>Impressions</th><th>Est. reach</th><th>Reach ÷ contacts</th><th>Clicks</th></tr></thead><tbody>${rows}${tot}</tbody>`;
+})();
+
+/* NTT Data creative demographics */
+(function(){
+ const accent='#4F46E5', win='#0E9F6E';
+ const mkBar=(val,max,color,label,sub)=>`
+  <div style="margin-bottom:11px">
+   <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+    <span style="font-weight:600;color:#16181F">${label}</span><span style="color:#6B7280">${sub}</span>
+   </div>
+   <div style="background:#F3F4F6;border-radius:4px;height:8px;overflow:hidden">
+    <div style="background:${color};height:100%;width:${Math.round(val/max*100)}%;border-radius:4px"></div>
+   </div>
+  </div>`;
+ const bars=(items,keyFn,labelFn,subFn)=>{
+  const max=Math.max(...items.map(keyFn));
+  return items.map(i=>mkBar(keyFn(i),max,i.clk?win:accent,labelFn(i),subFn(i))).join('');
+ };
+ const creatives=[
+  {id:'cb',label:'CB Insights',note:'17 total clicks · 0.46% CTR · $91.27 spend.',
+   titles:[{t:'Manager',impr:965,clk:7,ctr:'0.73%'},{t:'Associate Director',impr:461,clk:3,ctr:'0.65%'},{t:'Senior Manager',impr:554,clk:null},{t:'Director',impr:586,clk:null},{t:'Managing Director',impr:187,clk:null},{t:'Mgr Mgmt Consulting',impr:187,clk:null},{t:'Consulting Specialist',impr:151,clk:null},{t:'Client Partner',impr:118,clk:null},{t:'Vice President',impr:48,clk:null},{t:'Technical Director',impr:44,clk:null}],
+   regions:[{r:'India',impr:4590,clk:19,ctr:'0.41%'},{r:'United Kingdom',impr:219,clk:null},{r:'Australia',impr:221,clk:null},{r:'Japan',impr:322,clk:null},{r:'United States',impr:160,clk:null},{r:'Spain',impr:90,clk:null},{r:'Germany',impr:87,clk:null},{r:'New Zealand',impr:29,clk:null}]},
+  {id:'ac',label:'Accenture invested in Lyzr',note:'15 total clicks · 1.63% CTR · $27.55 spend.',
+   titles:[{t:'Manager',impr:200,clk:null},{t:'Senior Manager',impr:176,clk:3,ctr:'1.7%'},{t:'Managing Director',impr:91,clk:null},{t:'Associate Director',impr:62,clk:null},{t:'Director',impr:51,clk:4,ctr:'7.84%'},{t:'Delivery Head',impr:38,clk:null},{t:'Program Director',impr:35,clk:null},{t:'Associate VP',impr:33,clk:null}],
+   regions:[{r:'India',impr:1006,clk:15,ctr:'1.49%'},{r:'Australia',impr:264,clk:9,ctr:'3.41%'},{r:'United Kingdom',impr:66,clk:null},{r:'United States',impr:39,clk:null},{r:'Spain',impr:34,clk:null},{r:'Japan',impr:27,clk:null},{r:'Germany',impr:25,clk:null},{r:'New Zealand',impr:14,clk:null}]},
+  {id:'ntt1',label:'NTT Data-1 (AI in Financial Services)',note:'32 total clicks · 0.61% CTR · $107.97 spend — highest click volume.',
+   titles:[{t:'Manager',impr:2321,clk:9,ctr:'0.39%'},{t:'Senior Manager',impr:1520,clk:8,ctr:'0.53%'},{t:'Director',impr:1024,clk:12,ctr:'1.17%'},{t:'Managing Director',impr:460,clk:4,ctr:'0.87%'},{t:'Mgr Mgmt Consulting',impr:438,clk:null},{t:'Consulting Specialist',impr:286,clk:null},{t:'Associate Director',impr:256,clk:null},{t:'App Dev Manager',impr:212,clk:null}],
+   regions:[{r:'India',impr:7272,clk:41,ctr:'0.56%'},{r:'United Kingdom',impr:453,clk:3,ctr:'0.66%'},{r:'Australia',impr:224,clk:4,ctr:'1.79%'},{r:'Spain',impr:197,clk:6,ctr:'3.05%'},{r:'Japan',impr:195,clk:3,ctr:'1.54%'},{r:'United States',impr:194,clk:null},{r:'Germany',impr:156,clk:null},{r:'Canada',impr:111,clk:null},{r:'UAE',impr:94,clk:null},{r:'Denmark',impr:71,clk:null}]},
+  {id:'ntt2',label:'NTT Data-2 (Case Study)',note:'9 total clicks · 0.34% CTR · $65.41 spend.',
+   titles:[{t:'Manager',impr:965,clk:null},{t:'Senior Manager',impr:554,clk:null},{t:'Director',impr:290,clk:null},{t:'Associate Director',impr:256,clk:null},{t:'Managing Director',impr:187,clk:null}],
+   regions:[{r:'India',impr:7272,clk:9,ctr:'0.34%'},{r:'United Kingdom',impr:219,clk:null},{r:'Australia',impr:166,clk:null},{r:'Japan',impr:138,clk:null},{r:'United States',impr:135,clk:null}]},
+  {id:'pb1',label:'Playbook-1 — Agents to Production',note:'12 total clicks · 0.44% CTR · $72.90 spend.',
+   titles:[{t:'Manager',impr:414,clk:null},{t:'Associate Director',impr:365,clk:null},{t:'Senior Manager',impr:269,clk:null},{t:'Director',impr:201,clk:null},{t:'Managing Director',impr:116,clk:null},{t:'Client Partner',impr:103,clk:null},{t:'Associate VP',impr:77,clk:null},{t:'Mgr Mgmt Consulting',impr:76,clk:null},{t:'Consulting Specialist',impr:71,clk:null},{t:'Senior Director',impr:59,clk:null},{t:'Vice President',impr:43,clk:null},{t:'Delivery Specialist',impr:38,clk:null}],
+   regions:[{r:'India',impr:3106,clk:12,ctr:'0.39%'},{r:'Australia',impr:192,clk:4,ctr:'2.08%'},{r:'United States',impr:109,clk:null},{r:'United Kingdom',impr:58,clk:null},{r:'Spain',impr:44,clk:null},{r:'UAE',impr:29,clk:null},{r:'Japan',impr:27,clk:null}]},
+  {id:'pb2',label:'Playbook-2 — Agentic AI Roadmap',note:'19 total clicks · 0.73% CTR · $69.29 spend.',
+   titles:[{t:'Manager',impr:350,clk:null},{t:'Senior Manager',impr:230,clk:null},{t:'Associate Director',impr:189,clk:null},{t:'Director',impr:139,clk:null},{t:'Managing Director',impr:89,clk:null},{t:'Client Partner',impr:76,clk:null},{t:'Mgr Mgmt Consulting',impr:73,clk:null},{t:'Consulting Specialist',impr:66,clk:null},{t:'Senior Director',impr:45,clk:null},{t:'Founder',impr:40,clk:null}],
+   regions:[{r:'India',impr:2200,clk:18,ctr:'0.82%'},{r:'Australia',impr:129,clk:null},{r:'United States',impr:90,clk:null},{r:'United Kingdom',impr:57,clk:null},{r:'Spain',impr:39,clk:null},{r:'Japan',impr:28,clk:null},{r:'UAE',impr:24,clk:null}]}
+ ];
+ const box=document.getElementById('creativeAccordion');
+ if(!box) return;
+ creatives.forEach((cr,idx)=>{
+  const wrap=document.createElement('div');
+  wrap.style.cssText='border:1px solid var(--line,#E6E8EC);border-radius:12px;overflow:hidden;background:#fff';
+  const titleBars=bars(cr.titles,t=>t.impr,t=>t.t,t=>t.clk?`${t.impr.toLocaleString()} impr · ${t.clk} clicks${t.ctr?' · '+t.ctr:''}`:`${t.impr.toLocaleString()} impr`);
+  const regionBars=bars(cr.regions,r=>r.impr,r=>r.r,r=>r.clk?`${r.impr.toLocaleString()} impr · ${r.clk} clicks${r.ctr?' · '+r.ctr:''}`:`${r.impr.toLocaleString()} impr`);
+  wrap.innerHTML=`
+   <button onclick="(function(b){const d=b.parentNode.querySelector('.cdtl');const a=b.querySelector('.carr');const open=d.style.maxHeight!=='0px'&&d.style.maxHeight!=='';d.style.maxHeight=open?'0px':'2000px';d.style.opacity=open?'0':'1';a.style.transform=open?'':'rotate(180deg)';b.querySelector('.clbl').textContent=open?'View breakdown':'Hide breakdown';})(this)"
+    style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 20px;background:transparent;border:none;cursor:pointer;text-align:left;border-bottom:1px solid transparent;font-family:inherit">
+    <span style="font-family:var(--display,'Space Grotesk',sans-serif);font-weight:600;font-size:15px;flex:1;color:#16181F">${cr.label}</span>
+    <span class="clbl" style="font-size:12px;font-weight:600;color:#4F46E5;white-space:nowrap">View breakdown</span>
+    <span class="carr" style="font-size:11px;color:#4F46E5;transition:transform .25s">▾</span>
+   </button>
+   <div class="cdtl" style="max-height:0px;opacity:0;overflow:hidden;transition:max-height .4s ease,opacity .3s ease">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:18px 20px 20px">
+     <div><h4 style="font-size:12px;font-weight:600;color:#3A3F4A;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">By job title</h4>${titleBars}</div>
+     <div><h4 style="font-size:12px;font-weight:600;color:#3A3F4A;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">By region</h4>${regionBars}</div>
+    </div>
+    <p style="font-size:11.5px;color:#6B7280;font-style:italic;padding:0 20px 14px">Green bars = confirmed clicks. Clicks below reporting minimum shown as impression-only.</p>
+   </div>`;
+  box.appendChild(wrap);
+ });
+})();
+
+/* Asset × company split */
+(function(){
+ const tbl=document.getElementById('acTbl');
+ if(!tbl) return;
+ const rows=[
+  // KPMG Native
+  {co:'KPMG',tgt:'Native',creative:'Enterprise AI, Governed (NTT Data-1)',spend:'$43.47',impr:921,clk:12,ctr:'1.30%',hi:false},
+  {co:'KPMG',tgt:'Native',creative:'Govern Multi-Agent AI at Scale (NTT Data-2)',spend:'$20.67',impr:457,clk:2,ctr:'0.44%',hi:false},
+  {co:'KPMG',tgt:'Native',creative:'Turn AI Agents into Production-Ready Systems (CB Insights)',spend:'$16.98',impr:422,clk:1,ctr:'0.24%',hi:false},
+  // Accenture AU Custom
+  {co:'Accenture AU',tgt:'Custom',creative:'Why Accenture Chose Lyzr?',spend:'$48.55',impr:209,clk:7,ctr:'3.35%',hi:true},
+  {co:'Accenture AU',tgt:'Custom',creative:'Startup Onboarding, Automated',spend:'$14.53',impr:69,clk:0,ctr:'0%',hi:false},
+  {co:'Accenture AU',tgt:'Custom',creative:'How Accenture Accelerated Startup Onboarding',spend:'—',impr:null,clk:null,ctr:'—',hi:false},
+  // Fujitsu Custom
+  {co:'Fujitsu',tgt:'Custom',creative:'Turn AI Agents into Production-Ready Systems (CB Insights)',spend:'$19.91',impr:82,clk:1,ctr:'1.22%',hi:false},
+  {co:'Fujitsu',tgt:'Custom',creative:'Govern Multi-Agent AI at Scale (NTT Data-2)',spend:'$19.72',impr:38,clk:1,ctr:'2.63%',hi:false},
+  {co:'Fujitsu',tgt:'Custom',creative:'Enterprise AI, Governed (NTT Data-1)',spend:'$12.34',impr:25,clk:0,ctr:'0%',hi:false},
+  // Fujitsu Native
+  {co:'Fujitsu',tgt:'Native',creative:'Govern Multi-Agent AI at Scale (NTT Data-2)',spend:'$38.14',impr:136,clk:6,ctr:'4.41%',hi:true},
+  {co:'Fujitsu',tgt:'Native',creative:'Turn AI Agents into Production-Ready Systems (CB Insights)',spend:'$39.70',impr:155,clk:2,ctr:'1.29%',hi:false},
+  {co:'Fujitsu',tgt:'Native',creative:'Enterprise AI, Governed (NTT Data-1)',spend:'$4.84',impr:26,clk:0,ctr:'0%',hi:false},
+  // Bharat List
+  {co:'Bharat List',tgt:'Custom',creative:'What are the Top GSIs Building on Lyzr? (CB Insights)',spend:'$24.26',impr:110,clk:2,ctr:'1.82%',hi:false},
+  {co:'Bharat List',tgt:'Custom',creative:'Build Faster with Lyzr',spend:'$25.82',impr:57,clk:1,ctr:'1.75%',hi:false},
+  {co:'Bharat List',tgt:'Custom',creative:'What are the Top GSIs Building on Lyzr? (paused)',spend:'$27.66',impr:158,clk:0,ctr:'0%',hi:false},
+  // Kaushik List
+  {co:'Kaushik List',tgt:'Custom',creative:'What are the Top GSIs Building on Lyzr? (CB Insights)',spend:'$38.74',impr:1722,clk:7,ctr:'0.41%',hi:false},
+  {co:'Kaushik List',tgt:'Custom',creative:'How Leading GSIs Scale AI',spend:'$17.82',impr:843,clk:2,ctr:'0.24%',hi:false},
+  // TCS List
+  {co:'TCS',tgt:'Custom',creative:'See What Sets Lyzr Apart (Accenture)',spend:'$39.22',impr:206,clk:3,ctr:'1.46%',hi:false},
+  {co:'TCS',tgt:'Custom',creative:'The Enterprise Guide to AI Agents (Accenture)',spend:'$24.09',impr:147,clk:3,ctr:'2.04%',hi:true},
+  {co:'TCS',tgt:'Custom',creative:'How NTT Data Reduced Incidents?',spend:'$14.52',impr:54,clk:0,ctr:'0%',hi:false},
+ ];
+
+ /* group by company then render as accordion cards with bars */
+ const companies=[...new Set(rows.map(r=>r.co))];
+ const maxCtr=Math.max(...rows.filter(r=>r.ctr&&r.ctr!=='—').map(r=>parseFloat(r.ctr)));
+ const maxImpr=Math.max(...rows.filter(r=>r.impr).map(r=>r.impr));
+ const tgtCol={Native:'#3D5A8A',Custom:'#B45309'};
+ const tgtBg={Native:'#EDF1F7',Custom:'#FBF1E3'};
+ const accent='#4F46E5', win='#0E9F6E';
+
+ const mkBar=(val,max,color,label,sub,badge)=>`
+  <div style="margin-bottom:10px">
+   <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:4px;gap:8px">
+    <span style="font-weight:600;color:#16181F;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${label}">${label}</span>
+    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+     ${badge?`<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:${tgtBg[badge]||'#F3F4F6'};color:${tgtCol[badge]||'#6B7280'}">${badge}</span>`:''}
+     <span style="color:#6B7280;white-space:nowrap">${sub}</span>
+    </div>
+   </div>
+   <div style="background:#F3F4F6;border-radius:4px;height:8px;overflow:hidden">
+    <div style="background:${color};height:100%;width:${max>0?Math.round(val/max*100):0}%;border-radius:4px"></div>
+   </div>
+  </div>`;
+
+ tbl.style.display='none'; // hide old table, use div instead
+ const wrap=document.createElement('div');
+ wrap.style.cssText='display:flex;flex-direction:column;gap:10px';
+ tbl.parentNode.insertBefore(wrap,tbl);
+
+ companies.forEach(co=>{
+  const coRows=rows.filter(r=>r.co===co);
+  const totalClk=coRows.reduce((s,r)=>s+(r.clk||0),0);
+  const totalImpr=coRows.reduce((s,r)=>s+(r.impr||0),0);
+  const bestRow=coRows.filter(r=>r.clk>0).sort((a,b)=>parseFloat(b.ctr)-parseFloat(a.ctr))[0];
+  const channels=[...new Set(coRows.map(r=>r.tgt))];
+
+  const card=document.createElement('div');
+  card.style.cssText='border:1px solid var(--line,#E6E8EC);border-radius:14px;overflow:hidden;background:#fff';
+
+  const barsHTML=coRows.map(r=>{
+   const ctrVal=r.ctr&&r.ctr!=='—'?parseFloat(r.ctr):0;
+   const color=ctrVal>=3?win:ctrVal>=1?accent:'#CBD5E1';
+   return mkBar(ctrVal,maxCtr,color,
+    r.creative,
+    r.clk!=null?`${r.clk} clicks · ${r.ctr}`:r.impr?`${r.impr.toLocaleString()} impr · no clicks`:'no delivery',
+    r.tgt);
+  }).join('');
+
+  card.innerHTML=`
+   <button onclick="(function(b){const d=b.parentNode.querySelector('.acdet');const a=b.querySelector('.acarr');const lbl=b.querySelector('.aclbl');const open=d.style.maxHeight!=='0px'&&d.style.maxHeight!=='';d.style.maxHeight=open?'0px':'2000px';d.style.opacity=open?'0':'1';a.style.transform=open?'':'rotate(180deg)';lbl.textContent=open?'View breakdown':'Hide breakdown';})(this)"
+    style="display:flex;align-items:center;gap:14px;width:100%;padding:14px 20px;background:transparent;border:none;cursor:pointer;text-align:left;font-family:inherit;border-bottom:1px solid transparent">
+    <div style="flex:1;min-width:0">
+     <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+      <span style="font-family:var(--display,'Space Grotesk',sans-serif);font-weight:700;font-size:15px;color:#16181F">${co}</span>
+      ${channels.map(c=>`<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;background:${tgtBg[c]||'#F3F4F6'};color:${tgtCol[c]||'#6B7280'}">${c}</span>`).join('')}
+     </div>
+     <div style="font-size:12px;color:#6B7280">${totalImpr.toLocaleString()} impr · ${totalClk} clicks${bestRow?` · best: <b style="color:#16181F">${bestRow.creative.split('(')[0].trim()}</b> at <b style="color:#0E9F6E">${bestRow.ctr}</b>`:''}</div>
+    </div>
+    <span class="aclbl" style="font-size:12px;font-weight:600;color:#4F46E5;white-space:nowrap">View breakdown</span>
+    <span class="acarr" style="font-size:11px;color:#4F46E5;transition:transform .25s">▾</span>
+   </button>
+   <div class="acdet" style="max-height:0px;opacity:0;overflow:hidden;transition:max-height .4s ease,opacity .3s ease">
+    <div style="padding:16px 20px 20px">
+     <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9CA3AF;margin-bottom:12px">CTR by creative — bars scaled to highest CTR (${maxCtr.toFixed(2)}%)</div>
+     ${barsHTML}
+     <p style="font-size:11.5px;color:#9CA3AF;font-style:italic;margin-top:8px">Green ≥ 3% · Indigo ≥ 1% · Grey = no clicks. Badge shows targeting type.</p>
+    </div>
+   </div>`;
+  wrap.appendChild(card);
+ });
+})();
+
+/* Geography × Seniority × Audience cross-tab */
+(function(){
+ const wrap=document.getElementById('xtabWrap');
+ if(!wrap) return;
+ const win='color:#0E9F6E;font-weight:600', muted='color:#6B7280', col='color:#16181F';
+ const blocks=[
+  {label:'Accenture',list:'Native targeting — ANI + Jessica (Sponsored Messaging)',targeting:'Native',
+   note:'Managing Director led send volume; Associate Director had the highest open rate. UK was the top geography by sends, India and Australia followed.',
+   geo:[{r:'United Kingdom',v:52,v2:'21 opens',rate:'40.4%',highlight:false},{r:'India',v:24,v2:'10 opens',rate:'41.7%',highlight:false},{r:'Australia',v:12,v2:'6 opens',rate:'50%',highlight:true}],
+   geohdr:['Region','Sends','Opens (rate)'],
+   seniority:[{t:'Managing Director',v:42,v2:'13 opens',rate:'31%',highlight:false},{t:'Associate Director',v:28,v2:'10 opens',rate:'35.7%',highlight:false},{t:'Senior Manager',v:11,v2:'5 opens',rate:'45.5%',highlight:true},{t:'Principal Director',v:3,v2:'4 opens',rate:'133%',note:'small base'}],
+   senhdr:['Title','Sends','Opens (rate)']},
+  {label:'Accenture',list:'Custom list — Brand Awareness (Sponsored Content)',targeting:'Custom',
+   note:'High CPM ($194–227) but strong CTR (2.5–2.6%). Director delivered the sharpest click rate at 7.84% CTR.',
+   geo:[{r:'Australia',v:393,v2:'10 clicks',rate:'2.5%',highlight:true},{r:'India (est.)',v:null,v2:'—',rate:'—',highlight:false}],
+   geohdr:['Region','Impr.','Clicks (CTR)'],
+   seniority:[{t:'Director',v:51,v2:'4 clicks',rate:'7.84%',highlight:true},{t:'Senior Manager',v:176,v2:'3 clicks',rate:'1.7%',highlight:false},{t:'Manager',v:200,v2:'—',rate:'—',highlight:false},{t:'Associate Director',v:62,v2:'—',rate:'—',highlight:false}],
+   senhdr:['Title','Impr.','Clicks (CTR)']},
+  {label:'KPMG',list:'Native + Custom — Brand Awareness (Sponsored Content)',targeting:'Mixed',
+   note:'Native set was the most cost-efficient in the program ($41 CPM, $5.47 CPC). Custom list ran at $103 CPM.',
+   geo:[{r:'India (est.)',v:1475,v2:'10 clicks',rate:'0.68%',highlight:false},{r:'Other',v:null,v2:'—',rate:'—',highlight:false}],
+   geohdr:['Region','Impr.','Clicks (CTR)'],
+   seniority:[{t:'All titles — blended',v:1475,v2:'10 clicks',rate:'0.68%',highlight:false}],
+   senhdr:['Title','Impr.','Clicks (CTR)']},
+  {label:'Fujitsu',list:'Native + Custom — Brand Awareness (Sponsored Content)',targeting:'Mixed',
+   note:'NTT Data-2 on native drove 4.41% CTR — highest single creative×audience CTR in the program.',
+   geo:[{r:'India (est.)',v:540,v2:'8 clicks',rate:'1.5%',highlight:false}],
+   geohdr:['Region','Impr.','Clicks (CTR)'],
+   seniority:[{t:'All titles — blended',v:540,v2:'8 clicks',rate:'1.5%',highlight:false}],
+   senhdr:['Title','Impr.','Clicks (CTR)']},
+  {label:'TCS',list:'TCS Contact List — Custom',targeting:'Custom',
+   note:'$191 CPM but 1.47% CTR — above average for custom lists. Accenture×Lyzr creative ran here.',
+   geo:[{r:'India (est.)',v:407,v2:'6 clicks',rate:'1.5%',highlight:false}],
+   geohdr:['Region','Impr.','Clicks (CTR)'],
+   seniority:[{t:'All titles — blended',v:407,v2:'6 clicks',rate:'1.5%',highlight:false}],
+   senhdr:['Title','Impr.','Clicks (CTR)']},
+  {label:'India (native messaging)',list:'ANI + Jessica India Native — Sponsored Messaging',targeting:'Native',
+   note:'Associate Director dominated send volume (77–79%). Open rates solid at 24–31%. Reach concentrated entirely in India.',
+   geo:[{r:'India',v:59,v2:'14 opens',rate:'23.7%',highlight:false}],
+   geohdr:['Region','Sends','Opens (rate)'],
+   seniority:[{t:'Associate Director',v:46,v2:'14 opens',rate:'30.4%',highlight:false}],
+   senhdr:['Title','Sends','Opens (rate)']}
+ ];
+
+ const tgtColor={Native:'#3D5A8A',Custom:'#B45309',Mixed:'#5B57A6'};
+ const tgtBg={Native:'#EDF1F7',Custom:'#FBF1E3',Mixed:'#EEEDFC'};
+
+ blocks.forEach(b=>{
+  const div=document.createElement('div');
+  div.style.cssText='border:1px solid var(--line,#E6E8EC);border-radius:14px;overflow:hidden;background:#fff';
+  const mkTbl=(rows,hdrs)=>`
+   <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+    <thead><tr style="border-bottom:1px solid #F3F4F6">${hdrs.map(h=>`<th style="text-align:${h===hdrs[0]?'left':'right'};padding:5px 6px;font-size:10.5px;font-weight:600;color:#6B7280">${h}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r=>`<tr style="border-top:1px solid #F5F5F5">
+     <td style="padding:7px 0;font-weight:600;color:#16181F">${r.t||r.r}${r.note?` <span style="font-size:10px;color:#9CA3AF">(${r.note})</span>`:''}</td>
+     <td style="text-align:right;padding:7px 6px;font-variant-numeric:tabular-nums;color:#3A3F4A">${r.v!=null?r.v.toLocaleString():'—'}</td>
+     <td style="text-align:right;padding:7px 6px;font-variant-numeric:tabular-nums"><span style="${r.highlight?win:col}">${r.v2}</span>${r.rate&&r.rate!=='—'?` <span style="${muted};font-size:11px">(${r.rate})</span>`:''}</td>
+    </tr>`).join('')}</tbody>
+   </table>`;
+  div.innerHTML=`
+   <div style="padding:14px 20px 12px;border-bottom:1px solid #E6E8EC;display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap">
+    <div style="flex:1">
+     <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <span style="font-family:var(--display,'Space Grotesk',sans-serif);font-weight:700;font-size:16px;color:#16181F">${b.label}</span>
+      <span style="font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:5px;background:${tgtBg[b.targeting]||'#F3F4F6'};color:${tgtColor[b.targeting]||'#6B7280'};letter-spacing:.04em;text-transform:uppercase">${b.targeting}</span>
+     </div>
+     <div style="font-size:12px;color:#6B7280">${b.list}</div>
+    </div>
+    <p style="font-size:12.5px;color:#3A3F4A;max-width:52ch;line-height:1.5;margin-top:2px">${b.note}</p>
+   </div>
+   <div style="display:grid;grid-template-columns:1fr 1fr">
+    <div style="padding:16px 20px;border-right:1px solid #E6E8EC">
+     <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9CA3AF;margin-bottom:10px">Geography</div>
+     ${mkTbl(b.geo,b.geohdr)}
+    </div>
+    <div style="padding:16px 20px">
+     <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9CA3AF;margin-bottom:10px">Seniority</div>
+     ${mkTbl(b.seniority,b.senhdr)}
+    </div>
+   </div>`;
+  wrap.appendChild(div);
+ });
+})();
+</script>
+</body>
+</html>
