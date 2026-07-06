@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GSI Marketing Report — 29 June – 5 July 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c0a08;--surface:#141210;--card:#1c1814;--card-2:#211d19;
+  --border:#2e2822;--border-light:#3a332c;
+  --rose:#c96a5a;--rose-dim:rgba(201,106,90,0.12);
+  --amber:#d9a84c;--amber-dim:rgba(217,168,76,0.12);
+  --green:#5aab8a;--green-dim:rgba(90,171,138,0.12);
+  --blue:#5a8bc9;--blue-dim:rgba(90,139,201,0.12);
+  --muted:#706458;--muted-dim:rgba(112,100,88,0.18);
+  --text:#f0ebe4;--text-2:#9e9188;--text-3:#635a52;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13.5px;line-height:1.6;min-height:100vh;}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 40px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.topbar-left{display:flex;align-items:center;gap:16px;}
+.logo-mark{width:28px;height:28px;background:var(--rose);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:14px;color:#fff;font-weight:600;}
+.report-title{font-size:13px;font-weight:600;color:var(--text);letter-spacing:.02em;text-transform:uppercase;}
+.report-sub{font-size:11.5px;color:var(--text-2);}
+.topbar-nav{display:flex;gap:6px;}
+.nav-pill{padding:5px 14px;border-radius:20px;border:1px solid var(--border-light);font-size:11.5px;font-weight:500;color:var(--text-2);text-decoration:none;background:none;cursor:pointer;transition:all .15s;}
+.nav-pill:hover{border-color:var(--rose);color:var(--rose);}
+.main{max-width:1160px;margin:0 auto;padding:40px 40px 80px;}
+.week-header{display:flex;align-items:center;gap:20px;margin-bottom:28px;margin-top:52px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+.week-header:first-child{margin-top:0;}
+.week-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border-radius:4px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;}
+.week-badge.past{background:var(--muted-dim);color:var(--text-2);border:1px solid var(--border-light);}
+.week-badge.current{background:var(--rose-dim);color:var(--rose);border:1px solid rgba(201,106,90,0.3);}
+.week-badge.pipeline{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(90,139,201,0.3);}
+.week-badge.overview{background:rgba(90,171,138,0.1);color:var(--green);border:1px solid rgba(90,171,138,0.3);}
+.week-dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+.week-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;color:var(--text);letter-spacing:-0.02em;}
+.week-dates{font-size:12px;color:var(--text-3);margin-left:auto;}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:3px;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;}
+.badge.live,.badge.active,.badge.done{background:var(--green-dim);color:var(--green);}
+.badge.wip{background:var(--amber-dim);color:var(--amber);}
+.badge.paused,.badge.inactive{background:var(--muted-dim);color:var(--muted);}
+.badge.today{background:var(--rose-dim);color:var(--rose);}
+.badge.pending{background:var(--blue-dim);color:var(--blue);}
+.badge.next-wk{background:var(--amber-dim);color:var(--amber);}
+.badge.blocked{background:rgba(200,80,80,0.12);color:#d46a6a;}
+.channel-block{background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;overflow:hidden;}
+.channel-head{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--card-2);}
+.channel-icon{width:30px;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.ch-linkedin{background:rgba(10,102,194,0.18);color:#4a9fd4;}
+.ch-email{background:rgba(90,171,138,0.15);color:var(--green);}
+.ch-co-mkt{background:rgba(201,106,90,0.15);color:var(--rose);}
+.ch-ads{background:rgba(217,168,76,0.15);color:var(--amber);}
+.ch-events{background:rgba(90,139,201,0.15);color:var(--blue);}
+.ch-auto{background:rgba(160,120,200,0.15);color:#b08dd4;}
+.ch-meta{background:rgba(24,119,242,0.15);color:#6b9cf0;}
+.ch-social{background:rgba(90,171,138,0.12);color:var(--green);}
+.ch-content{background:rgba(217,168,76,0.12);color:var(--amber);}
+.channel-name{font-size:13px;font-weight:600;color:var(--text);}
+.channel-status-row{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.channel-body{padding:16px 20px;}
+.item-list{display:flex;flex-direction:column;gap:10px;}
+.item{display:flex;align-items:flex-start;gap:12px;}
+.item-dot{width:4px;height:4px;border-radius:50%;background:var(--border-light);margin-top:7px;flex-shrink:0;}
+.item-text{flex:1;font-size:13px;color:var(--text);line-height:1.5;}
+.item-badge-row{display:flex;gap:6px;flex-shrink:0;align-items:flex-start;padding-top:1px;}
+.metrics-grid{display:grid;gap:1px;background:var(--border);border-radius:6px;overflow:hidden;margin-bottom:14px;}
+.metrics-grid.col2{grid-template-columns:repeat(2,1fr);}
+.metrics-grid.col3{grid-template-columns:repeat(3,1fr);}
+.metrics-grid.col4{grid-template-columns:repeat(4,1fr);}
+.metrics-grid.col5{grid-template-columns:repeat(5,1fr);}
+.metric-cell{background:var(--card);padding:14px 16px;}
+.metric-val{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;color:var(--text);letter-spacing:-0.02em;line-height:1.1;}
+.metric-val.rose{color:var(--rose);}
+.metric-val.green{color:var(--green);}
+.metric-val.amber{color:var(--amber);}
+.metric-val.blue{color:var(--blue);}
+.metric-label{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-top:4px;}
+.insight-box{border-radius:6px;padding:12px 16px;margin-top:12px;}
+.insight-box.rose{background:rgba(201,106,90,0.07);border:1px solid rgba(201,106,90,0.2);}
+.insight-box.blue{background:rgba(90,139,201,0.07);border:1px solid rgba(90,139,201,0.2);}
+.insight-box.amber{background:rgba(217,168,76,0.07);border:1px solid rgba(217,168,76,0.2);}
+.insight-box.green{background:rgba(90,171,138,0.07);border:1px solid rgba(90,171,138,0.2);}
+.insight-label{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;}
+.insight-label.rose{color:var(--rose);}
+.insight-label.blue{color:var(--blue);}
+.insight-label.amber{color:var(--amber);}
+.insight-label.green{color:var(--green);}
+.insight-text{font-size:12.5px;color:var(--text-2);line-height:1.6;}
+.insight-text li{margin-left:14px;margin-top:4px;}
+.ad-table-wrap{border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.mini-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+.mini-table th{text-align:left;padding:7px 10px;color:var(--text-3);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);}
+.mini-table td{padding:8px 10px;color:var(--text);border-bottom:1px solid var(--border);}
+.mini-table tr:last-child td{border-bottom:none;}
+.mini-table tr:hover td{background:rgba(255,255,255,0.015);}
+.val-hi{color:var(--green);font-weight:500;}
+.val-lo{color:var(--amber);font-weight:500;}
+.val-red{color:#d46a6a;font-weight:500;}
+.iframe-wrap{border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-top:14px;background:#fff;}
+.iframe-label{background:var(--card-2);border-bottom:1px solid var(--border);padding:7px 14px;font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:8px;}
+span.dot-ind{width:8px;height:8px;background:var(--border-light);border-radius:50%;flex-shrink:0;}
+.iframe-open-btn{margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:3px;border:1px solid var(--border-light);background:transparent;color:var(--text-2);font-size:10.5px;font-weight:500;font-family:'DM Sans',sans-serif;text-decoration:none;cursor:pointer;transition:all .15s;}
+.iframe-open-btn:hover{border-color:var(--rose);color:var(--rose);}
+.iframe-wrap iframe{display:block;width:100%;border:none;}
+.status-grid{display:grid;gap:8px;margin-bottom:16px;}
+.status-card{background:var(--card-2);border:1px solid var(--border);border-radius:6px;padding:12px 14px;}
+.status-card-label{font-size:11.5px;font-weight:500;color:var(--text-2);margin-bottom:6px;}
+.pipeline-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+.pipeline-item{background:var(--card-2);border:1px solid var(--border);border-radius:6px;padding:12px 16px;display:flex;align-items:flex-start;gap:12px;}
+.pipeline-num{font-family:'Playfair Display',serif;font-size:18px;color:var(--text-3);font-weight:300;flex-shrink:0;width:20px;line-height:1.3;}
+.pipeline-name{font-size:13px;font-weight:500;color:var(--text);line-height:1.4;}
+.pipeline-detail{font-size:11.5px;color:var(--text-3);margin-top:3px;}
+.divider{height:1px;background:var(--border);margin:14px 0;}
+.section-eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:14px;}
+a.inline-link{color:var(--rose);text-decoration:none;}
+a.inline-link:hover{text-decoration:underline;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--surface);}
+::-webkit-scrollbar-thumb{background:var(--border-light);border-radius:2px;}
+
+/* ═══ WIDGET — SCOPED ═══ */
+.gsi-w{
+  --wbg:#160B07;--wcard:#20120C;--wcard2:#281610;--wcard3:#2E1A12;
+  --wline:rgba(245,230,211,.08);--wline2:rgba(245,230,211,.14);
+  --wink:#F5E6D3;--wmute:#A38A75;--wdim:#6E5847;
+  --wacc:#E07A5F;--wacc2:#F2A07B;
+  --wconv:#D97757;--wdemo:#5B8CD6;--wwin:#D9C14A;--wlost:#C46980;--wcust:#5FA890;
+  --wsellthru:#E07A5F;--wsellwith:#B07AA1;--winternal:#6195C6;--wcustomer:#5FA890;--wdirect:#8E8378;
+  background:var(--wbg);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:32px;position:relative;
+}
+.gsi-w::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(1200px 600px at 90% -10%,rgba(224,122,95,.08),transparent 60%),radial-gradient(900px 500px at -10% 110%,rgba(95,168,144,.04),transparent 60%);}
+.gsi-w .ww{position:relative;z-index:1;padding:28px 28px 32px;}
+.gsi-w .whead{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:22px;}
+.gsi-w .wtitle{font-family:'Playfair Display',serif;font-weight:500;font-size:clamp(24px,2.8vw,36px);line-height:1.05;letter-spacing:-0.01em;color:var(--wink);margin:0 0 5px;}
+.gsi-w .wtitle em{font-style:italic;color:var(--wacc2);font-weight:400;}
+.gsi-w .wsub{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--wmute);font-weight:500;}
+.gsi-w .wfilters{display:flex;gap:6px;background:rgba(245,230,211,.03);border:1px solid var(--wline);padding:5px;border-radius:999px;}
+.gsi-w .wfilt{border:0;background:transparent;color:var(--wmute);font:500 12px/1 'DM Sans',sans-serif;padding:8px 14px;border-radius:999px;cursor:pointer;transition:all .25s cubic-bezier(.22,1,.36,1);}
+.gsi-w .wfilt:hover{color:var(--wink);}
+.gsi-w .wfilt.active{background:var(--wink);color:var(--wbg);font-weight:600;}
+.gsi-w .wkpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px;}
+.gsi-w .wkpi{background:linear-gradient(180deg,var(--wcard2),var(--wcard));border:1px solid var(--wline);border-radius:14px;padding:16px 14px 18px;position:relative;overflow:hidden;transition:border-color .2s;}
+.gsi-w .wkpi:hover{border-color:var(--wline2);}
+.gsi-w .wkpi::after{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(245,230,211,.18),transparent);}
+.gsi-w .wkpi-label{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--wmute);margin-bottom:12px;font-weight:500;white-space:nowrap;}
+.gsi-w .wkpi-val{font-family:'Playfair Display',serif;font-weight:400;font-size:clamp(22px,2.4vw,32px);line-height:1;color:var(--wink);font-variant-numeric:tabular-nums;}
+.gsi-w .wkpi-val.win{color:var(--wwin);}
+.gsi-w .wkpi-val.lost{color:var(--wlost);}
+.gsi-w .wkpi-val.cust{color:var(--wcust);}
+.gsi-w .wkpi-note{font-size:10px;color:var(--wdim);margin-top:6px;}
+.gsi-w .wacvstrip{display:grid;grid-template-columns:1.4fr 1fr;gap:10px;margin-bottom:22px;}
+.gsi-w .wacvcard{border:1px solid var(--wline);border-radius:14px;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:18px;}
+.gsi-w .wacvcard.closed{background:linear-gradient(135deg,rgba(217,193,74,.12),rgba(217,193,74,.03));border-color:rgba(217,193,74,.25);}
+.gsi-w .wacvcard.open{background:linear-gradient(135deg,rgba(224,122,95,.08),rgba(224,122,95,.02));border-color:rgba(224,122,95,.18);}
+.gsi-w .wacvlabel{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--wmute);font-weight:500;}
+.gsi-w .wacvcard.closed .wacvlabel{color:var(--wwin);}
+.gsi-w .wacvmeta{font-size:12px;color:var(--wdim);margin-top:4px;}
+.gsi-w .wacvval{font-family:'Playfair Display',serif;font-style:italic;font-weight:400;font-size:clamp(26px,2.8vw,36px);line-height:1;color:var(--wink);font-variant-numeric:tabular-nums;}
+.gsi-w .wacvcard.closed .wacvval{color:var(--wwin);}
+.gsi-w .wacvcard.open .wacvval{color:var(--wacc2);}
+.gsi-w .wtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.gsi-w .wtab{border:1px solid var(--wline);background:transparent;color:var(--wmute);font:500 12px/1 'DM Sans',sans-serif;padding:10px 16px;border-radius:999px;cursor:pointer;transition:all .25s cubic-bezier(.22,1,.36,1);}
+.gsi-w .wtab:hover{color:var(--wink);border-color:var(--wline2);}
+.gsi-w .wtab.active{background:rgba(245,230,211,.06);color:var(--wink);border-color:var(--wline2);}
+.gsi-w .wlegend{display:flex;gap:16px;flex-wrap:wrap;margin:4px 2px 12px;font-size:12px;color:var(--wmute);}
+.gsi-w .wlg{display:inline-flex;align-items:center;gap:7px;}
+.gsi-w .wdot{width:9px;height:9px;border-radius:999px;display:inline-block;}
+.gsi-w .wchart{background:var(--wcard);border:1px solid var(--wline);border-radius:14px;padding:22px 20px 16px;min-height:400px;position:relative;}
+.gsi-w .wsvg{width:100%;height:auto;display:block;overflow:visible;}
+.gsi-w .wgrid line{stroke:var(--wline);stroke-dasharray:2 4;}
+.gsi-w .watick{fill:var(--wmute);font:400 12px 'DM Sans',sans-serif;font-variant-numeric:tabular-nums;}
+.gsi-w .wbn{fill:var(--wink);font:600 12px 'DM Sans',sans-serif;font-variant-numeric:tabular-nums;}
+.gsi-w .wpl{fill:var(--wink);font:500 13px 'DM Sans',sans-serif;}
+.gsi-w .wpl.acc{fill:var(--wacc2);font-weight:600;}
+.gsi-w .wtip{position:absolute;pointer-events:none;background:#2C1A12;border:1px solid var(--wline2);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--wink);box-shadow:0 12px 30px -10px rgba(0,0,0,.6);opacity:0;transform:translateY(-4px);transition:opacity .15s,transform .15s;z-index:50;min-width:180px;}
+.gsi-w .wtip.show{opacity:1;transform:translateY(0);}
+.gsi-w .wtip .th{font-family:'Playfair Display',serif;font-weight:500;font-size:14px;margin-bottom:6px;color:var(--wink);}
+.gsi-w .wtip .tr{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:2px 0;color:var(--wmute);}
+.gsi-w .wtip .tr b{color:var(--wink);font-weight:600;font-variant-numeric:tabular-nums;}
+.gsi-w .wtip .ld{width:8px;height:8px;border-radius:999px;display:inline-block;margin-right:6px;vertical-align:middle;}
+.gsi-w .wfoot{text-align:right;font-size:11px;color:var(--wdim);margin-top:10px;letter-spacing:.04em;}
+@keyframes wBV{from{transform:scaleY(0);opacity:.3}to{transform:scaleY(1);opacity:1}}
+@keyframes wBH{from{transform:scaleX(0);opacity:.3}to{transform:scaleX(1);opacity:1}}
+@keyframes wFD{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.gsi-w .wAv{animation:wBV .6s cubic-bezier(.22,1,.36,1) backwards;transform-origin:bottom;}
+.gsi-w .wAh{animation:wBH .65s cubic-bezier(.22,1,.36,1) backwards;transform-origin:left;}
+.gsi-w .wAf{animation:wFD .45s cubic-bezier(.22,1,.36,1) backwards;}
+.gsi-w .wseg{transition:filter .15s,opacity .15s;cursor:pointer;}
+.gsi-w .wseg:hover{filter:brightness(1.18);}
+@media(max-width:980px){.gsi-w .wkpis{grid-template-columns:repeat(3,1fr);}.gsi-w .wacvstrip{grid-template-columns:1fr;}}
+@media(max-width:600px){.gsi-w .wkpis{grid-template-columns:repeat(2,1fr);}.gsi-w .ww{padding:18px 14px 24px;}}
+@media(max-width:768px){.main{padding:24px 16px;}.topbar{padding:12px 16px;}.metrics-grid{grid-template-columns:repeat(2,1fr)!important;}.status-grid{grid-template-columns:repeat(2,1fr)!important;}.pipeline-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo-mark">L</div>
+    <div>
+      <div class="report-title">GSI & Partner Marketing</div>
+      <div class="report-sub">Weekly Report · Lyzr AI</div>
+    </div>
+  </div>
+  <nav class="topbar-nav">
+    <a class="nav-pill" href="#overview">Pipeline</a>
+    <a class="nav-pill" href="#past">← 22–29 June</a>
+    <a class="nav-pill" href="#current">29 Jun – 5 Jul</a>
+    <a class="nav-pill" href="#content-cal">Content Cal</a>
+    <a class="nav-pill" href="#next">To-Do</a>
+  </nav>
+</div>
+
+<div class="main">
+
+<!-- ══════════════════════════════════════
+     SECTION 0 — PIPELINE WIDGET
+══════════════════════════════════════ -->
+<div id="overview" class="week-header" style="margin-top:0;">
+  <span class="week-badge overview"><span class="week-dot"></span>Live</span>
+  <h2 class="week-title">GSI / SI Conversations Pipeline</h2>
+  <span class="week-dates">All partners · synced from HubSpot · 6 Jul</span>
+</div>
+
+<div class="gsi-w">
+  <div class="ww">
+    <div class="whead">
+      <div>
+        <h2 class="wtitle">GSI / SI <em>conversations</em></h2>
+        <div class="wsub">Live partnership pipeline · Accenture + 20 GSIs/SIs · HubSpot-synced</div>
+      </div>
+      <div class="wfilters">
+        <button class="wfilt active" data-wf="all">All</button>
+        <button class="wfilt" data-wf="accenture">Accenture</button>
+        <button class="wfilt" data-wf="other">Other GSIs</button>
+      </div>
+    </div>
+    <section class="wkpis">
+      <div class="wkpi"><div class="wkpi-label">Total</div><div class="wkpi-val" id="k-total">—</div><div class="wkpi-note">conversations</div></div>
+      <div class="wkpi"><div class="wkpi-label">Ongoing</div><div class="wkpi-val" id="k-ongoing">—</div><div class="wkpi-note">in flight</div></div>
+      <div class="wkpi"><div class="wkpi-label">Demos</div><div class="wkpi-val" id="k-demos">—</div><div class="wkpi-note">late stage</div></div>
+      <div class="wkpi"><div class="wkpi-label">Wins</div><div class="wkpi-val win" id="k-wins">—</div><div class="wkpi-note">closed won</div></div>
+      <div class="wkpi"><div class="wkpi-label">Losses</div><div class="wkpi-val lost" id="k-losses">—</div><div class="wkpi-note">closed lost</div></div>
+      <div class="wkpi"><div class="wkpi-label">Customers</div><div class="wkpi-val cust" id="k-customers">—</div><div class="wkpi-note">expanding</div></div>
+    </section>
+    <section class="wacvstrip">
+      <div class="wacvcard closed"><div><div class="wacvlabel">★ Closed ACV</div><div class="wacvmeta" id="acv-closed-meta">—</div></div><div class="wacvval" id="acv-closed">—</div></div>
+      <div class="wacvcard open"><div><div class="wacvlabel">Open pipeline ACV</div><div class="wacvmeta" id="acv-open-meta">—</div></div><div class="wacvval" id="acv-open">—</div></div>
+    </section>
+    <nav class="wtabs">
+      <button class="wtab active" data-wt="timeline">Timeline</button>
+      <button class="wtab" data-wt="companies">Companies</button>
+      <button class="wtab" data-wt="motion">Motion</button>
+      <button class="wtab" data-wt="stages">Stage mix</button>
+      <button class="wtab" data-wt="substages">Sub-stage</button>
+      <button class="wtab" data-wt="acv">ACV</button>
+    </nav>
+    <div class="wlegend" id="wlegend"></div>
+    <div class="wchart">
+      <svg id="wchart" class="wsvg" viewBox="0 0 1000 460" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="wtip" id="wtip"></div>
+      <div class="wfoot" id="wfoot"></div>
+    </div>
+  </div>
+</div>
+
+<script id="wd" type="application/json">[{"p":"Accenture","o":"1M Product Team","s":"Win","ss":"Closed Won","m":"Internal automations","tr":"Sell to","q":"Q1 2026","a":1000000},{"p":"Accenture","o":"Industrial AI","s":"Win","ss":"Closed Won","m":"Internal automations","tr":"Sell to","q":"Q2 2026","a":50000},{"p":"Accenture","o":"M&A","s":"Win","ss":"Closed Won","m":"Internal automations","tr":"Sell to","q":"Q3 2025","a":30000},{"p":"Accenture","o":"M&A 2","s":"Win","ss":"Closed Won","m":"Internal automations","tr":"Sell to","q":"Q2 2026","a":0},{"p":"Accenture","o":"M&E","s":"Win","ss":"Closed Won","m":"Customer-facing","tr":"Expand","q":"Q4 2025","a":15000},{"p":"Accenture","o":"Pivot","s":"Win","ss":"Closed Won","m":"Internal automations","tr":"Sell to","q":"Q4 2025","a":250000},{"p":"Accenture","o":"Pivot 2","s":"Win","ss":"Closed Won","m":"Internal automations","tr":"Sell to","q":"Q1 2026","a":0},{"p":"Accenture","o":"(Internal: Industrial AI)","s":"Win","ss":"Closed Won","m":"Internal automations","tr":"Sell to","q":"Q1 2025","a":999},{"p":"Accenture","o":"Agentic Commerce","s":"Win","ss":"Closed Won","m":"Internal automations","tr":"Sell to","q":"Q2 2026","a":250000},{"p":"Accenture","o":"UAE (DGE)","s":"Demo","ss":"Commit","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":3000000},{"p":"Accenture","o":"Cassava ai","s":"Demo","ss":"Commit","m":"Customer-facing","tr":"Partner Sell To","q":"Q3 2026","a":1000000},{"p":"Accenture","o":"Startup venture","s":"Demo","ss":"Commit","m":"Customer-facing","tr":"Partner Sell To","q":"Q3 2026","a":100000},{"p":"Accenture","o":"AWS (Accenture)","s":"Demo","ss":"Commit","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":250000},{"p":"Accenture","o":"Song Dan (Modbox)","s":"Demo","ss":"Legal & Contracts","m":"Internal automations","tr":"Sell To","q":"Q2 2026","a":200000},{"p":"Accenture","o":"Volkswagen RFP","s":"Demo","ss":"Legal & Contracts","m":"Customer-facing","tr":"Partner Sell To","q":"Q3 2026","a":250000},{"p":"Accenture","o":"JPMC","s":"Demo","ss":"Legal & Contracts","m":"Customer-facing","tr":"Partner Sell To","q":"Q2 2026","a":150000},{"p":"Accenture","o":"ManuLife - Accenture","s":"Demo","ss":"Best Case","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":200000},{"p":"Accenture","o":"Banking Mike Abbot","s":"Demo","ss":"Best Case","m":"Internal automations","tr":"Sell to","q":"Q3 2026","a":100000},{"p":"Accenture","o":"Ramki (SynOps)","s":"Demo","ss":"Best Case","m":"Internal automations","tr":"Sell to","q":"Q3 2026","a":250000},{"p":"Accenture","o":"Income Insurance Singapore","s":"Demo","ss":"Best Case","m":"Customer-facing","tr":"Partner Sell To","q":"Q3 2026","a":250000},{"p":"Accenture","o":"Novartis","s":"Demo","ss":"Best Case","m":"Customer-facing","tr":"Partner Sell To","q":"Q3 2026","a":0},{"p":"Accenture","o":"GE Vernova","s":"Demo","ss":"Best Case","m":"Internal automations","tr":"Sell to","q":"Q3 2026","a":0},{"p":"Accenture","o":"Varo Bank","s":"Demo","ss":"Best Case","m":"Internal automations","tr":"Sell to","q":"Q3 2026","a":0},{"p":"Accenture","o":"UOB","s":"Demo","ss":"Best Case","m":"Customer-facing","tr":"Partner Sell To","q":"Q3 2026","a":0},{"p":"Accenture","o":"Danish arla","s":"Demo","ss":"Best Case","m":"Customer-facing","tr":"Partner Sell To","q":"Q3 2026","a":0},{"p":"Accenture","o":"SBI Life","s":"Demo","ss":"Best Case","m":"Customer-facing","tr":"Partner Sell To","q":"Q3 2026","a":0},{"p":"Accenture","o":"Aura (Mayank) Skincare","s":"Demo","ss":"Best Case","m":"Customer-facing","tr":"Expand","q":"Q3 2026","a":25},{"p":"Accenture","o":"Guru (Mayank) Retail","s":"Lost","ss":"Lost","m":"Customer-facing","tr":"Expand","q":"Q2 2026","a":0},{"p":"Accenture","o":"Capital Land Ascott Team","s":"Demo","ss":"Best Case","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":0},{"p":"Accenture","o":"Singapore Gov- Accenture","s":"Demo","ss":"Best Case","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":0},{"p":"Accenture","o":"BT/EE","s":"Demo","ss":"Best Case","m":"Customer-facing","tr":"Partner Sell To","q":"Q3 2026","a":250000},{"p":"Accenture","o":"LBG ( Accenture)","s":"Demo","ss":"Best Case","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":250000},{"p":"Accenture","o":"Tu Clothing","s":"Demo","ss":"Best Case","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":250000},{"p":"Accenture","o":"Boots  Agentic Commerce","s":"Demo","ss":"Best Case","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":250000},{"p":"Accenture","o":"Song- EE (BT)","s":"Demo","ss":"Best Case","m":"Customer-facing","tr":"Partner Sell To","q":"Q3 2026","a":0},{"p":"Accenture","o":"Song- Diageo","s":"Demo","ss":"Best Case","m":"Customer-facing","tr":"Partner Sell To","q":"Q3 2026","a":0},{"p":"Accenture","o":"ABB","s":"In-conversation","ss":"Solution Validation","m":"Internal automations","tr":"Sell to","q":"Q3 2026","a":0},{"p":"Accenture","o":"-  Singtel","s":"In-conversation","ss":"Solution Validation","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":0},{"p":"Accenture","o":"Federal Services - Internal AI Platform Evaluation","s":"In-conversation","ss":"Solution Validation","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":250000},{"p":"Accenture","o":"Traveller","s":"In-conversation","ss":"Pipeline","m":"Internal automations","tr":"Sell to","q":"Q3 2026","a":0},{"p":"Accenture","o":"Middle East Bank","s":"In-conversation","ss":"Pipeline","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":0},{"p":"Accenture","o":"Indonesia","s":"In-conversation","ss":"Pipeline","m":"Sell-through","tr":"Partner Sell Thru","q":"Q4 2025","a":0},{"p":"Accenture","o":"AccentureSONG","s":"In-conversation","ss":"Pipeline","m":"Sell-through","tr":"Partner Sell Thru","q":"Q2 2025","a":2500},{"p":"Accenture","o":"Pepsi","s":"Lost","ss":"Lost","m":"Agentic commerce","tr":"Sell with","q":"Q2 2026","a":500000},{"p":"Accenture","o":"-Federal bank POC","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q2 2026","a":45000},{"p":"Accenture","o":"- Swisscom","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q2 2026","a":250000},{"p":"Accenture","o":"Indosat _ Accenture","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q2 2026","a":250000},{"p":"Accenture","o":"Indian OMC","s":"Lost","ss":"Lost","m":"Internal automations","tr":"Sell to","q":"Q2 2026","a":100000},{"p":"Accenture","o":"Markel","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q2 2026","a":100000},{"p":"Accenture","o":"-FS","s":"Lost","ss":"Lost","m":"Internal automations","tr":"Sell to","q":"Q2 2026","a":0},{"p":"Accenture","o":"(QBE)","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q2 2026","a":0},{"p":"Accenture","o":"Uk2","s":"Lost","ss":"Lost","m":"Internal automations","tr":"Sell to","q":"Q2 2026","a":0},{"p":"Accenture","o":"Investor profile","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Sell through","q":"Q2 2026","a":0},{"p":"Accenture","o":"Insurance Singapore","s":"Lost","ss":"Lost","m":"Customer-facing","tr":"Partner Sell To","q":"Q2 2026","a":250000},{"p":"Accenture","o":"Middle East","s":"Lost","ss":"Lost","m":"Internal automations","tr":"Sell to","q":"Q2 2026","a":0},{"p":"Accenture","o":"Nicole","s":"Lost","ss":"Lost","m":"Internal automations","tr":"Sell to","q":"Q2 2026","a":0},{"p":"Accenture","o":"- UK Asset management","s":"Lost","ss":"Lost","m":"Internal automations","tr":"Sell to","q":"Q2 2026","a":0},{"p":"Accenture","o":"L&D","s":"Lost","ss":"Lost","m":"Internal automations","tr":"Sell to","q":"Q2 2026","a":10000},{"p":"Firstsource","o":"(Internal)","s":"Win","ss":"Closed Won","m":"Internal automations","tr":"Sell to","q":"Q2 2026","a":150000},{"p":"Firstsource","o":"(ETS)","s":"Demo","ss":"Legal & Contracts","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":1250000},{"p":"Firstsource","o":"(HMSA)","s":"In-conversation","ss":"Pipeline","m":"Sell-through","tr":"Partner Sell Thru","q":"Q2 2026","a":500000},{"p":"Firstsource","o":"(Lloyds Bank Group)","s":"Demo","ss":"Commit","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":750000},{"p":"Firstsource","o":"NextEra Energy - AI Workflow Discovery via Firstsource","s":"In-conversation","ss":"Pipeline","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":100000},{"p":"Firstsource","o":"(ANZ - GRC)","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q2 2026","a":500000},{"p":"WTW","o":"WTW","s":"Win","ss":"Closed Won","m":"Direct","tr":"Land","q":"Q4 2025","a":250000},{"p":"WTW","o":"(Agentic Acceleration)","s":"Win","ss":"Closed Won","m":"Direct","tr":"Land","q":"Q2 2026","a":500000},{"p":"WTW","o":"(Add-on License)","s":"Win","ss":"Closed Won","m":"Direct","tr":"Expand","q":"Q2 2026","a":500000},{"p":"WTW","o":"(B2C)","s":"Demo","ss":"Commit","m":"Agentic platform","tr":"Sell with","q":"Q3 2026","a":250000},{"p":"KPMG","o":"KPMG","s":"Win","ss":"Closed Won","m":"Sell-with","tr":"Land","q":"Q2 2026","a":200000},{"p":"KPMG","o":"KPMG-Genentech","s":"In-conversation","ss":"Pipeline","m":"Sell-with","tr":"Sell with","q":"Q3 2026","a":0},{"p":"KPMG","o":"-Sherwin Williams","s":"In-conversation","ss":"Pipeline","m":"Sell-with","tr":"Sell with","q":"Q3 2026","a":0},{"p":"Persistent Systems","o":"Systems","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q2 2026","a":150000},{"p":"Persistent Systems","o":"(League Data)","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q2 2026","a":250000},{"p":"Persistent Systems","o":"(KeyBank)","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q2 2026","a":0},{"p":"Persistent Systems","o":"(ADIB)","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q2 2026","a":0},{"p":"Persistent Systems","o":"(Ascensus)","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q2 2026","a":0},{"p":"Persistent Systems","o":"(Barclays)","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q2 2026","a":0},{"p":"Persistent Systems","o":"(Loan Aggregator)","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q2 2026","a":0},{"p":"Persistent Systems","o":"(Mizuho US)","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q2 2026","a":0},{"p":"Persistent Systems","o":"(Ford Credit)","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q2 2026","a":0},{"p":"Movate","o":"Movate","s":"Win","ss":"Closed Won","m":"Sell-through","tr":"Partner Sell Thru","q":"Q4 2025","a":100000},{"p":"Movate","o":"Newport Healthcare","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q2 2026","a":0},{"p":"Movate","o":"AI tutor","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q4 2025","a":0},{"p":"Movate","o":"Health care","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q1 2026","a":100000},{"p":"Movate","o":"- AI Tutor India","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q4 2025","a":0},{"p":"Deloitte","o":"India","s":"In-conversation","ss":"Pipeline","m":"Sell-with","tr":"Sell with","q":"Q4 2025","a":0},{"p":"Deloitte","o":"Agentic KYC Platform","s":"Lost","ss":"Lost","m":"Sell-with","tr":"Sell with","q":"Q2 2026","a":0},{"p":"Deloitte","o":"deloitte_ HK","s":"Lost","ss":"Lost","m":"Sell-with","tr":"Sell with","q":"Q2 2026","a":0},{"p":"Deloitte","o":"UK","s":"In-conversation","ss":"Pipeline","m":"Sell-with","tr":"Sell with","q":"Q3 2025","a":100000},{"p":"EXL","o":"EXL","s":"Demo","ss":"Legal & Contracts","m":"Internal automations","tr":"Sell to","q":"Q2 2026","a":350000},{"p":"RGP","o":"RGP","s":"Demo","ss":"Commit","m":"Sell-with","tr":"Sell with","q":"Q3 2026","a":250000},{"p":"LatentView","o":"LatentView- studio SaaS","s":"Demo","ss":"Negotiation","m":"Sell-with","tr":"Sell with","q":"Q3 2026","a":100000},{"p":"Capgemini","o":"Capgemini","s":"Demo","ss":"Best Case","m":"Sell-with","tr":"Sell with","q":"Q3 2026","a":150000},{"p":"Avanade","o":"Avanade","s":"Demo","ss":"Negotiation","m":"Internal automations","tr":"Sell to","q":"Q3 2026","a":500000},{"p":"Birlasoft","o":"-","s":"Demo","ss":"Best Case","m":"Sell-with","tr":"Sell with","q":"Q3 2026","a":250000},{"p":"EY","o":"EY","s":"In-conversation","ss":"Pipeline","m":"Sell-with","tr":"Sell with","q":"Q3 2025","a":100000},{"p":"EY","o":"- India","s":"Lost","ss":"Lost","m":"Sell-with","tr":"Sell with","q":"Q2 2026","a":0},{"p":"Publicis","o":"Groupe S.A.","s":"Win","ss":"Closed Won","m":"Sell-through","tr":"Partner Sell Thru","q":"Q4 2025","a":500000},{"p":"Publicis","o":"-- CA","s":"Demo","ss":"Best Case","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":120000},{"p":"Beryl8","o":"- TIPH Insurance","s":"Win","ss":"Closed Won","m":"Insurance agents","tr":"Sell with","q":"Q2 2026","a":100000},{"p":"Beryl8","o":"- Thai Life Insurance","s":"Demo","ss":"Commit","m":"Insurance agents","tr":"Sell with","q":"Q3 2026","a":125000},{"p":"Beryl8","o":"- DIP (Department of Intellectual Property)","s":"Demo","ss":"Best Case","m":"Insurance agents","tr":"Sell with","q":"Q3 2026","a":150000},{"p":"Accenture","o":"Bayer - HR Hub","s":"In-conversation","ss":"Solution Validation","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":250000},{"p":"Zinnov","o":"Zinnov","s":"Win","ss":"Closed Won","m":"Sell-with","tr":"Land","q":"Q4 2025","a":100000},{"p":"Zinnov","o":"[upsell] Zinnov - GPT","s":"In-conversation","ss":"Pipeline","m":"Sell-with","tr":"Sell with","q":"Q2 2026","a":50000},{"p":"Zinnov","o":"AWS Funding - 50K","s":"Win","ss":"Closed Won","m":"Sell-with","tr":"Sell with","q":"Q2 2026","a":50000},{"p":"Impetus","o":"Impetus","s":"Demo","ss":"Legal & Contracts","m":"Internal automations","tr":"Sell to","q":"Q3 2026","a":500000},{"p":"Accenture","o":"Shell","s":"Lost","ss":"Lost","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":500000},{"p":"Accenture","o":"National Grid","s":"In-conversation","ss":"Solution Validation","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":500000},{"p":"Capgemini","o":"Queensland","s":"In-conversation","ss":"Solution Validation","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":500000},{"p":"Tata Elxsi","o":"Tata Elxsi","s":"In-conversation","ss":"Solution Validation","m":"Internal automations","tr":"Sell to","q":"Q3 2026","a":100000},{"p":"Accenture","o":"Samsung","s":"In-conversation","ss":"Solution Validation","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":500000},{"p":"Accenture","o":"OTIP","s":"In-conversation","ss":"Pipeline","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":100000},{"p":"Accenture","o":"Canadian Tyre","s":"In-conversation","ss":"Solution Validation","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":250000},{"p":"Infosys","o":"Infosys","s":"In-conversation","ss":"Discovery","m":"Internal automations","tr":"Sell to","q":"Q3 2026","a":0},{"p":"Publicis Sapient","o":"Publicis Sapient","s":"In-conversation","ss":"Pipeline","m":"Internal automations","tr":"Sell to","q":"Q3 2026","a":500000},{"p":"Accenture","o":"Mashreq Bank","s":"In-conversation","ss":"Solution Validation","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":250000},{"p":"Accenture","o":"Sen 1M","s":"Demo","ss":"Legal & Contracts","m":"Internal automations","tr":"Sell to","q":"Q3 2026","a":1000000},{"p":"Accenture","o":"Procurement-Romain","s":"In-conversation","ss":"Solution Validation","m":"Internal automations","tr":"Sell to","q":"Q3 2026","a":250000},{"p":"Accenture","o":"Damac","s":"In-conversation","ss":"Solution Validation","m":"Sell-with","tr":"Sell with","q":"Q3 2026","a":250000},{"p":"Accenture","o":"BOA_Arunagiri","s":"In-conversation","ss":"Pipeline","m":"Sell-with","tr":"Sell with","q":"Q3 2026","a":250000},{"p":"Movate","o":"Beacon Mobility","s":"In-conversation","ss":"Solution Validation","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":100000},{"p":"Movate","o":"DHL","s":"In-conversation","ss":"Solution Validation","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":100000},{"p":"Movate","o":"Estée Lauder","s":"In-conversation","ss":"Solution Validation","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":100000},{"p":"Accenture","o":"Canada Payments","s":"In-conversation","ss":"Discovery","m":"Sell-with","tr":"Sell with","q":"Q3 2026","a":250000},{"p":"Firstsource","o":"LyzrBlocks","s":"In-conversation","ss":"Discovery","m":"Internal automations","tr":"Sell to","q":"Q3 2026","a":500000},{"p":"Accenture","o":"Middle East_ Oracle","s":"In-conversation","ss":"Qualification","m":"Customer-facing","tr":"Expand","q":"Q3 2026","a":250000},{"p":"Accenture","o":"Accenture_ mehdi.karamzadeh","s":"In-conversation","ss":"Pipeline","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":250000},{"p":"Deloitte","o":"Uday Mehta","s":"In-conversation","ss":"Pipeline","m":"Sell-through","tr":"Partner Sell Thru","q":"Q3 2026","a":0},{"p":"Deloitte","o":"Peeyush","s":"In-conversation","ss":"Pipeline","m":"Sell-with","tr":"Sell with","q":"Q3 2026","a":0},{"p":"KPMG","o":"Mortgage dispute resolution","s":"In-conversation","ss":"Discovery","m":"Sell-with","tr":"Sell with","q":"Q3 2026","a":0},{"p":"KPMG","o":"US Bank","s":"In-conversation","ss":"Discovery","m":"Sell-with","tr":"Sell with","q":"Q3 2026","a":0},{"p":"Deloitte","o":"Contact centre","s":"In-conversation","ss":"Discovery","m":"Sell-with","tr":"Sell with","q":"Q3 2026","a":0},{"p":"Deloitte","o":"Deloitte","s":"In-conversation","ss":"Discovery","m":"Sell-with","tr":"Sell with","q":"Q3 2026","a":0}]</script>
+<script>
+(function(){
+  var ROWS=JSON.parse(document.getElementById('wd').textContent);
+  var WR=document.querySelector('.gsi-w');
+  function gC(v){return getComputedStyle(WR).getPropertyValue(v).trim();}
+  var SO=["In-conversation","Demo","Win","Lost"];
+  var SC={"In-conversation":gC('--wconv'),"Demo":gC('--wdemo'),"Win":gC('--wwin'),"Lost":gC('--wlost')};
+  var MO=["Sell-through","Sell-with","Internal automations","Customer-facing","Direct"];
+  var MC={"Sell-through":gC('--wsellthru'),"Sell-with":gC('--wsellwith'),"Internal automations":gC('--winternal'),"Customer-facing":gC('--wcustomer'),"Direct":gC('--wdirect')};
+  var ST={filter:'all',tab:'timeline'};
+  function FR(){return ROWS.filter(function(r){if(ST.filter==='accenture'&&!r.p.startsWith('Accenture'))return false;if(ST.filter==='other'&&r.p.startsWith('Accenture'))return false;return true;});}
+  function mF(n){if(!n)return'$0';if(n>=1e6)return'$'+(n/1e6).toFixed(2).replace(/\.?0+$/,'')+'M';if(n>=1e3)return'$'+Math.round(n/1e3)+'K';return'$'+n;}
+  function pct(a,b){return b?Math.round(a*100/b)+'%':'0%';}
+  function sv(id,v){document.getElementById(id).textContent=v;}
+  function renderKPIs(){
+    var all=FR(),tot=all.length,wins=all.filter(function(r){return r.s==='Win';}).length,lost=all.filter(function(r){return r.s==='Lost';}).length,demos=all.filter(function(r){return r.s==='Demo';}).length,ongoing=tot-wins-lost,custs=all.filter(function(r){return(r.tr||'').toLowerCase()==='expand';}).length;
+    sv('k-total',tot);sv('k-ongoing',ongoing);sv('k-demos',demos);sv('k-wins',wins);sv('k-losses',lost);sv('k-customers',custs);
+    var cACV=all.filter(function(r){return r.s==='Win';}).reduce(function(a,r){return a+(r.a||0);},0);
+    var oACV=all.filter(function(r){return r.s!=='Win'&&r.s!=='Lost';}).reduce(function(a,r){return a+(r.a||0);},0);
+    sv('acv-closed',mF(cACV));sv('acv-open',mF(oACV));sv('acv-closed-meta',wins+' deal'+(wins===1?'':'s')+' won');sv('acv-open-meta',ongoing+' ongoing');
+  }
+  function renderLegend(){
+    var el=document.getElementById('wlegend');
+    if(ST.tab==='motion'){el.innerHTML=MO.map(function(m){return'<span class="wlg"><span class="wdot" style="background:'+MC[m]+'"></span>'+m+'</span>';}).join('');}
+    else{el.innerHTML=SO.map(function(s_){return'<span class="wlg"><span class="wdot" style="background:'+SC[s_]+'"></span>'+s_+'</span>';}).join('')+'<span class="wlg"><span class="wdot" style="background:'+gC('--wcust')+'"></span>Customer (Expand)</span>';}
+  }
+  var tip=document.getElementById('wtip');
+  function showTip(x,y,html){tip.innerHTML=html;tip.classList.add('show');var cc=document.querySelector('.wchart').getBoundingClientRect();var tx=x-cc.left+14,ty=y-cc.top+14,tw=tip.offsetWidth,th=tip.offsetHeight;if(tx+tw>cc.width)tx=x-cc.left-tw-14;if(ty+th>cc.height)ty=y-cc.top-th-14;tip.style.left=tx+'px';tip.style.top=ty+'px';}
+  function hideTip(){tip.classList.remove('show');}
+  function wire(){document.querySelectorAll('.wseg').forEach(function(el){el.addEventListener('mousemove',function(e){var r=el.getAttribute('dt');if(r)showTip(e.clientX,e.clientY,decodeURIComponent(r));});el.addEventListener('mouseleave',hideTip);});}
+  function nM(v){if(v<=5)return 5;if(v<=10)return 10;if(v<=20)return 20;if(v<=30)return 30;if(v<=50)return 50;if(v<=80)return 80;return Math.ceil(v/20)*20;}
+  function sTip(title,counts,total){var r='<div class="th">'+title+'</div>';SO.forEach(function(st){var v=counts[st]||0;if(!v)return;r+='<div class="tr"><span><span class="ld" style="background:'+SC[st]+'"></span>'+st+'</span><b>'+v+'</b></div>';});r+='<div class="tr" style="border-top:1px solid rgba(245,230,211,.14);margin-top:6px;padding-top:6px;"><span>Total</span><b>'+total+'</b></div>';return r;}
+  function setSVG(inner,W,H,foot){var c=document.getElementById('wchart');c.setAttribute('viewBox','0 0 '+W+' '+H);c.innerHTML=inner;wire();document.getElementById('wfoot').textContent=foot;}
+  function chartTimeline(rows){var W=1000,H=460,pL=56,pR=28,pT=36,pB=56,plotW=W-pL-pR,plotH=H-pT-pB,order=["Q1 2025","Q2 2025","Q3 2025","Q4 2025","Q1 2026","Q2 2026","Q3 2026","Q4 2026"],present=new Set(rows.map(function(r){return r.q;})),qs=order.filter(function(q){return present.has(q);}),groups={};qs.forEach(function(q){groups[q]={};SO.forEach(function(s_){groups[q][s_]=0;});});rows.forEach(function(r){if(qs.includes(r.q))groups[r.q][r.s]=(groups[r.q][r.s]||0)+1;});var totals=qs.map(function(q){return SO.reduce(function(s_,k){return s_+groups[q][k];},0);}),yMax=nM(Math.max(1,...totals)),slot=plotW/qs.length,barW=Math.min(72,slot*0.6),svg='<g class="wgrid">';for(var i=0;i<=5;i++){var v=Math.round(yMax*i/5),y=pT+plotH-(v/yMax)*plotH;svg+='<line x1="'+pL+'" x2="'+(W-pR)+'" y1="'+y+'" y2="'+y+'"/><text class="watick" x="'+(pL-12)+'" y="'+(y+4)+'" text-anchor="end">'+v+'</text>';}svg+='</g>';qs.forEach(function(q,i){var cx=pL+slot*i+slot/2,x=cx-barW/2,yc=pT+plotH,total=totals[i];SO.forEach(function(st){var v=groups[q][st];if(!v)return;var h=(v/yMax)*plotH;yc-=h;svg+='<rect class="wseg wAv" x="'+x+'" y="'+yc+'" width="'+barW+'" height="'+h+'" rx="2" fill="'+SC[st]+'" dt="'+encodeURIComponent(sTip(q,groups[q],total))+'" style="animation-delay:'+(i*60)+'ms"></rect>';});if(total){var yt=pT+plotH-(total/yMax)*plotH;svg+='<text class="wbn wAf" x="'+cx+'" y="'+(yt-8)+'" text-anchor="middle" style="animation-delay:'+(i*60+350)+'ms">'+total+'</text>';}svg+='<text class="watick" x="'+cx+'" y="'+(H-pB+22)+'" text-anchor="middle">'+q+'</text>';});setSVG(svg,W,H,'Projected close quarter · '+rows.length+' rows');}
+  function chartCompanies(rows){var map={};rows.forEach(function(r){if(!map[r.p]){map[r.p]={total:0};SO.forEach(function(s_){map[r.p][s_]=0;});}map[r.p][r.s]++;map[r.p].total++;});var entries=Object.entries(map).sort(function(a,b){return b[1].total-a[1].total;});if(entries.length>14)entries=entries.slice(0,14);var W=1000,H=Math.max(420,50+entries.length*34),pL=170,pR=60,pT=22,plotW=W-pL-pR,rowH=22,rowGap=12,maxT=Math.max(1,...entries.map(function(e){return e[1].total;})),svg='';entries.forEach(function(e,i){var p=e[0],c=e[1],y=pT+i*(rowH+rowGap),cy=y+rowH/2+5,cls=p.startsWith('Accenture')?'wpl acc':'wpl';svg+='<text class="'+cls+'" x="'+(pL-12)+'" y="'+cy+'" text-anchor="end">'+p+'</text>';var x=pL;SO.forEach(function(st){var v=c[st];if(!v)return;var w=(v/maxT)*plotW;svg+='<rect class="wseg wAh" x="'+x+'" y="'+y+'" width="'+w+'" height="'+rowH+'" rx="3" fill="'+SC[st]+'" dt="'+encodeURIComponent(sTip(p,c,c.total))+'" style="animation-delay:'+(i*40)+'ms"></rect>';x+=w;});svg+='<text class="wbn wAf" x="'+(x+10)+'" y="'+cy+'" style="animation-delay:'+(i*40+350)+'ms">'+c.total+'</text>';});setSVG(svg,W,H,entries.length+' partners · '+rows.length+' rows');}
+  function chartMotion(rows){var map={};MO.forEach(function(m){map[m]={total:0,value:0,byS:{}};SO.forEach(function(s_){map[m].byS[s_]=0;});});rows.forEach(function(r){var m=r.m||'Direct';if(!map[m]){map[m]={total:0,value:0,byS:{}};SO.forEach(function(s_){map[m].byS[s_]=0;});}map[m].total++;map[m].value+=(r.a||0);map[m].byS[r.s]=(map[m].byS[r.s]||0)+1;});var entries=MO.filter(function(m){return map[m].total>0;}).map(function(m){return[m,map[m]];}),W=1000,H=460,pL=200,pR=140,pT=32,plotW=W-pL-pR,rowH=50,rowGap=18,maxT=Math.max(1,...entries.map(function(e){return e[1].total;})),svg='';entries.forEach(function(e,i){var motion=e[0],c=e[1],y=pT+i*(rowH+rowGap),cy=y+rowH/2+6;svg+='<rect x="'+(pL-160)+'" y="'+y+'" width="5" height="'+rowH+'" rx="2.5" fill="'+MC[motion]+'"/><text class="wpl" x="'+(pL-148)+'" y="'+(y+18)+'" text-anchor="start" font-size="14" font-weight="500">'+motion+'</text><text x="'+(pL-148)+'" y="'+(y+36)+'" text-anchor="start" fill="'+gC('--wdim')+'" font-size="11" font-family="DM Sans" letter-spacing="0.04em">'+mF(c.value)+' pipeline value</text>';var totalW=(c.total/maxT)*plotW,x=pL;SO.forEach(function(st){var v=c.byS[st];if(!v)return;var w=(v/c.total)*totalW;var tipH='<div class="th">'+motion+'</div>'+SO.map(function(ss){return c.byS[ss]?'<div class="tr"><span><span class="ld" style="background:'+SC[ss]+'"></span>'+ss+'</span><b>'+c.byS[ss]+'</b></div>':'';}).join('')+'<div class="tr" style="border-top:1px solid rgba(245,230,211,.14);margin-top:6px;padding-top:6px;"><span>Pipeline</span><b>'+mF(c.value)+'</b></div>';svg+='<rect class="wseg wAh" x="'+x+'" y="'+(y+10)+'" width="'+w+'" height="'+(rowH-20)+'" rx="3" fill="'+SC[st]+'" dt="'+encodeURIComponent(tipH)+'" style="animation-delay:'+(i*80)+'ms"></rect>';x+=w;});svg+='<text class="wbn wAf" x="'+(x+12)+'" y="'+cy+'" text-anchor="start" font-size="18" font-family="Playfair Display" font-style="italic" style="animation-delay:'+(i*80+350)+'ms">'+c.total+'</text>';});setSVG(svg,W,H,'Motion breakdown · '+rows.length+' rows');}
+  function chartStages(rows){var W=1000,H=460,cx=280,cy=H/2,rI=96,rO=150,counts={};SO.forEach(function(s_){counts[s_]=0;});rows.forEach(function(r){counts[r.s]++;});var total=rows.length||1,angle=-Math.PI/2,svg='';SO.forEach(function(st,i){var v=counts[st];if(!v)return;var a=(v/total)*Math.PI*2,a2=angle+a,lg=(a2-angle)>Math.PI?1:0,x1=cx+rO*Math.cos(angle),y1=cy+rO*Math.sin(angle),x2=cx+rO*Math.cos(a2),y2=cy+rO*Math.sin(a2),x3=cx+rI*Math.cos(a2),y3=cy+rI*Math.sin(a2),x4=cx+rI*Math.cos(angle),y4=cy+rI*Math.sin(angle),d='M '+x1+' '+y1+' A '+rO+' '+rO+' 0 '+lg+' 1 '+x2+' '+y2+' L '+x3+' '+y3+' A '+rI+' '+rI+' 0 '+lg+' 0 '+x4+' '+y4+' Z',tip='<div class="th">'+st+'</div><div class="tr"><span>Count</span><b>'+v+'</b></div><div class="tr"><span>Share</span><b>'+pct(v,total)+'</b></div>';svg+='<path class="wseg wAf" d="'+d+'" fill="'+SC[st]+'" dt="'+encodeURIComponent(tip)+'" style="animation-delay:'+(i*100)+'ms"/>';angle=a2;});svg+='<text x="'+cx+'" y="'+(cy-6)+'" text-anchor="middle" font-family="Playfair Display" font-style="italic" font-size="48" fill="'+gC('--wink')+'">'+total+'</text><text x="'+cx+'" y="'+(cy+22)+'" text-anchor="middle" font-family="DM Sans" font-size="11" letter-spacing="2" fill="'+gC('--wmute')+'">CONVERSATIONS</text>';var lx=580,ly=90;SO.forEach(function(st,i){var v=counts[st],p=pct(v,total),dim=v===0?0.4:1;svg+='<g style="opacity:'+dim+'"><rect x="'+lx+'" y="'+(ly-14)+'" width="10" height="10" rx="2" fill="'+SC[st]+'"/><text x="'+(lx+20)+'" y="'+(ly-5)+'" fill="'+gC('--wink')+'" font-family="DM Sans" font-size="15" font-weight="500">'+st+'</text><text x="'+(lx+320)+'" y="'+(ly-5)+'" text-anchor="end" fill="'+gC('--wink')+'" font-family="DM Sans" font-size="20" font-weight="500" font-variant-numeric="tabular-nums">'+v+'</text><text x="'+(lx+360)+'" y="'+(ly-5)+'" text-anchor="end" fill="'+gC('--wmute')+'" font-family="DM Sans" font-size="13" font-variant-numeric="tabular-nums">'+p+'</text></g>';ly+=60;});setSVG(svg,W,H,'Status mix · '+rows.length+' rows');}
+  function chartSubstages(rows){var subs=["Discovery","Qualification","Pipeline","Best Case","Stalled","Commit","Proposal","Negotiation","Solution Validation","Legal & Contracts","Closed Won","Lost"],sTn={"Discovery":"In-conversation","Qualification":"In-conversation","Pipeline":"In-conversation","Best Case":"Demo","Stalled":"In-conversation","Commit":"Demo","Proposal":"Demo","Negotiation":"Demo","Solution Validation":"Demo","Legal & Contracts":"Demo","Closed Won":"Win","Lost":"Lost"},counts={};subs.forEach(function(k){counts[k]=0;});rows.forEach(function(r){if(counts[r.ss]!==undefined)counts[r.ss]++;});var present=subs.filter(function(k){return counts[k]>0;}),W=1000,H=Math.max(360,40+present.length*46),pL=170,pR=60,pT=22,plotW=W-pL-pR,rowH=26,rowGap=16,mx=Math.max(1,...present.map(function(k){return counts[k];})),svg='';present.forEach(function(k,i){var y=pT+i*(rowH+rowGap),cy=y+rowH/2+5,v=counts[k],w=(v/mx)*plotW,tone=SC[sTn[k]]||gC('--wconv'),tip='<div class="th">'+k+'</div><div class="tr"><span>Count</span><b>'+v+'</b></div><div class="tr"><span>Share</span><b>'+pct(v,rows.length)+'</b></div>';svg+='<text class="wpl" x="'+(pL-12)+'" y="'+cy+'" text-anchor="end">'+k+'</text><rect class="wseg wAh" x="'+pL+'" y="'+y+'" width="'+w+'" height="'+rowH+'" rx="3" fill="'+tone+'" dt="'+encodeURIComponent(tip)+'" style="animation-delay:'+(i*50)+'ms"></rect><text class="wbn wAf" x="'+(pL+w+10)+'" y="'+cy+'" style="animation-delay:'+(i*50+350)+'ms">'+v+'</text>';});setSVG(svg,W,H,'Sub-stage · '+rows.length+' rows');}
+  function chartACV(rows){var map={};rows.forEach(function(r){var v=r.a||0;if(!v)return;if(!map[r.p])map[r.p]={closed:0,open:0};if(r.s==='Win')map[r.p].closed+=v;else if(r.s!=='Lost')map[r.p].open+=v;});var entries=Object.entries(map).map(function(e){return[e[0],Object.assign({},e[1],{total:e[1].closed+e[1].open})];}).sort(function(a,b){return b[1].total-a[1].total;});if(entries.length>12)entries=entries.slice(0,12);var W=1000,H=Math.max(380,50+entries.length*38),pL=170,pR=150,pT=22,plotW=W-pL-pR,rowH=22,rowGap=14,maxV=Math.max(1,...entries.map(function(e){return e[1].total;})),svg='<g class="wAf"><rect x="'+pL+'" y="0" width="14" height="14" rx="2" fill="'+gC('--wwin')+'"/><text x="'+(pL+22)+'" y="12" fill="'+gC('--wmute')+'" font-family="DM Sans" font-size="12">Closed (won)</text><rect x="'+(pL+140)+'" y="0" width="14" height="14" rx="2" fill="'+gC('--wacc2')+'" opacity=".85"/><text x="'+(pL+162)+'" y="12" fill="'+gC('--wmute')+'" font-family="DM Sans" font-size="12">Open pipeline</text></g>',totC=0,totO=0;entries.forEach(function(e,i){var p=e[0],c=e[1],y=pT+i*(rowH+rowGap),cy=y+rowH/2+5,cls=p.startsWith('Accenture')?'wpl acc':'wpl';totC+=c.closed;totO+=c.open;svg+='<text class="'+cls+'" x="'+(pL-12)+'" y="'+cy+'" text-anchor="end">'+p+'</text>';var x=pL;if(c.closed>0){var w=(c.closed/maxV)*plotW,tip='<div class="th">'+p+'</div><div class="tr"><span>Closed</span><b>'+mF(c.closed)+'</b></div><div class="tr"><span>Open</span><b>'+mF(c.open)+'</b></div>';svg+='<rect class="wseg wAh" x="'+x+'" y="'+y+'" width="'+w+'" height="'+rowH+'" rx="3" fill="'+gC('--wwin')+'" dt="'+encodeURIComponent(tip)+'" style="animation-delay:'+(i*50)+'ms"></rect>';x+=w;}if(c.open>0){var w2=(c.open/maxV)*plotW,tip2='<div class="th">'+p+'</div><div class="tr"><span>Closed</span><b>'+mF(c.closed)+'</b></div><div class="tr"><span>Open</span><b>'+mF(c.open)+'</b></div>';svg+='<rect class="wseg wAh" x="'+x+'" y="'+y+'" width="'+w2+'" height="'+rowH+'" rx="3" fill="'+gC('--wacc2')+'" opacity=".85" dt="'+encodeURIComponent(tip2)+'" style="animation-delay:'+(i*50)+'ms"></rect>';x+=w2;}svg+='<text class="wbn wAf" x="'+(x+10)+'" y="'+cy+'" style="animation-delay:'+(i*50+350)+'ms">'+mF(c.total)+'</text>';});setSVG(svg,W,H,'Closed '+mF(totC)+' · Open '+mF(totO)+' · '+entries.length+' partners');}
+  function render(){var rows=FR();renderKPIs();renderLegend();hideTip();if(ST.tab==='timeline')chartTimeline(rows);else if(ST.tab==='companies')chartCompanies(rows);else if(ST.tab==='motion')chartMotion(rows);else if(ST.tab==='stages')chartStages(rows);else if(ST.tab==='substages')chartSubstages(rows);else if(ST.tab==='acv')chartACV(rows);}
+  document.querySelectorAll('.wfilt').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('.wfilt').forEach(function(x){x.classList.remove('active');});b.classList.add('active');ST.filter=b.dataset.wf;render();});});
+  document.querySelectorAll('.wtab').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('.wtab').forEach(function(x){x.classList.remove('active');});b.classList.add('active');ST.tab=b.dataset.wt;render();});});
+  render();
+})();
+</script>
+
+<!-- ══════════════════════════════════════
+     WHAT CHANGED SINCE LAST WEEK
+══════════════════════════════════════ -->
+<div class="channel-block" style="border-color:var(--rose);">
+  <div class="channel-head">
+    <div class="channel-icon ch-accounts">Δ</div>
+    <span class="channel-name">What Changed Since Last Week</span>
+    <div class="channel-status-row"><span class="badge today">vs 22–29 Jun</span><span class="badge done">HubSpot-reconciled</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="metrics-grid col4" style="margin-bottom:14px;">
+      <div class="metric-cell"><div class="metric-val">134</div><div class="metric-label">Deals · +6</div></div>
+      <div class="metric-cell"><div class="metric-val green">19</div><div class="metric-label">Wins · +1</div></div>
+      <div class="metric-cell"><div class="metric-val green">$4.05M</div><div class="metric-label">Closed ACV · +$530K</div></div>
+      <div class="metric-cell"><div class="metric-val amber">$18.85M</div><div class="metric-label">Open ACV · +$20K</div></div>
+    </div>
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text">This week's widget is a <strong>full sheet-vs-HubSpot reconciliation</strong>. Every deal in both sources was compared; on conflicts, <strong>HubSpot is the single source of truth</strong> (amounts kept HubSpot where updated within two weeks, else the sheet value). <strong>93 deals</strong> carry recent HubSpot changes (modified in the last 10 days)</div><div class="item-badge-row"><span class="badge done">Reconciled</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text"><span class="item-label">21 conflicts resolved</span> — sheet still marked several Accenture deals "Solution Validation" that HubSpot has since moved: Investor Profile, QBE, Markel, Federal Bank POC → <strong>Lost</strong>; UOB, SBI Life → <strong>Best Case</strong>; Song → Legal &amp; Contracts. Firstsource Internal confirmed <strong>Closed Won $150K</strong>; Accenture Agentic Commerce <strong>Closed Won</strong></div><div class="item-badge-row"><span class="badge active">HubSpot won</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text"><span class="item-label">Amount corrections from HubSpot</span> — Firstsource ETS $250K → <strong>$1.25M</strong>, Lloyds $250K → <strong>$750K</strong>. Only exception: Firstsource ANZ (GRC) kept the sheet's $500K (HubSpot record older than two weeks). LatentView → Negotiation, RGP → Commit</div><div class="item-badge-row"><span class="badge active">Advanced</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text"><span class="item-label">28 sheet-only deals carried forward</span> — partner-sourced opps not yet in HubSpot (National Grid, Samsung, Impetus, Tata Elxsi, Sen 1M, the Movate and Deloitte pipeline entries, etc.). These sit in the widget at their sheet values and should be entered into HubSpot to become system-of-record</div><div class="item-badge-row"><span class="badge next-wk">To enter in HS</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Partner count <strong>28 → 21</strong> (HubSpot naming consolidated several sub-partners). Last week's full report: <a href="https://lyzr.kailash-gm.com/reports/gsi-report-jun22-29/" target="_blank" style="color:var(--rose);">22–29 June · 128 deals / 18 wins / $3.52M closed / $18.83M open</a></div><div class="item-badge-row"><span class="badge done">Prior</span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SECTION 1 — PREV WEEK 22–29 JUNE
+══════════════════════════════════════ -->
+<div id="past" class="week-header">
+  <span class="week-badge past"><span class="week-dot"></span>Previous · 22–29 June</span>
+  <h2 class="week-title">22 – 29 June 2026</h2>
+  <span class="week-dates">Summary</span>
+</div>
+
+<div class="section-eyebrow">Channel Status</div>
+<div class="status-grid" style="grid-template-columns:repeat(6,1fr);">
+  <div class="status-card"><div class="status-card-label">LinkedIn Ads</div><span class="badge active">MTD · $3K</span></div>
+  <div class="status-card"><div class="status-card-label">Outbound Email</div><span class="badge active">6 Active</span></div>
+  <div class="status-card"><div class="status-card-label">PhantomBuster</div><span class="badge live">Survey Live</span></div>
+  <div class="status-card"><div class="status-card-label">Agentic Roadmap</div><span class="badge live">Live 29 Jun</span></div>
+  <div class="status-card"><div class="status-card-label">Content</div><span class="badge active">Repo Build</span></div>
+  <div class="status-card"><div class="status-card-label">Pipeline</div><span class="badge live">128 · 18 Wins</span></div>
+</div>
+
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-auto">🛠</div>
+    <span class="channel-name">Key Carryforward — 22–29 June Recap</span>
+    <div class="channel-status-row"><span class="badge done">Recap</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text">LinkedIn Ads — MTD program reached 17,153 people across 11,953 targeted contacts on ~$3K; Anju post-amplification and NTT Data case study were the top click drivers. Account-penetration one-pager shipped to the team</div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Outbound — 6 Instantly campaigns active; TCS India the benchmark; Non-ICP, Tier-2 roadmap and Survey+Report sequences built but held pending launch</div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">PhantomBuster — GSI Survey phantom went live 29 Jun; Agentic Roadmap phantom (Ani &amp; Jessica) scheduled for 1 Jul</div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Content &amp; Events — GSI content repository build kicked off from Ani's SEO/keyword sheet; events list locking with Ankita; Firstsource podcast and Movate webinar carried forward</div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Pipeline — Firstsource Internal flipped to Won ($150K); Beryl8 added as new Thailand SI partner (3 deals); widget reached 128 deals / 18 wins / $3.52M closed / $18.83M open across 28 partners</div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     SECTION 2 — THIS WEEK 29 JUN – 5 JUL
+══════════════════════════════════════ -->
+<div id="current" class="week-header">
+  <span class="week-badge current"><span class="week-dot"></span>Current · 29 Jun – 5 Jul</span>
+  <h2 class="week-title">29 June – 5 July 2026</h2>
+  <span class="week-dates">What happened this week</span>
+</div>
+
+<!-- LINKEDIN ADS — NEW JULY FLIGHT -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-linkedin">in</div>
+    <span class="channel-name">LinkedIn Ads — GSI/SI July Flight (live 3 Jul)</span>
+    <div class="channel-status-row"><span class="badge live">6 Sets Live</span><span class="badge today">New Flight</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="section-eyebrow" style="margin-top:0;">Flight Totals — First 3 Days</div>
+    <div class="metrics-grid col4" style="margin-bottom:14px;">
+      <div class="metric-cell"><div class="metric-val">16,074</div><div class="metric-label">People Reached</div></div>
+      <div class="metric-cell"><div class="metric-val">26,272</div><div class="metric-label">Impressions</div></div>
+      <div class="metric-cell"><div class="metric-val green">222</div><div class="metric-label">Clicks (awareness/LP)</div></div>
+      <div class="metric-cell"><div class="metric-val amber">101</div><div class="metric-label">Conversation Sends</div></div>
+    </div>
+
+    <div class="section-eyebrow">Ad Set Performance</div>
+    <div class="ad-table-wrap" style="margin-bottom:14px;">
+      <table class="mini-table">
+        <thead><tr><th>Ad Set</th><th>Goal</th><th>Reach</th><th>Impr</th><th>CPM</th><th>CTR</th><th>Clicks</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Anju · Post Amplification</strong></td><td>Reach</td><td class="val-hi">4,231</td><td>6,120</td><td class="val-hi">$7.09</td><td class="val-hi">2.04%</td><td class="val-hi">125</td></tr>
+          <tr><td>All Target · India, UAE (low-cost)</td><td>LP conv.</td><td>3,855</td><td>6,738</td><td class="val-hi">$7.13</td><td>0.62%</td><td>42</td></tr>
+          <tr><td>All Target · US, UK, EU (high-cost)</td><td>LP conv.</td><td>2,876</td><td>4,601</td><td class="val-red">$11.71</td><td>0.50%</td><td>23</td></tr>
+          <tr><td>GSI Survey · US, UK, EU</td><td>LP conv.</td><td>3,611</td><td>5,919</td><td>$8.10</td><td class="val-red">0.32%</td><td>19</td></tr>
+          <tr><td>Agentic Roadmap · Awareness</td><td>Reach</td><td>1,501</td><td>2,894</td><td class="val-red">$14.89</td><td>0.45%</td><td>13</td></tr>
+          <tr><td>ANI · Priority Acc · Conversation</td><td>Lead Gen</td><td>—</td><td>—</td><td>—</td><td>—</td><td>29 opens / 101 sent</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section-eyebrow">Three Learnings This Week</div>
+    <div class="insight-box green">
+      <div class="insight-label green">1 · Post amplification is the standout — by a wide margin</div>
+      <div class="insight-text"><ul>
+        <li><strong>Anju's amplified post pulled a 2.04% CTR and 125 clicks</strong> — more clicks than every other set combined, at the lowest CPM ($7.09). Amplifying a real person's content dramatically out-performs static brand creative (next-best CTR was 0.62%)</li>
+        <li><strong>Takeaway:</strong> make founder/leader post-amplification a permanent line in the GSI/SI paid mix — it is the most efficient reach-and-click unit we have run</li>
+      </ul></div>
+    </div>
+    <div class="insight-box blue">
+      <div class="insight-label blue">2 · Low-cost geos are winning the awareness efficiency race</div>
+      <div class="insight-text"><ul>
+        <li><strong>India/UAE beat US/UK/EU on both CPM ($7.13 vs $11.71) and CTR (0.62% vs 0.50%)</strong>, delivering ~34% more reach for similar budget</li>
+        <li>Keep both geos live for coverage, but the low-cost split is the efficient scale lever for top-of-funnel reach; reserve the high-cost geo for the named priority accounts</li>
+      </ul></div>
+    </div>
+    <div class="insight-box amber">
+      <div class="insight-label amber">3 · Two new plays launched — Agentic Roadmap + GSI Survey now have paid support</div>
+      <div class="insight-text"><ul>
+        <li><strong>The Agentic Roadmap awareness set and the GSI Survey set both went live this flight</strong>, tying paid distribution to the roadmap (now live) and the survey (phantom live). Early CPMs are higher ($14.89 / $8.10) as they find their audience — expect these to settle with optimization</li>
+        <li>Ani's priority-account conversation ads opened at 101 sends / 29 opens (28.7%) — a healthy early open rate for a cold conversation flow</li>
+      </ul></div>
+    </div>
+  </div>
+</div>
+
+<!-- OUTBOUND EMAIL — INSTANTLY -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-email">✉</div>
+    <span class="channel-name">Outbound Email — Instantly Campaigns</span>
+    <div class="channel-status-row"><span class="badge active">6 Active</span><span class="badge today">35K Launch Today</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="section-eyebrow" style="margin-top:0;">Campaign Activity This Week — Sends &amp; Engagement Events</div>
+    <div class="ad-table-wrap" style="margin-bottom:14px;">
+      <table class="mini-table">
+        <thead><tr><th>Campaign</th><th>Peak Sent</th><th>Opens Registered</th><th>Clicks</th><th>Replies</th><th>Signal</th></tr></thead>
+        <tbody>
+          <tr><td><strong>TCS India</strong></td><td>~120</td><td class="val-hi">Sustained (16.67% S2)</td><td class="val-hi">9</td><td class="val-hi">6</td><td class="val-hi">Engine</td></tr>
+          <tr><td><strong>Fujitsu June</strong></td><td>~135</td><td class="val-hi">~100 (38.66% S3)</td><td>0</td><td>0</td><td>Opens strong</td></tr>
+          <tr><td>KPMG India</td><td>~120</td><td>Tracking gap on late steps</td><td>1</td><td>0</td><td>High volume</td></tr>
+          <tr><td>Accenture Nordic</td><td>~88</td><td>Tracking gap</td><td class="val-hi">2</td><td>0</td><td>Clicks landing</td></tr>
+          <tr><td>Accenture Australia</td><td>~38</td><td>Tracking gap</td><td>1</td><td>0</td><td>Advancing</td></tr>
+          <tr><td>8 Tracks · Gulf GSI</td><td>~30</td><td>Warm-up</td><td>0</td><td>0</td><td>Just launched</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="insight-box green">
+      <div class="insight-label green">💡 What's working</div>
+      <div class="insight-text"><ul>
+        <li><strong>TCS India is the engine again</strong> — sustained opens (16.67% at Step 2), a live reply thread of <strong>6 replies</strong> and 9 clicks across Steps 2–5. This is the template: clone its subject lines, sender identity and cadence for the rebuilds</li>
+        <li><strong>Fujitsu has the best opens in the batch</strong> — ~75 opens (38.66%) at Step 3, the open curve tracking right under the send curve. The audience is reading; the gap is purely the CTA</li>
+        <li><strong>KPMG India carried the highest send volume</strong> — Steps 3–5 pushing deep-funnel follow-ups (221 sent at Step 4), keeping the sequence alive across the account</li>
+      </ul></div>
+    </div>
+    <div class="insight-box" style="background:rgba(201,106,90,0.07);border-color:rgba(201,106,90,0.25);">
+      <div class="insight-label" style="color:var(--rose);">🔧 Fixes &amp; watch-items</div>
+      <div class="insight-text"><ul>
+        <li><strong>Open-tracking gap on the late-funnel steps</strong> (Accenture AU, Nordic, KPMG follow-up steps): opens aren't registering on these steps even though <strong>clicks are landing</strong> — Nordic pulled 2 clicks at Step 5, KPMG and AU 1 each. That confirms mail is being delivered and read; the open pixel isn't firing on those steps. Audit open-pixel / link-tracking on the follow-up templates before drawing engagement conclusions</li>
+        <li><strong>Fujitsu CTA</strong> — elite opens, zero clicks/replies. Add one clear ask with a calendar link, tighten the body to 3–4 lines, test a value-led PS</li>
+        <li><strong>8 Tracks Gulf</strong> — freshly launched (90 sequences started, Step 1 out). Sits in warm-up; watch as Steps 2–3 fire next week</li>
+      </ul></div>
+    </div>
+
+    <div class="section-eyebrow">Big Launch — 29-Sequence Outbound Engine</div>
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text"><span class="item-label">29-sequence campaign built</span> — targeting a <strong>35K-contact list across 53 accounts</strong>, split by segment: mid-size consulting, Tier-1 consulting, Tier-1 GSIs and SIs. Copies are live; Instantly emails begin going out <strong>today</strong></div><div class="item-badge-row"><span class="badge live">Live Today</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text"><span class="item-label">Held sequences</span> — Non-ICP, Tier-2 roadmap and Survey+Report remain built but not yet launched</div><div class="item-badge-row"><span class="badge pending">Pending</span></div></div>
+    </div>
+
+    <div class="iframe-wrap">
+      <div class="iframe-label"><span class="dot-ind"></span>Outbound Email Copies — Sequences Doc<a class="iframe-open-btn" href="https://docs.google.com/document/d/1arKXQhvtkZ-167ts5zChd-gAohNS2_covXhXLzdYgE0/edit" target="_blank">Open ↗</a></div>
+      <iframe src="https://docs.google.com/document/d/1arKXQhvtkZ-167ts5zChd-gAohNS2_covXhXLzdYgE0/preview" height="360"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- BLOCKER CALLOUT -->
+<div class="channel-block" style="border-color:rgba(217,168,76,0.4);">
+  <div class="channel-head">
+    <div class="channel-icon ch-auto">⚠</div>
+    <span class="channel-name">Blocker — Sending Infrastructure for ToF/MoF Push</span>
+    <div class="channel-status-row"><span class="badge blocked">Needs Resolution</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="insight-box amber">
+      <div class="insight-label amber">More sending inboxes / domains need to be provisioned</div>
+      <div class="insight-text">For the top-of-funnel and middle-of-funnel engagement play into existing clients — per Siva &amp; Anju's recommendation — we need additional email accounts provisioned to carry the volume. This is the gating dependency: the 35K-contact, 53-account outbound engine and the client-nurture layer both need more healthy sending inboxes/domains than we currently have. The late-funnel tracking gaps already visible this week are an early sign the current infrastructure is stretched. <strong>Ask:</strong> greenlight provisioning of additional sending inboxes/domains and warm-up runway so the July outbound scale-up lands in the inbox.</div>
+    </div>
+  </div>
+</div>
+
+<!-- PHANTOMBUSTER -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-auto">🤖</div>
+    <span class="channel-name">PhantomBuster — Agentic Roadmap Phantom (Ani &amp; Jessica)</span>
+    <div class="channel-status-row"><span class="badge live">Live &amp; Producing</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="metrics-grid col4" style="margin-bottom:14px;">
+      <div class="metric-cell"><div class="metric-val">1,493</div><div class="metric-label">Profiles Collected</div></div>
+      <div class="metric-cell"><div class="metric-val amber">39</div><div class="metric-label">Invites Sent (3%)</div></div>
+      <div class="metric-cell"><div class="metric-val green">5</div><div class="metric-label">Requests Accepted (13%)</div></div>
+      <div class="metric-cell"><div class="metric-val">58m</div><div class="metric-label">Time Saved</div></div>
+    </div>
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text">The Agentic Roadmap phantom is live and producing its first real output — 1,493 profiles collected, 39 connection invites sent, 5 accepted (13% acceptance) across the 2–6 Jul window</div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Message sequence in flight: 5 connection requests and 3 first follow-ups fired. Volume is deliberately conservative during account warm-up to protect the sending profiles</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ORGANIC + TRACKER -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-social">📣</div>
+    <span class="channel-name">Organic LinkedIn &amp; Tracker</span>
+    <div class="channel-status-row"><span class="badge live">4 Posts Live</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text"><span class="item-label">Organic posts</span> — two posts went live from the <strong>Lyzr LinkedIn page</strong> and two from the <strong>partner page</strong> (Anju), building GSI/SI-facing presence</div><div class="item-badge-row"><span class="badge live">4 Live</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text"><span class="item-label">GSI Single Tracker</span> — pushed to Friday this week</div><div class="item-badge-row"><span class="badge next-wk">→ Fri</span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- AGENTIC ROADMAP + MARKETING CAMPAIGNS -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-events">🗺</div>
+    <span class="channel-name">Agentic Roadmap &amp; Marketing Campaigns</span>
+    <div class="channel-status-row"><span class="badge live">Going Live Today</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text"><span class="item-label">Marketing campaigns</span> — going live today, with paid support already running behind the Agentic Roadmap and GSI Survey creatives</div><div class="item-badge-row"><span class="badge live">Live Today</span></div></div>
+    </div>
+    <div class="iframe-wrap">
+      <div class="iframe-label"><span class="dot-ind"></span>Agentic AI Roadmap Prototype<a class="iframe-open-btn" href="https://ai-roadmap-git-main-subs-3909s-projects.vercel.app/" target="_blank">Open ↗</a></div>
+      <iframe src="https://ai-roadmap-git-main-subs-3909s-projects.vercel.app/" height="460"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- EVENTS -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-events">📅</div>
+    <span class="channel-name">Events</span>
+    <div class="channel-status-row"><span class="badge wip">Locking Q3</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text"><span class="item-label">Sailboat event</span> — pushed to September</div><div class="item-badge-row"><span class="badge next-wk">→ Sept</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text"><span class="item-label">Q3 events</span> — locking in the remaining events for the quarter with Ankita</div><div class="item-badge-row"><span class="badge wip">In Progress</span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-content">📅</div>
+    <span class="channel-name">Content — GSI Repository</span>
+    <div class="channel-status-row"><span class="badge live">Repo Built</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text"><span class="item-label">GSI content repository</span> — built out a keyword-driven content repository mapping topics to GSI/SI target accounts, sourced from Ani's SEO &amp; keyword sheet</div><div class="item-badge-row"><span class="badge live">Live</span></div></div>
+    </div>
+    <div class="iframe-wrap">
+      <div class="iframe-label"><span class="dot-ind"></span>GSI Content Repository (keyword-mapped)<a class="iframe-open-btn" href="https://docs.google.com/spreadsheets/d/1n3Xaaa-L8M70kjVVbruXPM3L2P0o61P7hS_46hKqv5A/edit?gid=1245354028" target="_blank">Open ↗</a></div>
+      <iframe src="https://docs.google.com/spreadsheets/d/1n3Xaaa-L8M70kjVVbruXPM3L2P0o61P7hS_46hKqv5A/preview?gid=1245354028" height="420"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- ICP ACCOUNT LIST -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-accounts">🎯</div>
+    <span class="channel-name">ICP Account List — SI/SIS Above $500M ARR</span>
+    <div class="channel-status-row"><span class="badge active">Updating</span><span class="badge today">69 Accounts</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="metrics-grid col3" style="margin-bottom:14px;">
+      <div class="metric-cell"><div class="metric-val">69</div><div class="metric-label">ICP Accounts in Scope</div></div>
+      <div class="metric-cell"><div class="metric-val amber">$500M+</div><div class="metric-label">ARR Floor (ICP threshold)</div></div>
+      <div class="metric-cell"><div class="metric-val blue">SI / SIS</div><div class="metric-label">Segment</div></div>
+    </div>
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text"><span class="item-label">ICP account universe refreshed</span> — updating the master list of <strong>69 System Integrator / SIS accounts that meet the ICP bar of $500M+ ARR</strong>. This is the qualified target universe that feeds the whole outbound motion — the LinkedIn ad target lists, the Instantly sequences, and the PhantomBuster profile pulls all draw from it</div><div class="item-badge-row"><span class="badge active">In Progress</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text">Keeping this list current ensures spend and outreach stay concentrated on accounts large enough to carry an enterprise agentic-AI motion, rather than diffusing across sub-threshold targets</div></div>
+    </div>
+    <div class="iframe-wrap">
+      <div class="iframe-label"><span class="dot-ind"></span>ICP Account List — SI/SIS $500M+ ARR (69 accounts)<a class="iframe-open-btn" href="https://docs.google.com/spreadsheets/d/1E39yrA4JLuniim-UgAaMCTmVErGuuNjaCFao9c48VA0/edit?gid=1804009744" target="_blank">Open ↗</a></div>
+      <iframe src="https://docs.google.com/spreadsheets/d/1E39yrA4JLuniim-UgAaMCTmVErGuuNjaCFao9c48VA0/preview?gid=1804009744" height="440"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- CO-MARKETING + PODCAST -->
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-co-mkt">🤝</div>
+    <span class="channel-name">Co-Marketing &amp; Podcast</span>
+    <div class="channel-status-row"><span class="badge wip">Planning</span></div>
+  </div>
+  <div class="channel-body">
+    <div class="item-list">
+      <div class="item"><div class="item-dot"></div><div class="item-text"><span class="item-label">Firstsource podcast</span> — in planning</div><div class="item-badge-row"><span class="badge wip">Planning</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text"><span class="item-label">Movate webinar</span> — pushed to September</div><div class="item-badge-row"><span class="badge next-wk">→ Sept</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text"><span class="item-label">Movate whitepaper</span> — in discussion</div><div class="item-badge-row"><span class="badge wip">In Discussion</span></div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     CONTENT CALENDAR
+══════════════════════════════════════ -->
+<div id="content-cal" class="week-header">
+  <span class="week-badge overview"><span class="week-dot"></span>Planned</span>
+  <h2 class="week-title">Content Calendar — June &amp; July 2026</h2>
+  <span class="week-dates">Aligned with Shreya · June–July</span>
+</div>
+
+<div class="channel-block">
+  <div class="channel-head">
+    <div class="channel-icon ch-content">📅</div>
+    <span class="channel-name">Content Calendar — Case Studies, Newsletters, Blogs, LinkedIn Articles</span>
+    <div class="channel-status-row"><span class="badge live">Flowing</span></div>
+  </div>
+  <div class="channel-body">
+
+    <div class="item-list" style="margin-bottom:16px;">
+      <div class="item"><div class="item-dot"></div><div class="item-text">Calendar <strong>aligned with Shreya</strong> — case studies, newsletters, LinkedIn articles and blogs mapped for June–July (full schedule below)</div><div class="item-badge-row"><span class="badge done">Aligned</span></div></div>
+      <div class="item"><div class="item-dot"></div><div class="item-text"><strong>This week</strong> — Pilot-to-Prod newsletter (Jul 2) shipped and the Hitachi case study (Jul 7) on deck; Under Armour + outcome-pricing article queued next</div><div class="item-badge-row"><span class="badge live">Flowing</span></div></div>
+    </div>
+
+    <!-- High level numbers -->
+    <div class="section-eyebrow" style="margin-top:0;">June–July at a Glance</div>
+    <div class="metrics-grid col4" style="margin-bottom:16px;">
+      <div class="metric-cell"><div class="metric-val green">9</div><div class="metric-label">Case Studies Planned</div></div>
+      <div class="metric-cell"><div class="metric-val">2</div><div class="metric-label">Email Newsletters</div></div>
+      <div class="metric-cell"><div class="metric-val">2</div><div class="metric-label">LinkedIn Articles</div></div>
+      <div class="metric-cell"><div class="metric-val">2</div><div class="metric-label">Long-form Blogs</div></div>
+    </div>
+
+    <!-- June content schedule -->
+    <div class="section-eyebrow">June 2026 — Schedule</div>
+    <div class="ad-table-wrap" style="margin-bottom:14px;">
+      <table class="mini-table">
+        <thead><tr><th>Date</th><th>Type</th><th>Title</th><th>GSI / Subject</th><th>Pillar</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Tue Jun 2</td><td><span style="color:var(--rose);font-size:11px;font-weight:600;">Case Study</span></td><td>From 48 hours to 48 minutes: how Accenture moves AI from prototype to pitch</td><td>Accenture</td><td>Pilot-to-Prod</td><td><span class="badge pending">Planned</span></td></tr>
+          <tr><td>Thu Jun 4</td><td><span style="color:var(--green);font-size:11px;font-weight:600;">Email Newsletter</span></td><td>The $1T agent practice — what GSIs are building right now</td><td>GSI Economics</td><td>Economics</td><td><span class="badge pending">Planned</span></td></tr>
+          <tr><td>Tue Jun 9</td><td><span style="color:var(--rose);font-size:11px;font-weight:600;">Case Study</span></td><td>70,000 hours saved: NTT Data's AI-powered incident prediction engine</td><td>NTT Data</td><td>Architecture</td><td><span class="badge pending">Planned</span></td></tr>
+          <tr><td>Tue Jun 9</td><td><span style="color:var(--blue);font-size:11px;font-weight:600;">LinkedIn Article</span></td><td>Why every GSI partner conversation in 2026 starts with 'show me the agent demo'</td><td>Buyer Behavior Shift</td><td>Pilot-to-Prod</td><td><span class="badge pending">Planned</span></td></tr>
+          <tr><td>Tue Jun 16</td><td><span style="color:var(--rose);font-size:11px;font-weight:600;">Case Study</span></td><td>Personalized retirement planning at enterprise scale — the WTW story</td><td>WTW (Willis Towers Watson)</td><td>Vertical Plays</td><td><span class="badge pending">Planned</span></td></tr>
+          <tr><td>Tue Jun 16</td><td><span style="color:var(--amber);font-size:11px;font-weight:600;">Blog</span></td><td>The GSI Agent Operating Model — a field guide for 2026</td><td>GSI Practice Design</td><td>Pilot-to-Prod</td><td><span class="badge pending">Planned</span></td></tr>
+          <tr><td>Tue Jun 23</td><td><span style="color:var(--rose);font-size:11px;font-weight:600;">Case Study</span></td><td>How HFS Research turned a content archive into a 24/7 analyst</td><td>HFS Research</td><td>Architecture</td><td><span class="badge done">Done</span></td></tr>
+          <tr><td>Tue Jun 30</td><td><span style="color:var(--rose);font-size:11px;font-weight:600;">Case Study</span></td><td>Industrial troubleshooting, re-architected: Accenture's multi-agent RCA system</td><td>Accenture Industrial</td><td>Architecture</td><td><span class="badge done">Done</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- July content schedule -->
+    <div class="section-eyebrow">July 2026 — Schedule</div>
+    <div class="ad-table-wrap" style="margin-bottom:14px;">
+      <table class="mini-table">
+        <thead><tr><th>Date</th><th>Type</th><th>Title</th><th>GSI / Subject</th><th>Pillar</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Thu Jul 2</td><td><span style="color:var(--green);font-size:11px;font-weight:600;">Email Newsletter</span></td><td>From pilot purgatory to production: 4 plays that work</td><td>Pilot-to-Prod Playbook</td><td>Pilot-to-Prod</td><td><span class="badge active">This Week</span></td></tr>
+          <tr><td>Tue Jul 7</td><td><span style="color:var(--rose);font-size:11px;font-weight:600;">Case Study</span></td><td>How Hitachi compressed its case-study production cycle by 70%</td><td>Hitachi</td><td>Pilot-to-Prod</td><td><span class="badge active">This Week</span></td></tr>
+          <tr><td>Tue Jul 14</td><td><span style="color:var(--rose);font-size:11px;font-weight:600;">Case Study</span></td><td>Under Armour's cultural intelligence layer — vetting design at global scale</td><td>Under Armour (via GSI)</td><td>Vertical Plays</td><td><span class="badge pending">Planned</span></td></tr>
+          <tr><td>Tue Jul 14</td><td><span style="color:var(--blue);font-size:11px;font-weight:600;">LinkedIn Article</span></td><td>The end of time &amp; materials — what outcome-based pricing actually looks like</td><td>GSI Economics</td><td>Economics</td><td><span class="badge pending">Planned</span></td></tr>
+          <tr><td>Tue Jul 21</td><td><span style="color:var(--rose);font-size:11px;font-weight:600;">Case Study</span></td><td>Firstsource: replacing rigid RPA with reasoning agent hubs</td><td>Firstsource</td><td>Architecture</td><td><span class="badge pending">Planned</span></td></tr>
+          <tr><td>Tue Jul 28</td><td><span style="color:var(--rose);font-size:11px;font-weight:600;">Case Study</span></td><td>A Global IT giant cut delivery time-to-value by 60% — anonymized</td><td>Global IT Giant</td><td>Economics</td><td><span class="badge pending">Planned</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="insight-box blue">
+      <div class="insight-label blue">📌 Key Pillars</div>
+      <div class="insight-text"><ul>
+        <li><strong>Pilot-to-Prod</strong> — getting GSI clients from demo to live deployment. Accenture, Hitachi case studies anchor this pillar</li>
+        <li><strong>Architecture</strong> — how multi-agent systems are designed and operated. NTT Data, HFS Research, Firstsource</li>
+        <li><strong>Vertical Plays</strong> — BFSI, Insurance, Retail sector-specific use cases. WTW, Under Armour, KeyBank</li>
+        <li><strong>Economics</strong> — outcome-based pricing, ROI math, practice margin. Newsletters and LinkedIn Articles own this lane</li>
+      </ul></div>
+    </div>
+
+    <div class="iframe-wrap">
+      <div class="iframe-label"><span class="dot-ind"></span>Full Content Calendar — June–Dec 2026<a class="iframe-open-btn" href="https://docs.google.com/spreadsheets/d/1ieW826HHBry7Cd-VHE6h4IWK3JUphU6PKwbAjH4TrN4/edit" target="_blank">Open ↗</a></div>
+      <iframe src="https://docs.google.com/spreadsheets/d/1ieW826HHBry7Cd-VHE6h4IWK3JUphU6PKwbAjH4TrN4/preview" height="360"></iframe>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     SECTION 3 — PIPELINE & TO-DOS
+══════════════════════════════════════ -->
+<div id="next" class="week-header">
+  <span class="week-badge pipeline"><span class="week-dot"></span>Next Up</span>
+  <h2 class="week-title">Pipeline &amp; To-Dos</h2>
+  <span class="week-dates">6 July onwards</span>
+</div>
+
+<div class="pipeline-grid">
+  <div class="pipeline-item"><div class="pipeline-num">1</div><div style="flex:1"><div class="pipeline-name">Email — Provision Sending Infrastructure</div><div class="pipeline-detail">BLOCKER: provision additional inboxes/domains + warm-up for the 35K-contact outbound engine and the client ToF/MoF nurture (Siva &amp; Anju)</div></div><span class="badge blocked">Blocker</span></div>
+  <div class="pipeline-item"><div class="pipeline-num">2</div><div style="flex:1"><div class="pipeline-name">Email — Monitor 35K Launch</div><div class="pipeline-detail">29-sequence campaign across 53 accounts goes live today; watch deliverability + early opens as volume ramps</div></div><span class="badge live">Live Today</span></div>
+  <div class="pipeline-item"><div class="pipeline-num">3</div><div style="flex:1"><div class="pipeline-name">Ads — Scale Post Amplification</div><div class="pipeline-detail">Anju post-amp hit 2.04% CTR / 125 clicks — make founder/leader amplification a permanent line; lean the low-cost geo split for reach</div></div><span class="badge wip">This Wk</span></div>
+  <div class="pipeline-item"><div class="pipeline-num">4</div><div style="flex:1"><div class="pipeline-name">PhantomBuster — Scale Roadmap Phantom</div><div class="pipeline-detail">Live &amp; producing (1,493 profiles, 39 invites, 5 accepted); ramp volume carefully as accounts warm</div></div><span class="badge live">Producing</span></div>
+  <div class="pipeline-item"><div class="pipeline-num">5</div><div style="flex:1"><div class="pipeline-name">GSI Single Tracker — Live</div><div class="pipeline-detail">Pushed to Friday this week</div></div><span class="badge next-wk">Fri</span></div>
+  <div class="pipeline-item"><div class="pipeline-num">6</div><div style="flex:1"><div class="pipeline-name">Events — Lock Q3 List</div><div class="pipeline-detail">Sailboat pushed to September; locking remaining Q3 events with Ankita</div></div><span class="badge wip">In Progress</span></div>
+  <div class="pipeline-item"><div class="pipeline-num">7</div><div style="flex:1"><div class="pipeline-name">Content — Extend GSI Repository</div><div class="pipeline-detail">Keyword-mapped repository built; extend coverage across the 53 target accounts</div></div><span class="badge active">Building</span></div>
+  <div class="pipeline-item"><div class="pipeline-num">8</div><div style="flex:1"><div class="pipeline-name">ICP Account List — Finish Update</div><div class="pipeline-detail">69 SI/SIS accounts above $500M ARR being updated; the qualified universe feeding ad lists, Instantly sequences and phantom pulls</div></div><span class="badge active">Updating</span></div>
+  <div class="pipeline-item"><div class="pipeline-num">9</div><div style="flex:1"><div class="pipeline-name">Co-Marketing — Firstsource Podcast</div><div class="pipeline-detail">In planning · Pranamya &amp; Vedant</div></div><span class="badge wip">Planning</span></div>
+  <div class="pipeline-item"><div class="pipeline-num">10</div><div style="flex:1"><div class="pipeline-name">Co-Marketing — Movate</div><div class="pipeline-detail">Webinar pushed to September; whitepaper in discussion</div></div><span class="badge next-wk">→ Sept</span></div>
+</div>
+
+<div style="margin-top:60px;padding-top:20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+  <span style="font-size:11.5px;color:var(--text-3);">Lyzr AI · GSI &amp; Partner Marketing · Week of 29 June 2026</span>
+  <span style="font-size:11px;color:var(--text-3);">Generated 6 July 2026 · Pipeline synced from HubSpot</span>
+</div>
+
+</div><!-- /main -->
+
+<script>
+  document.querySelectorAll('.nav-pill').forEach(function(p){p.addEventListener('click',function(e){var h=p.getAttribute('href');if(h&&h.startsWith('#')){e.preventDefault();var t=document.querySelector(h);if(t)t.scrollIntoView({behavior:'smooth',block:'start'});}});});
+</script>
+</body>
+</html>
