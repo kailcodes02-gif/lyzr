@@ -2,3 +2,7 @@
 /demo_pipeline  /prototypes/index.html  200
 /demo_pipeline/ /prototypes/index.html  200
 /demo_pipeline/* /prototypes/:splat     200
+
+# Rewrite /acceture_and_lyzr → serve Lyzr × Accenture landing page
+/acceture_and_lyzr  /Landing%20page/acceture_and_lyzr.html  200
+/acceture_and_lyzr/ /Landing%20page/acceture_and_lyzr.html  200
