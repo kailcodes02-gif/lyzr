@@ -908,6 +908,76 @@ body { font-family: var(--sans); background: var(--bg); color: var(--fg)!importa
 @media (max-width: 520px) {
   #lyzr-accentures .team-grid { grid-template-columns: 1fr; max-width: 340px; }
 }
+
+/* Team avatars -> real profile photos */
+#lyzr-accentures .team-avatar {
+  width: 96px; height: 96px; border-radius: 50%; flex-shrink: 0; object-fit: cover; object-position: center top;
+  margin-bottom: 22px; border: 3px solid #fff; background: var(--cream); display: block; font-size: 0;
+  box-shadow: 0 10px 28px rgba(201,106,90,0.26), 0 0 0 1px rgba(201,106,90,0.4);
+  transition: transform 0.45s var(--out);
+}
+#lyzr-accentures .team-card:hover .team-avatar { transform: scale(1.05); }
+
+/* ─────────────────────────────────────────────────────────
+   INTERACTIVE DEMOS — thumbnail cards (redesigned)
+───────────────────────────────────────────────────────── */
+#lyzr-accentures .demo-card {
+  background: rgba(255,255,255,0.72); border: 1px solid var(--border); border-radius: var(--rL);
+  overflow: hidden; display: flex; flex-direction: column; text-decoration: none;
+  transition: all 0.45s var(--out);
+}
+#lyzr-accentures .demo-card:hover { transform: translateY(-6px); box-shadow: var(--sh3); border-color: rgba(201,106,90,0.4); }
+#lyzr-accentures .demo-thumb { position: relative; height: 178px; overflow: hidden; background: var(--deep); flex-shrink: 0; }
+#lyzr-accentures .demo-thumb-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s var(--out); }
+#lyzr-accentures .demo-card:hover .demo-thumb-img { transform: scale(1.06); }
+#lyzr-accentures .demo-thumb::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(22,15,11,0.55), rgba(22,15,11,0.06) 55%, transparent); }
+#lyzr-accentures .demo-badge {
+  position: absolute; top: 14px; left: 14px; z-index: 2; display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 9999px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: #fff; background: rgba(22,15,11,0.5); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.14);
+}
+#lyzr-accentures .demo-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px rgba(80,200,120,0.22); }
+#lyzr-accentures .demo-play {
+  position: absolute; bottom: 14px; right: 14px; z-index: 2; width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; color: #fff; padding-left: 2px;
+  background: var(--accent); box-shadow: 0 6px 18px rgba(201,106,90,0.45); transition: transform 0.35s var(--out);
+}
+#lyzr-accentures .demo-card:hover .demo-play { transform: scale(1.12); }
+#lyzr-accentures .demo-body { padding: 24px 26px 26px; display: flex; flex-direction: column; flex: 1; }
+#lyzr-accentures .demo-title { font-family: var(--serif); font-size: 18px; font-weight: 500; color: #000; line-height: 1.28; margin-bottom: 10px; }
+#lyzr-accentures .demo-desc { font-size: 13px; color: var(--muted); line-height: 1.7; flex: 1; margin-bottom: 20px; }
+#lyzr-accentures .demo-cta { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--primary); transition: gap 0.3s, color 0.3s; }
+#lyzr-accentures .demo-cta svg { width: 14px; height: 14px; }
+#lyzr-accentures .demo-card:hover .demo-cta { color: var(--accent); gap: 11px; }
+
+/* ─────────────────────────────────────────────────────────
+   PRESS & PUBLICATIONS — thumbnail cards (redesigned)
+───────────────────────────────────────────────────────── */
+#lyzr-accentures .press-card {
+  background: #fff; border: 1px solid var(--border); border-radius: var(--rL);
+  overflow: hidden; display: flex; flex-direction: column; text-decoration: none; padding: 0;
+  transition: all 0.45s var(--out);
+}
+#lyzr-accentures .press-card:hover { transform: translateY(-6px); box-shadow: var(--sh3); border-color: rgba(201,106,90,0.35); }
+#lyzr-accentures .press-thumb { position: relative; height: 170px; overflow: hidden; background: var(--deep); flex-shrink: 0; }
+#lyzr-accentures .press-thumb-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s var(--out); }
+#lyzr-accentures .press-card:hover .press-thumb-img { transform: scale(1.06); }
+#lyzr-accentures .press-thumb::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(22,15,11,0.42), transparent 60%); }
+#lyzr-accentures .press-kicker {
+  position: absolute; top: 14px; left: 14px; z-index: 2; padding: 4px 11px; border-radius: 9999px;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--primary); background: rgba(242,237,232,0.92); backdrop-filter: blur(8px);
+}
+#lyzr-accentures .press-body { padding: 22px 24px 24px; display: flex; flex-direction: column; flex: 1; }
+#lyzr-accentures .press-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+#lyzr-accentures .press-source { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+#lyzr-accentures .press-date { font-size: 11px; color: rgba(107,94,82,0.55); }
+#lyzr-accentures .press-title { font-family: var(--serif); font-size: 16.5px; font-weight: 500; color: #000; line-height: 1.34; margin-bottom: 12px; }
+#lyzr-accentures .press-excerpt { font-size: 12.5px; color: var(--muted); line-height: 1.7; flex: 1; margin-bottom: 18px; }
+#lyzr-accentures .press-read-more { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--primary); transition: gap 0.3s, color 0.3s; }
+#lyzr-accentures .press-read-more svg { width: 13px; height: 13px; }
+#lyzr-accentures .press-card:hover .press-read-more { color: var(--accent); gap: 10px; }
 </style>
 </head>
 <body>
@@ -1495,50 +1565,49 @@ body { font-family: var(--sans); background: var(--bg); color: var(--fg)!importa
     </div>
     
     <div class="demos-grid">
+
       <!-- Demo 1 -->
-      <div class="demo-card">
-        <div class="demo-header">
-          <div class="demo-icon-wrap">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M7 10h4M7 14h10M17 10h.01"></path></svg>
-          </div>
-          <span class="demo-tag">BFSI · Live Sandbox</span>
+      <a class="demo-card rv rv-up d1" href="https://cvc.lyzr.app" target="_blank" rel="noopener">
+        <div class="demo-thumb">
+          <img class="demo-thumb-img" src="https://www.lyzr.ai/wp-content/uploads/2026/04/CVC-spotlight-platform.webp" alt="CVC Spotlight Platform" loading="lazy">
+          <span class="demo-badge"><span class="demo-badge-dot"></span>BFSI · Live Sandbox</span>
+          <span class="demo-play"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg></span>
         </div>
-        <h3 class="demo-title">CVC Spotlight Platform Prototype</h3>
-        <p class="demo-desc">Interact with the CVC search agent. Query investments, ask for venture metrics, and generate deal memos instantly.</p>
-        <div class="demo-action">
-          <a href="https://cvc.lyzr.app" target="_blank" class="btn primary sm" rel="noopener">Launch Sandbox &rarr;</a>
+        <div class="demo-body">
+          <h3 class="demo-title">CVC Spotlight Platform Prototype</h3>
+          <p class="demo-desc">Interact with the CVC search agent. Query investments, ask for venture metrics, and generate deal memos instantly.</p>
+          <span class="demo-cta">Launch Sandbox <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"></path></svg></span>
         </div>
-      </div>
-      
+      </a>
+
       <!-- Demo 2 -->
-      <div class="demo-card">
-        <div class="demo-header">
-          <div class="demo-icon-wrap">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-          </div>
-          <span class="demo-tag">Insurance · Live Sandbox</span>
+      <a class="demo-card rv rv-up d2" href="https://wtw.lyzr.app" target="_blank" rel="noopener">
+        <div class="demo-thumb">
+          <img class="demo-thumb-img" src="https://www.lyzr.ai/wp-content/uploads/2026/04/WTW-retirement-advisory-aystem.webp" alt="WTW Retirement Advisory" loading="lazy">
+          <span class="demo-badge"><span class="demo-badge-dot"></span>Insurance · Live Sandbox</span>
+          <span class="demo-play"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg></span>
         </div>
-        <h3 class="demo-title">WTW Retirement Advisory Prototype</h3>
-        <p class="demo-desc">Fiddle with the retirement advisor agent. Input sample employee profiles and test real-time benefit calculations.</p>
-        <div class="demo-action">
-          <a href="https://wtw.lyzr.app" target="_blank" class="btn primary sm" rel="noopener">Launch Sandbox &rarr;</a>
+        <div class="demo-body">
+          <h3 class="demo-title">WTW Retirement Advisory Prototype</h3>
+          <p class="demo-desc">Test the retirement advisor agent. Input sample employee profiles and see real-time benefit calculations.</p>
+          <span class="demo-cta">Launch Sandbox <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"></path></svg></span>
         </div>
-      </div>
-      
+      </a>
+
       <!-- Demo 3 -->
-      <div class="demo-card">
-        <div class="demo-header">
-          <div class="demo-icon-wrap">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-          </div>
-          <span class="demo-tag">Compliance · Live Sandbox</span>
+      <a class="demo-card rv rv-up d3" href="https://compliance.lyzr.app" target="_blank" rel="noopener">
+        <div class="demo-thumb">
+          <img class="demo-thumb-img" src="https://www.lyzr.ai/wp-content/uploads/2026/04/governance.webp" alt="Compliance Auditor" loading="lazy">
+          <span class="demo-badge"><span class="demo-badge-dot"></span>Compliance · Live Sandbox</span>
+          <span class="demo-play"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg></span>
         </div>
-        <h3 class="demo-title">Accenture Internal Compliance Auditor</h3>
-        <p class="demo-desc">Test real-time compliance checks. Submit text or policy files and see immediate audit logs and guardrail alerts.</p>
-        <div class="demo-action">
-          <a href="https://compliance.lyzr.app" target="_blank" class="btn primary sm" rel="noopener">Launch Sandbox &rarr;</a>
+        <div class="demo-body">
+          <h3 class="demo-title">Accenture Internal Compliance Auditor</h3>
+          <p class="demo-desc">Run real-time compliance checks. Submit text or policy files and see immediate audit logs and guardrail alerts.</p>
+          <span class="demo-cta">Launch Sandbox <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"></path></svg></span>
         </div>
-      </div>
+      </a>
+
     </div>
   </div>
 </section>
@@ -1674,36 +1743,54 @@ body { font-family: var(--sans); background: var(--bg); color: var(--fg)!importa
     
     <div class="press-grid">
       <!-- Press 1 -->
-      <a href="https://www.lyzr.ai/lyzr-and-accenture/" target="_blank" class="press-card" rel="noopener">
-        <div class="press-meta">
-          <span class="press-source">Lyzr Newsroom</span>
-          <span class="press-date">April 2026</span>
+      <a href="https://www.lyzr.ai/lyzr-and-accenture/" target="_blank" class="press-card rv rv-up d1" rel="noopener">
+        <div class="press-thumb">
+          <img class="press-thumb-img" src="https://www.lyzr.ai/wp-content/uploads/2026/04/enterprise-ai.webp" alt="Accenture Ventures invests in Lyzr" loading="lazy">
+          <span class="press-kicker">Article</span>
         </div>
-        <h3 class="press-title">Accenture Ventures Invests in Lyzr to Accelerate Agentic AI Adoption</h3>
-        <p class="press-excerpt">Details of the strategic funding and co-development agreement to build sovereign enterprise agent blueprints for Banking, Compliance, and Insurance.</p>
-        <span class="press-read-more">Read Article &rarr;</span>
+        <div class="press-body">
+          <div class="press-meta">
+            <span class="press-source">Lyzr Newsroom</span>
+            <span class="press-date">April 2026</span>
+          </div>
+          <h3 class="press-title">Accenture Ventures Invests in Lyzr to Accelerate Agentic AI Adoption</h3>
+          <p class="press-excerpt">Details of the strategic funding and co-development agreement to build sovereign enterprise agent blueprints for Banking, Compliance, and Insurance.</p>
+          <span class="press-read-more">Read Article <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"></path></svg></span>
+        </div>
       </a>
-      
+
       <!-- Press 2 -->
-      <a href="https://www.linkedin.com/posts/swenmehta_aws-marketplace-lyzr-activity-7182903847291038472-abcd" target="_blank" class="press-card" rel="noopener">
-        <div class="press-meta">
-          <span class="press-source">LinkedIn · Swen Mehta</span>
-          <span class="press-date">May 2026</span>
+      <a href="https://www.linkedin.com/posts/swenmehta_aws-marketplace-lyzr-activity-7182903847291038472-abcd" target="_blank" class="press-card rv rv-up d2" rel="noopener">
+        <div class="press-thumb">
+          <img class="press-thumb-img" src="https://www.lyzr.ai/wp-content/uploads/2026/04/cvc-spotlight-platform-aws-marketplace-genai-innovator-finalist.webp" alt="CVC Agent AWS GenAI Innovator Finalist" loading="lazy">
+          <span class="press-kicker">LinkedIn</span>
         </div>
-        <h3 class="press-title">Lyzr’s CVC Agent Selected as AWS GenAI Innovator Finalist</h3>
-        <p class="press-excerpt">Swen Mehta’s public validation on the AWS Marketplace listing and award recognition of the Lyzr &amp; Accenture CVC Spotlight Platform.</p>
-        <span class="press-read-more">Read Post &rarr;</span>
+        <div class="press-body">
+          <div class="press-meta">
+            <span class="press-source">LinkedIn · Swen Mehta</span>
+            <span class="press-date">May 2026</span>
+          </div>
+          <h3 class="press-title">Lyzr’s CVC Agent Selected as AWS GenAI Innovator Finalist</h3>
+          <p class="press-excerpt">Swen Mehta’s public validation on the AWS Marketplace listing and award recognition of the Lyzr &amp; Accenture CVC Spotlight Platform.</p>
+          <span class="press-read-more">Read Post <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"></path></svg></span>
+        </div>
       </a>
-      
+
       <!-- Press 3 -->
-      <a href="https://www.lyzr.ai/wp-content/uploads/2026/04/accenture-ventures-lyzr-investment-briefing.pdf" target="_blank" class="press-card" rel="noopener">
-        <div class="press-meta">
-          <span class="press-source">Strategic Briefing</span>
-          <span class="press-date">June 2026</span>
+      <a href="https://www.lyzr.ai/wp-content/uploads/2026/04/accenture-ventures-lyzr-investment-briefing.pdf" target="_blank" class="press-card rv rv-up d3" rel="noopener">
+        <div class="press-thumb">
+          <img class="press-thumb-img" src="https://www.lyzr.ai/wp-content/uploads/2026/04/agent-design.webp" alt="Accenture doubles down on Lyzr" loading="lazy">
+          <span class="press-kicker">PDF Briefing</span>
         </div>
-        <h3 class="press-title">Twice in 6 Months: Accenture Ventures Double-Downs on Lyzr Investment</h3>
-        <p class="press-excerpt">Read the official strategic PDF briefing on why Accenture doubled down on Lyzr’s agentic AI framework to build secure, auditable enterprise agent infrastructure.</p>
-        <span class="press-read-more">Download PDF &rarr;</span>
+        <div class="press-body">
+          <div class="press-meta">
+            <span class="press-source">Strategic Briefing</span>
+            <span class="press-date">June 2026</span>
+          </div>
+          <h3 class="press-title">Twice in 6 Months: Accenture Ventures Double-Downs on Lyzr Investment</h3>
+          <p class="press-excerpt">The official strategic briefing on why Accenture doubled down on Lyzr’s agentic AI framework to build secure, auditable enterprise agent infrastructure.</p>
+          <span class="press-read-more">Download PDF <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"></path></svg></span>
+        </div>
       </a>
     </div>
   </div>
@@ -1853,7 +1940,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--fg)!importa
     <div class="team-grid">
 
       <a class="team-card rv rv-up d1" href="https://www.linkedin.com/in/sivasurend/" target="_blank" rel="noopener">
-        <div class="team-avatar">SS</div>
+        <img class="team-avatar" src="team/siva.jpg" alt="Siva Surendira" loading="lazy">
         <h3 class="team-name">Siva Surendira</h3>
         <p class="team-role">Co-founder &amp; CEO</p>
         <span class="team-link">
@@ -1863,7 +1950,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--fg)!importa
       </a>
 
       <a class="team-card rv rv-up d2" href="https://www.linkedin.com/in/anju-chaudhary-26448823/" target="_blank" rel="noopener">
-        <div class="team-avatar">AC</div>
+        <img class="team-avatar" src="team/anju.jpg" alt="Anju Chaudhary" loading="lazy">
         <h3 class="team-name">Anju Chaudhary</h3>
         <p class="team-role">Technology Business Leader</p>
         <span class="team-link">
@@ -1873,7 +1960,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--fg)!importa
       </a>
 
       <a class="team-card rv rv-up d3" href="https://www.linkedin.com/in/mepraveen07/" target="_blank" rel="noopener">
-        <div class="team-avatar">PS</div>
+        <img class="team-avatar" src="team/praveen.jpg" alt="Praveen Sukumar" loading="lazy">
         <h3 class="team-name">Praveen Sukumar</h3>
         <p class="team-role">Business Head</p>
         <span class="team-link">
