@@ -873,6 +873,41 @@ body { font-family: var(--sans); background: var(--bg); color: var(--fg)!importa
   #lyzr-accentures .testi-card { padding: 36px 26px 32px; }
   #lyzr-accentures .testi-card::before { left: 26px; right: 26px; }
 }
+
+/* ─────────────────────────────────────────────────────────
+   TEAM
+───────────────────────────────────────────────────────── */
+#lyzr-accentures .team-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 22px; max-width: 920px; margin: 0 auto; }
+#lyzr-accentures .team-card {
+  background: rgba(255,255,255,0.6); border: 1px solid var(--border); border-radius: var(--rL);
+  padding: 40px 28px 34px; text-align: center; display: flex; flex-direction: column; align-items: center;
+  transition: all 0.45s var(--out); cursor: pointer;
+}
+#lyzr-accentures .team-card:hover { transform: translateY(-6px); background: #fff; box-shadow: var(--sh3); border-color: rgba(201,106,90,0.4); }
+#lyzr-accentures .team-avatar {
+  width: 90px; height: 90px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--serif); font-size: 30px; font-weight: 500; letter-spacing: 0.01em; color: #fff;
+  margin-bottom: 22px; border: 3px solid #fff;
+  background: linear-gradient(135deg, var(--accent-soft) 0%, var(--accent) 55%, var(--accent-deep) 100%);
+  box-shadow: 0 10px 28px rgba(201,106,90,0.32); transition: transform 0.45s var(--out);
+}
+#lyzr-accentures .team-card:hover .team-avatar { transform: scale(1.06); }
+#lyzr-accentures .team-name { font-family: var(--serif); font-size: 20px; font-weight: 500; color: #000; margin-bottom: 6px; line-height: 1.2; }
+#lyzr-accentures .team-role { font-size: 12.5px; color: var(--muted); letter-spacing: 0.01em; margin-bottom: 22px; line-height: 1.4; }
+#lyzr-accentures .team-link {
+  display: inline-flex; align-items: center; gap: 7px; margin-top: auto;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--primary); transition: gap 0.3s, color 0.3s;
+}
+#lyzr-accentures .team-link svg { width: 15px; height: 15px; flex-shrink: 0; }
+#lyzr-accentures .team-card:hover .team-link { color: var(--accent); gap: 11px; }
+@media (max-width: 860px) {
+  #lyzr-accentures .team-grid { grid-template-columns: 1fr 1fr; max-width: 560px; }
+}
+@media (max-width: 520px) {
+  #lyzr-accentures .team-grid { grid-template-columns: 1fr; max-width: 340px; }
+}
 </style>
 </head>
 <body>
@@ -893,6 +928,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--fg)!importa
       <a href="#cases">Case Studies</a>
       <a href="#caps">Capabilities</a>
       <a href="#awards">Awards</a>
+      <a href="#team">Team</a>
       <a href="#insights">Insights</a>
     </nav>
     <div id="nav-ctas" style="display:flex;gap:8px;flex-shrink:0">
@@ -1801,6 +1837,50 @@ body { font-family: var(--sans); background: var(--bg); color: var(--fg)!importa
           </div>
         </div>
       </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ════════ TEAM ═════════════════════════════════════════════ -->
+<section class="team-section" id="team" style="position:relative; background: var(--bg-alt); padding: 108px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+  <div class="wrap">
+    <div class="section-header" style="text-align:center; margin-bottom:56px;">
+      <div class="eyebrow primary rv rv-up d1">The People</div>
+      <h2 class="title rv rv-up d2">Meet the <em>Team</em></h2>
+      <p class="rv rv-up d3" style="max-width:560px; margin:15px auto 0; color:var(--muted); font-size:14px; line-height:1.85;">The leaders driving Lyzr's partnership with Accenture — from platform vision to enterprise delivery.</p>
+    </div>
+    <div class="team-grid">
+
+      <a class="team-card rv rv-up d1" href="https://www.linkedin.com/in/sivasurend/" target="_blank" rel="noopener">
+        <div class="team-avatar">SS</div>
+        <h3 class="team-name">Siva Surendira</h3>
+        <p class="team-role">Co-founder &amp; CEO</p>
+        <span class="team-link">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.44-2.14 2.94v5.67H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"></path></svg>
+          Connect
+        </span>
+      </a>
+
+      <a class="team-card rv rv-up d2" href="https://www.linkedin.com/in/anju-chaudhary-26448823/" target="_blank" rel="noopener">
+        <div class="team-avatar">AC</div>
+        <h3 class="team-name">Anju Chaudhary</h3>
+        <p class="team-role">Technology Business Leader</p>
+        <span class="team-link">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.44-2.14 2.94v5.67H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"></path></svg>
+          Connect
+        </span>
+      </a>
+
+      <a class="team-card rv rv-up d3" href="https://www.linkedin.com/in/mepraveen07/" target="_blank" rel="noopener">
+        <div class="team-avatar">PS</div>
+        <h3 class="team-name">Praveen Sukumar</h3>
+        <p class="team-role">Business Head</p>
+        <span class="team-link">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.44-2.14 2.94v5.67H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"></path></svg>
+          Connect
+        </span>
+      </a>
 
     </div>
   </div>
