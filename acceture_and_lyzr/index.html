@@ -24,7 +24,12 @@
   --muted:   #6b5e52;
   --border:  #d4cbc0;
   --cream:   #f2ede8;
-  --rose:    hsl(4,55%,65%);
+  --bg-alt:  #f4efe9;   /* warm off-white band (was undefined -> broke timeline/testimonials) */
+  /* lyzr.ai signature coral accent (--ha-accent #C96A5A) */
+  --accent:      #c96a5a;
+  --accent-soft: #e5b097;
+  --accent-deep: #b25545;
+  --rose:    #c96a5a;   /* was hsl(4,55%,65%); aligned to lyzr.ai coral */
   --green:   hsl(140,65%,52%);
 
   /* Typography */
@@ -160,6 +165,10 @@ body { font-family: var(--sans); background: var(--bg); color: var(--fg)!importa
 
 #lyzr-accentures .btn.ghost { background: rgba(255,255,255,0.07); color: rgba(242,237,232,0.78); border: 1.5px solid rgba(255,255,255,0.11); }
 #lyzr-accentures .btn.ghost:hover { background: var(--cream); color: var(--deep); border-color: var(--cream); transform: translateY(-2px); }
+
+/* lyzr.ai coral accent CTA (.btn-accent) — reserved for top conversion buttons */
+#lyzr-accentures .btn.accent { background: var(--accent); color: var(--cream); }
+#lyzr-accentures .btn.accent:hover { background: var(--accent-deep); transform: translateY(-2px); box-shadow: 0 12px 32px rgba(201,106,90,0.38); }
 
 #lyzr-accentures .btn.lg { padding: 16px 40px; font-size: 14px; }
 
@@ -779,6 +788,91 @@ body { font-family: var(--sans); background: var(--bg); color: var(--fg)!importa
   #lyzr-accentures .demos-grid,
   #lyzr-accentures .press-grid { grid-template-columns: 1fr; }
 }
+
+/* ─────────────────────────────────────────────────────────
+   INVESTMENT TIMELINE — horizontal journey (redesigned)
+───────────────────────────────────────────────────────── */
+#lyzr-accentures .tljourney { position: relative; margin-top: 56px; }
+#lyzr-accentures .tljourney-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 22px; position: relative; z-index: 1; }
+#lyzr-accentures .tljourney-line {
+  position: absolute; top: 20px; left: 12.5%; right: 12.5%; height: 2px; z-index: 0;
+  background: linear-gradient(90deg, rgba(107,76,76,0.18), var(--accent) 40%, var(--accent) 60%, rgba(107,76,76,0.18));
+  opacity: 0.55;
+}
+#lyzr-accentures .tlj-step { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; }
+#lyzr-accentures .tlj-node {
+  width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+  background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--sans); font-weight: 600; font-size: 13px; letter-spacing: 0.02em;
+  box-shadow: 0 6px 18px rgba(201,106,90,0.35), 0 0 0 6px var(--bg-alt);
+  margin-bottom: 24px; transition: transform 0.4s var(--out);
+}
+#lyzr-accentures .tlj-step:hover .tlj-node { transform: scale(1.1); }
+#lyzr-accentures .tlj-card {
+  background: rgba(255,255,255,0.62); border: 1px solid var(--border); border-radius: var(--rL);
+  padding: 26px 22px 24px; text-align: center; width: 100%; flex: 1;
+  transition: all 0.4s var(--out);
+}
+#lyzr-accentures .tlj-card:hover { transform: translateY(-5px); background: #fff; box-shadow: var(--sh2); border-color: rgba(201,106,90,0.4); }
+#lyzr-accentures .tlj-date {
+  display: inline-block; font-family: var(--sans); font-weight: 700; font-size: 9.5px;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent);
+  background: rgba(201,106,90,0.1); border: 1px solid rgba(201,106,90,0.18);
+  padding: 5px 12px; border-radius: 9999px; margin-bottom: 15px;
+}
+#lyzr-accentures .tlj-title { font-family: var(--serif); font-size: 16.5px; font-weight: 500; color: #000; line-height: 1.28; margin-bottom: 11px; }
+#lyzr-accentures .tlj-text { font-size: 12.5px; color: var(--muted); line-height: 1.72; }
+@media (max-width: 900px) {
+  #lyzr-accentures .tljourney-grid { grid-template-columns: 1fr 1fr; gap: 28px 22px; }
+  #lyzr-accentures .tljourney-line { display: none; }
+}
+@media (max-width: 560px) {
+  #lyzr-accentures .tljourney-grid { grid-template-columns: 1fr; }
+}
+
+/* ─────────────────────────────────────────────────────────
+   ACCENTURE TESTIMONIALS — single-slide carousel (redesigned)
+───────────────────────────────────────────────────────── */
+#lyzr-accentures .testi-slider-section { overflow: hidden; }
+#lyzr-accentures .testi-glow {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 60% 55% at 50% 45%, rgba(201,106,90,0.12), transparent 65%);
+}
+#lyzr-accentures .testi-slider-container { max-width: 820px; margin: 0 auto; position: relative; z-index: 1; overflow: hidden; }
+#lyzr-accentures .testi-slider-track { display: flex; transition: transform 0.55s var(--inout); will-change: transform; }
+#lyzr-accentures .testi-slide { flex: 0 0 100%; min-width: 100%; padding: 0 6px; box-sizing: border-box; text-align: center; }
+#lyzr-accentures .testi-card {
+  position: relative; background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 26px; padding: 44px 52px 38px; backdrop-filter: blur(12px); text-align: center;
+}
+#lyzr-accentures .testi-card::before {
+  content: ''; position: absolute; top: 0; left: 52px; right: 52px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.7;
+}
+#lyzr-accentures .testi-brand { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 26px; }
+#lyzr-accentures .testi-brand svg { width: 21px; height: 22px; display: block; }
+#lyzr-accentures .testi-brand span { font-size: 10px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255,255,255,0.55); }
+#lyzr-accentures .testi-quote-mark { font-family: var(--serif); font-size: 60px; line-height: 0.5; color: var(--accent); height: 30px; margin-bottom: 6px; }
+#lyzr-accentures .testi-quote-text {
+  font-family: var(--serif); font-style: italic; font-weight: 300;
+  font-size: clamp(1.12rem, 1.9vw, 1.5rem); line-height: 1.62; color: rgba(255,255,255,0.9);
+  margin: 0 auto 30px; max-width: 30em;
+}
+#lyzr-accentures .testi-author { display: inline-block; padding-top: 22px; border-top: 1px solid rgba(255,255,255,0.09); }
+#lyzr-accentures .testi-author-name { font-family: var(--sans); font-weight: 600; font-size: 14px; color: #fff; margin-bottom: 3px; }
+#lyzr-accentures .testi-author-title { font-family: var(--sans); font-size: 11.5px; color: rgba(255,255,255,0.42); letter-spacing: 0.01em; }
+#lyzr-accentures .testi-slider-controls { display: flex; justify-content: center; gap: 12px; margin-top: 32px; position: relative; z-index: 1; }
+#lyzr-accentures .testi-control-btn {
+  width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.16);
+  background: transparent; color: #fff; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.3s;
+}
+#lyzr-accentures .testi-control-btn:hover { background: var(--accent); border-color: var(--accent); transform: translateY(-2px); }
+@media (max-width: 768px) {
+  #lyzr-accentures .testi-card { padding: 36px 26px 32px; }
+  #lyzr-accentures .testi-card::before { left: 26px; right: 26px; }
+}
 </style>
 </head>
 <body>
@@ -830,7 +924,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--fg)!importa
         <h1>Accenture Invested in Lyzr <em>Twice in 6 Months</em></h1>
         <p class="hero-sub">From winning the Accenture Ventures GenAI Tech Next Challenge to back-to-back funding rounds: Lyzr is the sovereign agentic AI platform co-building enterprise agent production infrastructure with Accenture. We are currently in 75+ active engagements across Accenture globally.</p>
         <div class="hero-btns">
-          <a href="#elementor-action%3Aaction%3Dpopup%3Aopen%26settings%3DeyJpZCI6IjEyMzg2MyIsInRvZ2dsZSI6ZmFsc2V9" class="btn primary lg">
+          <a href="#elementor-action%3Aaction%3Dpopup%3Aopen%26settings%3DeyJpZCI6IjEyMzg2MyIsInRvZ2dsZSI6ZmFsc2V9" class="btn accent lg">
             Book a Briefing <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
           </a>
           <a href="#cases" class="btn ghost lg ab-btn-talk">See Our Joint Work</a>
@@ -922,47 +1016,50 @@ body { font-family: var(--sans); background: var(--bg); color: var(--fg)!importa
       <h2 class="title">Accenture & Lyzr: <em>Timeline</em></h2>
       <p class="section-desc" style="max-width: 600px; margin: 15px auto 0; color: var(--muted); font-size: 14px;">Our momentum from challenge winner to two major strategic investments, co-building the future of agentic AI.</p>
     </div>
-    <div class="timeline-container">
-      <div class="timeline-line"></div>
-      
-      <!-- Milestone 1 -->
-      <div class="timeline-item left">
-        <div class="timeline-dot"></div>
-        <div class="timeline-card">
-          <div class="timeline-date">Challenge Winner</div>
-          <h3 class="timeline-title">Accenture GenAI Tech Next Challenge</h3>
-          <p class="timeline-text">Lyzr wins the prestigious Accenture Ventures GenAI Tech Next Challenge, showcasing sovereign enterprise agent infrastructure to leadership.</p>
+    <div class="tljourney">
+      <div class="tljourney-line"></div>
+      <div class="tljourney-grid">
+
+        <!-- Milestone 1 -->
+        <div class="tlj-step rv rv-up d1">
+          <div class="tlj-node">01</div>
+          <div class="tlj-card">
+            <div class="tlj-date">Challenge Winner</div>
+            <h3 class="tlj-title">Accenture GenAI Tech Next Challenge</h3>
+            <p class="tlj-text">Lyzr wins the prestigious Accenture Ventures GenAI Tech Next Challenge, showcasing sovereign enterprise agent infrastructure to leadership.</p>
+          </div>
         </div>
-      </div>
-      
-      <!-- Milestone 2 -->
-      <div class="timeline-item right">
-        <div class="timeline-dot"></div>
-        <div class="timeline-card">
-          <div class="timeline-date">Strategic Investment 1</div>
-          <h3 class="timeline-title">Accenture Ventures Seed/Round A</h3>
-          <p class="timeline-text">Accenture Ventures executes initial equity investment to accelerate co-development of banking, compliance, and insurance agent blueprints.</p>
+
+        <!-- Milestone 2 -->
+        <div class="tlj-step rv rv-up d2">
+          <div class="tlj-node">02</div>
+          <div class="tlj-card">
+            <div class="tlj-date">Strategic Investment I</div>
+            <h3 class="tlj-title">Accenture Ventures Seed / Round A</h3>
+            <p class="tlj-text">Accenture Ventures executes its initial equity investment to accelerate co-development of banking, compliance, and insurance agent blueprints.</p>
+          </div>
         </div>
-      </div>
-      
-      <!-- Milestone 3 -->
-      <div class="timeline-item left">
-        <div class="timeline-dot"></div>
-        <div class="timeline-card">
-          <div class="timeline-date">Expansion Investment 2</div>
-          <h3 class="timeline-title">Follow-on Strategic Investment</h3>
-          <p class="timeline-text">Accenture doubles down, investing a second time within six months to support deep tech enterprise production scale and joint intellectual property creation.</p>
+
+        <!-- Milestone 3 -->
+        <div class="tlj-step rv rv-up d3">
+          <div class="tlj-node">03</div>
+          <div class="tlj-card">
+            <div class="tlj-date">Expansion Investment II</div>
+            <h3 class="tlj-title">Follow-on Strategic Investment</h3>
+            <p class="tlj-text">Accenture doubles down, investing a second time within six months to support deep-tech production scale and joint intellectual property creation.</p>
+          </div>
         </div>
-      </div>
-      
-      <!-- Milestone 4 -->
-      <div class="timeline-item right">
-        <div class="timeline-dot"></div>
-        <div class="timeline-card">
-          <div class="timeline-date">Go-to-Market</div>
-          <h3 class="timeline-title">75+ Active Engagements</h3>
-          <p class="timeline-text">Scaling from investment to broad co-delivery: 75+ active customer conversations and joint prototypes currently being deployed globally.</p>
+
+        <!-- Milestone 4 -->
+        <div class="tlj-step rv rv-up d4">
+          <div class="tlj-node">04</div>
+          <div class="tlj-card">
+            <div class="tlj-date">Go-to-Market</div>
+            <h3 class="tlj-title">75+ Active Engagements</h3>
+            <p class="tlj-text">Scaling from investment to broad co-delivery: 75+ active customer conversations and joint prototypes now being deployed globally.</p>
+          </div>
         </div>
+
       </div>
     </div>
   </div>
@@ -1032,11 +1129,12 @@ body { font-family: var(--sans); background: var(--bg); color: var(--fg)!importa
 </section>
 <!-- ════════ QUOTE ════════════════════════════════════════════ -->
 <!-- ════════ ACCENTURE TESTIMONIALS SLIDER ════════════════════════ -->
-<section class="testi-slider-section" id="testimonials" style="position:relative; background: var(--bg-alt); padding: 100px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+<section class="testi-slider-section" id="testimonials" style="position:relative; background: var(--deep); padding: 108px 0; border-top: 1px solid rgba(255,255,255,0.06); border-bottom: 1px solid rgba(255,255,255,0.06);">
+  <div class="testi-glow"></div>
   <div class="wrap">
-    <div class="section-header" style="text-align: center; margin-bottom: 50px;">
-      <div class="eyebrow primary">Client & Partner Success</div>
-      <h2 class="title">Accenture <em>Testimonials</em></h2>
+    <div class="section-header" style="text-align: center; margin-bottom: 48px; position:relative; z-index:1;">
+      <div class="eyebrow light">Client & Partner Success</div>
+      <h2 class="title white">Accenture <em>Testimonials</em></h2>
     </div>
     
     <div class="testi-slider-container">
@@ -1046,6 +1144,10 @@ body { font-family: var(--sans); background: var(--bg); color: var(--fg)!importa
         <!-- Slide 1 -->
         <div class="testi-slide">
           <div class="testi-card">
+            <div class="testi-brand">
+              <svg viewBox="0 0 100 105" xmlns="http://www.w3.org/2000/svg" aria-label="Accenture"><polygon fill="#A100FF" points="0,0 100,40 100,65 0,105 0,75 58,52.5 0,30"></polygon></svg>
+              <span>Accenture</span>
+            </div>
             <div class="testi-quote-mark">&#8220;</div>
             <p class="testi-quote-text">Lyzr’s agent infrastructure reshaped how we deliver GenAI value to clients. It’s not a chatbot framework, it’s the production layer that makes enterprise AI real, governable, and scalable across every engagement.</p>
             <div class="testi-author">
@@ -1058,6 +1160,10 @@ body { font-family: var(--sans); background: var(--bg); color: var(--fg)!importa
         <!-- Slide 2 -->
         <div class="testi-slide">
           <div class="testi-card">
+            <div class="testi-brand">
+              <svg viewBox="0 0 100 105" xmlns="http://www.w3.org/2000/svg" aria-label="Accenture"><polygon fill="#A100FF" points="0,0 100,40 100,65 0,105 0,75 58,52.5 0,30"></polygon></svg>
+              <span>Accenture</span>
+            </div>
             <div class="testi-quote-mark">&#8220;</div>
             <p class="testi-quote-text">With Lyzr, we transitioned from basic prompt engineering to shipping complete agentic systems in weeks. Their compliance layer ensures security, which is non-negotiable for our financial services clients.</p>
             <div class="testi-author">
@@ -1070,6 +1176,10 @@ body { font-family: var(--sans); background: var(--bg); color: var(--fg)!importa
         <!-- Slide 3 -->
         <div class="testi-slide">
           <div class="testi-card">
+            <div class="testi-brand">
+              <svg viewBox="0 0 100 105" xmlns="http://www.w3.org/2000/svg" aria-label="Accenture"><polygon fill="#A100FF" points="0,0 100,40 100,65 0,105 0,75 58,52.5 0,30"></polygon></svg>
+              <span>Accenture</span>
+            </div>
             <div class="testi-quote-mark">&#8220;</div>
             <p class="testi-quote-text">Sovereign agentic AI requires private cloud execution, absolute auditability, and deterministic behavior. Lyzr is the only partner that gave us this level of control in banking environments.</p>
             <div class="testi-author">
@@ -1705,7 +1815,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--fg)!importa
     <h2 class="cta-title rv rv-up d2">Move your enterprise AI<br>from pilot to <em>production</em></h2>
     <p class="cta-desc rv rv-up d3">Whether you&#8217;re an Accenture client looking to accelerate AI delivery, or an enterprise ready to build production-grade agents, our team will give you a real conversation, not a sales pitch.</p>
     <div class="cta-btns rv rv-up d4">
-      <a href="#elementor-action%3Aaction%3Dpopup%3Aopen%26settings%3DeyJpZCI6IjEyMzg2MyIsInRvZ2dsZSI6ZmFsc2V9" class="ab-btn-talk btn primary lg">
+      <a href="#elementor-action%3Aaction%3Dpopup%3Aopen%26settings%3DeyJpZCI6IjEyMzg2MyIsInRvZ2dsZSI6ZmFsc2V9" class="ab-btn-talk btn accent lg">
         Talk to the Team <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
       </a>
       <a href="https://studio.lyzr.ai" class="btn ghost lg" target="_blank" rel="noopener">Explore Agent Studio →</a>
