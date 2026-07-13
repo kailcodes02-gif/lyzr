@@ -2032,24 +2032,58 @@ const testiTrack = document.getElementById('testi-track');
 const testiPrev = document.getElementById('testi-prev');
 const testiNext = document.getElementById('testi-next');
 if (testiTrack && testiPrev && testiNext) {
-  let index = 0;
-  const slides = testiTrack.children.length;
-  const updateSlide = () => {
-    testiTrack.style.transform = `translateX(-${index * 100}%)`;
-  };
-  testiPrev.addEventListener('click', () => {
-    index = (index - 1 + slides) % slides;
-    updateSlide();
-  });
-  testiNext.addEventListener('click', () => {
-    index = (index + 1) % slides;
-    updateSlide();
-  });
-  // auto play every 6s
-  setInterval(() => {
-    index = (index + 1) % slides;
-    updateSlide();
-  }, 6000);
+  const real = Array.from(testiTrack.children);
+  const n = real.length;
+  if (n > 1) {
+    // Clone last->front and first->end so the carousel loops seamlessly in a circle.
+    const firstClone = real[0].cloneNode(true);
+    const lastClone  = real[n - 1].cloneNode(true);
+    firstClone.setAttribute('aria-hidden', 'true');
+    lastClone.setAttribute('aria-hidden', 'true');
+    testiTrack.insertBefore(lastClone, real[0]);
+    testiTrack.appendChild(firstClone);
+
+    const DUR = 650; // transition duration (ms)
+    const EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
+    let index = 1;        // start on the first real slide (after the prepended clone)
+    let animating = false;
+
+    const render = (withAnim) => {
+      testiTrack.style.transition = withAnim ? `transform ${DUR}ms ${EASE}` : 'none';
+      testiTrack.style.transform  = `translateX(-${index * 100}%)`;
+    };
+    render(false); // position on slide 1 without animation
+
+    const go = (dir) => {
+      if (animating) return;
+      animating = true;
+      index += dir;
+      render(true);
+    };
+
+    testiTrack.addEventListener('transitionend', (e) => {
+      if (e.propertyName !== 'transform') return;
+      // After sliding onto a clone, jump (no animation) to the matching real slide.
+      if (index === 0)      { index = n;  render(false); }
+      else if (index === n + 1) { index = 1; render(false); }
+      animating = false;
+    });
+
+    let timer = null;
+    const play  = () => { timer = setInterval(() => go(1), 5000); };
+    const pause = () => { clearInterval(timer); timer = null; };
+    const restart = () => { pause(); play(); };
+
+    testiNext.addEventListener('click', () => { go(1);  restart(); });
+    testiPrev.addEventListener('click', () => { go(-1); restart(); });
+
+    const container = testiTrack.closest('.testi-slider-container');
+    if (container) {
+      container.addEventListener('mouseenter', pause);
+      container.addEventListener('mouseleave', play);
+    }
+    play();
+  }
 }
 </script>
 </body></html>
