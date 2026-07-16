@@ -1,2161 +1,521 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enterprise Event Intelligence Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-primary: #0b111e;
-            --bg-secondary: rgba(22, 30, 49, 0.7);
-            --bg-card: rgba(30, 41, 67, 0.5);
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --accent-blue: #3b82f6;
-            --accent-purple: #8b5cf6;
-            --accent-green: #10b981;
-            --accent-red: #ef4444;
-            --border-color: rgba(255, 255, 255, 0.08);
-            --glass-bg: rgba(15, 23, 42, 0.3);
-            --glass-blur: blur(12px);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            scroll-behavior: smooth;
-        }
-
-        body {
-            background: radial-gradient(circle at 50% 0%, #1e293b 0%, var(--bg-primary) 70%);
-            color: var(--text-primary);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        /* Header styling */
-        header {
-            border-bottom: 1px solid var(--border-color);
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .header-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 1.25rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo {
-            font-family: 'Outfit', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #60a5fa, #c084fc);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .logo span {
-            background: rgba(96, 165, 250, 0.1);
-            border: 1px solid rgba(96, 165, 250, 0.2);
-            padding: 0.2rem 0.5rem;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            color: #93c5fd;
-        }
-
-        .download-btn {
-            background: linear-gradient(135deg, var(--accent-blue), #2563eb);
-            color: white;
-            padding: 0.6rem 1.2rem;
-            border-radius: 8px;
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
-            border: none;
-            cursor: pointer;
-        }
-
-        .download-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
-            filter: brightness(1.1);
-        }
-
-        /* Main Container */
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        /* Stats Section */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            position: relative;
-            overflow: hidden;
-            transition: transform 0.3s ease, border-color 0.3s ease;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-3px);
-            border-color: rgba(96, 165, 250, 0.3);
-        }
-
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 4px;
-            height: 100%;
-            background: var(--accent-blue);
-        }
-
-        .stat-card.stat-upcoming::before { background: var(--accent-green); }
-        .stat-card.stat-completed::before { background: var(--accent-purple); }
-        .stat-card.stat-startup::before { background: var(--accent-red); }
-
-        .stat-title {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-value {
-            font-size: 2.25rem;
-            font-weight: 700;
-            font-family: 'Outfit', sans-serif;
-            color: var(--text-primary);
-            line-height: 1;
-            margin-bottom: 0.25rem;
-        }
-
-        .stat-desc {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-
-        /* Controls Section */
-        .controls-panel {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            backdrop-filter: var(--glass-blur);
-        }
-
-        .search-filter-grid {
-            display: grid;
-            grid-template-columns: 2fr repeat(3, 1fr);
-            gap: 1.25rem;
-        }
-
-        @media (max-width: 900px) {
-            .search-filter-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .control-label {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-        }
-
-        .search-input-wrapper {
-            position: relative;
-        }
-
-        .search-input {
-            width: 100%;
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid var(--border-color);
-            padding: 0.8rem 1rem 0.8rem 2.5rem;
-            border-radius: 10px;
-            color: var(--text-primary);
-            font-size: 0.95rem;
-            transition: all 0.3s ease;
-        }
-
-        .search-input:focus {
-            outline: none;
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-        }
-
-        .search-icon {
-            position: absolute;
-            left: 0.9rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-secondary);
-            width: 16px;
-            height: 16px;
-            pointer-events: none;
-        }
-
-        .select-input {
-            width: 100%;
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid var(--border-color);
-            padding: 0.8rem 1rem;
-            border-radius: 10px;
-            color: var(--text-primary);
-            font-size: 0.95rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 1rem center;
-            background-size: 16px;
-        }
-
-        .select-input:focus {
-            outline: none;
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-        }
-
-        /* Views Toggle & Count */
-        .results-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.25rem;
-            padding: 0 0.5rem;
-        }
-
-        .results-count {
-            font-size: 0.95rem;
-            color: var(--text-secondary);
-        }
-
-        .results-count strong {
-            color: var(--text-primary);
-        }
-
-        .view-toggles {
-            display: flex;
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            padding: 0.25rem;
-            border-radius: 8px;
-            gap: 0.25rem;
-        }
-
-        .view-toggle-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            padding: 0.4rem 0.8rem;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .view-toggle-btn.active {
-            background: var(--accent-blue);
-            color: white;
-        }
-
-        /* Table View styling */
-        .table-container {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            overflow-x: auto;
-            backdrop-filter: var(--glass-blur);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            transition: opacity 0.3s ease;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-        }
-
-        th {
-            background: rgba(15, 23, 42, 0.4);
-            padding: 1rem 1.25rem;
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        td {
-            padding: 1.1rem 1.25rem;
-            font-size: 0.9rem;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--text-primary);
-        }
-
-        tr {
-            transition: background-color 0.2s ease;
-        }
-
-        tr:hover td {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .company-td {
-            font-weight: 700;
-            color: #60a5fa;
-            font-size: 0.95rem;
-        }
-
-        .event-name-td {
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        /* Badge Styling */
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.25rem 0.6rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            letter-spacing: 0.02em;
-        }
-
-        .badge-completed {
-            background: rgba(148, 163, 184, 0.15);
-            color: #cbd5e1;
-            border: 1px solid rgba(148, 163, 184, 0.25);
-        }
-
-        .badge-upcoming {
-            background: rgba(16, 185, 129, 0.15);
-            color: #34d399;
-            border: 1px solid rgba(16, 185, 129, 0.25);
-            animation: pulse-green 2s infinite;
-        }
-
-        .category-tag {
-            background: rgba(59, 130, 246, 0.08);
-            color: #93c5fd;
-            border: 1px solid rgba(59, 130, 246, 0.15);
-            padding: 0.2rem 0.5rem;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-
-        .format-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
-
-        .format-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-        }
-
-        .format-in-person { background: #fb923c; }
-        .format-virtual { background: #60a5fa; }
-        .format-hybrid { background: #c084fc; }
-
-        .action-link {
-            color: var(--accent-blue);
-            text-decoration: none;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.25rem;
-            transition: color 0.2s ease;
-        }
-
-        .action-link:hover {
-            color: #60a5fa;
-            text-decoration: underline;
-        }
-
-        /* Card View Layout */
-        .cards-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 1.5rem;
-            transition: opacity 0.3s ease;
-        }
-
-        .event-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            position: relative;
-            transition: transform 0.3s ease, border-color 0.3s ease;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-            height: 280px;
-        }
-
-        .event-card:hover {
-            transform: translateY(-4px);
-            border-color: rgba(96, 165, 250, 0.25);
-        }
-
-        .card-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 0.75rem;
-        }
-
-        .card-company {
-            font-weight: 800;
-            color: #60a5fa;
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .card-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            line-height: 1.3;
-            margin-bottom: 0.75rem;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            height: 2.6rem;
-        }
-
-        .card-desc {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            line-height: 1.5;
-            margin-bottom: 1rem;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            height: 3.8rem;
-        }
-
-        .card-meta {
-            border-top: 1px solid var(--border-color);
-            padding-top: 0.75rem;
-            margin-top: auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .card-date {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        @keyframes pulse-green {
-            0% {
-                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
-            }
-            70% {
-                box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
-            }
-            100% {
-                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-            }
-        }
-
-        /* Empty State */
-        .empty-state {
-            background: var(--bg-secondary);
-            border: 1px dashed var(--border-color);
-            border-radius: 16px;
-            padding: 4rem 2rem;
-            text-align: center;
-            grid-column: 1 / -1;
-        }
-
-        .empty-state-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: var(--text-primary);
-        }
-
-        .empty-state-desc {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            max-width: 400px;
-            margin: 0 auto;
-        }
-
-        /* Scrollbar styling */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: var(--bg-primary);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #1e293b;
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #334155;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>GSI &amp; SI Event Intelligence — Lyzr</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root{
+  --surface:#FAF6F0; --card:#FFFFFF; --ink:#1E1A16; --muted:#6B6257; --border:#E4DCCF; --hover:#FBF7EE;
+  --open:#177245; --invite:#E0823F; --internal:#A23A6B; --attend:#4053C2; --su:#B98900;
+  --open-t:rgba(23,114,69,.10); --invite-t:rgba(224,130,63,.13); --internal-t:rgba(162,58,107,.10);
+  --attend-t:rgba(64,83,194,.09); --su-t:rgba(185,137,0,.12);
+  --up:#177245; --up-t:rgba(23,114,69,.12); --fin:#8A8072; --fin-t:rgba(138,128,114,.14);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--surface);color:var(--ink);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.45}
+a{color:inherit}
+h1{font-family:'Playfair Display',serif;font-weight:500;font-size:26px;letter-spacing:.2px}
+h2{font-family:'Playfair Display',serif;font-weight:500;font-size:19px}
+.hidden{display:none !important}
+/* header */
+header.top{position:sticky;top:0;z-index:40;background:rgba(250,246,240,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:12px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;line-height:1.1}
+.brand .b1{font-family:'Playfair Display',serif;font-size:20px}
+.brand .b2{font-size:11px;color:var(--muted);letter-spacing:.4px}
+.grow{flex:1}
+.search{position:relative}
+.search input{font-family:'DM Sans';font-size:13px;padding:9px 12px 9px 32px;border:1px solid var(--border);border-radius:9px;background:var(--card);width:240px;color:var(--ink)}
+.search svg{position:absolute;left:10px;top:9px;color:var(--muted)}
+.btn{font-family:'DM Sans';font-size:13px;font-weight:600;padding:9px 14px;border-radius:9px;border:1px solid var(--border);background:var(--card);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.primary:hover{opacity:.9}
+.btn.accent{background:var(--invite);color:#fff;border-color:var(--invite)}
+.userbox{display:flex;align-items:center;gap:8px}
+.avatar{width:30px;height:30px;border-radius:50%;background:var(--attend);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.uname{font-size:12.5px}.urole{font-size:10.5px;color:var(--muted)}
+/* layout */
+.wrap{max-width:1320px;margin:0 auto;padding:20px 22px 80px}
+.sub{color:var(--muted);max-width:920px;margin-top:2px;font-size:12.5px}
+/* tiles */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:18px 0}
+.tile{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:13px 14px}
+.tile .n{font-family:'Playfair Display',serif;font-size:27px;line-height:1.05}
+.tile .l{color:var(--muted);font-size:11.5px;margin-top:3px}
+.tile .dot{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:5px;vertical-align:1px}
+/* chart */
+.panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+.panel h2{font-size:16px;margin-bottom:2px}
+.panel .note{font-size:11.5px;color:var(--muted);margin-bottom:10px}
+.bars{display:flex;align-items:flex-end;gap:8px;height:118px}
+.barcol{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;cursor:pointer}
+.barcol .v{font-size:11px;margin-bottom:3px}
+.bar{width:100%;max-width:46px;background:var(--invite);border-radius:4px 4px 0 0;transition:opacity .12s;min-height:3px}
+.bar.past{background:var(--fin)}.bar.soon{background:var(--up)}.bar.future{background:var(--attend)}
+.barcol:hover .bar{opacity:.72}
+.barcol.sel .bar{outline:2px solid var(--ink);outline-offset:1px}
+.barlab{font-size:10px;color:var(--muted);margin-top:6px;text-align:center;line-height:1.15}
+.baseline{border-top:1.5px solid var(--border);margin-top:2px}
+/* controls */
+.controls{position:sticky;top:59px;z-index:30;background:var(--surface);padding:10px 0 8px;margin-bottom:6px;border-bottom:1px solid var(--border)}
+.rowc{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--card)}
+.seg button{font-family:'DM Sans';font-size:12.5px;font-weight:600;padding:7px 12px;border:0;background:transparent;color:var(--muted);cursor:pointer;border-right:1px solid var(--border)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--ink);color:#fff}
+.gbLabel{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px}
+select,.chk{font-family:'DM Sans';font-size:12.5px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--ink)}
+label.chk{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.count{font-size:12px;color:var(--muted);margin-left:auto}
+.clearf{font-size:12px;color:var(--invite);cursor:pointer;font-weight:600;border:0;background:none}
+/* sections */
+.section{margin-top:16px}
+.shead{display:flex;align-items:center;gap:9px;cursor:pointer;padding:7px 4px;border-bottom:1px solid var(--border)}
+.shead .caret{color:var(--muted);transition:transform .15s}
+.section.closed .caret{transform:rotate(-90deg)}
+.section.closed .grid{display:none}
+.shead .stitle{font-family:'Playfair Display',serif;font-size:17px}
+.shead .scount{font-size:11.5px;color:var(--muted);background:var(--hover);border:1px solid var(--border);border-radius:20px;padding:1px 9px}
+.shead .sacc{width:26px;height:26px;border-radius:7px;background:var(--attend-t);color:var(--attend);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:11px;margin-top:11px}
+/* cards */
+.ev{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:13px 14px;display:flex;flex-direction:column;gap:8px;position:relative}
+.ev .co{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
+.ev .ti{font-weight:700;font-size:14px;line-height:1.3;padding-right:26px}
+.ev .ti a{text-decoration:none;border-bottom:1px solid #C9BFAE}
+.ev .ti a:hover{border-color:var(--ink)}
+.ev .meta{font-size:12px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:2px;flex:none}
+.c-open{background:var(--open-t);color:var(--open)}.c-invite{background:var(--invite-t);color:#b4632a}
+.c-internal{background:var(--internal-t);color:var(--internal)}.c-attend{background:var(--attend-t);color:var(--attend)}
+.c-su{background:var(--su-t);color:#916a00}
+.d-open{background:var(--open)}.d-invite{background:var(--invite)}.d-internal{background:var(--internal)}.d-attend{background:var(--attend)}.d-su{background:var(--su)}
+.badge{font-size:10px;padding:1px 7px;border-radius:9px;border:1px solid var(--border);color:var(--muted)}
+.badge.hi{border-color:#9DBFAE;color:#177245}.badge.lo{border-color:#E3C9A8;color:#A05E12}
+.pill{font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:20px}
+.pill.up{background:var(--up-t);color:var(--up)}.pill.fin{background:var(--fin-t);color:#6d6459}
+.part{font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:20px;border:1px solid}
+.part.going{background:rgba(23,114,69,.12);color:var(--open);border-color:#9DBFAE}
+.part.attending{background:var(--attend-t);color:var(--attend);border-color:#B7C0EA}
+.part.sponsoring{background:var(--su-t);color:#916a00;border-color:#E3C9A8}
+.part.not_going{background:rgba(162,58,107,.08);color:var(--internal);border-color:#D9B6C7}
+.part.revisit_next_year{background:var(--fin-t);color:#6d6459;border-color:#C9BFAE;border-style:dashed}
+.assignrow{display:flex;align-items:center;gap:8px;border-top:1px dashed var(--border);padding-top:8px;font-size:11.5px;color:var(--muted);flex-wrap:wrap}
+.owners{display:flex;gap:-6px}
+.oav{width:22px;height:22px;border-radius:50%;background:var(--internal);color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--card);margin-left:-6px}
+.oav:first-child{margin-left:0}
+.ev .editbtn{position:absolute;top:11px;right:11px;width:26px;height:26px;border-radius:7px;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.ev .editbtn:hover{background:var(--hover);color:var(--ink)}
+.empty{text-align:center;color:var(--muted);padding:50px 0}
+/* auth gate */
+.gate{position:fixed;inset:0;z-index:100;background:var(--surface);display:flex;align-items:center;justify-content:center;padding:20px}
+.gatecard{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:38px 34px;max-width:410px;text-align:center;box-shadow:0 20px 50px rgba(30,26,22,.08)}
+.gatecard .glogo{width:46px;height:46px;border-radius:12px;background:var(--ink);color:#fff;font-family:'Playfair Display',serif;font-size:24px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.gatecard h1{font-size:23px;margin-bottom:8px}
+.gatecard p{color:var(--muted);font-size:13px;margin-bottom:22px}
+.gatecard em{font-style:normal;color:var(--invite)}
+.gbtn{display:inline-flex;align-items:center;gap:10px;padding:11px 20px;border:1px solid var(--border);border-radius:10px;background:#fff;cursor:pointer;font-weight:600;font-size:14px}
+.gbtn:hover{background:var(--hover)}
+/* modal */
+.backdrop{position:fixed;inset:0;z-index:90;background:rgba(30,26,22,.42);display:flex;align-items:center;justify-content:center;padding:18px}
+.modal{background:var(--card);border-radius:15px;width:min(620px,96vw);max-height:92vh;overflow:auto;border:1px solid var(--border)}
+.mhead{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card)}
+.mhead h2{font-size:18px}
+.mx{border:0;background:none;font-size:20px;cursor:pointer;color:var(--muted)}
+.mbody{padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fg{display:flex;flex-direction:column;gap:4px}.fg.full{grid-column:1/-1}
+.fg label{font-size:11.5px;font-weight:600;color:var(--muted)}
+.fg input,.fg select,.fg textarea{font-family:'DM Sans';font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--ink)}
+.fg textarea{min-height:58px;resize:vertical}
+.mfoot{display:flex;justify-content:flex-end;gap:9px;padding:14px 20px;border-top:1px solid var(--border);position:sticky;bottom:0;background:var(--card)}
+.hint{font-size:11px;color:var(--muted)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;z-index:120;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+footer{max-width:1320px;margin:30px auto 0;padding:16px 22px;color:var(--muted);font-size:12px;border-top:1px solid var(--border)}
+@media(max-width:640px){.mbody{grid-template-columns:1fr}.search input{width:150px}}
+</style>
 </head>
 <body>
 
-    <header>
-        <div class="header-container">
-            <div class="logo">
-                🏢 Event Intelligence <span>PRO</span>
-            </div>
-            <a href="event_intelligence_report.xlsx" class="download-btn" download>
-                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-                    <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
-                </svg>
-                Download Excel Sheet
-            </a>
+<!-- AUTH GATE -->
+<div class="gate" id="gate">
+  <div class="gatecard">
+    <div class="glogo">L</div>
+    <h1>GSI &amp; SI Event Intelligence</h1>
+    <p>Sign in with your <em>@lyzr.ai</em> Google account to view the tracker.</p>
+    <button class="gbtn" id="gbtn">
+      <svg width="18" height="18" viewBox="0 0 18 18"><g fill="none" fill-rule="evenodd"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></g></svg>
+      Continue with Google
+    </button>
+    <p style="margin-top:16px;font-size:11px" id="gerr"></p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <header class="top">
+    <div class="brand"><span class="b1">Event Intelligence</span><span class="b2">30 GSIs &amp; consulting firms · H2 2026 →</span></div>
+    <div class="grow"></div>
+    <div class="search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input id="q" type="text" placeholder="Search events, cities, evidence…" autocomplete="off">
+    </div>
+    <button class="btn accent hidden" id="addBtn">+ Add event</button>
+    <div class="userbox">
+      <div class="avatar" id="uav">?</div>
+      <div><div class="uname" id="uname"></div><div class="urole" id="urole"></div></div>
+      <button class="btn" id="signout" title="Sign out" style="padding:7px 9px">↩</button>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="tiles" id="tiles"></div>
+
+    <div class="panel">
+      <h2>When it happens</h2>
+      <div class="note">events per month · <span style="color:var(--fin)">grey = finished</span> · <span style="color:var(--up)">green = upcoming (≤60d)</span> · <span style="color:var(--attend)">indigo = later</span> · click a bar to filter</div>
+      <div class="bars" id="bars"></div>
+      <div class="baseline"></div>
+      <div style="display:flex;gap:8px" id="barlabs"></div>
+    </div>
+
+    <div class="controls">
+      <div class="rowc" style="margin-bottom:8px">
+        <span class="gbLabel">Group by</span>
+        <div class="seg" id="groupSeg">
+          <button data-g="company" class="on">Account</button>
+          <button data-g="category">Category</button>
+          <button data-g="event_type">Type</button>
+          <button data-g="status">Status</button>
+          <button data-g="month">Month</button>
+          <button data-g="region">Region</button>
         </div>
-    </header>
+        <span class="count" id="count"></span>
+      </div>
+      <div class="rowc">
+        <select id="fCat"><option value="">All categories</option>
+          <option value="hosted_open">Hosted · open</option><option value="hosted_invite_only">Hosted · invite-only</option>
+          <option value="hosted_internal">Hosted · internal</option><option value="attending">Attending / sponsoring</option></select>
+        <select id="fCo"><option value="">All accounts</option></select>
+        <select id="fType"><option value="">All types</option></select>
+        <select id="fReg"><option value="">All regions</option></select>
+        <select id="fStatus"><option value="">Any status</option><option value="upcoming">Upcoming (≤60d)</option><option value="finished">Finished</option><option value="untagged">Untagged (later/TBC)</option></select>
+        <select id="fPart"><option value="">Any participation</option><option value="going">Going</option><option value="attending">Attending</option><option value="sponsoring">Sponsoring</option><option value="not_going">Not going</option><option value="revisit_next_year">Check next year</option><option value="__set">Assigned (any)</option><option value="__none">Unassigned</option></select>
+        <label class="chk"><input type="checkbox" id="fSu"> Startup-friendly</label>
+        <label class="chk"><input type="checkbox" id="fMine"> My events</label>
+        <button class="clearf" id="clearf">Clear</button>
+      </div>
+    </div>
 
-    <main class="container">
+    <div id="content"></div>
+  </div>
+  <footer id="foot"></footer>
+</div>
 
-        <!-- Stats Section -->
-        <section class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-title">Total Tracked Events</div>
-                <div class="stat-value" id="stat-total-val">0</div>
-                <div class="stat-desc">Across 30 companies</div>
-            </div>
-            <div class="stat-card stat-upcoming">
-                <div class="stat-title">Upcoming (< 1 Month)</div>
-                <div class="stat-value" id="stat-upcoming-val">0</div>
-                <div class="stat-desc">Next 30 days time window</div>
-            </div>
-            <div class="stat-card stat-completed">
-                <div class="stat-title">Completed / Historical</div>
-                <div class="stat-value" id="stat-completed-val">0</div>
-                <div class="stat-desc">Archived past events</div>
-            </div>
-            <div class="stat-card stat-startup">
-                <div class="stat-title">Startup-Friendly</div>
-                <div class="stat-value" id="stat-startup-val">0</div>
-                <div class="stat-desc">Pitching & Venture events</div>
-            </div>
-        </section>
+<!-- EDIT / ADD MODAL -->
+<div class="backdrop hidden" id="modal">
+  <div class="modal">
+    <div class="mhead"><h2 id="mtitle">Edit event</h2><button class="mx" id="mclose">×</button></div>
+    <div class="mbody" id="mbody">
+      <div class="fg full"><label>Event name *</label><input id="f_event_name" required></div>
+      <div class="fg"><label>Account / company *</label><input id="f_company" list="colist" required></div>
+      <div class="fg"><label>Category *</label><select id="f_category">
+        <option value="hosted_open">Hosted · open</option><option value="hosted_invite_only">Hosted · invite-only</option>
+        <option value="hosted_internal">Hosted · internal</option><option value="attending">Attending / sponsoring</option></select></div>
+      <div class="fg"><label>Event type</label><input id="f_event_type" placeholder="conference, summit, webinar…"></div>
+      <div class="fg"><label>Role</label><input id="f_role" placeholder="host, sponsor, speaker…"></div>
+      <div class="fg"><label>Date (display)</label><input id="f_date" placeholder="Sep 10, 2026"></div>
+      <div class="fg"><label>Start date (for status)</label><input id="f_start_iso" type="date"></div>
+      <div class="fg"><label>City</label><input id="f_city"></div>
+      <div class="fg"><label>Country</label><input id="f_country"></div>
+      <div class="fg"><label>Region</label><select id="f_region">
+        <option value="">—</option><option>US</option><option>UK</option><option>Europe</option><option>India</option><option>APAC</option><option>Middle East</option><option>Virtual</option><option>Global</option></select></div>
+      <div class="fg"><label>Format</label><select id="f_format"><option value="">—</option><option>in-person</option><option>virtual</option><option>hybrid</option></select></div>
+      <div class="fg"><label>Registration</label><select id="f_registration"><option value="">—</option><option>open</option><option>invite_only</option><option>paid_ticket</option><option>internal</option><option>unknown</option></select></div>
+      <div class="fg"><label>Confidence</label><select id="f_confidence"><option>high</option><option selected>medium</option><option>low</option></select></div>
+      <div class="fg"><label>Startup-friendly</label><select id="f_startup_friendly"><option value="false">No</option><option value="true">Yes</option></select></div>
+      <div class="fg full"><label>Source URL</label><input id="f_url" placeholder="https://…"></div>
+      <div class="fg full"><label>Evidence / notes</label><textarea id="f_evidence"></textarea></div>
+      <div class="fg full" style="border-top:1px solid var(--border);padding-top:10px"><label style="color:var(--invite)">Lyzr participation — are we going?</label>
+        <select id="f_participation"><option value="">Undecided</option><option value="going">Going</option><option value="attending">Attending</option><option value="sponsoring">Sponsoring</option><option value="not_going">Not going</option><option value="revisit_next_year">Check next year</option></select></div>
+      <div class="fg"><label>Owner(s) — emails</label><input id="f_owner" placeholder="ani@lyzr.ai, ankita@lyzr.ai"></div>
+      <div class="fg"><label>Attendees — emails</label><input id="f_attendees" placeholder="comma / space separated"></div>
+    </div>
+    <div class="mfoot"><span class="hint" id="mhint"></span><button class="btn" id="mcancel">Cancel</button><button class="btn primary" id="msave">Save</button></div>
+  </div>
+</div>
+<datalist id="colist"></datalist>
 
-        <!-- Controls Section -->
-        <section class="controls-panel">
-            <div class="search-filter-grid">
-                <!-- Search -->
-                <div class="control-group">
-                    <label class="control-label" for="search-input">Search Events</label>
-                    <div class="search-input-wrapper">
-                        <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                        </svg>
-                        <input type="text" id="search-input" class="search-input" placeholder="Search by name, company, description...">
-                    </div>
-                </div>
+<script>
+/* ============ config ============ */
+const LYZR_OAUTH_CLIENT_ID = '393767244875-e2n5j0jr90g0a8asp4ti9akmlern6enb.apps.googleusercontent.com';
+const EDITOR_EMAILS = ['subs@lyzr.ai','kailash.gm@lyzr.ai','ani@lyzr.ai','ankita@lyzr.ai','anju@lyzr.ai','kailcodes02@gmail.com'];
+const CAT = {
+  hosted_open:{lab:'Hosted · open',cls:'c-open',dot:'d-open'},
+  hosted_invite_only:{lab:'Hosted · invite-only',cls:'c-invite',dot:'d-invite'},
+  hosted_internal:{lab:'Hosted · internal',cls:'c-internal',dot:'d-internal'},
+  attending:{lab:'Attending / sponsoring',cls:'c-attend',dot:'d-attend'}
+};
+const PARTLAB={going:'Going',attending:'Attending',sponsoring:'Sponsoring',not_going:'Not going',revisit_next_year:'Check next year'};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-                <!-- Company Filter -->
-                <div class="control-group">
-                    <label class="control-label" for="company-filter">Company</label>
-                    <select id="company-filter" class="select-input">
-                        <option value="all">All Companies</option>
-                    </select>
-                </div>
+/* ============ state ============ */
+let USER=null, TOKEN=null, isEditor=false;
+let ALL=[], gen='—';
+let groupBy='company';
+const F={q:'',cat:'',co:'',type:'',reg:'',status:'',part:'',su:false,mine:false,month:''};
 
-                <!-- Category Filter -->
-                <div class="control-group">
-                    <label class="control-label" for="category-filter">Category</label>
-                    <select id="category-filter" class="select-input">
-                        <option value="all">All Categories</option>
-                        <option value="Internally Hosted">Internally Hosted</option>
-                        <option value="Externally Hosted (Open)">Externally Hosted (Open)</option>
-                        <option value="Invite-Only">Invite-Only</option>
-                        <option value="Startup-Friendly">Startup-Friendly</option>
-                        <option value="Attending / Sponsoring">Attending / Sponsoring</option>
-                        <option value="Thought Leadership">Thought Leadership</option>
-                    </select>
-                </div>
+/* ============ auth ============ */
+const $=id=>document.getElementById(id);
+$('gbtn').onclick=signIn;
+function signIn(){
+  if(!(window.google&&google.accounts&&google.accounts.oauth2)){$('gerr').textContent='Google still loading — try again.';return;}
+  const client=google.accounts.oauth2.initTokenClient({
+    client_id:LYZR_OAUTH_CLIENT_ID, scope:'email profile', hd:'lyzr.ai',
+    callback:async r=>{
+      if(r.error){$('gerr').textContent='Sign-in failed.';return;}
+      try{
+        const p=await(await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+r.access_token}})).json();
+        const email=(p.email||'').toLowerCase();
+        const ok=(p.email_verified===true||p.email_verified==='true')&&(email.endsWith('@lyzr.ai')||p.hd==='lyzr.ai'||email==='kailcodes02@gmail.com');
+        if(!ok){$('gerr').textContent='Access restricted to @lyzr.ai accounts. You used '+(p.email||'?');return;}
+        USER={name:p.name,email,picture:p.picture}; TOKEN=r.access_token;
+        isEditor=EDITOR_EMAILS.includes(email);
+        sessionStorage.setItem('gsi.u',JSON.stringify(USER));sessionStorage.setItem('gsi.t',TOKEN);
+        enter();
+      }catch(e){$('gerr').textContent='Sign-in error.';}
+    }
+  });
+  client.requestAccessToken();
+}
+function restore(){
+  const u=sessionStorage.getItem('gsi.u'),t=sessionStorage.getItem('gsi.t');
+  if(u&&t){try{USER=JSON.parse(u);TOKEN=t;isEditor=EDITOR_EMAILS.includes(USER.email);enter();return true;}catch(e){}}
+  return false;
+}
+$('signout').onclick=()=>{sessionStorage.removeItem('gsi.u');sessionStorage.removeItem('gsi.t');location.reload();};
+function enter(){
+  $('gate').classList.add('hidden');$('app').classList.remove('hidden');
+  $('uname').textContent=USER.name||USER.email;
+  $('urole').textContent=isEditor?'Editor':'Viewer';
+  const av=$('uav');
+  if(USER.picture)av.innerHTML='<img src="'+esc(USER.picture)+'">';else av.textContent=(USER.name||USER.email||'?')[0].toUpperCase();
+  if(isEditor)$('addBtn').classList.remove('hidden');
+  loadData();
+}
 
-                <!-- Status Filter -->
-                <div class="control-group">
-                    <label class="control-label" for="status-filter">Status</label>
-                    <select id="status-filter" class="select-input">
-                        <option value="all">All Statuses</option>
-                        <option value="Upcoming">Upcoming (< 1 Month)</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Regular">Future / Sane Timeframe</option>
-                    </select>
-                </div>
-            </div>
-        </section>
+/* ============ data ============ */
+async function loadData(){
+  let data=null;
+  try{
+    const res=await fetch('/api/events',{cache:'no-store',headers:TOKEN?{Authorization:'Bearer '+TOKEN}:{}});
+    if(res.ok){const j=await res.json();if(!j.error)data=j;}
+  }catch(e){}
+  if(!data){try{data=await(await fetch('./events.json',{cache:'no-store'})).json();}catch(e){}}
+  if(!data){$('content').innerHTML='<div class="empty">Could not load events.json</div>';return;}
+  ALL=(data.events||[]).map(normalize);
+  gen=data.compiled_date||data.generated_at||'—';
+  buildFilters();buildTiles();buildChart();render();buildFooter();
+}
+function normalize(e){
+  e.owner=e.owner||[];e.attendees=e.attendees||[];e.participation=e.participation||'';
+  e._status=computeStatus(e);return e;
+}
+function computeStatus(e){
+  const s=e.start_iso?new Date(e.start_iso+'T00:00:00'):null;
+  const en=e.end_iso?new Date(e.end_iso+'T00:00:00'):s;
+  if(!s)return e.status||'';           // unknown date → keep stored (usually untagged)
+  const now=new Date();now.setHours(0,0,0,0);
+  const win=new Date(now);win.setDate(win.getDate()+60);
+  if(en&&en<now)return 'finished';
+  if(s<=win)return 'upcoming';
+  return '';
+}
+const MONTHKEY=e=>{if(e.start_iso)return e.start_iso.slice(0,7);return '9999-99';};
+const MONTHLAB=k=>{if(k==='9999-99')return 'TBC';const[y,m]=k.split('-');return new Date(y,m-1,1).toLocaleString('en',{month:'short'})+" '"+y.slice(2);};
 
-        <!-- View Controls & Counter -->
-        <div class="results-meta">
-            <div class="results-count" id="results-counter">
-                Showing <strong>0</strong> of 0 events
-            </div>
-            <div class="view-toggles">
-                <button class="view-toggle-btn active" id="table-toggle-btn">Table View</button>
-                <button class="view-toggle-btn" id="card-toggle-btn">Card View</button>
-            </div>
-        </div>
+/* ============ filters ============ */
+function buildFilters(){
+  const cos=[...new Set(ALL.map(e=>e.company))].sort();
+  $('fCo').innerHTML='<option value="">All accounts</option>'+cos.map(c=>`<option>${esc(c)}</option>`).join('');
+  $('colist').innerHTML=cos.map(c=>`<option value="${esc(c)}">`).join('');
+  const types=[...new Set(ALL.map(e=>e.event_type).filter(Boolean))].sort();
+  $('fType').innerHTML='<option value="">All types</option>'+types.map(t=>`<option>${esc(t)}</option>`).join('');
+  const regs=[...new Set(ALL.map(e=>e.region).filter(Boolean))].sort();
+  $('fReg').innerHTML='<option value="">All regions</option>'+regs.map(r=>`<option>${esc(r)}</option>`).join('');
+}
+function bindControls(){
+  $('q').addEventListener('input',()=>{F.q=$('q').value.toLowerCase();render();});
+  const map={fCat:'cat',fCo:'co',fType:'type',fReg:'reg',fStatus:'status',fPart:'part'};
+  for(const id in map)$(id).addEventListener('change',()=>{F[map[id]]=$(id).value;render();});
+  $('fSu').addEventListener('change',()=>{F.su=$('fSu').checked;render();});
+  $('fMine').addEventListener('change',()=>{F.mine=$('fMine').checked;render();});
+  $('clearf').onclick=()=>{Object.assign(F,{q:'',cat:'',co:'',type:'',reg:'',status:'',part:'',su:false,mine:false,month:''});
+    ['q','fCat','fCo','fType','fReg','fStatus','fPart'].forEach(i=>$(i).value='');$('fSu').checked=false;$('fMine').checked=false;
+    document.querySelectorAll('.barcol').forEach(b=>b.classList.remove('sel'));render();};
+  document.querySelectorAll('#groupSeg button').forEach(b=>b.onclick=()=>{
+    groupBy=b.dataset.g;document.querySelectorAll('#groupSeg button').forEach(x=>x.classList.toggle('on',x===b));render();});
+  $('addBtn').onclick=openAdd;
+  $('mclose').onclick=$('mcancel').onclick=closeModal;
+  $('msave').onclick=saveModal;
+}
 
-        <!-- Empty State -->
-        <div class="empty-state hidden" id="empty-state">
-            <div class="empty-state-title">No Events Found</div>
-            <div class="empty-state-desc">Try resetting your filters or search keywords to find what you are looking for.</div>
-        </div>
+/* ============ filtering ============ */
+function filtered(){
+  const me=USER?USER.email:'';
+  return ALL.filter(e=>{
+    if(F.q){const h=(e.event_name+' '+e.company+' '+e.city+' '+e.country+' '+e.evidence).toLowerCase();if(!h.includes(F.q))return false;}
+    if(F.cat&&e.category!==F.cat)return false;
+    if(F.co&&e.company!==F.co)return false;
+    if(F.type&&e.event_type!==F.type)return false;
+    if(F.reg&&e.region!==F.reg)return false;
+    if(F.su&&!e.startup_friendly)return false;
+    if(F.month&&MONTHKEY(e)!==F.month)return false;
+    if(F.status){const s=e._status||'untagged';if(F.status==='untagged'){if(e._status)return false;}else if(s!==F.status)return false;}
+    if(F.part){
+      if(F.part==='__set'&&!e.participation)return false;
+      if(F.part==='__none'&&e.participation)return false;
+      if(F.part!=='__set'&&F.part!=='__none'&&e.participation!==F.part)return false;
+    }
+    if(F.mine&&!(e.owner.includes(me)||e.attendees.includes(me)))return false;
+    return true;
+  });
+}
 
-        <!-- Table View -->
-        <div class="table-container" id="table-view">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 14%;">Company</th>
-                        <th style="width: 20%;">Event Name</th>
-                        <th style="width: 15%;">Category</th>
-                        <th style="width: 10%;">Date</th>
-                        <th style="width: 12%;">Location</th>
-                        <th style="width: 10%;">Format</th>
-                        <th style="width: 10%;">Status</th>
-                        <th style="width: 9%;">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="events-table-body">
-                    <!-- Events loaded dynamically -->
-                </tbody>
-            </table>
-        </div>
+/* ============ tiles / chart ============ */
+function buildTiles(){
+  const n=c=>ALL.filter(e=>e.category===c).length;
+  const t=[
+    ['n',new Set(ALL.map(e=>e.company)).size,'accounts',''],
+    ['n',ALL.length,'events tracked',''],
+    ['n',ALL.filter(e=>e._status==='upcoming').length,'upcoming ≤60d','d-open'],
+    ['n',ALL.filter(e=>e._status==='finished').length,'finished','d-internal'],
+    ['n',ALL.filter(e=>e.startup_friendly).length,'startup doors','d-su'],
+    ['n',n('hosted_open')+n('hosted_invite_only')+n('hosted_internal'),'they host','d-invite'],
+    ['n',n('attending'),'attending','d-attend'],
+  ];
+  $('tiles').innerHTML=t.map(x=>`<div class="tile"><div class="n">${x[1]}</div><div class="l">${x[3]?`<span class="dot ${x[3]}"></span>`:''}${x[2]}</div></div>`).join('');
+}
+function buildChart(){
+  const keys=[...new Set(ALL.map(MONTHKEY))].sort();
+  const cnt={};ALL.forEach(e=>{const k=MONTHKEY(e);cnt[k]=(cnt[k]||0)+1;});
+  const mx=Math.max(1,...keys.map(k=>cnt[k]||0));
+  const now=new Date();const nowk=now.toISOString().slice(0,7);
+  const win=new Date();win.setDate(win.getDate()+60);const wk=win.toISOString().slice(0,7);
+  $('bars').innerHTML=keys.map(k=>{
+    const v=cnt[k]||0;let cls='future';if(k==='9999-99')cls='future';else if(k<nowk)cls='past';else if(k<=wk)cls='soon';
+    return `<div class="barcol" data-k="${k}" title="${MONTHLAB(k)} · ${v}"><div class="v">${v}</div><div class="bar ${cls}" style="height:${Math.max(v/mx*92,3)}px"></div></div>`;
+  }).join('');
+  $('barlabs').innerHTML=keys.map(k=>`<div class="barlab" style="flex:1">${MONTHLAB(k)}</div>`).join('');
+  document.querySelectorAll('.barcol').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.k;F.month=(F.month===k)?'':k;
+    document.querySelectorAll('.barcol').forEach(x=>x.classList.toggle('sel',x.dataset.k===F.month&&F.month));render();});
+}
 
-        <!-- Card View -->
-        <div class="cards-container hidden" id="card-view">
-            <!-- Events loaded dynamically -->
-        </div>
+/* ============ render ============ */
+function groupVal(e){
+  if(groupBy==='category')return CAT[e.category].lab;
+  if(groupBy==='status')return e._status==='upcoming'?'Upcoming (≤60 days)':e._status==='finished'?'Finished':'Untagged (later / TBC)';
+  if(groupBy==='month')return MONTHLAB(MONTHKEY(e));
+  if(groupBy==='event_type')return e.event_type||'—';
+  if(groupBy==='region')return e.region||'—';
+  return e.company;
+}
+function sortKeyForMonth(lab){const e=ALL.find(x=>MONTHLAB(MONTHKEY(x))===lab);return e?MONTHKEY(e):'zz';}
+function render(){
+  const rows=filtered();
+  $('count').textContent=rows.length+' of '+ALL.length+' events';
+  const groups={};rows.forEach(e=>{(groups[groupVal(e)]=groups[groupVal(e)]||[]).push(e);});
+  let names=Object.keys(groups);
+  if(groupBy==='month')names.sort((a,b)=>sortKeyForMonth(a).localeCompare(sortKeyForMonth(b)));
+  else if(groupBy==='status')names.sort((a,b)=>({'Upcoming (≤60 days)':0,'Finished':1,'Untagged (later / TBC)':2}[a]-{'Upcoming (≤60 days)':0,'Finished':1,'Untagged (later / TBC)':2}[b]));
+  else names.sort((a,b)=>groups[b].length-groups[a].length||a.localeCompare(b));
+  const c=$('content');
+  if(!rows.length){c.innerHTML='<div class="empty">No events match these filters.</div>';return;}
+  c.innerHTML=names.map(nm=>{
+    const list=groups[nm].slice().sort(byDate);
+    const acc=groupBy==='company'?`<span class="sacc">${initials(nm)}</span>`:'';
+    return `<div class="section"><div class="shead" onclick="this.parentElement.classList.toggle('closed')">
+      <svg class="caret" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+      ${acc}<span class="stitle">${esc(nm)}</span><span class="scount">${list.length}</span></div>
+      <div class="grid">${list.map(card).join('')}</div></div>`;
+  }).join('');
+}
+function byDate(a,b){const x=a.start_iso||'9999',y=b.start_iso||'9999';return x.localeCompare(y);}
+function initials(n){return (n||'?').replace(/[^A-Za-z0-9 ]/g,'').split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase();}
+function card(e){
+  const c=CAT[e.category];
+  const st=e._status==='upcoming'?'<span class="pill up">Upcoming</span>':e._status==='finished'?'<span class="pill fin">Finished</span>':'';
+  const su=e.startup_friendly?`<span class="chip c-su"><span class="dot d-su"></span>startup</span>`:'';
+  const part=e.participation?`<span class="part ${e.participation}">${PARTLAB[e.participation]}</span>`:'';
+  const conf=e.confidence?`<span class="badge ${e.confidence==='high'?'hi':e.confidence==='low'?'lo':''}">${esc(e.confidence)}</span>`:'';
+  const loc=[e.city,e.country].filter(Boolean).join(', ')||e.region||'—';
+  const owners=e.owner.length?`<div class="owners">${e.owner.slice(0,4).map(o=>`<div class="oav" title="${esc(o)}">${esc(o[0].toUpperCase())}</div>`).join('')}</div><span>${e.owner.length} owner${e.owner.length>1?'s':''}</span>`:'<span>No owner</span>';
+  const att=e.attendees.length?` · ${e.attendees.length} attending`:'';
+  const editBtn=isEditor?`<button class="editbtn" title="Edit / assign" onclick="openEdit('${e.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></button>`:'';
+  return `<div class="ev">${editBtn}
+    <div class="co">${esc(e.company)}</div>
+    <div class="ti">${e.url?`<a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.event_name)}</a>`:esc(e.event_name)}</div>
+    <div class="chips"><span class="chip ${c.cls}"><span class="dot ${c.dot}"></span>${c.lab}</span>${su}${st}${part}</div>
+    <div class="meta">${esc(e.date)} · ${esc(loc)} · ${esc((e.event_type||'').replace(/_/g,' '))} ${conf}</div>
+    <div class="assignrow">${owners}${att}${part?'':(isEditor?' · <span style="color:var(--invite)">assign ›</span>':'')}</div>
+  </div>`;
+}
+function buildFooter(){
+  $('foot').innerHTML=`<b>How to read.</b> Categories: <i>Hosted·open</i> = account organizes, anyone can register; <i>invite-only</i> = gated CXO/roundtable/awards; <i>internal</i> = employee-facing; <i>Attending/sponsoring</i> = a third party organizes and the account participates. Status is computed live: <b>Finished</b> = already over · <b>Upcoming</b> = within 60 days · events further out or undated stay untagged. Owners, attendees &amp; Lyzr participation are set by editors (Kailash, Anirudh, Ankita, Anju). Compiled ${esc(gen)}. ${ALL.length} events across ${new Set(ALL.map(e=>e.company)).size} accounts.`;
+}
 
-    </main>
+/* ============ modal (add/edit/assign) ============ */
+let editId=null;
+const FF=['event_name','company','category','event_type','role','date','start_iso','city','country','region','format','registration','confidence','startup_friendly','url','evidence','participation','owner','attendees'];
+function openAdd(){editId=null;$('mtitle').textContent='Add event';FF.forEach(f=>setF(f,''));
+  setF('category','attending');setF('confidence','medium');setF('startup_friendly','false');
+  $('mhint').textContent='New event committed to the shared tracker.';$('modal').classList.remove('hidden');}
+window.openEdit=function(id){editId=id;const e=ALL.find(x=>x.id===id);if(!e)return;
+  $('mtitle').textContent='Edit / assign — '+e.event_name.slice(0,40);
+  setF('event_name',e.event_name);setF('company',e.company);setF('category',e.category);
+  setF('event_type',e.event_type);setF('role',e.role);setF('date',e.date);setF('start_iso',e.start_iso||'');
+  setF('city',e.city);setF('country',e.country);setF('region',e.region);setF('format',e.format);
+  setF('registration',e.registration);setF('confidence',e.confidence||'medium');
+  setF('startup_friendly',e.startup_friendly?'true':'false');setF('url',e.url);setF('evidence',e.evidence);
+  setF('participation',e.participation||'');setF('owner',(e.owner||[]).join(', '));setF('attendees',(e.attendees||[]).join(', '));
+  $('mhint').textContent='ID '+e.id;$('modal').classList.remove('hidden');};
+function setF(f,v){const el=$('f_'+f);if(el)el.value=v;}
+function getF(f){const el=$('f_'+f);return el?el.value.trim():'';}
+function closeModal(){$('modal').classList.add('hidden');}
+async function saveModal(){
+  const name=getF('event_name'),co=getF('company');
+  if(!name||!co){toast('Event name & account required');return;}
+  const payload={
+    event_name:name,company:co,category:getF('category'),event_type:getF('event_type'),role:getF('role'),
+    date:getF('date'),start_iso:getF('start_iso')||null,end_iso:getF('start_iso')||null,city:getF('city'),country:getF('country'),
+    region:getF('region'),format:getF('format'),registration:getF('registration'),confidence:getF('confidence'),
+    startup_friendly:getF('startup_friendly')==='true',url:getF('url'),evidence:getF('evidence'),
+    participation:getF('participation'),owner:getF('owner'),attendees:getF('attendees')
+  };
+  const btn=$('msave');btn.disabled=true;btn.textContent='Saving…';
+  try{
+    const url=editId?('/api/events?id='+encodeURIComponent(editId)):'/api/events';
+    const res=await fetch(url,{method:editId?'PUT':'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+TOKEN},body:JSON.stringify(payload)});
+    const j=await res.json();
+    if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
+    closeModal();toast(editId?'Saved':'Event added');await loadData();
+  }catch(e){toast('Save failed: '+e.message);}
+  finally{btn.disabled=false;btn.textContent='Save';}
+}
+function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),3200);}
 
-    <script>
-        const events = [
-  {
-    "company": "Accenture",
-    "event_name": "Regulatory Reinvention",
-    "category": "Externally Hosted (Open)",
-    "date": "2026-07-28",
-    "location": "Virtual / US",
-    "format": "Virtual",
-    "status": "Upcoming",
-    "description": "Discussion with Government Technology regarding public sector modernization",
-    "url": "https://www.govevents.com"
-  },
-  {
-    "company": "Accenture",
-    "event_name": "Accenture Tech Next Challenge 2026",
-    "category": "Startup-Friendly",
-    "date": "2026-08-12",
-    "location": "Bangalore, India",
-    "format": "In-person",
-    "status": "Upcoming",
-    "description": "Flagship B2B deep-tech startup pitching program and showcase",
-    "url": "https://www.technextchallenge.in"
-  },
-  {
-    "company": "Accenture",
-    "event_name": "TCS Summit Europe / Enterprise AI",
-    "category": "Invite-Only",
-    "date": "2026-09-21",
-    "location": "London, UK",
-    "format": "In-person",
-    "status": "",
-    "description": "Premier executive gathering for European digital transformation",
-    "url": "https://www.accenture.com"
-  },
-  {
-    "company": "Accenture",
-    "event_name": "AI & Big Data Expo Europe",
-    "category": "Attending / Sponsoring",
-    "date": "2026-10-19",
-    "location": "Amsterdam, Europe",
-    "format": "In-person",
-    "status": "",
-    "description": "Major industry event where Accenture is a key showcase partner",
-    "url": "https://www.ai-expo.net"
-  },
-  {
-    "company": "Accenture",
-    "event_name": "MWC Barcelona 2026",
-    "category": "Attending / Sponsoring",
-    "date": "2026-02-28",
-    "location": "Barcelona, Europe",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Showcased human-led, AI-enabled transformation value chains",
-    "url": "https://www.accenture.com"
-  },
-  {
-    "company": "Accenture",
-    "event_name": "RSA Conference (RSAC) 2026",
-    "category": "Attending / Sponsoring",
-    "date": "2026-03-25",
-    "location": "San Francisco, US",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Highlights cybersecurity reinvention solutions; Innovation Day on March 25",
-    "url": "https://www.accenture.com"
-  },
-  {
-    "company": "Hitachi Vantara",
-    "event_name": "India & SAARC Partner Summit",
-    "category": "Thought Leadership",
-    "date": "2026-06-15",
-    "location": "Rishikesh, India",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Data center modernization and AI-driven infrastructure demands",
-    "url": "https://www.dqchannels.com"
-  },
-  {
-    "company": "Hitachi Vantara",
-    "event_name": "ANZ Exchange 2026",
-    "category": "Invite-Only",
-    "date": "2026-11-15",
-    "location": "Gold Coast, Australia",
-    "format": "In-person",
-    "status": "",
-    "description": "Flagship event: 'Building a Data Foundation for What\u2019s Next'",
-    "url": "https://www.hitachivantara.com"
-  },
-  {
-    "company": "Hitachi Vantara",
-    "event_name": "EMEA VAD Forum 2027",
-    "category": "Invite-Only",
-    "date": "2027-05-12",
-    "location": "Monaco",
-    "format": "In-person",
-    "status": "",
-    "description": "Annual strategy gathering for European distributors and consultants",
-    "url": "https://www.hitachivantara.com"
-  },
-  {
-    "company": "Hitachi Vantara",
-    "event_name": "NVIDIA GTC 2026",
-    "category": "Attending / Sponsoring",
-    "date": "2026-03-18",
-    "location": "San Jose, US",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Gold sponsor showcasing industrial AI and digital twin infrastructure",
-    "url": "https://www.hitachivantara.com"
-  },
-  {
-    "company": "Hitachi Vantara",
-    "event_name": "Foundations 2026",
-    "category": "Internally Hosted",
-    "date": "2026-09-01",
-    "location": "Virtual / Global",
-    "format": "Virtual",
-    "status": "",
-    "description": "Customer & partner working sessions on AI-ready cybersecurity",
-    "url": "https://www.hitachivantara.com"
-  },
-  {
-    "company": "Birlasoft",
-    "event_name": "35th Annual General Meeting",
-    "category": "Internally Hosted",
-    "date": "2026-07-27",
-    "location": "Virtual / India",
-    "format": "Virtual",
-    "status": "Upcoming",
-    "description": "Video conference for adopting FY26 results",
-    "url": "https://www.birlasoft.com"
-  },
-  {
-    "company": "Birlasoft",
-    "event_name": "OTM WMS User Conference Americas",
-    "category": "Attending / Sponsoring",
-    "date": "2026-06-27",
-    "location": "Minneapolis, US",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Sponsoring and presenting supply chain and logistics tech solutions",
-    "url": "https://www.birlasoft.com"
-  },
-  {
-    "company": "Birlasoft",
-    "event_name": "Oracle AI World Tour London",
-    "category": "Attending / Sponsoring",
-    "date": "2026-03-24",
-    "location": "London, UK",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Showcased Oracle ERP cloud modernization and generative AI use cases",
-    "url": "https://www.birlasoft.com"
-  },
-  {
-    "company": "Birlasoft",
-    "event_name": "CXO Innovation Roundtable",
-    "category": "Invite-Only",
-    "date": "2026-11-20",
-    "location": "London / Mumbai",
-    "format": "Hybrid",
-    "status": "",
-    "description": "Closed-room events focusing on manufacturing and life sciences cloud transformation",
-    "url": "https://www.birlasoft.com"
-  },
-  {
-    "company": "Grid Dynamics",
-    "event_name": "XT26 London Forum",
-    "category": "Invite-Only",
-    "date": "2026-06-18",
-    "location": "London, UK",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "C-level roundtables discussing financial services AI and engineering",
-    "url": "https://www.griddynamics.com"
-  },
-  {
-    "company": "Grid Dynamics",
-    "event_name": "Q2 2026 Earnings Call",
-    "category": "Internally Hosted",
-    "date": "2026-07-30",
-    "location": "Virtual / US",
-    "format": "Virtual",
-    "status": "Upcoming",
-    "description": "Webcast conference call to discuss quarterly financial results",
-    "url": "https://www.griddynamics.com"
-  },
-  {
-    "company": "Grid Dynamics",
-    "event_name": "GenAI Enterprise Webinar",
-    "category": "Externally Hosted (Open)",
-    "date": "2026-10-15",
-    "location": "Virtual / Global",
-    "format": "Virtual",
-    "status": "",
-    "description": "Technical sessions on scaling LLMs in e-commerce and retail",
-    "url": "https://www.griddynamics.com"
-  },
-  {
-    "company": "Perficient (PSL)",
-    "event_name": "Salesforce Dreamforce 2026",
-    "category": "Attending / Sponsoring",
-    "date": "2026-09-15",
-    "location": "San Francisco, US",
-    "format": "In-person",
-    "status": "",
-    "description": "Showcasing Salesforce Agentforce and digital workflow solutions",
-    "url": "https://www.perficient.com"
-  },
-  {
-    "company": "Perficient (PSL)",
-    "event_name": "Sitecore Symposium 2026",
-    "category": "Attending / Sponsoring",
-    "date": "2026-10-25",
-    "location": "Chicago, US",
-    "format": "In-person",
-    "status": "",
-    "description": "Exhibiting digital experience platforms and personalization tools",
-    "url": "https://www.perficient.com"
-  },
-  {
-    "company": "Perficient (PSL)",
-    "event_name": "GenAI in CX Executive Dinner",
-    "category": "Invite-Only",
-    "date": "2026-11-12",
-    "location": "Dallas, US",
-    "format": "In-person",
-    "status": "",
-    "description": "Closed-door executive session on generative AI for customer experience",
-    "url": "https://www.perficient.com"
-  },
-  {
-    "company": "TCS",
-    "event_name": "TCS Summit Europe 2026",
-    "category": "Invite-Only",
-    "date": "2026-09-21",
-    "location": "London, UK",
-    "format": "In-person",
-    "status": "",
-    "description": "'Enterprise AI \u2013 Infrastructure to Intelligence' leadership summit",
-    "url": "https://www.tcs.com"
-  },
-  {
-    "company": "TCS",
-    "event_name": "Farnborough International Airshow",
-    "category": "Attending / Sponsoring",
-    "date": "2026-07-20",
-    "location": "England, UK",
-    "format": "In-person",
-    "status": "Upcoming",
-    "description": "Aerospace and defense digital engineering showcases",
-    "url": "https://www.tcs.com"
-  },
-  {
-    "company": "TCS",
-    "event_name": "World Credit Union Conference",
-    "category": "Attending / Sponsoring",
-    "date": "2026-07-19",
-    "location": "Sydney, Australia",
-    "format": "In-person",
-    "status": "Upcoming",
-    "description": "Showcased TCS BaNCS banking platform solutions",
-    "url": "https://www.tcs.com"
-  },
-  {
-    "company": "TCS",
-    "event_name": "31st Annual General Meeting",
-    "category": "Internally Hosted",
-    "date": "2026-06-09",
-    "location": "Virtual / India",
-    "format": "Virtual",
-    "status": "Completed",
-    "description": "Interactive shareholder meeting and leadership roadmap",
-    "url": "https://www.tcs.com"
-  },
-  {
-    "company": "TCS",
-    "event_name": "TCS COIN Pitch Days",
-    "category": "Startup-Friendly",
-    "date": "2026-10-01",
-    "location": "Mumbai / Silicon Valley",
-    "format": "Hybrid",
-    "status": "",
-    "description": "Pitch sessions for deep-tech startups seeking enterprise validation",
-    "url": "https://www.tcs.com"
-  },
-  {
-    "company": "Infosys",
-    "event_name": "PEGAInnovate 2026",
-    "category": "Externally Hosted (Open)",
-    "date": "2026-07-27",
-    "location": "Hyderabad, India",
-    "format": "In-person",
-    "status": "Upcoming",
-    "description": "Enterprise automation, AI, and workflow efficiency forum",
-    "url": "https://www.infosys.com"
-  },
-  {
-    "company": "Infosys",
-    "event_name": "ServiceNow World Forum",
-    "category": "Attending / Sponsoring",
-    "date": "2026-07-30",
-    "location": "Sydney, Australia",
-    "format": "In-person",
-    "status": "Upcoming",
-    "description": "Partner showcase on digital workflow transformation",
-    "url": "https://www.infosys.com"
-  },
-  {
-    "company": "Infosys",
-    "event_name": "Black Hat USA 2026",
-    "category": "Attending / Sponsoring",
-    "date": "2026-08-05",
-    "location": "Las Vegas, US",
-    "format": "In-person",
-    "status": "Upcoming",
-    "description": "Major cybersecurity partner highlighting AI-driven security",
-    "url": "https://www.infosys.com"
-  },
-  {
-    "company": "Infosys",
-    "event_name": "Q1 FY27 Earnings Call",
-    "category": "Internally Hosted",
-    "date": "2026-07-23",
-    "location": "Virtual / India",
-    "format": "Virtual",
-    "status": "Upcoming",
-    "description": "Live conference call and financial performance review",
-    "url": "https://www.infosys.com"
-  },
-  {
-    "company": "Infosys",
-    "event_name": "Infosys Innovation Fund Demos",
-    "category": "Startup-Friendly",
-    "date": "2026-11-12",
-    "location": "Bangalore / San Jose",
-    "format": "In-person",
-    "status": "",
-    "description": "Demo days connecting portfolio startups with enterprise clients",
-    "url": "https://www.infosys.com"
-  },
-  {
-    "company": "Virtusa",
-    "event_name": "Virtusa Neural Hackathon",
-    "category": "Startup-Friendly",
-    "date": "2026-10-18",
-    "location": "Virtual / India",
-    "format": "Virtual",
-    "status": "",
-    "description": "National coding & AI hackathon for student developers",
-    "url": "https://prepinsta.com"
-  },
-  {
-    "company": "Virtusa",
-    "event_name": "BSA Conference 2026",
-    "category": "Attending / Sponsoring",
-    "date": "2026-10-22",
-    "location": "London, UK",
-    "format": "In-person",
-    "status": "",
-    "description": "Sponsoring and exhibiting banking software architectures",
-    "url": "https://www.bsaconference.org"
-  },
-  {
-    "company": "Virtusa",
-    "event_name": "AWS Cloud Modernization Webinar",
-    "category": "Externally Hosted (Open)",
-    "date": "2026-09-10",
-    "location": "Virtual / Global",
-    "format": "Virtual",
-    "status": "",
-    "description": "Technical webinar series on migrating legacy workloads to AWS",
-    "url": "https://www.virtusa.com"
-  },
-  {
-    "company": "Wipro",
-    "event_name": "Trust & Safety Summit",
-    "category": "Attending / Sponsoring",
-    "date": "2026-03-24",
-    "location": "London, UK",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "AI safety, automation, and responsible content platforms",
-    "url": "https://www.wipro.com"
-  },
-  {
-    "company": "Wipro",
-    "event_name": "Wipro Analyst & Advisor Summit",
-    "category": "Invite-Only",
-    "date": "2026-05-15",
-    "location": "Frankfurt, Germany",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Executive briefing on GenAI enterprise readiness for European clients",
-    "url": "https://www.wipro.com"
-  },
-  {
-    "company": "Wipro",
-    "event_name": "80th Annual General Meeting",
-    "category": "Internally Hosted",
-    "date": "2026-07-15",
-    "location": "Virtual / India",
-    "format": "Virtual",
-    "status": "Completed",
-    "description": "Video conference for adopting shareholder resolutions",
-    "url": "https://www.wipro.com"
-  },
-  {
-    "company": "Wipro",
-    "event_name": "Utility Week Live 2027",
-    "category": "Attending / Sponsoring",
-    "date": "2027-05-25",
-    "location": "Birmingham, UK",
-    "format": "In-person",
-    "status": "",
-    "description": "Confirmed presence highlighting smart utility grid transformation",
-    "url": "https://www.wipro.com"
-  },
-  {
-    "company": "Wipro",
-    "event_name": "Wipro Co-Innovation Conclave",
-    "category": "Startup-Friendly",
-    "date": "2026-11-05",
-    "location": "Bangalore, India",
-    "format": "In-person",
-    "status": "",
-    "description": "Ecosystem pitch day for deeptech startups and venture partners",
-    "url": "https://www.wipro.com"
-  },
-  {
-    "company": "Cognizant (CTS)",
-    "event_name": "Cognizant Discovery EMEA",
-    "category": "Invite-Only",
-    "date": "2026-07-03",
-    "location": "Windsor, UK",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Annual C-suite retreat focusing on AI value creation",
-    "url": "https://www.cognizant.com"
-  },
-  {
-    "company": "Cognizant (CTS)",
-    "event_name": "Cognizant Discovery Americas",
-    "category": "Invite-Only",
-    "date": "2026-10-23",
-    "location": "Austin, US",
-    "format": "In-person",
-    "status": "",
-    "description": "Flagship executive forum on digital operations and AI scalability",
-    "url": "https://www.cognizant.com"
-  },
-  {
-    "company": "Cognizant (CTS)",
-    "event_name": "Cognizant Technoverse Hackathon",
-    "category": "Startup-Friendly",
-    "date": "2026-05-15",
-    "location": "Pune, India",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "National-level developer challenge for emerging AI architectures",
-    "url": "https://www.cognizant.com"
-  },
-  {
-    "company": "Cognizant (CTS)",
-    "event_name": "Snowflake Summit 2026",
-    "category": "Attending / Sponsoring",
-    "date": "2026-06-01",
-    "location": "San Francisco, US",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Black Diamond Sponsor showcasing cloud data modernizations",
-    "url": "https://www.cognizant.com"
-  },
-  {
-    "company": "Cognizant (CTS)",
-    "event_name": "Cognizant AI Forum 2026",
-    "category": "Thought Leadership",
-    "date": "2026-06-05",
-    "location": "Hybrid / Global",
-    "format": "Hybrid",
-    "status": "Completed",
-    "description": "Bridge AI investments to enterprise value; keynotes from CEO",
-    "url": "https://www.cognizant.com"
-  },
-  {
-    "company": "NTT Data",
-    "event_name": "Transformation NOW! India",
-    "category": "Externally Hosted (Open)",
-    "date": "2027-02-10",
-    "location": "Mumbai, India",
-    "format": "In-person",
-    "status": "",
-    "description": "SAP innovation, AI, and cloud-focused enterprise summit",
-    "url": "https://www.nttdata-solutions.com"
-  },
-  {
-    "company": "NTT Data",
-    "event_name": "NTT Startup Challenge",
-    "category": "Startup-Friendly",
-    "date": "2026-11-24",
-    "location": "Bangalore, India",
-    "format": "In-person",
-    "status": "",
-    "description": "Pitch event and venture networking for South Asian startups",
-    "url": "https://www.nttdata.com"
-  },
-  {
-    "company": "NTT Data",
-    "event_name": "Mobile World Congress (MWC)",
-    "category": "Attending / Sponsoring",
-    "date": "2027-02-22",
-    "location": "Barcelona, Europe",
-    "format": "In-person",
-    "status": "",
-    "description": "Global telecommunication and edge computing showcase",
-    "url": "https://www.nttdata.com"
-  },
-  {
-    "company": "CGI Group",
-    "event_name": "CGI Elevate Series",
-    "category": "Invite-Only",
-    "date": "2026-10-18",
-    "location": "Bangalore, India",
-    "format": "In-person",
-    "status": "",
-    "description": "Closed-room GCC and digital strategy discussions for CXOs",
-    "url": "https://www.cgi.com"
-  },
-  {
-    "company": "CGI Group",
-    "event_name": "Computer Graphics International",
-    "category": "Externally Hosted (Open)",
-    "date": "2026-07-06",
-    "location": "London, UK",
-    "format": "Hybrid",
-    "status": "Completed",
-    "description": "Annual academic and computer graphics research conference",
-    "url": "https://www.cgs-network.org"
-  },
-  {
-    "company": "CGI Group",
-    "event_name": "AGA PDT 2026",
-    "category": "Attending / Sponsoring",
-    "date": "2026-07-26",
-    "location": "Virtual / US",
-    "format": "Hybrid",
-    "status": "Upcoming",
-    "description": "Public sector financial management conference",
-    "url": "https://www.cgi.com"
-  },
-  {
-    "company": "CGI Group",
-    "event_name": "NCMA World Congress",
-    "category": "Attending / Sponsoring",
-    "date": "2026-08-09",
-    "location": "Chicago, US",
-    "format": "In-person",
-    "status": "Upcoming",
-    "description": "Sponsoring government contracting and tech procurement sessions",
-    "url": "https://www.cgi.com"
-  },
-  {
-    "company": "DXC Technology",
-    "event_name": "DXC AI Lab Day",
-    "category": "Externally Hosted (Open)",
-    "date": "2026-06-23",
-    "location": "Rome, Italy",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Developer and enterprise workshop on agentic software scaling",
-    "url": "https://dxc.com"
-  },
-  {
-    "company": "DXC Technology",
-    "event_name": "DXC Connect Insurance Forum",
-    "category": "Invite-Only",
-    "date": "2026-06-15",
-    "location": "Singapore",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Executive forum for insurance leaders on cloud core systems",
-    "url": "https://dxc.com"
-  },
-  {
-    "company": "DXC Technology",
-    "event_name": "Denver X-ray Conference (DXC 2026)",
-    "category": "Attending / Sponsoring",
-    "date": "2026-08-03",
-    "location": "Illinois, US",
-    "format": "In-person",
-    "status": "Upcoming",
-    "description": "Major technical symposium sponsored by DXC",
-    "url": "https://www.dxcicdd.com"
-  },
-  {
-    "company": "DXC Technology",
-    "event_name": "Investor Day 2026",
-    "category": "Internally Hosted",
-    "date": "2026-06-11",
-    "location": "New York City, US",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Leadership presentation on mid-term strategy at NASDAQ",
-    "url": "https://dxc.com"
-  },
-  {
-    "company": "Atos (Atos Group / Eviden)",
-    "event_name": "Salesforce Dreamforce 2026",
-    "category": "Attending / Sponsoring",
-    "date": "2026-09-15",
-    "location": "San Francisco, US",
-    "format": "In-person",
-    "status": "",
-    "description": "Showcased cloud integration and digital sovereignty solutions",
-    "url": "https://www.atosgroup.com"
-  },
-  {
-    "company": "Atos (Atos Group / Eviden)",
-    "event_name": "Tech Foundations Partner Day",
-    "category": "Internally Hosted",
-    "date": "2026-10-20",
-    "location": "Paris, France",
-    "format": "In-person",
-    "status": "",
-    "description": "Strategic partner briefing on infrastructure transformations",
-    "url": "https://www.atosgroup.com"
-  },
-  {
-    "company": "Atos (Atos Group / Eviden)",
-    "event_name": "Eviden GenAI Security Forum",
-    "category": "Invite-Only",
-    "date": "2026-11-18",
-    "location": "Munich, Germany",
-    "format": "In-person",
-    "status": "",
-    "description": "Executive roundtable on sovereign cybersecurity for defense and public sector",
-    "url": "https://www.atosgroup.com"
-  },
-  {
-    "company": "EPAM Systems",
-    "event_name": "Data Engineering Summit (DES)",
-    "category": "Startup-Friendly",
-    "date": "2026-05-14",
-    "location": "Bangalore, India",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Showcased data platforms, data mesh, and AI startups",
-    "url": "https://www.epam.in"
-  },
-  {
-    "company": "EPAM Systems",
-    "event_name": "ETGCCWorld Summit",
-    "category": "Thought Leadership",
-    "date": "2026-03-17",
-    "location": "Hyderabad, India",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Keynote presentations on scaling GCC capabilities and digital teams",
-    "url": "https://www.epam.in"
-  },
-  {
-    "company": "EPAM Systems",
-    "event_name": "DAM Europe 2026",
-    "category": "Thought Leadership",
-    "date": "2026-06-25",
-    "location": "London, UK",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Speaker slots on digital asset management and content scaling",
-    "url": "https://www.epam.com"
-  },
-  {
-    "company": "EPAM Systems",
-    "event_name": "Virtual Investor Day 2026",
-    "category": "Internally Hosted",
-    "date": "2026-03-12",
-    "location": "Virtual / US",
-    "format": "Virtual",
-    "status": "Completed",
-    "description": "Strategic update from CEO Arkadiy Dobkin",
-    "url": "https://www.epam.com"
-  },
-  {
-    "company": "EPAM Systems",
-    "event_name": "ServiceNow Knowledge 2026",
-    "category": "Attending / Sponsoring",
-    "date": "2026-05-05",
-    "location": "Las Vegas, US",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Major partner showcase for enterprise workflow automation",
-    "url": "https://www.epam.com"
-  },
-  {
-    "company": "HCLTech",
-    "event_name": "Innovation eXchange AI Startup Showcase",
-    "category": "Startup-Friendly",
-    "date": "2026-08-20",
-    "location": "London, UK",
-    "format": "In-person",
-    "status": "",
-    "description": "Invite-only event matching UK AI startups with enterprise buyers",
-    "url": "https://www.hcl-software.com"
-  },
-  {
-    "company": "HCLTech",
-    "event_name": "From Idea to Silicon Incubator",
-    "category": "Startup-Friendly",
-    "date": "2026-06-25",
-    "location": "Bangalore, India",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Semiconductor chip startup design and fab enablement showcase",
-    "url": "https://www.hcltech.com"
-  },
-  {
-    "company": "HCLTech",
-    "event_name": "AI4 2026",
-    "category": "Attending / Sponsoring",
-    "date": "2026-08-04",
-    "location": "Las Vegas, US",
-    "format": "In-person",
-    "status": "Upcoming",
-    "description": "Showcased data security and BigFix AI tools",
-    "url": "https://www.hcl-software.com"
-  },
-  {
-    "company": "HCLTech",
-    "event_name": "Revenue Intelligence User Forum",
-    "category": "Thought Leadership",
-    "date": "2026-10-14",
-    "location": "Milan, Italy",
-    "format": "In-person",
-    "status": "",
-    "description": "Telecom fraud prevention and revenue assurance forum",
-    "url": "https://www.hcltech.com"
-  },
-  {
-    "company": "UST",
-    "event_name": "IESA Vision Summit Partner Meet",
-    "category": "Startup-Friendly",
-    "date": "2026-11-10",
-    "location": "Bangalore, India",
-    "format": "In-person",
-    "status": "",
-    "description": "Sponsoring and mentoring semiconductor and IoT startups",
-    "url": "https://www.ust.com"
-  },
-  {
-    "company": "UST",
-    "event_name": "UST Tech Talk Webinar",
-    "category": "Externally Hosted (Open)",
-    "date": "2026-09-08",
-    "location": "Virtual / Global",
-    "format": "Virtual",
-    "status": "",
-    "description": "Public developer sessions on microservices and cloud cost control",
-    "url": "https://www.ust.com"
-  },
-  {
-    "company": "UST",
-    "event_name": "Digital Healthcare CXO Dinner",
-    "category": "Invite-Only",
-    "date": "2026-10-24",
-    "location": "New York, US",
-    "format": "In-person",
-    "status": "",
-    "description": "Closed-door discussion on healthcare technology modernization",
-    "url": "https://www.ust.com"
-  },
-  {
-    "company": "Tech Mahindra",
-    "event_name": "TechM Convergence Europe",
-    "category": "Internally Hosted",
-    "date": "2026-01-15",
-    "location": "Madrid, Spain",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Internal roadmaps and partner convergence planning",
-    "url": "https://www.techmahindra.com"
-  },
-  {
-    "company": "Tech Mahindra",
-    "event_name": "World Economic Forum (WEF)",
-    "category": "Attending / Sponsoring",
-    "date": "2026-01-19",
-    "location": "Davos, Europe",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Strategic partner sessions on AI disruption and ESG",
-    "url": "https://www.techmahindra.com"
-  },
-  {
-    "company": "Tech Mahindra",
-    "event_name": "Google Cloud Summit London",
-    "category": "Attending / Sponsoring",
-    "date": "2026-10-10",
-    "location": "London, UK",
-    "format": "In-person",
-    "status": "",
-    "description": "Velocity Sponsor exhibiting agentic AI cloud architectures",
-    "url": "https://www.techmahindra.com"
-  },
-  {
-    "company": "Tech Mahindra",
-    "event_name": "International Conference on Signal Processing (ACASP)",
-    "category": "Externally Hosted (Open)",
-    "date": "2027-03-05",
-    "location": "Hyderabad, India",
-    "format": "In-person",
-    "status": "",
-    "description": "Academic conference hosted at Mahindra University",
-    "url": "https://www.techmahindra.com"
-  },
-  {
-    "company": "LTIMindtree",
-    "event_name": "LTM Investor Day 2026",
-    "category": "Externally Hosted (Open)",
-    "date": "2026-06-02",
-    "location": "Mumbai, India",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Showcased five-year growth roadmap and AI integration",
-    "url": "https://www.ltimindtree.com"
-  },
-  {
-    "company": "LTIMindtree",
-    "event_name": "Citi India Conference 2026",
-    "category": "Attending / Sponsoring",
-    "date": "2026-06-04",
-    "location": "Mumbai, India",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Investor roadshow and presentation on tech services demand",
-    "url": "https://www.ltimindtree.com"
-  },
-  {
-    "company": "LTIMindtree",
-    "event_name": "Board Q1 Review",
-    "category": "Internally Hosted",
-    "date": "2026-07-11",
-    "location": "Mumbai, India",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Closed board review of performance and strategy",
-    "url": "https://www.ltimindtree.com"
-  },
-  {
-    "company": "Avanade",
-    "event_name": "Avanade World Tour",
-    "category": "Externally Hosted (Open)",
-    "date": "2026-11-10",
-    "location": "Global Cities",
-    "format": "Hybrid",
-    "status": "",
-    "description": "Interactive showcases on Microsoft Fabric and agentic AI",
-    "url": "https://www.avanade.com"
-  },
-  {
-    "company": "Avanade",
-    "event_name": "NRF Retail Expo",
-    "category": "Attending / Sponsoring",
-    "date": "2027-01-14",
-    "location": "New York, US",
-    "format": "In-person",
-    "status": "",
-    "description": "Showcasing next-generation AI solutions for retail customer journeys",
-    "url": "https://www.avanade.com"
-  },
-  {
-    "company": "Avanade",
-    "event_name": "Microsoft 365 Conference",
-    "category": "Attending / Sponsoring",
-    "date": "2026-10-28",
-    "location": "Las Vegas, US",
-    "format": "In-person",
-    "status": "",
-    "description": "Key sponsor showcasing modern workplace digital transformations",
-    "url": "https://www.avanade.com"
-  },
-  {
-    "company": "Capgemini",
-    "event_name": "Exceller AgentifAI Buildathon",
-    "category": "Startup-Friendly",
-    "date": "2026-10-15",
-    "location": "Virtual / India",
-    "format": "Virtual",
-    "status": "",
-    "description": "National developer buildathon for AI startups and grads",
-    "url": "https://www.capgemini.com"
-  },
-  {
-    "company": "Capgemini",
-    "event_name": "VivaTech 2026",
-    "category": "Attending / Sponsoring",
-    "date": "2026-05-24",
-    "location": "Paris, France",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Showcase on sustainable technologies and green software",
-    "url": "https://www.capgemini.com"
-  },
-  {
-    "company": "Capgemini",
-    "event_name": "2027 Shareholders' Meeting",
-    "category": "Internally Hosted",
-    "date": "2027-05-20",
-    "location": "Paris, France",
-    "format": "In-person",
-    "status": "",
-    "description": "Annual general meeting of Capgemini shareholders",
-    "url": "https://investors.capgemini.com"
-  },
-  {
-    "company": "Impetus",
-    "event_name": "Databricks Migration Webinar",
-    "category": "Externally Hosted (Open)",
-    "date": "2026-09-17",
-    "location": "Virtual / US",
-    "format": "Virtual",
-    "status": "",
-    "description": "Public webinar on automating data modernization workloads",
-    "url": "https://www.impetus.com"
-  },
-  {
-    "company": "Impetus",
-    "event_name": "AWS GenAI Pulse Dinners",
-    "category": "Invite-Only",
-    "date": "2026-11-14",
-    "location": "Chicago / San Jose",
-    "format": "In-person",
-    "status": "",
-    "description": "Executive roundtables on scaling LLM infrastructures safely",
-    "url": "https://www.impetus.com"
-  },
-  {
-    "company": "KPMG",
-    "event_name": "KPMG CFO Forum",
-    "category": "Invite-Only",
-    "date": "2026-11-20",
-    "location": "London / Mumbai",
-    "format": "Hybrid",
-    "status": "",
-    "description": "Closed-room debates on corporate finance and tax rules",
-    "url": "https://kpmg.com"
-  },
-  {
-    "company": "KPMG",
-    "event_name": "Geopolitical Outlook Webcast",
-    "category": "Externally Hosted (Open)",
-    "date": "2026-10-15",
-    "location": "Virtual / Global",
-    "format": "Virtual",
-    "status": "",
-    "description": "Public webcasts on macroeconomics and regulatory updates",
-    "url": "https://kpmg.com"
-  },
-  {
-    "company": "KPMG",
-    "event_name": "Fintech Pitch Day",
-    "category": "Startup-Friendly",
-    "date": "2026-11-05",
-    "location": "London, UK",
-    "format": "In-person",
-    "status": "",
-    "description": "Pitch event for early-stage fintechs seeking advisory partnerships",
-    "url": "https://kpmg.com"
-  },
-  {
-    "company": "Deloitte",
-    "event_name": "Dbriefs Webcast Series",
-    "category": "Externally Hosted (Open)",
-    "date": "2026-09-01",
-    "location": "Virtual / Global",
-    "format": "Virtual",
-    "status": "",
-    "description": "Continuing webcasts on tax, legal, and compliance updates",
-    "url": "https://www2.deloitte.com"
-  },
-  {
-    "company": "Deloitte",
-    "event_name": "CFO Vantage Mumbai",
-    "category": "Invite-Only",
-    "date": "2026-11-18",
-    "location": "Mumbai, India",
-    "format": "In-person",
-    "status": "",
-    "description": "Specialized leadership program for CFOs on treasury and AI",
-    "url": "https://www2.deloitte.com"
-  },
-  {
-    "company": "Deloitte",
-    "event_name": "Deloitte Catalyst Demo Day",
-    "category": "Startup-Friendly",
-    "date": "2026-11-12",
-    "location": "Tel Aviv / New York",
-    "format": "Hybrid",
-    "status": "",
-    "description": "Pitch match matching scale-ups with enterprise clients",
-    "url": "https://www2.deloitte.com"
-  },
-  {
-    "company": "Deloitte",
-    "event_name": "World Economic Forum (WEF)",
-    "category": "Attending / Sponsoring",
-    "date": "2027-01-20",
-    "location": "Davos, Switzerland",
-    "format": "In-person",
-    "status": "",
-    "description": "Headline strategic partner hosting executive panels",
-    "url": "https://www2.deloitte.com"
-  },
-  {
-    "company": "BCG",
-    "event_name": "BCG Advance Conference",
-    "category": "Externally Hosted (Open)",
-    "date": "2026-09-10",
-    "location": "Virtual / US",
-    "format": "Virtual",
-    "status": "",
-    "description": "Annual conference for students graduating 2026-2027",
-    "url": "https://careers.bcg.com"
-  },
-  {
-    "company": "BCG",
-    "event_name": "ASPIRE Women's Workshop",
-    "category": "Invite-Only",
-    "date": "2026-10-15",
-    "location": "Munich / Dubai",
-    "format": "In-person",
-    "status": "",
-    "description": "Professional development program for top female candidates",
-    "url": "https://careers.bcg.com"
-  },
-  {
-    "company": "BCG",
-    "event_name": "BCG Digital Ventures Pitch Night",
-    "category": "Startup-Friendly",
-    "date": "2026-09-24",
-    "location": "London / NYC",
-    "format": "In-person",
-    "status": "",
-    "description": "Pitch and networking nights for corporate-backed startups",
-    "url": "https://careers.bcg.com"
-  },
-  {
-    "company": "BCG",
-    "event_name": "World Economic Forum (WEF)",
-    "category": "Attending / Sponsoring",
-    "date": "2027-01-20",
-    "location": "Davos, Switzerland",
-    "format": "In-person",
-    "status": "",
-    "description": "Strategic thought leadership on net-zero transitions and AI",
-    "url": "https://www.bcg.com"
-  },
-  {
-    "company": "Bain & Company",
-    "event_name": "Bain Breaks it Down",
-    "category": "Externally Hosted (Open)",
-    "date": "2026-09-08",
-    "location": "Virtual / Global",
-    "format": "Virtual",
-    "status": "",
-    "description": "Public webinar series introducing Bain's strategy consulting methodology",
-    "url": "https://www.bain.com"
-  },
-  {
-    "company": "Bain & Company",
-    "event_name": "Bainworks Summit",
-    "category": "Invite-Only",
-    "date": "2026-10-22",
-    "location": "Amsterdam, Europe",
-    "format": "In-person",
-    "status": "",
-    "description": "Leadership program for European and Middle Eastern MBA students",
-    "url": "https://www.bain.com"
-  },
-  {
-    "company": "Bain & Company",
-    "event_name": "Bain Venture Day",
-    "category": "Startup-Friendly",
-    "date": "2026-11-12",
-    "location": "San Francisco, US",
-    "format": "In-person",
-    "status": "",
-    "description": "Pitch event matching early-stage software companies with partners",
-    "url": "https://www.bain.com"
-  },
-  {
-    "company": "EXL Service",
-    "event_name": "AI in Action Global Series",
-    "category": "Externally Hosted (Open)",
-    "date": "2026-03-18",
-    "location": "Virtual / Global",
-    "format": "Virtual",
-    "status": "Completed",
-    "description": "Global virtual series on scaling enterprise AI workloads",
-    "url": "https://www.exlservice.com"
-  },
-  {
-    "company": "EXL Service",
-    "event_name": "EXL Investor and Analyst Day",
-    "category": "Invite-Only",
-    "date": "2026-05-13",
-    "location": "New York City, US",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Leadership presentation on operations and AI growth at NASDAQ",
-    "url": "https://www.exlservice.com"
-  },
-  {
-    "company": "EXL Service",
-    "event_name": "SSON Shared Services Summit",
-    "category": "Attending / Sponsoring",
-    "date": "2026-09-13",
-    "location": "San Diego, US",
-    "format": "In-person",
-    "status": "",
-    "description": "Sponsoring global business services and digital automation forums",
-    "url": "https://www.exlservice.com"
-  },
-  {
-    "company": "EY",
-    "event_name": "EY GCC Conclave",
-    "category": "Invite-Only",
-    "date": "2026-11-10",
-    "location": "Bangalore / Mumbai",
-    "format": "In-person",
-    "status": "",
-    "description": "Flagship roundtable series on GCC innovation and tech scaling",
-    "url": "https://www.ey.com"
-  },
-  {
-    "company": "EY",
-    "event_name": "EY Strategic Growth Forum",
-    "category": "Invite-Only",
-    "date": "2026-11-12",
-    "location": "Palm Springs, US",
-    "format": "In-person",
-    "status": "",
-    "description": "Prominent networking event for high-growth CEOs and investors",
-    "url": "https://www.ey.com"
-  },
-  {
-    "company": "EY",
-    "event_name": "Global Cyber Conference",
-    "category": "Attending / Sponsoring",
-    "date": "2026-11-18",
-    "location": "Zurich, Switzerland",
-    "format": "In-person",
-    "status": "",
-    "description": "Headline partner showcasing AI risk mitigation and resilience",
-    "url": "https://www.ey.com"
-  },
-  {
-    "company": "EY",
-    "event_name": "EY National AI Conference",
-    "category": "Thought Leadership",
-    "date": "2026-10-24",
-    "location": "Brussels, Europe",
-    "format": "In-person",
-    "status": "",
-    "description": "Panels on European AI Act compliance and governance models",
-    "url": "https://www.ey.com"
-  },
-  {
-    "company": "McKinsey",
-    "event_name": "Project Executive Summit",
-    "category": "Invite-Only",
-    "date": "2026-10-15",
-    "location": "Chicago, US",
-    "format": "In-person",
-    "status": "",
-    "description": "Closed-door C-suite summit on operational transformations",
-    "url": "https://www.mckinseytalksoperations.com"
-  },
-  {
-    "company": "McKinsey",
-    "event_name": "Green Business Building Summit",
-    "category": "Invite-Only",
-    "date": "2026-11-12",
-    "location": "London, UK",
-    "format": "In-person",
-    "status": "",
-    "description": "Executive sessions on scaling climate tech startups",
-    "url": "https://www.mckinsey.com"
-  },
-  {
-    "company": "McKinsey",
-    "event_name": "McKinsey Talks Operations",
-    "category": "Externally Hosted (Open)",
-    "date": "2026-09-10",
-    "location": "Virtual / Global",
-    "format": "Virtual",
-    "status": "",
-    "description": "Public webinars on digital manufacturing and logistics scaling",
-    "url": "https://www.mckinseytalksoperations.com"
-  },
-  {
-    "company": "McKinsey",
-    "event_name": "World Economic Forum (WEF)",
-    "category": "Attending / Sponsoring",
-    "date": "2027-01-20",
-    "location": "Davos, Switzerland",
-    "format": "In-person",
-    "status": "",
-    "description": "Strategic partner presenting global productivity and AI research",
-    "url": "https://www.mckinsey.com"
-  },
-  {
-    "company": "McKinsey",
-    "event_name": "Next Gen Women Leaders (NGWL)",
-    "category": "Startup-Friendly",
-    "date": "2026-10-18",
-    "location": "Munich / Paris",
-    "format": "In-person",
-    "status": "",
-    "description": "Professional development program supporting female tech talent",
-    "url": "https://www.mckinsey.com"
-  },
-  {
-    "company": "PwC",
-    "event_name": "Corporate Directors Exchange",
-    "category": "Invite-Only",
-    "date": "2026-10-15",
-    "location": "Chicago, US",
-    "format": "In-person",
-    "status": "",
-    "description": "Closed governance roundtables for public board members",
-    "url": "https://www.pwc.com"
-  },
-  {
-    "company": "PwC",
-    "event_name": "PwC Analyst Day India",
-    "category": "Invite-Only",
-    "date": "2026-06-15",
-    "location": "Mumbai, India",
-    "format": "In-person",
-    "status": "Completed",
-    "description": "Strategic briefing for tech and consulting sector analysts",
-    "url": "https://www.pwc.com"
-  },
-  {
-    "company": "PwC",
-    "event_name": "PwC Scale Accelerator Showcase",
-    "category": "Startup-Friendly",
-    "date": "2026-09-10",
-    "location": "London, UK",
-    "format": "Hybrid",
-    "status": "",
-    "description": "Cohort demo day matching enterprise-ready startups with clients",
-    "url": "https://www.pwc.com"
-  },
-  {
-    "company": "PwC",
-    "event_name": "Quarterly Sustainability Webcast",
-    "category": "Externally Hosted (Open)",
-    "date": "2026-10-12",
-    "location": "Virtual / US",
-    "format": "Virtual",
-    "status": "",
-    "description": "Public sessions on ESG reporting compliance and carbon accounting",
-    "url": "https://www.pwc.com"
-  }
-];
-
-        // DOM elements
-        const eventsTableBody = document.getElementById('events-table-body');
-        const cardViewContainer = document.getElementById('card-view');
-        const tableViewContainer = document.getElementById('table-view');
-        const emptyState = document.getElementById('empty-state');
-        const resultsCounter = document.getElementById('results-counter');
-        
-        const searchInput = document.getElementById('search-input');
-        const companyFilter = document.getElementById('company-filter');
-        const categoryFilter = document.getElementById('category-filter');
-        const statusFilter = document.getElementById('status-filter');
-        
-        const tableToggleBtn = document.getElementById('table-toggle-btn');
-        const cardToggleBtn = document.getElementById('card-toggle-btn');
-
-        // Populate Company dropdown list
-        const companies = [...new Set(events.map(e => e.company))].sort();
-        companies.forEach(company => {
-            const opt = document.createElement('option');
-            opt.value = company;
-            opt.textContent = company;
-            companyFilter.appendChild(opt);
-        });
-
-        // Calculate and display metrics
-        function updateMetrics() {
-            const total = events.length;
-            const upcoming = events.filter(e => e.status === 'Upcoming').length;
-            const completed = events.filter(e => e.status === 'Completed').length;
-            const startup = events.filter(e => e.category === 'Startup-Friendly').length;
-
-            document.getElementById('stat-total-val').textContent = total;
-            document.getElementById('stat-upcoming-val').textContent = upcoming;
-            document.getElementById('stat-completed-val').textContent = completed;
-            document.getElementById('stat-startup-val').textContent = startup;
-        }
-
-        // Render Events
-        function renderEvents(filteredEvents) {
-            // Clear current content
-            eventsTableBody.innerHTML = '';
-            cardViewContainer.innerHTML = '';
-
-            if (filteredEvents.length === 0) {
-                tableViewContainer.classList.add('hidden');
-                cardViewContainer.classList.add('hidden');
-                emptyState.classList.remove('hidden');
-                resultsCounter.innerHTML = `Showing <strong>0</strong> of ${events.length} events`;
-                return;
-            }
-
-            emptyState.classList.add('hidden');
-            if (tableToggleBtn.classList.contains('active')) {
-                tableViewContainer.classList.remove('hidden');
-            } else {
-                cardViewContainer.classList.remove('hidden');
-            }
-            
-            resultsCounter.innerHTML = `Showing <strong>${filteredEvents.length}</strong> of ${events.length} events`;
-
-            filteredEvents.forEach(ev => {
-                // Render Table Row
-                const tr = document.createElement('tr');
-                
-                const statusBadge = ev.status 
-                    ? `<span class="badge badge-${ev.status.toLowerCase()}">${ev.status}</span>`
-                    : '';
-                
-                const formatDotClass = `format-${ev.format.toLowerCase().replace(' ', '-')}`;
-                
-                tr.innerHTML = `
-                    <td class="company-td">${ev.company}</td>
-                    <td class="event-name-td">${ev.event_name}</td>
-                    <td><span class="category-tag">${ev.category}</span></td>
-                    <td style="font-weight: 500;">${ev.date}</td>
-                    <td>${ev.location}</td>
-                    <td>
-                        <span class="format-tag">
-                            <span class="format-dot ${formatDotClass}"></span>
-                            ${ev.format}
-                        </span>
-                    </td>
-                    <td>${statusBadge}</td>
-                    <td>
-                        <a href="${ev.url}" target="_blank" class="action-link">
-                            Link
-                            <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
-                                <path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z"/>
-                                <path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z"/>
-                            </svg>
-                        </a>
-                    </td>
-                `;
-                eventsTableBody.appendChild(tr);
-
-                // Render Card
-                const card = document.createElement('div');
-                card.className = 'event-card';
-                card.innerHTML = `
-                    <div>
-                        <div class="card-top">
-                            <span class="card-company">${ev.company}</span>
-                            ${statusBadge}
-                        </div>
-                        <h3 class="card-title">${ev.event_name}</h3>
-                        <p class="card-desc">${ev.description}</p>
-                    </div>
-                    <div class="card-meta">
-                        <span class="category-tag">${ev.category}</span>
-                        <div style="text-align: right;">
-                            <div class="card-date">${ev.date}</div>
-                            <a href="${ev.url}" target="_blank" class="action-link" style="margin-top: 0.25rem;">Visit Site</a>
-                        </div>
-                    </div>
-                `;
-                cardViewContainer.appendChild(card);
-            });
-        }
-
-        // Filter Logic
-        function runFilters() {
-            const searchVal = searchInput.value.toLowerCase();
-            const companyVal = companyFilter.value;
-            const categoryVal = categoryFilter.value;
-            const statusVal = statusFilter.value;
-
-            const filtered = events.filter(ev => {
-                // Search match
-                const matchSearch = ev.event_name.toLowerCase().includes(searchVal) ||
-                                    ev.company.toLowerCase().includes(searchVal) ||
-                                    ev.description.toLowerCase().includes(searchVal) ||
-                                    ev.location.toLowerCase().includes(searchVal) ||
-                                    ev.category.toLowerCase().includes(searchVal);
-                
-                // Company match
-                const matchCompany = companyVal === 'all' || ev.company === companyVal;
-
-                // Category match
-                const matchCategory = categoryVal === 'all' || ev.category === categoryVal;
-
-                // Status match
-                let matchStatus = true;
-                if (statusVal === 'Upcoming') {
-                    matchStatus = ev.status === 'Upcoming';
-                } else if (statusVal === 'Completed') {
-                    matchStatus = ev.status === 'Completed';
-                } else if (statusVal === 'Regular') {
-                    matchStatus = ev.status === '';
-                }
-
-                return matchSearch && matchCompany && matchCategory && matchStatus;
-            });
-
-            renderEvents(filtered);
-        }
-
-        // Event listeners
-        searchInput.addEventListener('input', runFilters);
-        companyFilter.addEventListener('change', runFilters);
-        categoryFilter.addEventListener('change', runFilters);
-        statusFilter.addEventListener('change', runFilters);
-
-        // View toggles
-        tableToggleBtn.addEventListener('click', () => {
-            tableToggleBtn.classList.add('active');
-            cardToggleBtn.classList.remove('active');
-            tableViewContainer.classList.remove('hidden');
-            cardViewContainer.classList.add('hidden');
-            runFilters(); // Refresh display
-        });
-
-        cardToggleBtn.addEventListener('click', () => {
-            cardToggleBtn.classList.add('active');
-            tableToggleBtn.classList.remove('active');
-            cardViewContainer.classList.remove('hidden');
-            tableViewContainer.classList.add('hidden');
-            runFilters(); // Refresh display
-        });
-
-        // Initialization
-        updateMetrics();
-        renderEvents(events);
-
-    </script>
+/* ============ boot ============ */
+bindControls();
+if(!restore()){/* show gate (default) */}
+</script>
 </body>
 </html>
