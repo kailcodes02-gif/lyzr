@@ -116,6 +116,19 @@ label.chk{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
 .ev .editbtn{position:absolute;top:11px;right:11px;width:26px;height:26px;border-radius:7px;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center}
 .ev .editbtn:hover{background:var(--hover);color:var(--ink)}
 .empty{text-align:center;color:var(--muted);padding:50px 0}
+.tile{cursor:pointer;transition:border-color .12s,transform .06s}
+.tile:hover{border-color:#CDBFA8;transform:translateY(-1px)}
+.tile.active{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink) inset}
+.legend{display:flex;gap:15px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:10px;align-items:center}
+.legend .lg{display:inline-flex;align-items:center;gap:6px}
+.sq{width:11px;height:11px;border-radius:3px;display:inline-block;flex:none}
+.sq.past{background:var(--fin)}.sq.soon{background:var(--up)}.sq.future{background:var(--attend)}
+.evdate{align-self:flex-start;background:var(--su-t);color:#7a5b00;font-weight:700;font-size:12.5px;padding:3px 10px;border-radius:8px;display:inline-flex;align-items:center;gap:6px}
+.inline{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-left:auto}
+.pin{font-size:11px;padding:3px 7px;border-radius:7px;border:1px solid var(--border);background:var(--card);color:var(--ink);cursor:pointer;font-family:'DM Sans'}
+.addlink{font-size:11px;border:1px dashed var(--border);background:none;color:var(--invite);border-radius:7px;padding:3px 8px;cursor:pointer;font-family:'DM Sans'}
+.addlink:hover{background:var(--invite-t)}
+.xo{cursor:pointer;color:var(--muted);margin-left:3px}.xo:hover{color:var(--internal)}
 /* auth gate */
 .gate{position:fixed;inset:0;z-index:100;background:var(--surface);display:flex;align-items:center;justify-content:center;padding:20px}
 .gatecard{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:38px 34px;max-width:410px;text-align:center;box-shadow:0 20px 50px rgba(30,26,22,.08)}
@@ -181,7 +194,12 @@ footer{max-width:1320px;margin:30px auto 0;padding:16px 22px;color:var(--muted);
 
     <div class="panel">
       <h2>When it happens</h2>
-      <div class="note">events per month · <span style="color:var(--fin)">grey = finished</span> · <span style="color:var(--up)">green = upcoming (≤60d)</span> · <span style="color:var(--attend)">indigo = later</span> · click a bar to filter</div>
+      <div class="legend">
+        <span class="lg"><i class="sq past"></i>Finished</span>
+        <span class="lg"><i class="sq soon"></i>Upcoming (≤60 days)</span>
+        <span class="lg"><i class="sq future"></i>Later</span>
+        <span class="lg" style="margin-left:auto">click a bar to filter →</span>
+      </div>
       <div class="bars" id="bars"></div>
       <div class="baseline"></div>
       <div style="display:flex;gap:8px" id="barlabs"></div>
@@ -348,7 +366,7 @@ function buildFilters(){
   $('fCo').innerHTML='<option value="">All accounts</option>'+cos.map(c=>`<option>${esc(c)}</option>`).join('');
   $('colist').innerHTML=cos.map(c=>`<option value="${esc(c)}">`).join('');
   const types=[...new Set(ALL.map(e=>e.event_type).filter(Boolean))].sort();
-  $('fType').innerHTML='<option value="">All types</option>'+types.map(t=>`<option>${esc(t)}</option>`).join('');
+  $('fType').innerHTML='<option value="">All types</option>'+types.map(t=>`<option value="${esc(t)}">${esc(typeLabel(t))}</option>`).join('');
   const regs=[...new Set(ALL.map(e=>e.region).filter(Boolean))].sort();
   $('fReg').innerHTML='<option value="">All regions</option>'+regs.map(r=>`<option>${esc(r)}</option>`).join('');
 }
@@ -358,9 +376,7 @@ function bindControls(){
   for(const id in map)$(id).addEventListener('change',()=>{F[map[id]]=$(id).value;render();});
   $('fSu').addEventListener('change',()=>{F.su=$('fSu').checked;render();});
   $('fMine').addEventListener('change',()=>{F.mine=$('fMine').checked;render();});
-  $('clearf').onclick=()=>{Object.assign(F,{q:'',cat:'',co:'',type:'',reg:'',status:'',part:'',su:false,mine:false,month:''});
-    ['q','fCat','fCo','fType','fReg','fStatus','fPart'].forEach(i=>$(i).value='');$('fSu').checked=false;$('fMine').checked=false;
-    document.querySelectorAll('.barcol').forEach(b=>b.classList.remove('sel'));render();};
+  $('clearf').onclick=()=>clearAll(true);
   document.querySelectorAll('#groupSeg button').forEach(b=>b.onclick=()=>{
     groupBy=b.dataset.g;document.querySelectorAll('#groupSeg button').forEach(x=>x.classList.toggle('on',x===b));render();});
   $('addBtn').onclick=openAdd;
@@ -368,12 +384,22 @@ function bindControls(){
   $('msave').onclick=saveModal;
 }
 
+function clearAll(doRender){
+  Object.assign(F,{q:'',cat:'',co:'',type:'',reg:'',status:'',part:'',su:false,mine:false,month:''});
+  ['q','fCat','fCo','fType','fReg','fStatus','fPart'].forEach(i=>{const el=$(i);if(el)el.value='';});
+  $('fSu').checked=false;$('fMine').checked=false;
+  document.querySelectorAll('.barcol').forEach(b=>b.classList.remove('sel'));
+  if(doRender!==false){buildTiles();render();}
+}
+const ACR={agm:'AGM'};
+function typeLabel(t){if(!t)return '';return t.split(/[_ ]+/).filter(Boolean).map(w=>ACR[w]||w.charAt(0).toUpperCase()+w.slice(1)).join(' ');}
+
 /* ============ filtering ============ */
 function filtered(){
   const me=USER?USER.email:'';
   return ALL.filter(e=>{
     if(F.q){const h=(e.event_name+' '+e.company+' '+e.city+' '+e.country+' '+e.evidence).toLowerCase();if(!h.includes(F.q))return false;}
-    if(F.cat&&e.category!==F.cat)return false;
+    if(F.cat){if(F.cat==='hosted'){if(!e.category.startsWith('hosted'))return false;}else if(e.category!==F.cat)return false;}
     if(F.co&&e.company!==F.co)return false;
     if(F.type&&e.event_type!==F.type)return false;
     if(F.reg&&e.region!==F.reg)return false;
@@ -394,16 +420,35 @@ function filtered(){
 function buildTiles(){
   const n=c=>ALL.filter(e=>e.category===c).length;
   const t=[
-    ['n',new Set(ALL.map(e=>e.company)).size,'accounts',''],
-    ['n',ALL.length,'events tracked',''],
-    ['n',ALL.filter(e=>e._status==='upcoming').length,'upcoming ≤60d','d-open'],
-    ['n',ALL.filter(e=>e._status==='finished').length,'finished','d-internal'],
-    ['n',ALL.filter(e=>e.startup_friendly).length,'startup doors','d-su'],
-    ['n',n('hosted_open')+n('hosted_invite_only')+n('hosted_internal'),'they host','d-invite'],
-    ['n',n('attending'),'attending','d-attend'],
+    {v:new Set(ALL.map(e=>e.company)).size,l:'accounts',dot:'',act:'accounts'},
+    {v:ALL.length,l:'events tracked',dot:'',act:'all'},
+    {v:ALL.filter(e=>e._status==='upcoming').length,l:'upcoming ≤60d',dot:'d-open',act:'upcoming'},
+    {v:ALL.filter(e=>e._status==='finished').length,l:'finished',dot:'d-internal',act:'finished'},
+    {v:ALL.filter(e=>e.startup_friendly).length,l:'startup doors',dot:'d-su',act:'startup'},
+    {v:n('hosted_open')+n('hosted_invite_only')+n('hosted_internal'),l:'they host',dot:'d-invite',act:'hosted'},
+    {v:n('attending'),l:'attending',dot:'d-attend',act:'attending'},
   ];
-  $('tiles').innerHTML=t.map(x=>`<div class="tile"><div class="n">${x[1]}</div><div class="l">${x[3]?`<span class="dot ${x[3]}"></span>`:''}${x[2]}</div></div>`).join('');
+  $('tiles').innerHTML=t.map(x=>`<div class="tile${tileActive(x.act)?' active':''}" data-act="${x.act}" title="Click to filter"><div class="n">${x.v}</div><div class="l">${x.dot?`<span class="dot ${x.dot}"></span>`:''}${x.l}</div></div>`).join('');
+  document.querySelectorAll('.tile[data-act]').forEach(el=>el.onclick=()=>applyTile(el.dataset.act));
 }
+function tileActive(act){
+  if(act==='upcoming'||act==='finished')return F.status===act;
+  if(act==='startup')return F.su;
+  if(act==='hosted')return F.cat==='hosted';
+  if(act==='attending')return F.cat==='attending';
+  return false;
+}
+function applyTile(act){
+  clearAll(false);
+  if(act==='accounts'){groupBy='company';syncGroupSeg();}
+  else if(act==='upcoming'||act==='finished'){F.status=act;$('fStatus').value=act;}
+  else if(act==='startup'){F.su=true;$('fSu').checked=true;}
+  else if(act==='hosted'){F.cat='hosted';}
+  else if(act==='attending'){F.cat='attending';$('fCat').value='attending';}
+  buildTiles();render();
+  document.getElementById('content').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function syncGroupSeg(){document.querySelectorAll('#groupSeg button').forEach(x=>x.classList.toggle('on',x.dataset.g===groupBy));}
 function buildChart(){
   const keys=[...new Set(ALL.map(MONTHKEY))].sort();
   const cnt={};ALL.forEach(e=>{const k=MONTHKEY(e);cnt[k]=(cnt[k]||0)+1;});
@@ -458,15 +503,23 @@ function card(e){
   const part=e.participation?`<span class="part ${e.participation}">${PARTLAB[e.participation]}</span>`:'';
   const conf=e.confidence?`<span class="badge ${e.confidence==='high'?'hi':e.confidence==='low'?'lo':''}">${esc(e.confidence)}</span>`:'';
   const loc=[e.city,e.country].filter(Boolean).join(', ')||e.region||'—';
-  const owners=e.owner.length?`<div class="owners">${e.owner.slice(0,4).map(o=>`<div class="oav" title="${esc(o)}">${esc(o[0].toUpperCase())}</div>`).join('')}</div><span>${e.owner.length} owner${e.owner.length>1?'s':''}</span>`:'<span>No owner</span>';
-  const att=e.attendees.length?` · ${e.attendees.length} attending`:'';
-  const editBtn=isEditor?`<button class="editbtn" title="Edit / assign" onclick="openEdit('${e.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></button>`:'';
+  const ownerChips=e.owner.length?`<div class="owners">${e.owner.slice(0,5).map(o=>`<div class="oav" title="${esc(o)}">${esc(o[0].toUpperCase())}</div>`).join('')}</div><span title="${esc(e.owner.join(', '))}">${e.owner.length} owner${e.owner.length>1?'s':''}</span>`:'<span>No owner</span>';
+  const att=e.attendees.length?` · <span title="${esc(e.attendees.join(', '))}">${e.attendees.length} attending</span>`:'';
+  const editBtn=isEditor?`<button class="editbtn" title="Full edit" onclick="openEdit('${e.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></button>`:'';
+  const inline=isEditor?`<div class="inline">
+      <select class="pin" title="Set Lyzr participation" onchange="quickPart('${e.id}',this.value)">
+        ${['','going','attending','sponsoring','not_going','revisit_next_year'].map(v=>`<option value="${v}"${e.participation===v?' selected':''}>${v?PARTLAB[v]:'Set status…'}</option>`).join('')}
+      </select>
+      <button class="addlink" onclick="quickAddPerson('${e.id}','owner')">+ owner</button>
+      <button class="addlink" onclick="quickAddPerson('${e.id}','attendees')">+ attendee</button>
+    </div>`:'';
   return `<div class="ev">${editBtn}
     <div class="co">${esc(e.company)}</div>
     <div class="ti">${e.url?`<a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.event_name)}</a>`:esc(e.event_name)}</div>
+    <div class="evdate"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>${esc(e.date)}</div>
     <div class="chips"><span class="chip ${c.cls}"><span class="dot ${c.dot}"></span>${c.lab}</span>${su}${st}${part}</div>
-    <div class="meta">${esc(e.date)} · ${esc(loc)} · ${esc((e.event_type||'').replace(/_/g,' '))} ${conf}</div>
-    <div class="assignrow">${owners}${att}${part?'':(isEditor?' · <span style="color:var(--invite)">assign ›</span>':'')}</div>
+    <div class="meta">${esc(loc)} · ${esc(typeLabel(e.event_type))} ${conf}</div>
+    <div class="assignrow">${ownerChips}${att}${inline}</div>
   </div>`;
 }
 function buildFooter(){
@@ -507,11 +560,50 @@ async function saveModal(){
     const res=await fetch(url,{method:editId?'PUT':'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+TOKEN},body:JSON.stringify(payload)});
     const j=await res.json();
     if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
-    closeModal();toast(editId?'Saved':'Event added');await loadData();
-  }catch(e){toast('Save failed: '+e.message);}
+    closeModal();
+    if(editId){applyServerEvent(j.event);toast('Saved ✓');}
+    else{ALL.push(normalize(j.event));buildFilters();buildTiles();buildChart();render();toast('Event added ✓');}
+  }catch(e){toast(saveErrMsg(e.message));}
   finally{btn.disabled=false;btn.textContent='Save';}
 }
-function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),3200);}
+function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),4200);}
+function saveErrMsg(m){
+  m=String(m||'');
+  if(/401/.test(m))return 'Save failed — GitHub token invalid/expired (401). Set a valid GH_PAT secret & redeploy.';
+  if(/403/.test(m))return /editor/i.test(m)?'Save failed — you are not a designated editor (403).':'Save failed — token lacks repo write access (403).';
+  if(/not configured|503/.test(m))return 'Save failed — backend GitHub token not set on Cloudflare yet.';
+  return 'Save failed: '+m;
+}
+function applyServerEvent(ev){
+  if(!ev||!ev.id)return;
+  const i=ALL.findIndex(x=>x.id===ev.id);
+  if(i>=0)ALL[i]=normalize(Object.assign({},ALL[i],ev)); else ALL.push(normalize(ev));
+  buildTiles();render();
+}
+async function quickSave(id,patch,label){
+  if(!confirm(label+' — save to the shared tracker?'))return false;
+  try{
+    const res=await fetch('/api/events?id='+encodeURIComponent(id),{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+TOKEN},body:JSON.stringify(patch)});
+    const j=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
+    applyServerEvent(j.event||Object.assign({},ALL.find(x=>x.id===id),patch));
+    toast('Saved ✓');return true;
+  }catch(err){toast(saveErrMsg(err.message));return false;}
+}
+window.quickPart=function(id,val){
+  const e=ALL.find(x=>x.id===id);if(!e)return;
+  quickSave(id,{participation:val},'Set participation → '+(val?PARTLAB[val]:'Undecided')).then(ok=>{if(!ok)render();});
+};
+window.quickAddPerson=function(id,field){
+  const e=ALL.find(x=>x.id===id);if(!e)return;
+  const email=(prompt((field==='owner'?'Owner':'Attendee')+' email to add:')||'').trim().toLowerCase();
+  if(!email)return;
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){toast('Enter a valid email');return;}
+  const cur=(e[field]||[]).slice();
+  if(cur.includes(email)){toast('Already on the list');return;}
+  cur.push(email);
+  quickSave(id,{[field]:cur},'Add '+(field==='owner'?'owner ':'attendee ')+email);
+};
 
 /* ============ boot ============ */
 bindControls();
