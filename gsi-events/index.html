@@ -128,7 +128,19 @@ label.chk{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
 .pin{font-size:11px;padding:3px 7px;border-radius:7px;border:1px solid var(--border);background:var(--card);color:var(--ink);cursor:pointer;font-family:'DM Sans'}
 .addlink{font-size:11px;border:1px dashed var(--border);background:none;color:var(--invite);border-radius:7px;padding:3px 8px;cursor:pointer;font-family:'DM Sans'}
 .addlink:hover{background:var(--invite-t)}
-.xo{cursor:pointer;color:var(--muted);margin-left:3px}.xo:hover{color:var(--internal)}
+.xo{cursor:pointer;color:var(--muted);margin-left:3px;font-size:11px}.xo:hover{color:var(--internal)}
+.assignpanel{border-top:1px dashed var(--border);margin-top:2px;padding-top:8px;display:flex;flex-direction:column;gap:7px;animation:apin .14s ease}
+@keyframes apin{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+.aphead{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.emchips{display:flex;flex-wrap:wrap;gap:5px}
+.emchip{display:inline-flex;align-items:center;gap:6px;background:var(--hover);border:1px solid var(--border);border-radius:20px;padding:2px 6px 2px 10px;font-size:11px}
+.emchip button{border:0;background:none;cursor:pointer;color:var(--muted);font-size:14px;line-height:1;padding:0}
+.emchip button:hover{color:var(--internal)}
+.airow{display:flex;gap:6px}
+.airow input{flex:1;font-family:'DM Sans';font-size:12.5px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--ink)}
+.airow input:focus{outline:none;border-color:var(--invite)}
+.airow .addbtn{font-size:12.5px;font-weight:700;padding:7px 14px;border-radius:8px;border:1px solid var(--invite);background:var(--invite);color:#fff;cursor:pointer}
+.airow .addbtn:hover{opacity:.9}
 /* auth gate */
 .gate{position:fixed;inset:0;z-index:100;background:var(--surface);display:flex;align-items:center;justify-content:center;padding:20px}
 .gatecard{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:38px 34px;max-width:410px;text-align:center;box-shadow:0 20px 50px rgba(30,26,22,.08)}
@@ -271,6 +283,7 @@ footer{max-width:1320px;margin:30px auto 0;padding:16px 22px;color:var(--muted);
   </div>
 </div>
 <datalist id="colist"></datalist>
+<datalist id="emailSuggest"></datalist>
 
 <script>
 /* ============ config ============ */
@@ -289,6 +302,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 let USER=null, TOKEN=null, isEditor=false;
 let ALL=[], gen='—';
 let groupBy='company';
+let openPanel=null;
 const F={q:'',cat:'',co:'',type:'',reg:'',status:'',part:'',su:false,mine:false,month:''};
 
 /* ============ auth ============ */
@@ -369,6 +383,7 @@ function buildFilters(){
   $('fType').innerHTML='<option value="">All types</option>'+types.map(t=>`<option value="${esc(t)}">${esc(typeLabel(t))}</option>`).join('');
   const regs=[...new Set(ALL.map(e=>e.region).filter(Boolean))].sort();
   $('fReg').innerHTML='<option value="">All regions</option>'+regs.map(r=>`<option>${esc(r)}</option>`).join('');
+  updateEmailSuggest();
 }
 function bindControls(){
   $('q').addEventListener('input',()=>{F.q=$('q').value.toLowerCase();render();});
@@ -493,6 +508,7 @@ function render(){
       ${acc}<span class="stitle">${esc(nm)}</span><span class="scount">${list.length}</span></div>
       <div class="grid">${list.map(card).join('')}</div></div>`;
   }).join('');
+  if(openPanel){const el=document.getElementById('ai_'+openPanel.id);if(el)el.focus();}
 }
 function byDate(a,b){const x=a.start_iso||'9999',y=b.start_iso||'9999';return x.localeCompare(y);}
 function initials(n){return (n||'?').replace(/[^A-Za-z0-9 ]/g,'').split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase();}
@@ -510,8 +526,8 @@ function card(e){
       <select class="pin" title="Set Lyzr participation" onchange="quickPart('${e.id}',this.value)">
         ${['','going','attending','sponsoring','not_going','revisit_next_year'].map(v=>`<option value="${v}"${e.participation===v?' selected':''}>${v?PARTLAB[v]:'Set status…'}</option>`).join('')}
       </select>
-      <button class="addlink" onclick="quickAddPerson('${e.id}','owner')">+ owner</button>
-      <button class="addlink" onclick="quickAddPerson('${e.id}','attendees')">+ attendee</button>
+      <button class="addlink" onclick="openAssign('${e.id}','owner')">+ owner</button>
+      <button class="addlink" onclick="openAssign('${e.id}','attendees')">+ attendee</button>
     </div>`:'';
   return `<div class="ev">${editBtn}
     <div class="co">${esc(e.company)}</div>
@@ -520,6 +536,20 @@ function card(e){
     <div class="chips"><span class="chip ${c.cls}"><span class="dot ${c.dot}"></span>${c.lab}</span>${su}${st}${part}</div>
     <div class="meta">${esc(loc)} · ${esc(typeLabel(e.event_type))} ${conf}</div>
     <div class="assignrow">${ownerChips}${att}${inline}</div>
+    ${isEditor&&openPanel&&openPanel.id===e.id?assignPanel(e):''}
+  </div>`;
+}
+function assignPanel(e){
+  const field=openPanel.field, list=e[field]||[];
+  const label=field==='owner'?'Owners':'Attendees';
+  const chips=list.length?list.map(em=>`<span class="emchip">${esc(em)}<button title="Remove" onclick="panelRemove('${e.id}','${field}','${esc(em)}')">×</button></span>`).join(''):'<span class="hint">none yet — add below</span>';
+  return `<div class="assignpanel">
+    <div class="aphead"><span>${label}</span><span class="xo" onclick="openAssign('${e.id}','${field}')">✕ close</span></div>
+    <div class="emchips">${chips}</div>
+    <div class="airow">
+      <input id="ai_${e.id}" list="emailSuggest" placeholder="type or pick an email…" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();panelAdd('${e.id}','${field}')}">
+      <button class="addbtn" onclick="panelAdd('${e.id}','${field}')">Add</button>
+    </div>
   </div>`;
 }
 function buildFooter(){
@@ -578,10 +608,10 @@ function applyServerEvent(ev){
   if(!ev||!ev.id)return;
   const i=ALL.findIndex(x=>x.id===ev.id);
   if(i>=0)ALL[i]=normalize(Object.assign({},ALL[i],ev)); else ALL.push(normalize(ev));
-  buildTiles();render();
+  updateEmailSuggest();buildTiles();render();
 }
-async function quickSave(id,patch,label){
-  if(!confirm(label+' — save to the shared tracker?'))return false;
+async function quickSave(id,patch,label,skipConfirm){
+  if(!skipConfirm && !confirm(label+' — save to the shared tracker?'))return false;
   try{
     const res=await fetch('/api/events?id='+encodeURIComponent(id),{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+TOKEN},body:JSON.stringify(patch)});
     const j=await res.json().catch(()=>({}));
@@ -594,16 +624,33 @@ window.quickPart=function(id,val){
   const e=ALL.find(x=>x.id===id);if(!e)return;
   quickSave(id,{participation:val},'Set participation → '+(val?PARTLAB[val]:'Undecided')).then(ok=>{if(!ok)render();});
 };
-window.quickAddPerson=function(id,field){
-  const e=ALL.find(x=>x.id===id);if(!e)return;
-  const email=(prompt((field==='owner'?'Owner':'Attendee')+' email to add:')||'').trim().toLowerCase();
-  if(!email)return;
-  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){toast('Enter a valid email');return;}
-  const cur=(e[field]||[]).slice();
-  if(cur.includes(email)){toast('Already on the list');return;}
-  cur.push(email);
-  quickSave(id,{[field]:cur},'Add '+(field==='owner'?'owner ':'attendee ')+email);
+window.openAssign=function(id,field){
+  if(openPanel&&openPanel.id===id&&openPanel.field===field)openPanel=null;
+  else openPanel={id,field};
+  render();
 };
+window.panelAdd=function(id,field){
+  const el=document.getElementById('ai_'+id);if(!el)return;
+  const email=(el.value||'').trim().toLowerCase();
+  if(!email){el.focus();return;}
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){toast('Enter a valid email');el.focus();return;}
+  const e=ALL.find(x=>x.id===id);if(!e)return;
+  const cur=(e[field]||[]).slice();
+  if(cur.includes(email)){toast('Already on the list');el.value='';el.focus();return;}
+  cur.push(email);
+  quickSave(id,{[field]:cur},'',true);   // explicit "Add" click is the confirmation
+};
+window.panelRemove=function(id,field,email){
+  const e=ALL.find(x=>x.id===id);if(!e)return;
+  const cur=(e[field]||[]).filter(x=>x!==email);
+  quickSave(id,{[field]:cur},'',true);
+};
+function knownEmails(){
+  const s=new Set(EDITOR_EMAILS);
+  ALL.forEach(e=>{(e.owner||[]).forEach(x=>s.add(x));(e.attendees||[]).forEach(x=>s.add(x));});
+  return [...s].filter(Boolean).sort();
+}
+function updateEmailSuggest(){const dl=$('emailSuggest');if(dl)dl.innerHTML=knownEmails().map(em=>`<option value="${esc(em)}">`).join('');}
 
 /* ============ boot ============ */
 bindControls();
