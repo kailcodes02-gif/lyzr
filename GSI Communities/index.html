@@ -278,6 +278,42 @@
   footer{padding:14px 0 34px; color:var(--muted); font-size:12px; line-height:1.6; border-top:1px solid var(--gridline); margin-top:6px}
   footer code{font-size:11.5px}
 
+  /* ---------- activity status and inline select ---------- */
+  .part-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    border-top: 1px dashed var(--gridline); padding-top: 8px; margin-top: 8px;
+  }
+  .part-col {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .part {
+    font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px; border: 1px solid;
+    display: inline-flex; align-items: center; height: 20px; white-space: nowrap;
+  }
+  .part.active {
+    background: rgba(27,175,122,0.08); color: #1baf7a; border-color: rgba(27,175,122,0.3);
+  }
+  .part.yet_to_start {
+    background: rgba(137,135,129,0.08); color: var(--muted); border-color: rgba(137,135,129,0.3);
+  }
+  .part.find_poc {
+    background: rgba(237,161,0,0.08); color: #eda100; border-color: rgba(237,161,0,0.3);
+  }
+  .part.yet_to_join {
+    background: rgba(42,120,214,0.08); color: #2a78d6; border-color: rgba(42,120,214,0.3);
+  }
+  .pin {
+    font-size: 11.5px; padding: 3px 6px; border-radius: 7px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--ink2); cursor: pointer; font-family: inherit;
+    outline: none; transition: border-color .12s;
+  }
+  .pin:hover { border-color: var(--accent); color: var(--ink); }
+  .mb.part { border-radius: 999px; font-weight: 700; }
+  .mb.part.active { background: rgba(27,175,122,0.08); color: #1baf7a; border-color: rgba(27,175,122,0.3); }
+  .mb.part.yet_to_start { background: rgba(137,135,129,0.08); color: var(--muted); border-color: rgba(137,135,129,0.3); }
+  .mb.part.find_poc { background: rgba(237,161,0,0.08); color: #eda100; border-color: rgba(237,161,0,0.3); }
+  .mb.part.yet_to_join { background: rgba(42,120,214,0.08); color: #2a78d6; border-color: rgba(42,120,214,0.3); }
+
   @media (max-width:700px){
     .bar-row{grid-template-columns:100px 1fr 30px}
     .topbar h1{font-size:18px}
@@ -354,7 +390,7 @@
   <div class="tablewrap" id="tablewrap" hidden>
     <table>
       <thead><tr>
-        <th>Name</th><th>Type</th><th>Geography</th><th>Platform</th><th>Audience</th><th>Reach</th><th>Space</th><th>Access</th><th>Conf.</th>
+        <th>Name</th><th>Type</th><th>Geography</th><th>Platform</th><th>Audience</th><th>Reach</th><th>Space</th><th>Access</th><th>Conf.</th><th>Activity</th>
       </tr></thead>
       <tbody id="tbody"></tbody>
     </table>
@@ -436,6 +472,25 @@ DATA.forEach(r=>{
                (TYPE_META[r.channel_type]||{}).label,(SPACE_META[r.space_type]||{}).label].join(" ").toLowerCase();
 });
 
+const ACTIVITY_LABEL = {
+  active: "Active",
+  yet_to_start: "Yet to start",
+  find_poc: "Find PoC",
+  yet_to_join: "Yet to Join",
+  unassigned: "Unassigned"
+};
+function getActivity(id) {
+  return localStorage.getItem("gsi_activity_" + id) || "unassigned";
+}
+window.setActivity = function(id, val) {
+  if (val) {
+    localStorage.setItem("gsi_activity_" + id, val);
+  } else {
+    localStorage.removeItem("gsi_activity_" + id);
+  }
+  renderAll({keepPanel: true});
+};
+
 /* ---------- filter state ---------- */
 const DIMS = [
   {key:"geography", label:"Geography", get:r=>[r.geography], lbl:v=>v},
@@ -444,10 +499,12 @@ const DIMS = [
   {key:"cohort", label:"Cohort fit", get:r=>r.cohorts, lbl:v=>COHORT_LABEL[v]||v},
   {key:"access", label:"Access", get:r=>[r.access], lbl:v=>ACCESS_LABEL[v]||v},
   {key:"stream", label:"Research stream", get:r=>[r.stream], lbl:v=>STREAM_LABEL[v]||v},
-  {key:"confidence", label:"Confidence", get:r=>[r.confidence], lbl:v=>v[0].toUpperCase()+v.slice(1)}
+  {key:"confidence", label:"Confidence", get:r=>[r.confidence], lbl:v=>v[0].toUpperCase()+v.slice(1)},
+  {key:"activity", label:"Activity", get:r=>[getActivity(r.id)], lbl:v=>ACTIVITY_LABEL[v]||v}
 ];
 const DIM = Object.fromEntries(DIMS.map(d=>[d.key,d]));
 const state = {q:"", sel:Object.fromEntries(DIMS.map(d=>[d.key,new Set()])), sort:"priority", view:"cards"};
+
 
 function rowPasses(r, excludeKey){
   if(state.q && !r._search.includes(state.q)) return false;
@@ -712,6 +769,30 @@ function renderGrid(rows){
     tags.appendChild(el("span","tag space-"+r.space_type, SPACE_META[r.space_type].label));
     tags.appendChild(el("span","tag", ACCESS_LABEL[r.access]||r.access));
     card.appendChild(tags);
+
+    const actVal = getActivity(r.id);
+    const partRow = el("div","part-row");
+    partRow.addEventListener("click", e => e.stopPropagation());
+    if (actVal !== "unassigned") {
+      partRow.appendChild(el("span", "part " + actVal, ACTIVITY_LABEL[actVal]));
+    }
+    const select = document.createElement("select");
+    select.className = "pin";
+    select.title = "Set Activity";
+    select.addEventListener("change", e => setActivity(r.id, e.target.value));
+    const optDefault = document.createElement("option");
+    optDefault.value = ""; optDefault.textContent = "Set activity…";
+    select.appendChild(optDefault);
+    ["active", "yet_to_start", "find_poc", "yet_to_join"].forEach(v => {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = ACTIVITY_LABEL[v];
+      if (actVal === v) opt.selected = true;
+      select.appendChild(opt);
+    });
+    partRow.appendChild(select);
+    card.appendChild(partRow);
+
     const open = ()=>openModal(i);
     card.addEventListener("click", open);
     card.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault(); open();} });
@@ -741,6 +822,32 @@ function renderTable(rows){
       td.textContent = txt||"";
       tr.appendChild(td);
     });
+
+    // Activity TD
+    const tdAct = document.createElement("td");
+    tdAct.className = "part-col";
+    tdAct.addEventListener("click", e => e.stopPropagation()); // prevent modal popup
+    const actVal = getActivity(r.id);
+    if (actVal !== "unassigned") {
+      tdAct.appendChild(el("span", "part " + actVal, ACTIVITY_LABEL[actVal]));
+    }
+    const select = document.createElement("select");
+    select.className = "pin";
+    select.title = "Set Activity";
+    select.addEventListener("change", e => setActivity(r.id, e.target.value));
+    const optDefault = document.createElement("option");
+    optDefault.value = ""; optDefault.textContent = "Set activity…";
+    select.appendChild(optDefault);
+    ["active", "yet_to_start", "find_poc", "yet_to_join"].forEach(v => {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = ACTIVITY_LABEL[v];
+      if (actVal === v) opt.selected = true;
+      select.appendChild(opt);
+    });
+    tdAct.appendChild(select);
+    tr.appendChild(tdAct);
+
     tr.addEventListener("click", ()=>openModal(i));
     tr.addEventListener("keydown", e=>{ if(e.key==="Enter") openModal(i); });
     frag.appendChild(tr);
@@ -768,6 +875,10 @@ function openModal(i){
   const cd = el("span","dot"); cd.style.background = CONF_META[r.confidence].c; cd.style.borderRadius="50%";
   cb.appendChild(cd); cb.appendChild(document.createTextNode("confidence: "+r.confidence));
   bs.appendChild(cb);
+  const actVal = getActivity(r.id);
+  if(actVal !== "unassigned"){
+    bs.appendChild(el("span", "mb part " + actVal, ACTIVITY_LABEL[actVal]));
+  }
 
   const body = document.getElementById("mBody");
   body.replaceChildren();
@@ -777,6 +888,24 @@ function openModal(i){
   kv.appendChild(cell("Size / reach", r.size_reach || "—"));
   kv.appendChild(cell("Cohort fit", r.cohort_fit==="all" ? "All cohorts" : r.cohorts.map(c=>COHORT_LABEL[c]||c).join(" · ")));
   kv.appendChild(cell("Research stream", (STREAM_LABEL[r.stream]||r.stream)+"  ·  "+r.id));
+  const select = document.createElement("select");
+  select.className = "pin";
+  select.title = "Set Activity";
+  select.addEventListener("change", e => {
+    setActivity(r.id, e.target.value);
+    openModal(i);
+  });
+  const optDefault = document.createElement("option");
+  optDefault.value = ""; optDefault.textContent = "Set activity…";
+  select.appendChild(optDefault);
+  ["active", "yet_to_start", "find_poc", "yet_to_join"].forEach(v => {
+    const opt = document.createElement("option");
+    opt.value = v;
+    opt.textContent = ACTIVITY_LABEL[v];
+    if (actVal === v) opt.selected = true;
+    select.appendChild(opt);
+  });
+  kv.appendChild(cell("Set Activity", select));
   body.appendChild(kv);
 
   const sec = (title, text)=>{ const s=el("div","sect"); s.appendChild(el("div","st",title)); s.appendChild(el("p","",text)); return s; };
