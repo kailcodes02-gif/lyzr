@@ -2,3 +2,8 @@
 /demo_pipeline  /prototypes/index.html  200
 /demo_pipeline/ /prototypes/index.html  200
 /demo_pipeline/* /prototypes/:splat     200
+
+# Rewrite /GSI_Communities to serve from GSI Communities folder
+/GSI_Communities    /GSI%20Communities/index.html  200
+/GSI_Communities/   /GSI%20Communities/index.html  200
+/GSI_Communities/*  /GSI%20Communities/:splat      200

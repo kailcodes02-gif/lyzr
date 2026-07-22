@@ -31,11 +31,12 @@
 6. [Component: Pipeline dashboard](#6-component-pipeline-dashboard)
 7. [Component: Prototypes / demo_pipeline](#7-component-prototypes--demo_pipeline)
 8. [Component: GSI Tracker (Next.js app)](#8-component-gsi-tracker-nextjs-app)
-9. [Shared data files](#9-shared-data-files)
-10. [Authentication summary](#10-authentication-summary)
-11. [Conventions & gotchas](#11-conventions--gotchas)
-12. [Known drift, discrepancies & open items](#12-known-drift-discrepancies--open-items)
-13. [Build Log & Corrections](#13-build-log--corrections)
+9. [Component: GSI Communities](#9-component-gsi-communities)
+10. [Shared data files](#10-shared-data-files)
+11. [Authentication summary](#11-authentication-summary)
+12. [Conventions & gotchas](#12-conventions--gotchas)
+13. [Known drift, discrepancies & open items](#13-known-drift-discrepancies--open-items)
+14. [Build Log & Corrections](#14-build-log--corrections)
 
 ---
 
@@ -51,6 +52,7 @@ under one Cloudflare Pages site at `lyzr.kailash-gm.com`. The pieces:
 | Pipeline dashboard | `pipeline/` + root `functions/api/` | `/pipeline/` | Live, actively edited |
 | Prototypes (public demos) | `prototypes/` | `/demo_pipeline/` | Live |
 | GSI/SI Marketing Tracker | `GSI Tracker/tracker/` | (none, local only) | In development |
+| GSI Communities | `GSI Communities/` | `/GSI_Communities` | Live |
 
 Two of these are the day-to-day active work: the **weekly GSI reports** (new HTML
 report per week) and the **pipeline dashboard** (live edits committed back to git).
@@ -120,6 +122,7 @@ Antigravity/                      (git repo root, deploys to Cloudflare Pages)
 ├── control/                      Admin/control panel (auth-gated, noindex)
 ├── tasks/                        Weekly tasks index (reads data/weeks.json)
 ├── reports/                      Weekly GSI reports + dynamic index
+├── GSI Communities/              GSI Communities dashboard (served at /GSI_Communities/ via _redirects)
 ├── pipeline/                     Pipeline dashboard (index.html, data.json, server.js, generate_data.py, snapshots/)
 ├── prototypes/                   Public demos dashboard (served at /demo_pipeline/)
 ├── data/                         Shared JSON: weeks.json, channel-owners.json
@@ -329,7 +332,16 @@ Phase 4 polish and beyond: task templates, formula engine, AI weekly-review summ
 
 ---
 
-## 9. Shared data files
+## 9. Component: GSI Communities
+
+- **`GSI Communities/`** contains the GSI & SI Community & Influencer Intelligence dashboard.
+- The dashboard page is located at `GSI Communities/index.html` (renamed from `GSI_SI_Community_Influencer_Dashboard (1).html`).
+- The page is served at `/GSI_Communities` (via `_redirects` rewrite rules).
+- It is a self-contained HTML page visualizing community and influencer data.
+
+---
+
+## 10. Shared data files
 
 ### `data/weeks.json`
 
@@ -350,7 +362,7 @@ attribution; not directly embedded in report HTML.
 
 ---
 
-## 10. Authentication summary
+## 11. Authentication summary
 
 Three distinct auth layers (do not conflate them):
 
@@ -366,7 +378,7 @@ Access if the data ever becomes confidential.
 
 ---
 
-## 11. Conventions & gotchas
+## 12. Conventions & gotchas
 
 - **No em dashes** anywhere in copy (Lyzr brand). Use commas, colons, or parentheses.
 - **Always check `weeks.json` for a report's real path** before linking; the three path styles are inconsistent.
@@ -379,7 +391,7 @@ Access if the data ever becomes confidential.
 
 ---
 
-## 12. Known drift, discrepancies & open items
+## 13. Known drift, discrepancies & open items
 
 - **Tracker stack vs spec:** spec says Next.js 14 + React 18 + Vercel; actual is Next.js 16.2.6 + React 19.2.4 with **no deployment** (local only). Intentional (DECISIONS D1). Do not "fix" back to spec.
 - **Tracker deploy target:** `DECISIONS.md` D5 says "Vercel for deployment," but the tracker is not actually deployed anywhere yet. The Cloudflare config at the repo root deploys the **sibling** Work OS site, not the tracker.
@@ -394,7 +406,7 @@ Access if the data ever becomes confidential.
 
 ---
 
-## 13. Build Log & Corrections
+## 14. Build Log & Corrections
 
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
@@ -749,6 +761,13 @@ committed yet (commit deferred per user). Summary of changes now in the working 
 - Reflects current state: 6 weekly reports (through May 25-31), `current_week: 6`
   in `weeks.json`, pipeline live with self-committing edits, GSI Tracker at
   migration `008_rls_hardening.sql`, Next 16.2.6 / React 19.2.4.
+
+### 2026-07-22, Hosted GSI Communities and renamed file
+- Renamed the static dashboard HTML file to `index.html` inside `GSI Communities/` directory.
+- Configured Cloudflare Pages rewrites in `_redirects` for `/GSI_Communities` to serve from `/GSI Communities/index.html`.
+- Updated `KNOWLEDGE_BASE.md` to reflect the new `GSI Communities` component.
+- Files touched: [GSI Communities/index.html](file:///Users/Shared/FromOldMac/Documents/Work/Lyzr/Antigravity/GSI%20Communities/index.html), [_redirects](file:///Users/Shared/FromOldMac/Documents/Work/Lyzr/Antigravity/_redirects), [KNOWLEDGE_BASE.md](file:///Users/Shared/FromOldMac/Documents/Work/Lyzr/Antigravity/KNOWLEDGE_BASE.md).
+- Commit(s): to be pushed to remote repository.
 
 <!-- Template for new entries:
 ### YYYY-MM-DD, <short title>
