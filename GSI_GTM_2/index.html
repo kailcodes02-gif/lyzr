@@ -1,0 +1,1729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lyzr GSI Go-To-Market (GTM) Blueprint & Strategy Hub</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* Design Tokens from Palette: Soft Off-White, Warm Beige, Muted Terracotta, Sage Green */
+    :root {
+      --bg-main: #f8f6f1;
+      --bg-card: #ffffff;
+      --bg-card-sub: #f5f1eb;
+      --bg-header: #ede8df;
+      --border-color: #e2dad0;
+      --border-dark: #cbd0c3;
+      
+      --text-main: #2b2723;
+      --text-muted: #6b635b;
+      --text-light: #948c82;
+      
+      /* Palette Accents */
+      --palette-terracotta: #c48970;
+      --palette-peach-light: #f4e8dc;
+      --palette-cream: #fbf6f0;
+      --palette-sand: #d8c3b2;
+      --palette-sage: #888d77;
+      --palette-sage-light: #d1d4c7;
+      
+      /* Channel Color Assignments */
+      --ch-1-color: #c48970; /* Paid Ads - Terracotta */
+      --ch-2-color: #7b6557; /* Email - Deep Taupe */
+      --ch-3-color: #5d705b; /* LinkedIn Organic - Forest Sage */
+      --ch-4-color: #838e70; /* Content - Muted Olive */
+      --ch-5-color: #b59276; /* Events - Warm Sand */
+      --ch-6-color: #ba7c5c; /* Paid Organic - Caramel */
+      --ch-7-color: #b58071; /* Longform & Co-mktg - Dusty Rose */
+      --ch-8-color: #9d7768; /* Communities - Soft Clay */
+      --ch-9-color: #5c745b; /* Referrals - Moss Sage */
+      --ch-10-color: #b38865; /* BTL - Vintage Amber */
+      --ch-11-color: #8f7560; /* Foster Champions - Bronze */
+      --ch-12-color: #433c37; /* ABM - Dark Espresso */
+      
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --shadow-sm: 0 2px 8px rgba(43, 39, 35, 0.04);
+      --shadow-md: 0 6px 20px rgba(43, 39, 35, 0.06);
+      --shadow-lg: 0 12px 32px rgba(43, 39, 35, 0.09);
+      --transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      line-height: 1.5;
+      padding-bottom: 80px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* HEADER BANNER - FULLY SCROLLABLE (NO STICKY) */
+    .header {
+      background: linear-gradient(135deg, #ede8df 0%, #f6f2ea 100%);
+      border-bottom: 1px solid var(--border-color);
+      padding: 44px 24px 38px 24px;
+      position: relative; /* Not sticky as requested */
+    }
+
+    .header-container {
+      max-width: 1320px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-badge {
+      background-color: var(--palette-terracotta);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      border-radius: 20px;
+      letter-spacing: 0.08em;
+    }
+
+    h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.02em;
+    }
+
+    .header-subtitle {
+      color: var(--text-muted);
+      font-size: 0.98rem;
+      max-width: 800px;
+    }
+
+    /* Quick KPI Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      padding: 16px 20px;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--palette-terracotta);
+    }
+
+    .kpi-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .kpi-value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-top: 4px;
+    }
+
+    .kpi-sub {
+      font-size: 0.78rem;
+      color: var(--palette-sage);
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    /* Main Container */
+    .main-container {
+      max-width: 1320px;
+      margin: 32px auto 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Control Bar & Search */
+    .control-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+      background: var(--bg-card);
+      padding: 16px 20px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      min-width: 280px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 11px 16px 11px 42px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-main);
+      font-family: inherit;
+      font-size: 0.9rem;
+      color: var(--text-main);
+      outline: none;
+      transition: var(--transition);
+    }
+
+    .search-input:focus {
+      border-color: var(--palette-terracotta);
+      background-color: #fff;
+      box-shadow: 0 0 0 3px rgba(196, 137, 112, 0.15);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-light);
+      pointer-events: none;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-filter {
+      padding: 8px 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-main);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn-filter:hover, .btn-filter.active {
+      background-color: var(--palette-terracotta);
+      color: #fff;
+      border-color: var(--palette-terracotta);
+    }
+
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 18px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      background: var(--palette-sage);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      transition: var(--transition);
+    }
+
+    .btn-action:hover {
+      background: #757a66;
+      transform: translateY(-1px);
+    }
+
+    /* Strategy Funnel Card */
+    .funnel-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 32px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .section-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .funnel-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 16px;
+    }
+
+    .funnel-step {
+      background: var(--palette-cream);
+      border: 1px solid var(--palette-sand);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 2px;
+    }
+
+    .step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--palette-terracotta);
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.82rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .step-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .funnel-meta-box {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(216, 195, 178, 0.6);
+    }
+
+    .funnel-meta-box strong {
+      color: var(--text-main);
+    }
+
+    .funnel-pointers {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-top: 2px;
+    }
+
+    .funnel-pointer-item {
+      font-size: 0.83rem;
+      color: var(--text-main);
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      line-height: 1.4;
+    }
+
+    .funnel-pointer-bullet {
+      color: var(--palette-terracotta);
+      font-weight: 800;
+    }
+
+    /* Channels Accordion List */
+    .channels-header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .channel-list {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .channel-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      transition: var(--transition);
+    }
+
+    .channel-card:hover {
+      box-shadow: var(--shadow-md);
+      border-color: #d6ccbf;
+    }
+
+    /* Channel Header (Level 1) */
+    .channel-header {
+      padding: 22px 26px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+      border-left: 7px solid var(--ch-color, var(--palette-terracotta));
+      background-color: #fff;
+      transition: var(--transition);
+    }
+
+    .channel-header:hover {
+      background-color: var(--palette-cream);
+    }
+
+    .channel-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex: 1;
+    }
+
+    .channel-badge-num {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--ch-color, var(--palette-terracotta));
+      color: #fff;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .channel-title-box {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .channel-name {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .channel-meta-pill {
+      display: flex;
+      gap: 12px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+    }
+
+    .channel-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .channel-budget-tag {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 1.05rem;
+      padding: 5px 14px;
+      border-radius: 20px;
+      background: var(--bg-main);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+
+    .chevron-icon {
+      width: 22px;
+      height: 22px;
+      color: var(--text-light);
+      transition: transform 0.3s ease;
+    }
+
+    .channel-card.expanded .chevron-icon {
+      transform: rotate(180deg);
+    }
+
+    /* Channel Body (Level 2 & Level 3) */
+    .channel-body {
+      display: none;
+      padding: 0 26px 26px 26px;
+      border-top: 1px solid var(--border-color);
+      background-color: #fcfbfa;
+    }
+
+    .channel-card.expanded .channel-body {
+      display: block;
+    }
+
+    /* Subchannels Grid (Level 2) */
+    .subchannel-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 22px;
+      margin-top: 22px;
+    }
+
+    .subchannel-card {
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 22px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .subchannel-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+      gap: 10px;
+    }
+
+    .subchannel-name {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .owner-pill {
+      background: var(--palette-peach-light);
+      color: var(--text-main);
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--palette-sand);
+      white-space: nowrap;
+    }
+
+    /* PROMINENT SUBCHANNEL TARGET BUBBLE CALLOUT */
+    .subchannel-target-bubble {
+      background: linear-gradient(135deg, #f7ece5 0%, #f4e2d7 100%);
+      border: 1.5px solid var(--palette-terracotta);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 2px 6px rgba(196, 137, 112, 0.12);
+    }
+
+    .target-icon {
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .target-text-box {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .target-title {
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--palette-terracotta);
+    }
+
+    .target-val {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    /* ACTIVITIES CHECKLIST CONTAINER (LEVEL 3) */
+    .activities-container {
+      margin-top: 14px;
+    }
+
+    .activities-head {
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-light);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .activity-card-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* INDIVIDUAL CHECKLIST ACTIVITY CARD */
+    .activity-card {
+      background: var(--bg-main);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      transition: var(--transition);
+    }
+
+    .activity-card:hover {
+      border-color: #d6ccbf;
+      background: #faf8f5;
+    }
+
+    .activity-header-line {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+
+    .activity-checkbox {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--palette-terracotta);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .activity-title {
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: var(--text-main);
+      flex: 1;
+    }
+
+    /* FREQUENCY SMALL BOX BADGE */
+    .freq-badge {
+      background: #e8e4db;
+      color: var(--text-main);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid #d4cebe;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* ACTIVITY SPECIFIC KPI BUBBLE */
+    .activity-kpi-bubble {
+      background: #eff2eb;
+      color: #384533;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 12px;
+      border: 1px solid #ccd2c2;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* DETAILED SUB-POINTS LIST UNDER ACTIVITY */
+    .activity-subpoints {
+      margin-top: 8px;
+      padding-left: 28px;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .subpoint-item {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      line-height: 1.4;
+    }
+
+    .subpoint-bullet {
+      color: var(--palette-terracotta);
+      font-weight: 700;
+      font-size: 0.75rem;
+      margin-top: 2px;
+    }
+
+    /* CALLOUT BOX FOR EXPERIMENTS & LEARNINGS */
+    .callout-box {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    .callout-learnings {
+      background-color: #f7eee9;
+      border-left: 4px solid var(--palette-terracotta);
+      color: #4a342b;
+    }
+
+    .callout-title {
+      font-weight: 800;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Resource Button Link */
+    .resource-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 14px;
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--palette-terracotta);
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: var(--transition);
+    }
+
+    .resource-btn:hover {
+      background: var(--palette-terracotta);
+      color: #fff;
+      border-color: var(--palette-terracotta);
+    }
+
+    .footer {
+      max-width: 1320px;
+      margin: 60px auto 0 auto;
+      padding: 24px;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-light);
+      border-top: 1px solid var(--border-color);
+    }
+
+    @media (max-width: 768px) {
+      .subchannel-grid {
+        grid-template-columns: 1fr;
+      }
+      .channel-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .channel-right {
+        width: 100%;
+        justify-content: space-between;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER BANNER (SCROLLABLE - NO STICKY) -->
+  <header class="header">
+    <div class="header-container">
+      <div class="header-top">
+        <div class="brand-title">
+          <span class="brand-badge">Lyzr GSI Engine</span>
+          <h1>GTM Strategy & Blueprint Presentation</h1>
+        </div>
+        <a href="https://www.lyzr.ai/gsi-events/" target="_blank" rel="noopener noreferrer" class="btn-action">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
+          Open Live Events Portal
+        </a>
+      </div>
+      <p class="header-subtitle">
+        Structured Go-To-Market Blueprint designed to acquire Global System Integrators (GSIs) & Systems Integrators (SIs). Interactive multi-channel breakdown with interactive activity checklists, frequency callouts, prominent KPI target bubbles, and past experiment learnings.
+      </p>
+
+      <!-- KPI METRICS GRID -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Monthly Operating Budget</div>
+          <div class="kpi-value">$10,000 USD</div>
+          <div class="kpi-sub">Flexi-Allocation Enabled</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">GTM Execution Pillars</div>
+          <div class="kpi-value">12 Key Channels</div>
+          <div class="kpi-sub">Ads, Email, Events, ABM +</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Target SI Account Pool</div>
+          <div class="kpi-value">500 Top SIs</div>
+          <div class="kpi-sub">> $500M ARR Target</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Priority GSI Focus</div>
+          <div class="kpi-value">Accenture Mapping</div>
+          <div class="kpi-sub">Targeting 100% Regions by Aug</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT CONTAINER -->
+  <main class="main-container">
+
+    <!-- STRATEGY FUNNEL MAP CARD -->
+    <div class="funnel-card">
+      <h2 class="section-title">
+        <svg width="22" height="22" fill="none" stroke="var(--palette-terracotta)" stroke-width="2" viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+        ToFu to BoFu Engine Architecture (RB2B & Intent Pipeline)
+      </h2>
+      <p class="section-desc">Unified funnel mechanics converting initial digital impressions into high-touch sales opportunities.</p>
+      
+      <div class="funnel-steps">
+        <div class="funnel-step">
+          <div class="step-header">
+            <div class="step-num">1</div>
+            <div class="step-title">Traffic Ingestion (ToFu)</div>
+          </div>
+          <div class="funnel-meta-box">
+            <div><strong>🎯 Objective:</strong> Drive high-volume, targeted top-of-funnel traffic to landing pages & key assets.</div>
+            <div><strong>📡 Sources:</strong> LinkedIn Brand Ads, Meta Ads (Traffic), Google Search/YT Ads, SEO/GEO.</div>
+          </div>
+          <ul class="funnel-pointers">
+            <li class="funnel-pointer-item"><span class="funnel-pointer-bullet">↳</span> <span>Bring traffic from Brand Ads (LinkedIn), Traffic Ads (Meta & Google), and SEO/GEO.</span></li>
+            <li class="funnel-pointer-item"><span class="funnel-pointer-bullet">↳</span> <span>Direct top-of-funnel visitors to primary solution pages, comparison pages, and hero assets.</span></li>
+          </ul>
+        </div>
+
+        <div class="funnel-step">
+          <div class="step-header">
+            <div class="step-num">2</div>
+            <div class="step-title">RB2B Cohort Segmentation</div>
+          </div>
+          <div class="funnel-meta-box">
+            <div><strong>🎯 Objective:</strong> Identify visitor intent levels & isolate top-performing hero conversion pathways.</div>
+            <div><strong>📡 Sources:</strong> RB2B Identity Resolution & Behavioral Tracking Engine.</div>
+          </div>
+          <ul class="funnel-pointers">
+            <li class="funnel-pointer-item"><span class="funnel-pointer-bullet">↳</span> <span>Divide traffic into P90, P75, P50 (first-time ever traffic) to find the hero flow.</span></li>
+            <li class="funnel-pointer-item"><span class="funnel-pointer-bullet">↳</span> <span>Map visitor engagement depth and track high-intent user pathways across landing pages.</span></li>
+          </ul>
+        </div>
+
+        <div class="funnel-step">
+          <div class="step-header">
+            <div class="step-num">3</div>
+            <div class="step-title">LinkedIn Retargeting (MoFu)</div>
+          </div>
+          <div class="funnel-meta-box">
+            <div><strong>🎯 Objective:</strong> Re-engage non-converting visitors with stage-specific educational resources.</div>
+            <div><strong>📡 Sources:</strong> LinkedIn Retargeting Ads (Rishabh).</div>
+          </div>
+          <ul class="funnel-pointers">
+            <li class="funnel-pointer-item"><span class="funnel-pointer-bullet">↳</span> <span>Retarget traffic cohorts for journey-specific resources on LinkedIn.</span></li>
+            <li class="funnel-pointer-item"><span class="funnel-pointer-bullet">↳</span> <span>Drive visitors directly to targeted playbooks and gated architecture blueprints.</span></li>
+          </ul>
+        </div>
+
+        <div class="funnel-step">
+          <div class="step-header">
+            <div class="step-num">4</div>
+            <div class="step-title">Behavioral Email Nurture</div>
+          </div>
+          <div class="funnel-meta-box">
+            <div><strong>🎯 Objective:</strong> Nurture warm retargeted prospects based on micro-interactions.</div>
+            <div><strong>📡 Sources:</strong> Instantly & Hubspot Email Sequences (Kailash, Nirupam).</div>
+          </div>
+          <ul class="funnel-pointers">
+            <li class="funnel-pointer-item"><span class="funnel-pointer-bullet">↳</span> <span>Target P50 of retargeted cohorts (non-first time).</span></li>
+            <li class="funnel-pointer-item"><span class="funnel-pointer-bullet">↳</span> <span>Execute personalized email sequences based on hero landing page micro-events (non "Book a Demo" & non-playbook downloads).</span></li>
+          </ul>
+        </div>
+
+        <div class="funnel-step">
+          <div class="step-header">
+            <div class="step-num">5</div>
+            <div class="step-title">LinkedIn Social Outreach</div>
+          </div>
+          <div class="funnel-meta-box">
+            <div><strong>🎯 Objective:</strong> Build direct 1-1 executive relationships on LinkedIn with warm prospects.</div>
+            <div><strong>📡 Sources:</strong> Executive Profiles (Anju, Ani, Praveen, Pooja, Kaushik, Bharath, Kailash).</div>
+          </div>
+          <ul class="funnel-pointers">
+            <li class="funnel-pointer-item"><span class="funnel-pointer-bullet">↳</span> <span>Target P50 of retargeted pool (non-first time).</span></li>
+            <li class="funnel-pointer-item"><span class="funnel-pointer-bullet">↳</span> <span>Send personalized LinkedIn connection request + contextual custom note.</span></li>
+          </ul>
+        </div>
+
+        <div class="funnel-step">
+          <div class="step-header">
+            <div class="step-num">6</div>
+            <div class="step-title">High-Touch Sales Handoff (BoFu)</div>
+          </div>
+          <div class="funnel-meta-box">
+            <div><strong>🎯 Objective:</strong> Maximize conversion of high-intent prospects through direct cold calling.</div>
+            <div><strong>📡 Sources:</strong> Jessica’s SDR Cold Calling Team & Partnership Team.</div>
+          </div>
+          <ul class="funnel-pointers">
+            <li class="funnel-pointer-item"><span class="funnel-pointer-bullet">↳</span> <span>Pass P90 of retargeted & playbook leads (that did not convert to book a demo).</span></li>
+            <li class="funnel-pointer-item"><span class="funnel-pointer-bullet">↳</span> <span>Equip cold calling team with complete user behavior telemetry & activity logs.</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- FILTER & SEARCH CONTROLS -->
+    <div class="control-bar">
+      <div class="search-box">
+        <svg class="search-icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="text" id="searchInput" class="search-input" placeholder="Search channels, owners, activities, keywords (e.g. Accenture, Rishabh, Closed rooms)...">
+      </div>
+      <div class="filter-group">
+        <button class="btn-filter active" data-filter="all">All Channels (12)</button>
+        <button class="btn-filter" data-filter="paid">Paid Channels</button>
+        <button class="btn-filter" data-filter="outbound">Outbound & Email</button>
+        <button class="btn-filter" data-filter="organic">Organic & Content</button>
+        <button class="btn-filter" data-filter="events">Events & ABM</button>
+        <button id="expandAllBtn" class="btn-filter" style="background:#ede8df;">Expand All</button>
+      </div>
+    </div>
+
+    <!-- CHANNELS ACCORDION LIST -->
+    <div class="channels-header-bar">
+      <h3 style="font-family:'Outfit'; font-size:1.25rem; font-weight:700;">GTM Channels, Subchannels & Activity Checklists</h3>
+      <span style="font-size:0.85rem; color:var(--text-muted);">Click any channel to inspect details & track activity checklists</span>
+    </div>
+
+    <div class="channel-list" id="channelList">
+      <!-- DYNAMICALLY RENDERED BY JS -->
+    </div>
+
+  </main>
+
+  <footer class="footer">
+    <p>Lyzr GSI Go-To-Market Master Blueprint • Designed for $10K/mo Optimized Growth Engine</p>
+  </footer>
+
+  <!-- JAVASCRIPT DATA & RENDER ENGINE -->
+  <script>
+    // Master GTM Channels Data Store with Strict Individual Subchannels and Activities
+    const gtmChannels = [
+      {
+        id: 1,
+        category: "paid",
+        name: "Channel 1: Paid Ads",
+        color: "var(--ch-1-color)",
+        budget: "$3,000 / mo Total",
+        owners: "Rishabh, Mothilal",
+        summary: "LinkedIn Ads ($2K/mo), Meta Ads ($500/mo), and Google Ads ($500/mo) targeting GSI decision makers.",
+        subchannels: [
+          {
+            name: "1.1 LinkedIn Ads",
+            owner: "Rishabh",
+            budget: "$2,000 / mo",
+            target: "🎯 10K Impressions/mo • 2K Engagements • 6 Playbook leads/wk",
+            activities: [
+              {
+                title: "Brand Awareness Ads",
+                frequency: "Ongoing",
+                target: "🎯 10,000 Impressions/mo",
+                details: ["Promote Lyzr value proposition and GSI framework", "Amplify top executive thought leadership content"]
+              },
+              {
+                title: "Event Registration Ads",
+                frequency: "Monthly 1x",
+                target: "🎯 Event Attendee Capture",
+                details: ["Promote monthly GSI-dedicated webinars", "Drive registrations for closed room roundtables"]
+              },
+              {
+                title: "Playbook Download Ads",
+                frequency: "Ongoing",
+                target: "🎯 6 Playbook Leads/wk",
+                details: ["Gated access to GSI architecture playbooks", "Target retargeted audience pool for higher conversion"]
+              }
+            ],
+            learnings: [
+              "⚠️ Traffic generation is too expensive on LinkedIn",
+              "⚠️ BoFu 'Book a Demo' ads do NOT work directly",
+              "✅ Retargeted audience to playbook downloads works effectively",
+              "✅ Fresh playbook downloads work consistently",
+              "ℹ️ Post amplification from Anju, Ani & Siva's accounts yields engagements but no direct conversions",
+              "🎯 Conversation ads work specifically in India for Accenture targets"
+            ]
+          },
+          {
+            name: "1.2 Meta Ads",
+            owner: "Mothilal",
+            budget: "$500 / mo",
+            target: "🎯 3,000 Generated Traffic Visits / month",
+            activities: [
+              {
+                title: "Traffic Generation",
+                frequency: "Daily / Ongoing",
+                target: "🎯 3,000 Web Visits/mo",
+                details: ["Low-CPA traffic acquisition targeting enterprise AI keywords"]
+              },
+              {
+                title: "Video Ads (Retargeting P90 Traffic)",
+                frequency: "Ongoing",
+                target: "🎯 Retarget P90 Visitors",
+                details: ["Retarget visitors who spent >90s on primary landing page with video demos"]
+              }
+            ]
+          },
+          {
+            name: "1.3 Google Ads",
+            owner: "Mothilal",
+            budget: "$500 / mo",
+            target: "🎯 700 - 1,000 Traffic Visits / month",
+            activities: [
+              {
+                title: "Keywords Mapping & Search Campaigns",
+                frequency: "Ongoing",
+                target: "🎯 Map Best Keywords for GSI",
+                details: ["Map and bid on top performing GSI enterprise keywords"]
+              },
+              {
+                title: "YouTube Ads (Retargeting P90 Traffic)",
+                frequency: "Monthly",
+                target: "🎯 Retarget P90 Visitors on YouTube",
+                details: ["Retarget P90 audience cohorts with video case studies on YouTube"]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: 2,
+        category: "outbound",
+        name: "Channel 2: Email",
+        color: "var(--ch-2-color)",
+        budget: "Software Stack",
+        owners: "Rida, Kailash, Nirupam, Partnership Team, Apoorva, Shifa, Shreya",
+        summary: "Outbound cold outreach (Instantly), inbound lead nurture (Hubspot), 1-1 partnership outreach, and Beehiiv newsletter.",
+        subchannels: [
+          {
+            name: "2.1 Instantly (Outbound)",
+            owner: "Rida & Kailash",
+            target: "🎯 8K-10K GSI Contacts/mo • 2K-5K SI Contacts/mo",
+            activities: [
+              {
+                title: "Target 15 Accounts per Month",
+                frequency: "Monthly (10K-12K Contacts)",
+                target: "🎯 Drive Traffic & Warm Up Contacts",
+                details: ["Go after 15 GSI accounts per month (10-12K total contacts pool)", "Get initial traction and warm up decision maker contacts"]
+              },
+              {
+                title: "5 Email Nurture Sequence",
+                frequency: "Automated Cadence",
+                target: "🎯 2 'Book a Demo' CTAs & Resources",
+                details: ["Execute 5 email nurture sequence with embedded resources and 2 demo CTAs"]
+              }
+            ]
+          },
+          {
+            name: "2.2 Hubspot (Inbound & Nurture)",
+            owner: "Kailash, Nirupam",
+            target: "🎯 Warm Playbook Leads into 'Book a Demo' SQLs",
+            activities: [
+              {
+                title: "Accenture Dedicated Email Sequence",
+                frequency: "Automated Workflow",
+                target: "🎯 Accenture Lead Nurture",
+                details: ["Make Accenture specific sequence sitting with Praveen & Anju"]
+              },
+              {
+                title: "Playbooks & Use Cases Email Sequence",
+                frequency: "Automated Workflow",
+                target: "🎯 Multi-Touch Resource Nurture",
+                details: ["Make Playbook specific sequence sitting with Alma"]
+              },
+              {
+                title: "Auto-Enrollment Workflow Setup",
+                frequency: "Ongoing Trigger",
+                target: "🎯 Automatic Lead Progression",
+                details: ["Set up auto enroll flow from inbound playbook leads directly into Hubspot email sequences"]
+              }
+            ]
+          },
+          {
+            name: "2.3 1-1 Outreach (Partnership Team)",
+            owner: "Partnership Team",
+            target: "🎯 Manual 1-1 Handling on All 'Book a Demo' Leads",
+            activities: [
+              {
+                title: "3 Email Cadence Follow-Up",
+                frequency: "Sequential SLA",
+                target: "🎯 Email Engagement",
+                details: ["Execute 3 cadence follow-ups on email for all demo leads"]
+              },
+              {
+                title: "3 LinkedIn Cadence Follow-Up",
+                frequency: "Sequential SLA",
+                target: "🎯 LinkedIn Direct Touchpoint",
+                details: ["Execute 3 cadence follow-ups on LinkedIn"]
+              },
+              {
+                title: "1 WhatsApp or iMessage Outreach",
+                frequency: "Final Fallback Touch",
+                target: "🎯 Convert Non-Responsive Leads",
+                details: ["Send 1 WhatsApp or iMessage message after no response on Email & LinkedIn"]
+              }
+            ],
+            learnings: [
+              "📌 All 'Book a Demo' leads are taken up by Partnership team on 1-1 basis with zero automated sequences."
+            ]
+          },
+          {
+            name: "2.4 Newsletter (Beehiiv)",
+            owner: "Kailash, Apoorva, Shifa, Shreya",
+            target: "🎯 Increase Subscribers to 1K in Q3",
+            activities: [
+              {
+                title: "Monthly Newsletter Edition",
+                frequency: "Monthly (on/around 20th)",
+                target: "🎯 Share Product Updates & Lyzr Story",
+                details: [
+                  "Add Customers, BoFu, ToFu & MoFu in SQL (at least had conversation once)",
+                  "Add all 'Book a Demo' no-show leads (after Partnership team's 3 follow ups)",
+                  "Add landing page subscriber capture widget"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: 3,
+        category: "organic",
+        name: "Channel 3: LinkedIn Organic",
+        color: "var(--ch-3-color)",
+        budget: "Organic Team",
+        owners: "Prince, Shifa, Anju, Ani, Praveen, Pooja, Kaushik, Bharath, Kailash",
+        summary: "Corporate pages, showcase hub, and individual executive personal social selling.",
+        resourceLink: "https://www.linkedin.com/showcase/lyzr-partners/",
+        resourceLabel: "Open LinkedIn GSI Showcase Page",
+        subchannels: [
+          {
+            name: "3.1 Lyzr Page",
+            owner: "Prince, Shifa",
+            target: "🎯 100+ Attendees per Webinar",
+            activities: [
+              { title: "Weekly 1 Post", frequency: "Weekly 1x", target: "🎯 Brand Awareness", details: ["Post weekly corporate updates and highlights"] },
+              { title: "GSI Dedicated Webinar", frequency: "Monthly 1x", target: "🎯 100+ Attendees", details: ["Host monthly GSI dedicated webinar"] },
+              { title: "Events Posts", frequency: "Event Basis", target: "🎯 Event Promotion", details: ["Promote upcoming and live event announcements"] },
+              { title: "Repost GSI Monthly Article", frequency: "Monthly 1x", target: "🎯 Article Amplification", details: ["Repost monthly article published on GSI page"] }
+            ]
+          },
+          {
+            name: "3.2 GSI Page",
+            owner: "Shifa",
+            target: "🎯 Increase Followers by 200 per Month",
+            activities: [
+              { title: "Weekly 3x Posts", frequency: "Weekly 3x", target: "🎯 Case Study, Playbook & Thought Leadership", details: ["Post 3x weekly covering case studies, playbooks, and thought leadership"] },
+              { title: "Monthly 1 LinkedIn Article", frequency: "Monthly 1x", target: "🎯 Longform GSI Article", details: ["Publish 1 dedicated LinkedIn article per month"] },
+              { title: "Invite GSI ICPs to Follow Page", frequency: "Ongoing", target: "🎯 Growth (+200 followers/mo)", details: ["Send invitations to targeted GSI ICP profiles to follow page"] },
+              { title: "Repost Webinars & Podcasts", frequency: "Ongoing", target: "🎯 Asset Cross-Promotion", details: ["Repost webinars and podcast episodes on showcase page"] },
+              { title: "Podcast & Webinar Clips", frequency: "Monthly 2 Clips", target: "🎯 Short-Form Engagement", details: ["Share 2 video highlight clips per month"] }
+            ]
+          },
+          {
+            name: "3.3 Personal Accounts: Anju, Ani",
+            owner: "Anju, Ani",
+            target: "🎯 100 Connection Requests/week to CXOs",
+            activities: [
+              { title: "Weekly 2x Posts", frequency: "Weekly 2x", target: "🎯 Thought Leadership", details: ["Publish 2 thought leadership posts weekly"] },
+              { title: "Send Connection Requests to 100 ICPs/wk", frequency: "Weekly (100 Request Target)", target: "🎯 CXO Account Leaders", details: ["Send connection requests to top CXO leaders of each target account"] }
+            ]
+          },
+          {
+            name: "3.4 Personal Accounts: Praveen, Pooja, Kaushik, Bharath",
+            owner: "Praveen, Pooja, Kaushik, Bharath",
+            target: "🎯 Respective Account ICP Connections",
+            activities: [
+              { title: "Weekly 2x Posts", frequency: "Weekly 2x", target: "🎯 GSI Activities & Reposts", details: ["Post GSI activities, repost Siva's content, and thought leadership"] },
+              { title: "Send Connection Requests to Account ICPs", frequency: "Weekly Cadence", target: "🎯 Target Account Contacts", details: ["Send connection requests to assigned account ICPs"] }
+            ]
+          },
+          {
+            name: "3.5 Personal Accounts: Kailash",
+            owner: "Kailash",
+            target: "🎯 Build Relationship with DMs & Ecosystem Players",
+            activities: [
+              { title: "Connect with Ecosystem Players & Teams", frequency: "Ongoing", target: "🎯 PR, Events, L&D & Ecosystem Leaders", details: ["Connect with PR teams, GSI ecosystem players, Events team, L&D leaders"] },
+              { title: "Build Relationship with DMs & Commenting", frequency: "Daily", target: "🎯 Active Decision Maker Engagement", details: ["Build relationships with decision makers through active commenting and interaction"] }
+            ]
+          }
+        ]
+      },
+      {
+        id: 4,
+        category: "organic",
+        name: "Channel 4: Content",
+        color: "var(--ch-4-color)",
+        budget: "Content Team",
+        owners: "Shreya & Alma (Owners), Kailash (Subowner - Landing pages & Dev)",
+        summary: "Development of landing pages, comparison pages, case studies, playbooks, bundles, whitepapers, assessments, and blueprints.",
+        resourceLink: "https://docs.google.com/spreadsheets/d/1n3Xaaa-L8M70kjVVbruXPM3L2P0o61P7hS_46hKqv5A/edit?gid=1627017865#gid=1627017865",
+        resourceLabel: "Open Master Content Tracker Spreadsheet",
+        subchannels: [
+          {
+            name: "4.1 Content Portfolio & Velocity",
+            owner: "Shreya & Alma",
+            target: "🎯 Build 1-2 New Assets/mo • SEO Optimize 2-3 Existing/mo",
+            activities: [
+              { title: "Build New Assets", frequency: "Monthly 1-2 Assets", target: "🎯 Expand Asset Formats", details: ["Build Landing pages, Comparison Pages, Case Studies, Playbooks, Bundles (Case study + Playbook + Assessment), Whitepaper, Assessment, Blueprint"] },
+              { title: "SEO Optimize Existing Assets", frequency: "Monthly 2-3 Assets", target: "🎯 Higher Organic Search Rank", details: ["SEO optimize 2-3 existing content assets per month"] }
+            ]
+          }
+        ]
+      },
+      {
+        id: 5,
+        category: "events",
+        name: "Channel 5: Events",
+        color: "var(--ch-5-color)",
+        budget: "$3,000 / mo Total Flexi",
+        owners: "Ankita, Kailash",
+        summary: "Independent subchannels for Lyzr Hosted, Hosted by Others, and Co-Hosted events.",
+        resourceLink: "https://www.lyzr.ai/gsi-events/",
+        resourceLabel: "Open Lyzr GSI Events Portal",
+        subchannels: [
+          {
+            name: "5.1 Hosted by Lyzr",
+            owner: "Ankita, Kailash",
+            budget: "$2,000 / mo",
+            target: "🎯 5 GSI Seats per Event",
+            activities: [
+              { title: "Side Events", frequency: "Event Basis", target: "🎯 5 GSI Seats per Event", details: ["Big conferences side events inviting GSIs (Budget: part of non-GSI events budget)"] },
+              { title: "Recurring IP Events (NY Sail boat - Siva)", frequency: "Monthly (2-5 seats)", target: "🎯 VIP Executive Bonding", details: ["Flagship IP events hosted by Siva in NY (Budget: part of non-GSI events budget)"] },
+              { title: "Closed Rooms", frequency: "Monthly / Bi-monthly", target: "🎯 5 GSI Seats per Event", details: ["Closed rooms in India, Berlin, London, New York, Dubai ($750 - $1,000 per room)"] }
+            ]
+          },
+          {
+            name: "5.2 Hosted by Others",
+            owner: "Ankita, Kailash",
+            budget: "$1,000 Flexi / mo",
+            target: "🎯 Bring 3-5 GSI Seats per Event",
+            activities: [
+              { title: "Attend", frequency: "Monthly (Flexi)", target: "🎯 Attend Top Events", details: ["Attend key industry events ($1,000 budget cap)"] },
+              { title: "Sponsor + Stall", frequency: "Monthly (Flexi)", target: "🎯 Event Presence & Booth", details: ["Sponsor event and set up stall (Budget: part of non-GSI events budget)"] },
+              { title: "Speaker", frequency: "Monthly (Flexi)", target: "🎯 Keynote & Panel Speaking", details: ["Secure speaker slots at industry events"] }
+            ]
+          },
+          {
+            name: "5.3 Co-Hosted",
+            owner: "Ankita, Kailash",
+            budget: "$1,000 Flexi / mo",
+            target: "🎯 Bring 3-5 GSI Seats per Event",
+            activities: [
+              { title: "SIs & Partners", frequency: "Monthly (Flexi)", target: "🎯 New Accounts & Upsell", details: ["Co-market event with SIs & Partners to bring new accounts & upsell existing"] },
+              { title: "Agencies", frequency: "Monthly (Flexi)", target: "🎯 Co-Host with Agencies", details: ["Co-host events with agencies that work with GSIs"] },
+              { title: "Non-Rivalry Players", frequency: "Monthly (Flexi)", target: "🎯 Shared ICP Audience", details: ["Find non-rivalry players whose ICPs are same but for different business"] }
+            ]
+          }
+        ]
+      },
+      {
+        id: 6,
+        category: "paid",
+        name: "Channel 6: Paid Organic",
+        color: "var(--ch-6-color)",
+        budget: "$2,000 / mo (Max 2 activities/mo)",
+        owners: "Prince, Kailash, Shreya, Deepyanthi",
+        summary: "Influencers/thought leaders, PR releases, and magazine features.",
+        resourceLink: "https://www.lyzr.ai/gsi-communities/",
+        resourceLabel: "Open GSI Communities Portal",
+        subchannels: [
+          {
+            name: "6.1 Influencers (Thought Leaders)",
+            owner: "Prince, Kailash, Shreya, Deepyanthi",
+            target: "🎯 Monthly 1 Post + 1 Newsletter Feature",
+            activities: [
+              { title: "Monthly 1 Partnership for LinkedIn Post", frequency: "Monthly 1x", target: "🎯 Influencer LinkedIn Post", details: ["Partner with thought leaders to do 1 LinkedIn post monthly"] },
+              { title: "Thought Leader Newsletter Mention", frequency: "Monthly 1x", target: "🎯 Newsletter Feature", details: ["Thought leaders to mention Lyzr on their newsletter monthly"] }
+            ]
+          },
+          {
+            name: "6.2 PR",
+            owner: "Prince, Kailash, Shreya, Deepyanthi",
+            target: "🎯 Media Announcements",
+            activities: [
+              { title: "Quarterly 1/2 PRs", frequency: "Quarterly 1-2 PRs", target: "🎯 Press Release Coverage", details: ["Issue 1-2 press releases per quarter"] }
+            ]
+          },
+          {
+            name: "6.3 Magazines / Newsletters (Followed by GSI ICPs)",
+            owner: "Prince, Kailash, Shreya, Deepyanthi",
+            target: "🎯 High ICP Eyeball Reach",
+            activities: [
+              { title: "Logo Mention", frequency: "Monthly", target: "🎯 Brand Impression", details: ["Logo placements in GSI magazines/newsletters"] },
+              { title: "Dedicated Content (Seem Organic)", frequency: "Monthly", target: "🎯 Organic Content Integration", details: ["Publish dedicated content that feels organic"] },
+              { title: "Thought Leadership Content by Lyzr", frequency: "Monthly", target: "🎯 Lyzr Thought Leadership", details: ["Feature Lyzr thought leadership articles in target magazines"] }
+            ]
+          }
+        ]
+      },
+      {
+        id: 7,
+        category: "organic",
+        name: "Channel 7: Longform Content & Co-marketing",
+        color: "var(--ch-7-color)",
+        budget: "Content Team",
+        owners: "Shifa (Webinars), Pranamya (Podcasts)",
+        summary: "Quarterly webinar series and podcast episodes.",
+        subchannels: [
+          {
+            name: "7.1 Webinar",
+            owner: "Shifa",
+            target: "🎯 100 Attendees per Webinar",
+            activities: [
+              { title: "Host 3x per Quarter", frequency: "Quarterly 3x", target: "🎯 100 Attendees/webinar", details: ["Host 3 webinars per quarter"] },
+              { title: "Invite Existing Customers & PR Contacts", frequency: "Ongoing", target: "🎯 Get New Faces", details: ["Invite existing GSI customers, connect with PR team to get new faces"] }
+            ]
+          },
+          {
+            name: "7.2 Podcast",
+            owner: "Pranamya",
+            target: "🎯 Host 2x/Qtr • Guest 2x/Qtr",
+            activities: [
+              { title: "Host Quarterly 2x", frequency: "Quarterly 2x", target: "🎯 Host Podcast Episodes", details: ["Host 2 podcast episodes per quarter"] },
+              { title: "Visit as Guest 2x Quarterly", frequency: "Quarterly 2x", target: "🎯 Guest Appearances", details: ["Visit external podcasts as guest 2x per quarter"] }
+            ]
+          }
+        ]
+      },
+      {
+        id: 8,
+        category: "organic",
+        name: "Channel 8: Communities",
+        color: "var(--ch-8-color)",
+        budget: "$500 - $1,000 / mo",
+        owners: "Ankita & Kailash (Offline), Prince & Kailash (Online)",
+        summary: "Offline allies, paid memberships, online non-chatable groups, and Slack/equivalent communities.",
+        subchannels: [
+          {
+            name: "8.1 Offline Communities",
+            owner: "Ankita, Kailash",
+            target: "🎯 Community Allies & Event Sponsorship",
+            activities: [
+              { title: "Make Allies with Hosts & Community Owners", frequency: "Ongoing", target: "🎯 Host Relationships", details: ["Build relationship with community hosts and owners"] },
+              { title: "Sponsor Events & Do Exclusive Events", frequency: "Monthly", target: "🎯 Exclusive Gathering", details: ["Sponsor community events and host exclusive gatherings"] }
+            ]
+          },
+          {
+            name: "8.2 Paid Membership",
+            owner: "Ankita, Kailash",
+            target: "🎯 Active Network Participation",
+            activities: [
+              { title: "Sponsor Events", frequency: "Monthly", target: "🎯 Event Sponsorship", details: ["Sponsor paid membership events"] },
+              { title: "Be More Active", frequency: "Ongoing", target: "🎯 Active Engagement", details: ["Maintain active participation in paid member networks"] }
+            ]
+          },
+          {
+            name: "8.3 Online (Non Chatable)",
+            owner: "Prince, Kailash",
+            target: "🎯 Growth Hacks & Thought Leadership",
+            activities: [
+              { title: "Be More Active", frequency: "Ongoing", target: "🎯 Regular Activity", details: ["Maintain regular presence"] },
+              { title: "Put Thought Leader Content", frequency: "Weekly", target: "🎯 Content Reach", details: ["Share thought leadership posts"] },
+              { title: "Do Growth Hack Experiments", frequency: "Ongoing", target: "🎯 Growth Testing", details: ["Run growth hacking experiments"] }
+            ]
+          },
+          {
+            name: "8.4 Slack / Equivalent",
+            owner: "Prince, Kailash",
+            target: "🎯 Direct Community Engagement",
+            activities: [
+              { title: "Active Engagements", frequency: "Daily", target: "🎯 Community Interaction", details: ["Active daily conversations and responses"] },
+              { title: "Post Monthly Newsletter", frequency: "Monthly 1x", target: "🎯 Newsletter Distribution", details: ["Distribute monthly newsletter in channels"] },
+              { title: "Post Hiring Messages", frequency: "Ongoing", target: "🎯 Talent & Brand Reach", details: ["Post company hiring updates"] }
+            ]
+          }
+        ]
+      },
+      {
+        id: 9,
+        category: "outbound",
+        name: "Channel 9: Referrals",
+        color: "var(--ch-9-color)",
+        budget: "Incentive-Based",
+        owners: "Sejal, Kailash, Ani, Anju",
+        summary: "1st degree connections export and employee referral incentive structure.",
+        resourceLink: "https://docs.google.com/spreadsheets/d/1bslg0niqKJCuvr6II8Gm5Vb_cmgKk83RSBsIfkqUqIQ/",
+        resourceLabel: "Open Master Referrals Spreadsheet",
+        subchannels: [
+          {
+            name: "9.1 1st Degree Connections of Leadership",
+            owner: "Sejal, Kailash, Ani, Anju",
+            target: "🎯 Mapped Leadership Network Outreach",
+            activities: [
+              { title: "1st Degree Connection Export", frequency: "One-time Export", target: "🎯 Leadership & Partner Network", details: ["Export 1st degree connections from Partnership team and Leadership team"] },
+              { title: "Map Out Connections", frequency: "Ongoing", target: "🎯 Designation, Account & Relevance", details: ["Map out connection with designation, account and relevance"] },
+              { title: "Make Outreach Plan & Automation", frequency: "Ongoing", target: "🎯 Automated Campaign", details: ["Execute outreach plan and setup automation"] }
+            ]
+          },
+          {
+            name: "9.2 Employee Referral",
+            owner: "Sejal, Kailash, Ani, Anju",
+            target: "🎯 $150 Win Reward • $20 Demo Gift (Permission Callout)",
+            activities: [
+              { title: "Tap Employee Social Circles", frequency: "Ongoing", target: "🎯 Social Network Referrals", details: ["Ask for referrals from different social circles of employees"] },
+              { title: "Leadership Internal Push", frequency: "Weekly", target: "🎯 Leadership Endorsement", details: ["Push referral program from org leaders to the team"] },
+              { title: "$150 Reward for Successful Referral (Win)", frequency: "Reward per Win", target: "🎯 $150 Closed-Won Incentive", details: ["Award $150 reward for a successful closed-won referral win"] },
+              { title: "$20 Voucher/Gift for Demo Call", frequency: "Reward per Demo", target: "🎯 $20 Demo Incentive ([Permission Callout])", details: ["Award $20 voucher/gift for a completed demo call ([requires permission callout])"] }
+            ]
+          }
+        ]
+      },
+      {
+        id: 10,
+        category: "paid",
+        name: "Channel 10: BTL",
+        color: "var(--ch-10-color)",
+        budget: "$1,500 / mo Total",
+        owners: "Kailash, Ankita",
+        summary: "Targeted physical gifting ($1,000/mo) and Out-Of-Home posters ($500/mo).",
+        subchannels: [
+          {
+            name: "10.1 Gifting",
+            owner: "Kailash, Ankita",
+            budget: "$1,000 / mo",
+            target: "🎯 10 Gifts per Month ($30 value)",
+            activities: [
+              { title: "Map NY & Indian Top ICP Addresses", frequency: "Monthly", target: "🎯 Personal & Office Addresses", details: ["Map out all NY & Indian top ICPs' personal & office addresses"] },
+              { title: "Courier Creative Brochure + $30 Gift", frequency: "Monthly (10 Gifts)", target: "🎯 Physical Gift Delivery", details: ["Courier creative brochure + gift worth $30"] },
+              { title: "Invite to Events + CTA to Book Demo", frequency: "Monthly", target: "🎯 Demo / Event Conversion", details: ["Include invitation to events + CTA to book a demo"] }
+            ]
+          },
+          {
+            name: "10.2 OOH",
+            owner: "Kailash, Ankita",
+            budget: "$500 / mo",
+            target: "🎯 Target Eyeball Placements",
+            activities: [
+              { title: "Map Out ICP's Eyeballs", frequency: "Monthly", target: "🎯 Location Mapping", details: ["Map out locations frequented by ICP decision makers"] },
+              { title: "Put Up Posters", frequency: "Monthly", target: "🎯 Poster Displays", details: ["Put up high-visibility posters"] }
+            ]
+          }
+        ]
+      },
+      {
+        id: 11,
+        category: "events",
+        name: "Channel 11: Foster Champions",
+        color: "var(--ch-11-color)",
+        budget: "Internal Resources",
+        owners: "Anju Team (Testimonials), Kailash + Team (Champions)",
+        summary: "Video testimonials and champion advocacy within client accounts.",
+        subchannels: [
+          {
+            name: "11.1 Testimonials",
+            owner: "Anju Team",
+            target: "🎯 Monthly 1 Video Testimonial",
+            activities: [
+              { title: "Get Testimonials as Video", frequency: "Monthly 1x", target: "🎯 1 Video Testimonial/mo", details: ["Get video testimonials monthly (1/mo)"] }
+            ]
+          },
+          {
+            name: "11.2 Champions",
+            owner: "Kailash + Team",
+            target: "🎯 2 Champions / Quarter",
+            activities: [
+              { title: "Make New Champions in PR & Internal Comms Teams", frequency: "Quarterly 2 Champions", target: "🎯 2 Champions/qtr", details: ["Make new champions out of PR team and internal communication teams in client accounts"] },
+              { title: "Spotlight with Older Champions", frequency: "Quarterly", target: "🎯 Webinar & Podcast Showcase", details: ["Spotlight, do podcast/webinar and showcase more with older champions"] }
+            ]
+          }
+        ]
+      },
+      {
+        id: 12,
+        category: "events",
+        name: "Channel 12: ABM",
+        color: "var(--ch-12-color)",
+        budget: "Internal / ABM Stack",
+        owners: "Kailash (SI), Partnership Team (GSI)",
+        summary: "Account-based outreach across Systems Integrators (> $500M ARR) and Global SIs.",
+        subchannels: [
+          {
+            name: "12.1 SI (> $500M ARR)",
+            owner: "Kailash",
+            target: "🎯 500 SIs Mapped by End of July",
+            activities: [
+              { title: "Map Out CXOs for Top 500 SIs", frequency: "By End of July", target: "🎯 500 Enterprise SIs", details: ["Map out all CXOs for top 500 SIs"] },
+              { title: "Build Context & Scrape Data per Account", frequency: "Ongoing", target: "🎯 Account Scraped Context", details: ["Build context and scrape data for each account"] },
+              { title: "Build Outbound Sequence with Semi-Personalization", frequency: "Ongoing", target: "🎯 Outbound Sequence", details: ["Build an outbound sequence with semi-personalization"] },
+              { title: "Add Demo / Prototype Links by Industry & Use Case", frequency: "Ongoing", target: "🎯 Tailored Demos", details: ["Add demo/prototype links based on industry/use case"] }
+            ]
+          },
+          {
+            name: "12.2 GSI",
+            owner: "Partnership Team",
+            target: "🎯 2 Top GSIs/mo • Accenture 100% Mapping by End of August",
+            activities: [
+              { title: "Map Out Region Leaders", frequency: "Monthly 2 GSIs", target: "🎯 Regional Practice Leaders", details: ["Map out region leaders across global accounts"] },
+              { title: "Map Out Industry Specific Leaders", frequency: "Monthly", target: "🎯 Industry Practice Leaders", details: ["Map out industry specific leaders"] },
+              { title: "Do Outbound with Personalization Touch", frequency: "Ongoing", target: "🎯 Personalized Outbound", details: ["Do outbound with personalization touch"] },
+              { title: "Add Demo / Prototype Links by Industry & Use Case", frequency: "Ongoing", target: "🎯 Custom Prototypes", details: ["Add demo/prototype links based on industry/use case"] }
+            ]
+          }
+        ]
+      }
+    ];
+
+    // DOM Elements
+    const channelListEl = document.getElementById('channelList');
+    const searchInput = document.getElementById('searchInput');
+    const filterButtons = document.querySelectorAll('.btn-filter[data-filter]');
+    const expandAllBtn = document.getElementById('expandAllBtn');
+    let currentFilter = 'all';
+    let isAllExpanded = false;
+
+    // Render Channels with Checklist Activity Component Design
+    function renderChannels() {
+      channelListEl.innerHTML = '';
+      const searchTerm = searchInput.value.toLowerCase().trim();
+
+      gtmChannels.forEach(ch => {
+        // Filter by category
+        if (currentFilter !== 'all' && ch.category !== currentFilter) return;
+
+        // Filter by search query
+        if (searchTerm) {
+          const matchName = ch.name.toLowerCase().includes(searchTerm);
+          const matchOwners = ch.owners.toLowerCase().includes(searchTerm);
+          const matchSub = ch.subchannels.some(s => 
+            s.name.toLowerCase().includes(searchTerm) || 
+            s.owner.toLowerCase().includes(searchTerm) ||
+            s.activities.some(a => a.title.toLowerCase().includes(searchTerm))
+          );
+          if (!matchName && !matchOwners && !matchSub) return;
+        }
+
+        // Create Channel Card Element
+        const card = document.createElement('div');
+        card.className = `channel-card ${isAllExpanded ? 'expanded' : ''}`;
+        card.style.setProperty('--ch-color', ch.color);
+
+        let subchannelsHtml = '';
+        ch.subchannels.forEach((sub, idx) => {
+          
+          // Render Activities as Checklist Cards
+          let activitiesHtml = sub.activities.map((act, aIdx) => {
+            let subpointsHtml = '';
+            if (act.details && act.details.length > 0) {
+              subpointsHtml = `
+                <ul class="activity-subpoints">
+                  ${act.details.map(pt => `
+                    <li class="subpoint-item">
+                      <span class="subpoint-bullet">↳</span>
+                      <span>${pt}</span>
+                    </li>
+                  `).join('')}
+                </ul>
+              `;
+            }
+
+            return `
+              <div class="activity-card">
+                <div class="activity-header-line">
+                  <input type="checkbox" class="activity-checkbox" id="chk-${ch.id}-${idx}-${aIdx}" />
+                  <label for="chk-${ch.id}-${idx}-${aIdx}" class="activity-title">${act.title}</label>
+                  
+                  ${act.frequency ? `<span class="freq-badge">⏱️ ${act.frequency}</span>` : ''}
+                  ${act.target ? `<span class="activity-kpi-bubble">${act.target}</span>` : ''}
+                </div>
+                ${subpointsHtml}
+              </div>
+            `;
+          }).join('');
+
+          let learningsHtml = '';
+          if (sub.learnings && sub.learnings.length > 0) {
+            learningsHtml = `
+              <div class="callout-box callout-learnings">
+                <div class="callout-title">💡 Past Experiments & Channel Learnings</div>
+                <ul style="list-style:none; display:flex; flex-direction:column; gap:4px;">
+                  ${sub.learnings.map(l => `<li>${l}</li>`).join('')}
+                </ul>
+              </div>
+            `;
+          }
+
+          subchannelsHtml += `
+            <div class="subchannel-card">
+              <div class="subchannel-top">
+                <div class="subchannel-name">${sub.name}</div>
+                <span class="owner-pill">Owner: ${sub.owner}</span>
+              </div>
+              
+              <!-- PROMINENT TARGET BUBBLE -->
+              ${sub.target ? `
+                <div class="subchannel-target-bubble">
+                  <span class="target-icon">🎯</span>
+                  <div class="target-text-box">
+                    <span class="target-title">Target & KPI Metric</span>
+                    <span class="target-val">${sub.target}</span>
+                  </div>
+                </div>
+              ` : ''}
+
+              <!-- CHECKLIST ACTIVITIES -->
+              <div class="activities-container">
+                <div class="activities-head">
+                  <span>Action Items & Execution Checklist</span>
+                  <span style="font-size:0.7rem; font-weight:600; text-transform:none; color:var(--palette-sage);">Interactive Checkbox</span>
+                </div>
+                <div class="activity-card-list">
+                  ${activitiesHtml}
+                </div>
+              </div>
+
+              ${learningsHtml}
+            </div>
+          `;
+        });
+
+        let resourceBtnHtml = '';
+        if (ch.resourceLink) {
+          resourceBtnHtml = `
+            <a href="${ch.resourceLink}" target="_blank" rel="noopener noreferrer" class="resource-btn">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
+              ${ch.resourceLabel || 'Open Linked Resource'}
+            </a>
+          `;
+        }
+
+        card.innerHTML = `
+          <div class="channel-header" onclick="toggleChannel(this)">
+            <div class="channel-info">
+              <div class="channel-badge-num">${ch.id}</div>
+              <div class="channel-title-box">
+                <div class="channel-name">${ch.name}</div>
+                <div class="channel-meta-pill">
+                  <span>👤 Owners: ${ch.owners}</span>
+                  <span>• ${ch.subchannels.length} Subchannel(s)</span>
+                </div>
+              </div>
+            </div>
+            <div class="channel-right">
+              <div class="channel-budget-tag">${ch.budget}</div>
+              <svg class="chevron-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+            </div>
+          </div>
+
+          <div class="channel-body">
+            <p style="margin-top:16px; font-size:0.9rem; color:var(--text-muted);">${ch.summary}</p>
+            ${resourceBtnHtml}
+            <div class="subchannel-grid">
+              ${subchannelsHtml}
+            </div>
+          </div>
+        `;
+
+        channelListEl.appendChild(card);
+      });
+
+      if (channelListEl.children.length === 0) {
+        channelListEl.innerHTML = `
+          <div style="text-align:center; padding:40px; background:#fff; border-radius:12px; color:var(--text-muted);">
+            No matching channels found for your search/filter query.
+          </div>
+        `;
+      }
+    }
+
+    // Toggle Single Channel Accordion
+    function toggleChannel(headerEl) {
+      const card = headerEl.parentElement;
+      card.classList.toggle('expanded');
+    }
+
+    // Filter Buttons Event Listener
+    filterButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        renderChannels();
+      });
+    });
+
+    // Search Input Listener
+    searchInput.addEventListener('input', renderChannels);
+
+    // Expand / Collapse All Toggle
+    expandAllBtn.addEventListener('click', () => {
+      isAllExpanded = !isAllExpanded;
+      expandAllBtn.textContent = isAllExpanded ? 'Collapse All' : 'Expand All';
+      renderChannels();
+    });
+
+    // Initialize Page
+    renderChannels();
+  </script>
+</body>
+</html>

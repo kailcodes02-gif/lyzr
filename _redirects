@@ -7,3 +7,8 @@
 /GSI_Communities    /GSI%20Communities/index.html  200
 /GSI_Communities/   /GSI%20Communities/index.html  200
 /GSI_Communities/*  /GSI%20Communities/:splat      200
+
+# Rewrite /GSI_GTM_2 -> serve from /GSI_GTM_2/index.html
+/GSI_GTM_2  /GSI_GTM_2/index.html  200
+/GSI_GTM_2/ /GSI_GTM_2/index.html  200
+/GSI_GTM_2/* /GSI_GTM_2/:splat     200
