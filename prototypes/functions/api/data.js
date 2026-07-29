@@ -53,7 +53,10 @@ export async function onRequestGet(context) {
         { status: 502, headers: corsHeaders }
       );
     }
-    const content = atob(meta.content.replace(/\n/g, ''));
+    // Decode base64 as UTF-8 (atob alone yields Latin-1 and mangles multi-byte chars).
+    const content = new TextDecoder().decode(
+      Uint8Array.from(atob(meta.content.replace(/\n/g, '')), (c) => c.charCodeAt(0))
+    );
     const data = JSON.parse(content);
 
     return new Response(JSON.stringify(data), {

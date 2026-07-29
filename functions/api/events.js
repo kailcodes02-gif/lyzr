@@ -78,7 +78,11 @@ async function ghGet(env) {
   });
   if (!res.ok) throw Object.assign(new Error(`GitHub GET ${res.status}`), { status: res.status });
   const meta = await res.json();
-  const content = atob(meta.content.replace(/\n/g, ''));
+  // Decode base64 as UTF-8 (atob alone yields Latin-1 and mangles multi-byte
+  // chars, which the UTF-8 encode in ghPut then compounds on every save).
+  const content = new TextDecoder().decode(
+    Uint8Array.from(atob(meta.content.replace(/\n/g, '')), (c) => c.charCodeAt(0))
+  );
   return { data: JSON.parse(content), sha: meta.sha };
 }
 
