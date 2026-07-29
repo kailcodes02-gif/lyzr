@@ -1,5 +1,5 @@
 // =============================================================================
-// Cloudflare Pages Function: PUT /api/rows/[id]
+// Cloudflare Pages Function: PUT /api/rows/[id] + DELETE /api/rows/[id]
 // =============================================================================
 // Edits an existing row in data.json by:
 //  1. Verifying @lyzr.ai Google OAuth token
@@ -10,6 +10,8 @@
 // =============================================================================
 
 const ALLOWED_SEGMENTS = ['Internal', 'Accenture', 'GSI-SI', 'Enterprises'];
+// Only these accounts may DELETE rows. Add/edit stays open to all @lyzr.ai.
+const DELETE_ALLOWED_EMAILS = ['kailash.gm@lyzr.ai', 'monisha.anandaraj@lyzr.ai'];
 // Sentinel returned by a mutate() callback to tell commitWithRetry to skip the
 // commit entirely (e.g. the target row was not found).
 const ABORT_COMMIT = Symbol('ABORT_COMMIT');
@@ -300,11 +302,58 @@ export async function onRequestPut(context) {
   }
 }
 
+export async function onRequestDelete(context) {
+  const { request, env, params } = context;
+  const rowId = params.id;
+
+  if (!rowId) return json({ error: 'Missing row ID in URL' }, 400);
+
+  // Auth
+  const authHeader = request.headers.get('Authorization') || '';
+  if (!authHeader.startsWith('Bearer ')) {
+    return json({ error: 'Missing Authorization header' }, 401);
+  }
+  const token = authHeader.slice(7);
+  const user = await verifyGoogleToken(token);
+  if (!user) {
+    return json({ error: 'Invalid token or not a @lyzr.ai account' }, 403);
+  }
+  if (!DELETE_ALLOWED_EMAILS.includes((user.email || '').toLowerCase())) {
+    return json({ error: 'Your account is not authorized to delete prototypes' }, 403);
+  }
+
+  if (!env.GITHUB_OWNER || !env.GITHUB_REPO || !env.GITHUB_TOKEN || !env.GITHUB_PATH) {
+    return json({ error: 'GitHub environment variables not configured' }, 503);
+  }
+
+  try {
+    const result = await commitWithRetry(
+      env,
+      (data) => {
+        const rowIndex = data.rows.findIndex((r) => r.id === rowId);
+        if (rowIndex === -1) return ABORT_COMMIT;
+        const [removed] = data.rows.splice(rowIndex, 1);
+        recomputeAggregates(data);
+        return removed;
+      },
+      (removed) => `data: delete "${(removed && removed.project) || rowId}" [${rowId}] by ${user.email}`
+    );
+
+    if (result === ABORT_COMMIT) {
+      return json({ error: `Row ${rowId} not found` }, 404);
+    }
+    return json({ success: true, deleted: result }, 200);
+  } catch (err) {
+    console.error('DELETE /api/rows/[id] error:', err);
+    return json({ error: err.message || 'Internal error' }, 500);
+  }
+}
+
 export async function onRequestOptions() {
   return new Response(null, {
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'PUT, OPTIONS',
+      'Access-Control-Allow-Methods': 'PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   });

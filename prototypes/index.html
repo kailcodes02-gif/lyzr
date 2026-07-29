@@ -243,6 +243,7 @@
         </div>
       </div>
       <div class="modal-footer">
+        <button class="btn-secondary hidden" id="btn-form-delete" style="margin-right:auto; border-color:#e5484d; color:#e5484d;">Delete</button>
         <button class="btn-secondary" id="btn-form-cancel">Cancel</button>
         <button class="btn-primary" style="margin-top:0;" id="btn-form-save">Save Changes</button>
       </div>
@@ -731,6 +732,13 @@
     // ============================================================
     let editMode = false;
     let currentEditId = null;
+
+    // Only these accounts see the Delete button; the server enforces the same
+    // allowlist, so hiding it here is convenience, not security.
+    const DELETE_ALLOWED_EMAILS = ['kailash.gm@lyzr.ai', 'monisha.anandaraj@lyzr.ai'];
+    function canDelete() {
+      return !!(user && user.email && DELETE_ALLOWED_EMAILS.includes(user.email.toLowerCase()));
+    }
     let confirmYesCallback = null;
     let confirmNoCallback = null;
 
@@ -771,6 +779,14 @@
           if (protoForm.reportValidity()) {
             handleSaveFormClick();
           }
+        });
+      }
+
+      const formDeleteBtn = document.getElementById('btn-form-delete');
+      if (formDeleteBtn) {
+        formDeleteBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          handleDeleteClick();
         });
       }
 
@@ -949,6 +965,7 @@
 
           // Pre-fill form (only technical fields)
           document.getElementById('form-modal-title').textContent = "Edit Prototype";
+          document.getElementById('btn-form-delete').classList.toggle('hidden', !canDelete());
           document.getElementById('form-project').value = row.project || "";
           document.getElementById('form-company').value = row.company || "";
           document.getElementById('form-segment').value = row.segment || "Internal";
@@ -996,6 +1013,7 @@
 
       // Clear form
       document.getElementById('form-modal-title').textContent = "Add New Prototype";
+      document.getElementById('btn-form-delete').classList.add('hidden');
       document.getElementById('proto-form').reset();
 
       // Show business-only fields and restore required attribute to stage
@@ -1097,6 +1115,46 @@
 
     function closeFormModal() {
       document.getElementById('form-modal').classList.add('hidden');
+    }
+
+    // --- Delete Flow (allowlisted accounts only; server enforces too) ---
+    function handleDeleteClick() {
+      if (!editMode || !currentEditId) return;
+      const row = allRows.find(r => r.id === currentEditId);
+      const label = row ? row.project : currentEditId;
+
+      showConfirmation(
+        "Delete Prototype?",
+        `This will permanently remove "${label}" [${currentEditId}] from the tracker. Are you sure?`,
+        async () => {
+          const deleteBtn = document.getElementById('btn-form-delete');
+          const originalText = deleteBtn.textContent;
+          deleteBtn.disabled = true;
+          deleteBtn.textContent = "Deleting...";
+
+          try {
+            const response = await fetch(`/api/rows/${currentEditId}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+
+            if (!response.ok) {
+              const errJson = await response.json().catch(() => ({}));
+              throw new Error(errJson.error || `HTTP ${response.status}`);
+            }
+
+            closeFormModal();
+            showSuccess("Prototype Deleted", `"${label}" has been removed from the tracker.`);
+            await loadData();
+          } catch (err) {
+            console.error('Delete failed:', err);
+            alert(`Failed to delete: ${err.message}`);
+          } finally {
+            deleteBtn.disabled = false;
+            deleteBtn.textContent = originalText;
+          }
+        }
+      );
     }
 
     function showConfirmation(title, message, onYes, onNo) {
