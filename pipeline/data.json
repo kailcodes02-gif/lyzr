@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-29T07:33:05.280Z",
+  "generated_at": "2026-07-29T08:06:12.487Z",
   "source_file": "tracker.xlsx",
   "rows": [
     {
@@ -7974,40 +7974,17 @@
       "created_by": "Aravind D",
       "created_at": "2026-07-28T17:08:33.398Z",
       "edit_history": []
-    },
-    {
-      "id": "INT-0358",
-      "segment": "Internal",
-      "sn": 185,
-      "company": "test",
-      "industry": null,
-      "project": "test",
-      "use_case": "test",
-      "category": null,
-      "stage": "Demo",
-      "prototype_owners": [],
-      "opportunity_owners": [],
-      "prototype_link": "https://cfo-office.lyzr.app/",
-      "prototype_link_text": "https://cfo-office.lyzr.app/",
-      "acv": null,
-      "acv_raw": null,
-      "time_period": null,
-      "close_date_raw": null,
-      "close_quarter": null,
-      "created_by": "Kailash G M",
-      "created_at": "2026-07-29T07:33:05.280Z",
-      "edit_history": []
     }
   ],
   "aggregates": {
-    "total_rows": 358,
+    "total_rows": 357,
     "total_acv": 37894000,
     "acv_open": 30906000,
     "acv_won": 3630000,
     "acv_lost": 3358000,
-    "unique_companies": 207,
+    "unique_companies": 206,
     "by_stage": {
-      "Demo": 64,
+      "Demo": 63,
       "in-conversation": 214,
       "win": 13,
       "customer": 29,
@@ -8015,10 +7992,10 @@
     },
     "by_segment": {
       "Internal": {
-        "count": 10,
+        "count": 9,
         "acv": 0,
         "stages": {
-          "Demo": 10
+          "Demo": 9
         }
       },
       "Accenture": {
@@ -9200,11 +9177,6 @@
       },
       {
         "company": "Tenshi Group",
-        "deals": 1,
-        "acv": 0
-      },
-      {
-        "company": "test",
         "deals": 1,
         "acv": 0
       }
