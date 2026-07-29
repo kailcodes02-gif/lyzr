@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-29T12:27:23.959Z",
+  "generated_at": "2026-07-29T12:30:32.304Z",
   "source_file": "tracker.xlsx",
   "rows": [
     {
@@ -8002,17 +8002,45 @@
       "created_by": "Aravind D",
       "created_at": "2026-07-29T12:27:23.959Z",
       "edit_history": []
+    },
+    {
+      "id": "ENT-0359",
+      "segment": "Enterprises",
+      "sn": 186,
+      "company": "CohnReznick",
+      "industry": "Finance",
+      "project": "Financial Services Agent v2",
+      "use_case": "AI Powered trial balance sheets analyzer with anomaly detection, driver analysis, follow-up question generation",
+      "category": "RPT Prototype",
+      "stage": "Demo",
+      "prototype_owners": [
+        "Monisha",
+        "Aravind"
+      ],
+      "opportunity_owners": [
+        "Pooja"
+      ],
+      "prototype_link": "https://financial-service-agent.rapid.studio.lyzr.ai/",
+      "prototype_link_text": "https://financial-service-agent.rapid.studio.lyzr.ai/",
+      "acv": 120000,
+      "acv_raw": "120000",
+      "time_period": null,
+      "close_date_raw": null,
+      "close_quarter": null,
+      "created_by": "Aravind D",
+      "created_at": "2026-07-29T12:30:32.304Z",
+      "edit_history": []
     }
   ],
   "aggregates": {
-    "total_rows": 358,
-    "total_acv": 38144000,
-    "acv_open": 31156000,
+    "total_rows": 359,
+    "total_acv": 38264000,
+    "acv_open": 31276000,
     "acv_won": 3630000,
     "acv_lost": 3358000,
     "unique_companies": 206,
     "by_stage": {
-      "Demo": 64,
+      "Demo": 65,
       "in-conversation": 214,
       "win": 13,
       "customer": 29,
@@ -8049,11 +8077,11 @@
         }
       },
       "Enterprises": {
-        "count": 181,
-        "acv": 18629000,
+        "count": 182,
+        "acv": 18749000,
         "stages": {
           "lost": 31,
-          "Demo": 40,
+          "Demo": 41,
           "in-conversation": 83,
           "win": 7,
           "customer": 20
@@ -8139,6 +8167,11 @@
       {
         "name": "Joel",
         "deals": 3,
+        "acv": 120000
+      },
+      {
+        "name": "Pooja",
+        "deals": 1,
         "acv": 120000
       },
       {
@@ -8474,6 +8507,11 @@
         "acv": 250000
       },
       {
+        "company": "CohnReznick",
+        "deals": 2,
+        "acv": 240000
+      },
+      {
         "company": "KPMG",
         "deals": 4,
         "acv": 200000
@@ -8540,11 +8578,6 @@
       },
       {
         "company": "Hunt Military Company",
-        "deals": 1,
-        "acv": 120000
-      },
-      {
-        "company": "CohnReznick",
         "deals": 1,
         "acv": 120000
       },
