@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-29T08:06:12.487Z",
+  "generated_at": "2026-07-29T12:27:23.959Z",
   "source_file": "tracker.xlsx",
   "rows": [
     {
@@ -7974,17 +7974,45 @@
       "created_by": "Aravind D",
       "created_at": "2026-07-28T17:08:33.398Z",
       "edit_history": []
+    },
+    {
+      "id": "ENT-0358",
+      "segment": "Enterprises",
+      "sn": 185,
+      "company": "Live Nation",
+      "industry": "Event Management",
+      "project": "Event Planning App v2",
+      "use_case": "Centralized AI workspace for tour planning, venue analysis, and approvals.",
+      "category": "RPT Prototype",
+      "stage": "Demo",
+      "prototype_owners": [
+        "Monisha",
+        "Aravind"
+      ],
+      "opportunity_owners": [
+        "Jesse"
+      ],
+      "prototype_link": "https://event-planning.rapid.studio.lyzr.ai/",
+      "prototype_link_text": "https://event-planning.rapid.studio.lyzr.ai/",
+      "acv": 250000,
+      "acv_raw": "250000",
+      "time_period": null,
+      "close_date_raw": null,
+      "close_quarter": null,
+      "created_by": "Aravind D",
+      "created_at": "2026-07-29T12:27:23.959Z",
+      "edit_history": []
     }
   ],
   "aggregates": {
-    "total_rows": 357,
-    "total_acv": 37894000,
-    "acv_open": 30906000,
+    "total_rows": 358,
+    "total_acv": 38144000,
+    "acv_open": 31156000,
     "acv_won": 3630000,
     "acv_lost": 3358000,
     "unique_companies": 206,
     "by_stage": {
-      "Demo": 63,
+      "Demo": 64,
       "in-conversation": 214,
       "win": 13,
       "customer": 29,
@@ -8021,11 +8049,11 @@
         }
       },
       "Enterprises": {
-        "count": 180,
-        "acv": 18379000,
+        "count": 181,
+        "acv": 18629000,
         "stages": {
           "lost": 31,
-          "Demo": 39,
+          "Demo": 40,
           "in-conversation": 83,
           "win": 7,
           "customer": 20
@@ -8070,8 +8098,8 @@
       },
       {
         "name": "Jesse",
-        "deals": 3,
-        "acv": 1370000
+        "deals": 4,
+        "acv": 1620000
       },
       {
         "name": "Siva",
@@ -8186,14 +8214,14 @@
         "acv": 750000
       },
       {
+        "company": "Live Nation",
+        "deals": 3,
+        "acv": 750000
+      },
+      {
         "company": "Publicis",
         "deals": 7,
         "acv": 620000
-      },
-      {
-        "company": "Live Nation",
-        "deals": 2,
-        "acv": 500000
       },
       {
         "company": "Avanade",
