@@ -1,7 +1,6 @@
-'use server'
-
-import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
+// Client-side data operations: every function talks to Supabase directly
+// from the browser; RLS in the database is the security boundary.
+import { createClient } from '@/lib/supabase/client'
 import type { TaskStatus, TaskPriority, AssignmentRole, BudgetScopeType, BudgetPeriodType } from '@/lib/types/database'
 import { format } from 'date-fns'
 import { advanceByPattern, normalizeEmail, incompleteBlockers } from '@/lib/task-logic'
@@ -941,7 +940,6 @@ export async function upsertChannelField(data: {
   }
 
   if (error) throw error
-  revalidatePath('/admin')
 }
 
 export async function deleteChannelField(fieldId: string) {
@@ -964,7 +962,6 @@ export async function deleteChannelField(fieldId: string) {
     .eq('id', fieldId)
 
   if (error) throw error
-  revalidatePath('/admin')
 }
 
 export async function disconnectHubSpot() {
@@ -978,7 +975,6 @@ export async function disconnectHubSpot() {
     .neq('id', '00000000-0000-0000-0000-000000000000') // delete all
 
   if (error) throw error
-  revalidatePath('/admin')
 }
 
 export async function createCategory(data: { name: string; icon?: string; sort_order?: number }) {
@@ -1012,7 +1008,6 @@ export async function createCategory(data: { name: string; icon?: string; sort_o
     })
 
   if (error) throw error
-  revalidatePath('/admin')
 }
 
 export async function updateCategory(data: { id: string; name: string; icon?: string; sort_order?: number; is_active?: boolean }) {
@@ -1040,7 +1035,6 @@ export async function updateCategory(data: { id: string; name: string; icon?: st
     .eq('id', data.id)
 
   if (error) throw error
-  revalidatePath('/admin')
 }
 
 export async function createChannel(data: { category_id: string; parent_channel_id?: string | null; name: string; sort_order?: number }) {
@@ -1081,7 +1075,6 @@ export async function createChannel(data: { category_id: string; parent_channel_
     })
 
   if (error) throw error
-  revalidatePath('/admin')
 }
 
 export async function updateChannel(data: { id: string; name: string; parent_channel_id?: string | null; sort_order?: number; is_active?: boolean }) {
@@ -1109,7 +1102,6 @@ export async function updateChannel(data: { id: string; name: string; parent_cha
     .eq('id', data.id)
 
   if (error) throw error
-  revalidatePath('/admin')
 }
 
 // ============ INVITES ============
@@ -1159,7 +1151,8 @@ export async function inviteUser(email: string) {
   if (inviteErr) throw inviteErr
 
   // Send the email (no-op + console-log if RESEND_API_KEY not set).
-  const { sendInviteEmail } = await import('@/lib/email/resend')
+  // Static build has no email server; invites resolve on first sign-in regardless.
+  const sendInviteEmail = async (..._args: unknown[]) => { console.log('[invite email skipped - no server]'); return { sent: false, error: null as string | null } }
   const appUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
   const result = await sendInviteEmail({
     to: normalized,
@@ -1174,8 +1167,6 @@ export async function inviteUser(email: string) {
       email_send_error: result.error || (result.sent ? null : 'Email provider not configured'),
     })
     .eq('id', invite.id)
-
-  revalidatePath('/admin')
   return { invite, emailResult: result }
 }
 
@@ -1199,7 +1190,6 @@ export async function cancelInvite(inviteId: string) {
     .eq('id', inviteId)
     .is('resolved_user_id', null)
   if (error) throw error
-  revalidatePath('/admin')
 }
 
 // ============ ASSIGN BY EMAIL ============
@@ -1237,7 +1227,6 @@ export async function assignTaskByEmail(args: {
         { onConflict: 'task_id,user_id' }
       )
     if (error) throw error
-    revalidatePath('/')
     return { mode: 'assigned' as const, user_id: existing.id }
   }
 

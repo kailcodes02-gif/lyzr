@@ -146,7 +146,7 @@ export default function OwnersPage() {
             return (
               <Link
                 key={user.id}
-                href={`/owners/${encodeURIComponent(user.email)}`}
+                href={`/owners/view/?email=${encodeURIComponent(user.email)}`}
                 className="group"
               >
                 <Card className="bg-white border-zinc-200 hover:border-zinc-300 hover:bg-white transition-all backdrop-blur-xl h-full">
@@ -210,7 +210,7 @@ export default function OwnersPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {pendingOwners.map(p => (
-              <Link key={p.email} href={`/owners/${encodeURIComponent(p.email)}`} className="group">
+              <Link key={p.email} href={`/owners/view/?email=${encodeURIComponent(p.email)}`} className="group">
               <Card className="bg-white border-zinc-200 border-dashed backdrop-blur-xl h-full group-hover:border-zinc-300 transition-all">
                 <CardContent className="p-5 space-y-3">
                   <div className="flex items-center gap-3">
@@ -290,7 +290,7 @@ function UnassignedTasksSection({ tasks }: { tasks?: import('@/lib/types/databas
       <Card className="bg-white border-zinc-200">
         <CardContent className="p-0 divide-y divide-zinc-200">
           {unassigned.map(t => (
-            <Link key={t.id} href={`/channel/${t.channel_id}`}
+            <Link key={t.id} href={`/channel/?id=${t.channel_id}`}
               className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-zinc-50 transition-colors">
               <div className="min-w-0">
                 <p className="text-sm text-zinc-800 truncate">{t.title}</p>

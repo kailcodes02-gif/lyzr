@@ -6,7 +6,11 @@
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": ".open-next/assets",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    // Auth lives in Next middleware — the Worker must see every request
+    // BEFORE static assets are served, or prerendered pages (like the
+    // dashboard shell) bypass the login redirect entirely.
+    "run_worker_first": true
   },
   // Path-mount on the static site's domain: everything under /GSI_Tracker
   // hits this Worker; all other paths keep hitting the Pages project.

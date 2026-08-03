@@ -11,7 +11,7 @@ export default function MyCalendarShortcut() {
   useEffect(() => {
     if (isLoading) return
     if (user?.email) {
-      router.replace(`/owners/${encodeURIComponent(user.email)}?tab=calendar`)
+      router.replace(`/owners/view/?email=${encodeURIComponent(user.email)}&tab=calendar`)
     } else {
       router.replace('/calendar')
     }

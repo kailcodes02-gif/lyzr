@@ -5,6 +5,12 @@ import type { NextConfig } from "next";
 const BASE_PATH = "/GSI_Tracker";
 
 const nextConfig: NextConfig = {
+  // Pure static export: no server anywhere — the browser talks straight to
+  // Supabase (RLS is the security boundary) and the files ship on the
+  // existing Cloudflare Pages site under /GSI_Tracker.
+  output: "export",
+  trailingSlash: true,
+  images: { unoptimized: true },
   basePath: BASE_PATH,
   env: {
     // For client code that must build absolute URLs (OAuth redirects)

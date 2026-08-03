@@ -25,13 +25,13 @@ function ChannelItem({ channel, depth }: { channel: Channel; depth: number }) {
   const pathname = usePathname()
   const [expanded, setExpanded] = useState(false)
   const hasChildren = channel.children && channel.children.length > 0
-  const isActive = pathname === `/channel/${channel.id}`
+  const isActive = pathname === `/channel/?id=${channel.id}`
 
   return (
     <div>
       <div className="flex items-center">
         <Link
-          href={`/channel/${channel.id}`}
+          href={`/channel/?id=${channel.id}`}
           className={cn(
             'flex-1 flex items-center gap-2 px-3 py-1.5 rounded-md text-[13px] transition-all duration-150',
             isActive
