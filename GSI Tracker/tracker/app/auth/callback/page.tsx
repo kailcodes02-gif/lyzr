@@ -14,18 +14,12 @@ function CallbackContent() {
   useEffect(() => {
     if (ran.current) return
     ran.current = true
-    const code = searchParams.get('code')
     const supabase = createClient()
 
+    // createBrowserClient auto-detects the ?code and performs the PKCE
+    // exchange during initialization; getSession() awaits that, so by the
+    // time it resolves the session either exists or the exchange failed.
     const finish = async () => {
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-        if (!error) {
-          router.replace('/')
-          return
-        }
-      }
-      // Already-established session (detectSessionInUrl may have consumed it)
       const { data: { session } } = await supabase.auth.getSession()
       router.replace(session ? '/' : '/login?error=auth_failed')
     }

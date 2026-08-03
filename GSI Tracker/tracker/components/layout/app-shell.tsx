@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import {
   Calendar,
@@ -23,9 +23,10 @@ import { TIER_CONFIG, type Channel } from '@/lib/types/database'
 
 function ChannelItem({ channel, depth }: { channel: Channel; depth: number }) {
   const pathname = usePathname()
+  const activeId = useSearchParams().get('id')
   const [expanded, setExpanded] = useState(false)
   const hasChildren = channel.children && channel.children.length > 0
-  const isActive = pathname === `/channel/?id=${channel.id}`
+  const isActive = pathname.replace(/\/$/, '') === '/channel' && activeId === channel.id
 
   return (
     <div>
@@ -116,7 +117,8 @@ export function AppSidebar() {
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
         <div className="space-y-1">
           {navItems.map(item => {
-            const isActive = pathname === item.href
+            // trailingSlash builds serve /my-tasks/ etc.; normalize for compare
+            const isActive = (pathname.replace(/\/$/, '') || '/') === item.href
             return (
               <Link
                 key={item.href}

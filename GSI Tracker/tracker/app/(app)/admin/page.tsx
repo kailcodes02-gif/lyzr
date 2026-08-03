@@ -380,23 +380,8 @@ export default function AdminPage() {
 
   // HubSpot Handlers
   const handleSyncHubSpot = async () => {
-    setIsSyncing(true)
-    const toastId = toast.loading('Syncing contacts from HubSpot...')
-    try {
-      const res = await fetch('/api/cron/hubspot-sync?bypass=true')
-      const data = await res.json()
-      if (data.success) {
-        toast.success(data.message, { id: toastId })
-        queryClient.invalidateQueries({ queryKey: ['hubspotConnection'] })
-      } else {
-        toast.error(data.error || 'Failed to sync HubSpot', { id: toastId })
-      }
-    } catch (err: any) {
-      console.error('HubSpot sync failed:', err)
-      toast.error(`Error: ${err.message}`, { id: toastId })
-    } finally {
-      setIsSyncing(false)
-    }
+    // Static build has no sync server; the OAuth/sync backend was removed.
+    toast.info('HubSpot sync needs the server edition — not available in this static deployment.')
   }
 
   const handleDisconnectHubSpot = () => {
@@ -1417,12 +1402,12 @@ export default function AdminPage() {
 
                     <div className="flex flex-wrap gap-2">
                       <Button
-                        disabled={isSyncing}
-                        onClick={handleSyncHubSpot}
-                        className="bg-blue-600 hover:bg-blue-500 text-white text-xs h-9"
+                        disabled
+                        title="Not available in the static deployment (no sync server)"
+                        className="bg-zinc-300 text-zinc-600 text-xs h-9 cursor-not-allowed"
                       >
-                        <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-                        Sync Contacts Now
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Sync unavailable (no server)
                       </Button>
                       <Button
                         variant="outline"
@@ -1459,43 +1444,13 @@ export default function AdminPage() {
               ) : (
                 // Setup / Link View
                 <div className="space-y-6">
-                  <div className="p-4 rounded-xl border border-zinc-300 bg-zinc-100/50 space-y-4">
-                    <h4 className="font-semibold text-zinc-900 text-sm">HubSpot Public App Integration Steps:</h4>
-                    <ol className="list-decimal pl-5 text-xs text-zinc-600 space-y-2">
-                      <li>
-                        Log in to your HubSpot Developer Account and go to <span className="font-semibold text-zinc-800">Apps</span> &gt; <span className="font-semibold text-zinc-800">Create public app</span>.
-                      </li>
-                      <li>
-                        Under Auth settings, add the redirect URI:
-                        <div className="bg-zinc-100 p-2 rounded border border-zinc-200 mt-1 font-mono text-[10px] text-blue-700 select-all">
-                          {typeof window !== 'undefined' ? `${window.location.origin}/api/auth/hubspot/callback` : 'http://localhost:3000/api/auth/hubspot/callback'}
-                        </div>
-                      </li>
-                      <li>
-                        Under Scopes, enable:
-                        <div className="flex gap-2 mt-1.5">
-                          <Badge variant="outline" className="border-zinc-300 text-zinc-700 text-[10px]">crm.objects.contacts.read</Badge>
-                          <Badge variant="outline" className="border-zinc-300 text-zinc-700 text-[10px]">oauth</Badge>
-                        </div>
-                      </li>
-                      <li>
-                        Populate your local environment file (<span className="font-mono text-zinc-700">.env.local</span>) with the Credentials from the HubSpot App settings:
-                        <pre className="bg-zinc-100 p-2 rounded border border-zinc-200 mt-1 font-mono text-[10px] text-zinc-700">
-{`HUBSPOT_CLIENT_ID=your-client-id
-HUBSPOT_CLIENT_SECRET=your-client-secret
-ENCRYPTION_SECRET=your-32-character-secret-key`}
-                        </pre>
-                      </li>
-                    </ol>
-                  </div>
-
-                  <div className="flex justify-start">
-                    <a
-                      href="/api/auth/hubspot"
-                      className="inline-flex items-center justify-center rounded-md text-xs font-semibold bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white h-10 px-5 transition-all shadow-md hover:shadow-lg"
-                    >
-                      <Link2 className="w-4 h-4 mr-2" /> Connect HubSpot Portal
-                    </a>
+                  <div className="p-4 rounded-xl border border-zinc-300 bg-zinc-100/50 space-y-2">
+                    <h4 className="font-semibold text-zinc-900 text-sm">HubSpot integration is not available in this deployment</h4>
+                    <p className="text-xs text-zinc-600 leading-relaxed">
+                      The tracker runs as a fully static app (no backend server), and connecting a
+                      HubSpot portal requires a server to hold the OAuth secrets. If the team wants
+                      HubSpot contact sync later, the tracker can be redeployed on a small server plan.
+                    </p>
                   </div>
                 </div>
               )}

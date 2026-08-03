@@ -1,19 +1,27 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { useSearchParams } from 'next/navigation'
-import { Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useEffect } from 'react'
 
 function LoginContent() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
+  const router = useRouter()
+
+  // Already signed in? Straight to the app.
+  useEffect(() => {
+    createClient().auth.getSession().then(({ data: { session } }) => {
+      if (session) router.replace('/')
+    })
+  }, [router])
 
   const handleGoogleLogin = async () => {
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH || ''}/auth/callback`,
+        redirectTo: `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH || ''}/auth/callback/`,
         queryParams: {
           hd: 'lyzr.ai',
           prompt: 'select_account',

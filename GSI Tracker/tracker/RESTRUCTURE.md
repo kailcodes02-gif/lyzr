@@ -49,10 +49,27 @@ Google sign-in (trigger in migration 010).
 migration: `node scripts/build-reset-sql.mjs`.
 Migration 006 (old-taxonomy channel_fields seed) is intentionally excluded.
 
-## Deployment (still to decide)
+## Deployment (static architecture, $0 — current as of Aug 3 2026)
 
-The app remains local-only. For multi-owner use it needs hosting (Vercel
-recommended: free tier, native Next.js, cron support for
-`/api/cron/weekly-snapshot` and `/api/cron/hubspot-sync` with `CRON_SECRET`).
-The Google OAuth redirect URL and `NEXT_PUBLIC_SITE_URL` must be updated for
-the deployed domain.
+The tracker is a pure static export served by the existing Cloudflare Pages
+site at https://lyzr.kailash-gm.com/GSI_Tracker/. There is NO server: the
+browser talks to Supabase directly and RLS enforces permissions.
+
+To ship a change:
+```bash
+cd "GSI Tracker/tracker"
+NEXT_PUBLIC_SITE_URL=https://lyzr.kailash-gm.com/GSI_Tracker npm run build
+rm -rf ../../GSI_Tracker && cp -R out ../../GSI_Tracker
+cd ../.. && git add GSI_Tracker "GSI Tracker" && git commit -m "deploy tracker" && git push
+```
+Pages redeploys automatically in ~2 minutes.
+
+Notes:
+- Local dev: http://localhost:3000/GSI_Tracker (npm run dev). The old
+  /api/dev-login bypass is gone — sign in with Google (localhost callback must
+  be in Supabase's redirect allowlist).
+- Supabase Auth → URL Configuration must contain:
+  Site URL  https://lyzr.kailash-gm.com/GSI_Tracker
+  Redirects https://lyzr.kailash-gm.com/GSI_Tracker/auth/callback/
+            http://localhost:3000/GSI_Tracker/auth/callback/
+- Do not recreate the Cloudflare Worker; it was removed intentionally.
