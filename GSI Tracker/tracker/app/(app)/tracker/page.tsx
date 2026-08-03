@@ -326,12 +326,12 @@ export default function TrackerPage() {
   }
 
   return (
-    <div className="p-4 lg:p-8 space-y-6 bg-[#0a0a0f] text-zinc-100 min-h-screen">
+    <div className="p-4 lg:p-8 space-y-6 bg-zinc-50 text-zinc-900 min-h-screen">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="pl-12 lg:pl-0">
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Activity className="w-6 h-6 text-violet-400" /> Global Tracker
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
+            <Activity className="w-6 h-6 text-violet-600" /> Global Tracker
           </h1>
           <p className="text-sm text-zinc-500 mt-1">
             All live, completed, and cancelled campaigns across every category
@@ -341,7 +341,7 @@ export default function TrackerPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => refetch()}
-            className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors text-zinc-300"
+            className="p-2 bg-zinc-100 border border-zinc-300 rounded-lg hover:bg-zinc-200/70 transition-colors text-zinc-700"
             aria-label="Refresh"
           >
             <RefreshCw className="w-4 h-4" />
@@ -357,7 +357,7 @@ export default function TrackerPage() {
 
       {/* Saved Views Bar */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2 text-zinc-400 text-xs font-medium uppercase tracking-wider mr-1">
+        <div className="flex items-center gap-2 text-zinc-600 text-xs font-medium uppercase tracking-wider mr-1">
           <Bookmark className="w-3.5 h-3.5" />
           Saved Views
         </div>
@@ -365,7 +365,7 @@ export default function TrackerPage() {
         <select
           value={activeViewId}
           onChange={e => handleLoadView(e.target.value)}
-          className="bg-[#12121a] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-violet-500 min-w-[180px]"
+          className="bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-violet-500 min-w-[180px]"
         >
           <option value="">
             {savedViews && savedViews.length > 0 ? 'Load a saved view…' : 'No saved views yet'}
@@ -379,7 +379,7 @@ export default function TrackerPage() {
           onClick={handleSaveView}
           disabled={isSavingView}
           variant="outline"
-          className="border-white/10 bg-[#12121a] text-zinc-300 hover:bg-white/10 text-xs"
+          className="border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-200/70 text-xs"
         >
           <Save className="w-3.5 h-3.5 mr-1.5" /> Save current
         </Button>
@@ -388,7 +388,7 @@ export default function TrackerPage() {
           <Button
             onClick={handleDeleteView}
             variant="ghost"
-            className="text-zinc-500 hover:text-red-400 text-xs"
+            className="text-zinc-500 hover:text-red-600 text-xs"
             aria-label="Delete saved view"
           >
             <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Delete
@@ -397,8 +397,8 @@ export default function TrackerPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white/5 border border-white/10 rounded-xl p-3 sm:p-4 flex flex-wrap gap-3 sm:gap-4 items-end">
-        <div className="flex items-center gap-2 text-zinc-400 text-xs font-medium uppercase tracking-wider self-center mr-2">
+      <div className="bg-zinc-100 border border-zinc-300 rounded-xl p-3 sm:p-4 flex flex-wrap gap-3 sm:gap-4 items-end">
+        <div className="flex items-center gap-2 text-zinc-600 text-xs font-medium uppercase tracking-wider self-center mr-2">
           <Filter className="w-3.5 h-3.5" />
           Filters
         </div>
@@ -411,7 +411,7 @@ export default function TrackerPage() {
               setSelectedCategory(e.target.value)
               setSelectedChannel('all')
             }}
-            className="bg-[#12121a] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-violet-500 w-full sm:min-w-[160px]"
+            className="bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-violet-500 w-full sm:min-w-[160px]"
           >
             <option value="all">All Categories</option>
             {categories?.map(cat => (
@@ -426,7 +426,7 @@ export default function TrackerPage() {
             value={selectedChannel}
             onChange={e => setSelectedChannel(e.target.value)}
             disabled={selectedCategory === 'all'}
-            className="bg-[#12121a] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-violet-500 w-full sm:min-w-[160px] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-violet-500 w-full sm:min-w-[160px] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="all">All Channels</option>
             {channels?.map(ch => (
@@ -437,7 +437,7 @@ export default function TrackerPage() {
 
         <div className="flex flex-col gap-1">
           <label className="text-[10px] text-zinc-500 font-medium">Status</label>
-          <div className="flex bg-[#12121a] border border-white/10 rounded-lg p-0.5">
+          <div className="flex bg-white border border-zinc-300 rounded-lg p-0.5">
             {(['all', 'live', 'done', 'cancelled'] as const).map(s => (
               <button
                 key={s}
@@ -445,8 +445,8 @@ export default function TrackerPage() {
                 className={cn(
                   'px-3 py-1 text-xs rounded-md transition-colors capitalize',
                   selectedStatus === s
-                    ? 'bg-white/10 text-white'
-                    : 'text-zinc-500 hover:text-zinc-300'
+                    ? 'bg-zinc-200/70 text-zinc-900'
+                    : 'text-zinc-500 hover:text-zinc-700'
                 )}
               >
                 {s === 'all' ? 'All' : s}
@@ -461,7 +461,7 @@ export default function TrackerPage() {
             type="date"
             value={dateFrom}
             onChange={e => setDateFrom(e.target.value)}
-            className="bg-[#12121a] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-violet-500"
+            className="bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-violet-500"
           />
         </div>
 
@@ -471,13 +471,13 @@ export default function TrackerPage() {
             type="date"
             value={dateTo}
             onChange={e => setDateTo(e.target.value)}
-            className="bg-[#12121a] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-violet-500"
+            className="bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-violet-500"
           />
         </div>
 
         <button
           onClick={() => setHideCancelled(v => !v)}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 border border-white/10 rounded-lg bg-[#12121a] transition-colors self-end"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-600 hover:text-zinc-800 border border-zinc-300 rounded-lg bg-white transition-colors self-end"
         >
           {hideCancelled
             ? <><EyeOff className="w-3.5 h-3.5" /> Cancelled hidden</>
@@ -492,24 +492,24 @@ export default function TrackerPage() {
       {/* Table */}
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin w-8 h-8 border-2 border-white/20 border-t-violet-500 rounded-full" />
+          <div className="animate-spin w-8 h-8 border-2 border-zinc-300 border-t-violet-500 rounded-full" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-20 border border-dashed border-white/10 rounded-xl text-zinc-500 text-sm">
+        <div className="text-center py-20 border border-dashed border-zinc-300 rounded-xl text-zinc-500 text-sm">
           No tracker entries match the current filters.
         </div>
       ) : (
-        <div className="rounded-xl border border-white/5 overflow-hidden bg-zinc-900/30 backdrop-blur-xl">
+        <div className="rounded-xl border border-zinc-200 overflow-hidden bg-white backdrop-blur-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-white/5 bg-white/[0.02] text-zinc-400">
+                <tr className="border-b border-zinc-200 bg-zinc-100/50 text-zinc-600">
                   <th className="text-left font-medium py-3 px-4">Campaign</th>
                   <th className="text-left font-medium py-3 px-4">Category</th>
                   <th className="text-left font-medium py-3 px-4">
                     <button
                       onClick={() => toggleSort('channel')}
-                      className="flex items-center gap-1 hover:text-white transition-colors"
+                      className="flex items-center gap-1 hover:text-zinc-900 transition-colors"
                     >
                       Channel {renderSortIcon('channel')}
                     </button>
@@ -518,7 +518,7 @@ export default function TrackerPage() {
                   <th className="text-left font-medium py-3 px-4">
                     <button
                       onClick={() => toggleSort('owner')}
-                      className="flex items-center gap-1 hover:text-white transition-colors"
+                      className="flex items-center gap-1 hover:text-zinc-900 transition-colors"
                     >
                       Owner {renderSortIcon('owner')}
                     </button>
@@ -526,7 +526,7 @@ export default function TrackerPage() {
                   <th className="text-left font-medium py-3 px-4">
                     <button
                       onClick={() => toggleSort('completed')}
-                      className="flex items-center gap-1 hover:text-white transition-colors"
+                      className="flex items-center gap-1 hover:text-zinc-900 transition-colors"
                     >
                       Completed {renderSortIcon('completed')}
                     </button>
@@ -534,7 +534,7 @@ export default function TrackerPage() {
                   <th className="text-left font-medium py-3 px-4">Insights</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-zinc-200">
                 {filtered.map(task => {
                   const insights = parseInsights(
                     (task.tracker_fields as Record<string, unknown> | undefined)?.insights
@@ -554,29 +554,29 @@ export default function TrackerPage() {
                     <tr
                       key={task.id}
                       onClick={() => setSelectedTaskId(task.id)}
-                      className="hover:bg-white/5 transition-colors cursor-pointer"
+                      className="hover:bg-zinc-100 transition-colors cursor-pointer"
                     >
                       <td className="py-3.5 px-4 max-w-[280px]">
                         <div className="flex items-start gap-2">
-                          <span className="font-medium text-zinc-200 truncate">{task.title}</span>
+                          <span className="font-medium text-zinc-800 truncate">{task.title}</span>
                           {isFrozen && (
-                            <Badge className="bg-blue-500/10 text-blue-300 border-blue-500/20 text-[9px] shrink-0 gap-1">
+                            <Badge className="bg-blue-50 text-blue-600 border-blue-200 text-[9px] shrink-0 gap-1">
                               <Lock className="w-2.5 h-2.5" /> Frozen
                             </Badge>
                           )}
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 text-zinc-400">
+                      <td className="py-3.5 px-4 text-zinc-600">
                         {categoryName || <span className="text-zinc-600">-</span>}
                       </td>
-                      <td className="py-3.5 px-4 text-zinc-400">
+                      <td className="py-3.5 px-4 text-zinc-600">
                         {task.channel?.name || <span className="text-zinc-600">-</span>}
                       </td>
                       <td className="py-3.5 px-4">
                         <Badge
                           className="text-[10px] border-0"
                           style={{
-                            backgroundColor: statusConfig.bgColor + '30',
+                            backgroundColor: statusConfig.bgColor,
                             color: statusConfig.color,
                           }}
                         >
@@ -586,13 +586,13 @@ export default function TrackerPage() {
                       <td className="py-3.5 px-4">
                         {ownerUser ? (
                           <div className="flex items-center gap-2">
-                            <Avatar className="w-5 h-5 border border-white/10">
+                            <Avatar className="w-5 h-5 border border-zinc-300">
                               <AvatarImage src={ownerUser.avatar_url || ''} />
-                              <AvatarFallback className="bg-zinc-800 text-[9px] text-zinc-300">
+                              <AvatarFallback className="bg-zinc-200 text-[9px] text-zinc-700">
                                 {(ownerUser.display_name || ownerUser.email).charAt(0).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-zinc-300 truncate max-w-[120px]">
+                            <span className="text-zinc-700 truncate max-w-[120px]">
                               {ownerUser.display_name || ownerUser.email}
                             </span>
                           </div>
@@ -600,7 +600,7 @@ export default function TrackerPage() {
                           <span className="text-zinc-600">Unassigned</span>
                         )}
                       </td>
-                      <td className="py-3.5 px-4 text-zinc-400 whitespace-nowrap">
+                      <td className="py-3.5 px-4 text-zinc-600 whitespace-nowrap">
                         {completedRaw ? formatDate(completedRaw) : <span className="text-zinc-600">-</span>}
                       </td>
                       <td
@@ -615,20 +615,20 @@ export default function TrackerPage() {
                             </PopoverTrigger>
                             <PopoverContent
                               align="end"
-                              className="w-80 bg-[#0c0c12] border border-white/10 text-zinc-200"
+                              className="w-80 bg-white border border-zinc-300 text-zinc-800"
                             >
-                              <div className="flex items-center gap-2 mb-2 text-xs text-zinc-400 uppercase tracking-wider">
-                                <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+                              <div className="flex items-center gap-2 mb-2 text-xs text-zinc-500 uppercase tracking-wider">
+                                <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
                                 Insights ({insights.length})
                               </div>
                               <ol className="space-y-2 max-h-64 overflow-y-auto pr-1 text-xs">
                                 {insights.map((ins, idx) => (
-                                  <li key={idx} className="bg-white/[0.03] border border-white/5 rounded-md p-2">
+                                  <li key={idx} className="bg-zinc-100/60 border border-zinc-200 rounded-md p-2">
                                     <div className="flex items-baseline gap-2">
-                                      <span className="text-amber-400 font-semibold shrink-0">
+                                      <span className="text-amber-600 font-semibold shrink-0">
                                         {ins.n ?? idx + 1}.
                                       </span>
-                                      <span className="text-zinc-200 leading-relaxed whitespace-pre-wrap break-words">
+                                      <span className="text-zinc-800 leading-relaxed whitespace-pre-wrap break-words">
                                         {ins.body || <span className="text-zinc-600 italic">empty</span>}
                                       </span>
                                     </div>

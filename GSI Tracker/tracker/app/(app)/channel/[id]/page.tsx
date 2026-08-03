@@ -11,8 +11,10 @@ import { Button } from '@/components/ui/button'
 import { TaskView } from '@/components/tasks/task-view'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
-import { Plus, DollarSign, ListTodo, ChevronDown, ChevronRight, BarChart3, Calendar, Users } from 'lucide-react'
+import { Plus, DollarSign, ListTodo, ChevronDown, ChevronRight, BarChart3, Calendar, Users, Lightbulb, Target } from 'lucide-react'
 import Link from 'next/link'
+import { TierBadge, ChannelOwnerChips, ChannelResourcesCard, ChannelLearningsCard, ChannelTargetsCard, ChannelTargetChips, ChannelDescription } from '@/components/channel/channel-meta'
+import { TIER_CONFIG } from '@/lib/types/database'
 
 export default function ChannelPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: channelId } = use(params)
@@ -34,12 +36,12 @@ export default function ChannelPage({ params }: { params: Promise<{ id: string }
 
   if (catsLoading || channelsLoading || tasksLoading) {
     return (
-      <div className="p-8 space-y-6 animate-pulse bg-[#0a0a0f] min-h-screen">
-        <div className="h-8 bg-zinc-800 rounded w-1/4" />
-        <div className="h-4 bg-zinc-800 rounded w-1/3" />
+      <div className="p-8 space-y-6 animate-pulse bg-zinc-50 min-h-screen">
+        <div className="h-8 bg-zinc-200 rounded w-1/4" />
+        <div className="h-4 bg-zinc-200 rounded w-1/3" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="h-96 bg-zinc-800 rounded-xl" />
-          <div className="md:col-span-2 h-96 bg-zinc-800 rounded-xl" />
+          <div className="h-96 bg-zinc-200 rounded-xl" />
+          <div className="md:col-span-2 h-96 bg-zinc-200 rounded-xl" />
         </div>
       </div>
     )
@@ -48,7 +50,7 @@ export default function ChannelPage({ params }: { params: Promise<{ id: string }
   const channel = allChannels?.find(c => c.id === channelId)
   if (!channel) {
     return (
-      <div className="p-8 text-center text-zinc-400 bg-[#0a0a0f] min-h-screen">
+      <div className="p-8 text-center text-zinc-600 bg-zinc-50 min-h-screen">
         Channel not found.
       </div>
     )
@@ -100,60 +102,55 @@ export default function ChannelPage({ params }: { params: Promise<{ id: string }
   )
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] bg-[#0a0a0f] text-zinc-100">
+    <div className="flex h-[calc(100vh-3.5rem)] bg-zinc-50 text-zinc-900">
       
-      {/* Sibling Channels Tree */}
-      <aside className="w-64 border-r border-white/5 bg-[#0b0b10] flex-shrink-0 flex flex-col p-4 overflow-y-auto">
-        {category && (
-          <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4 px-2">
-            {category.name} Channels
-          </h3>
-        )}
-        <nav className="space-y-1">
-          {siblings.filter(ch => !ch.parent_channel_id).map(sib => {
-            const children = siblings.filter(c => c.parent_channel_id === sib.id)
-            const hasChildren = children.length > 0
-            const isExpanded = expandedChannels[sib.id] ?? true
-            const isCurrent = sib.id === channel.id
-
-            return (
-              <div key={sib.id} className="space-y-0.5">
-                <div className={`flex items-center justify-between rounded-lg px-2 py-1.5 transition-colors ${isCurrent ? 'bg-white/10 text-white' : 'hover:bg-white/5 text-zinc-400'}`}>
-                  <Link
-                    href={`/channel/${sib.id}`}
-                    className="flex-1 text-sm font-medium truncate"
-                  >
-                    {sib.name}
-                  </Link>
-                  {hasChildren && (
-                    <button
-                      onClick={() => toggleChannelExpand(sib.id)}
-                      className="p-1 text-zinc-500 hover:text-zinc-300"
+      {/* Sub-channel navigation — scoped to the CURRENT channel's family */}
+      <aside className="w-64 border-r border-zinc-200 bg-white flex-shrink-0 flex flex-col p-4 overflow-y-auto">
+        {(() => {
+          // If the current channel has its own children, IT is the family root
+          // (covers mid-level channels in 3-deep trees); otherwise its parent.
+          const hasOwnChildren = allChannels?.some(c => c.parent_channel_id === channel.id)
+          const topChannel = hasOwnChildren ? channel : (parentChannel || channel)
+          const subChannels = allChannels?.filter(c => c.parent_channel_id === topChannel.id) || []
+          return (
+            <>
+              <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3 px-2">
+                Channel
+              </h3>
+              <Link
+                href={`/channel/${topChannel.id}`}
+                className={`flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-semibold truncate transition-colors mb-3 ${
+                  topChannel.id === channel.id ? 'bg-zinc-200/70 text-zinc-900' : 'text-zinc-700 hover:bg-zinc-100'
+                }`}
+              >
+                {topChannel.tier && <span title={TIER_CONFIG[topChannel.tier].label} aria-hidden>{TIER_CONFIG[topChannel.tier].emoji}</span>}
+                <span className="truncate">{topChannel.name}</span>
+              </Link>
+              <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 px-2">
+                Sub-channels ({subChannels.length})
+              </h3>
+              <nav className="space-y-0.5">
+                {subChannels.map(sub => {
+                  const isCurrent = sub.id === channel.id
+                  return (
+                    <Link
+                      key={sub.id}
+                      href={`/channel/${sub.id}`}
+                      className={`block rounded-lg px-2 py-1.5 text-[13px] truncate transition-colors ${
+                        isCurrent ? 'bg-zinc-200/70 text-zinc-900 font-medium' : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+                      }`}
                     >
-                      {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                    </button>
-                  )}
-                </div>
-                {hasChildren && isExpanded && (
-                  <div className="ml-4 space-y-0.5 border-l border-white/5 pl-2">
-                    {children.map(child => {
-                      const isChildCurrent = child.id === channel.id
-                      return (
-                        <Link
-                          key={child.id}
-                          href={`/channel/${child.id}`}
-                          className={`block px-2 py-1 text-xs rounded hover:bg-white/5 truncate ${isChildCurrent ? 'bg-white/5 text-white font-medium' : 'text-zinc-500 hover:text-zinc-300'}`}
-                        >
-                          {child.name}
-                        </Link>
-                      )
-                    })}
-                  </div>
+                      {sub.name}
+                    </Link>
+                  )
+                })}
+                {subChannels.length === 0 && (
+                  <p className="px-2 py-1.5 text-xs text-zinc-400">No sub-channels yet.</p>
                 )}
-              </div>
-            )
-          })}
-        </nav>
+              </nav>
+            </>
+          )
+        })()}
       </aside>
 
       {/* Main Panel */}
@@ -171,11 +168,26 @@ export default function ChannelPage({ params }: { params: Promise<{ id: string }
                 </>
               )}
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-white">{channel.name}</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl font-bold tracking-tight text-zinc-900">{channel.name}</h1>
+              <TierBadge tier={channel.tier} />
+              {channel.budget_note && !channelBudget && (
+                <Badge variant="outline" className="border-zinc-300 bg-zinc-100/50 text-zinc-600 text-[11px]">
+                  {channel.budget_note}
+                </Badge>
+              )}
+            </div>
+            <ChannelDescription channelId={channel.id} goal={channel.goal} />
+            <div className="mt-2">
+              <ChannelTargetChips channelId={channel.id} />
+            </div>
+            <div className="mt-2">
+              <ChannelOwnerChips channelId={channel.id} />
+            </div>
           </div>
           <div className="flex items-center gap-3 self-start">
             <Link href={`/calendar?category=${channel.category_id}&channel=${channel.id}`}>
-              <Button variant="outline" className="border-white/10 hover:bg-white/5 text-zinc-300">
+              <Button variant="outline" className="border-zinc-300 hover:bg-zinc-100 text-zinc-700">
                 <Calendar className="w-4 h-4 mr-2" /> Calendar View
               </Button>
             </Link>
@@ -194,28 +206,28 @@ export default function ChannelPage({ params }: { params: Promise<{ id: string }
 
         {/* Channel Budget Card */}
         {channelBudget && (
-          <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-xl">
+          <Card className="bg-white border-zinc-200 backdrop-blur-xl">
             <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="space-y-1">
-                <p className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex items-center gap-1">
-                  <DollarSign className="w-3.5 h-3.5 text-emerald-400" /> Channel Budget
+                <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider flex items-center gap-1">
+                  <DollarSign className="w-3.5 h-3.5 text-emerald-600" /> Channel Budget
                 </p>
                 <div className="flex items-baseline gap-2">
-                  <h3 className="text-2xl font-bold text-white">${limit.toLocaleString()}</h3>
+                  <h3 className="text-2xl font-bold text-zinc-900">${limit.toLocaleString()}</h3>
                   <span className="text-xs text-zinc-500 font-normal">for {channelBudget.period_label}</span>
                 </div>
               </div>
 
               <div className="flex-1 max-w-md space-y-1.5">
-                <div className="flex justify-between text-xs text-zinc-400">
+                <div className="flex justify-between text-xs text-zinc-600">
                   <span>Allocated: ${allocated.toLocaleString()} ({budgetPercent}%)</span>
-                  <span className={remaining < 0 ? 'text-red-400 font-medium' : 'text-zinc-500'}>
+                  <span className={remaining < 0 ? 'text-red-600 font-medium' : 'text-zinc-500'}>
                     {remaining < 0 ? 'Over budget by ' : ''}${Math.abs(remaining).toLocaleString()} remaining
                   </span>
                 </div>
                 <Progress 
                   value={budgetPercent} 
-                  className="h-2 bg-zinc-800"
+                  className="h-2 bg-zinc-200"
                   indicatorClassName={budgetPercent > 100 ? 'bg-red-500' : budgetPercent > 80 ? 'bg-orange-500' : 'bg-emerald-500'}
                 />
               </div>
@@ -225,18 +237,21 @@ export default function ChannelPage({ params }: { params: Promise<{ id: string }
 
         {/* Tab View */}
         <Tabs defaultValue="tasks" className="w-full">
-          <TabsList className="bg-zinc-900/60 border border-white/5 p-1 rounded-lg">
-            <TabsTrigger value="tasks" className="text-zinc-400 data-[state=active]:bg-white/10 data-[state=active]:text-white">
+          <TabsList className="bg-white border border-zinc-200 p-1 rounded-lg">
+            <TabsTrigger value="tasks" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
               <ListTodo className="w-4 h-4 mr-2" /> Tasks
             </TabsTrigger>
-            <TabsTrigger value="tracker" className="text-zinc-400 data-[state=active]:bg-white/10 data-[state=active]:text-white">
+            <TabsTrigger value="tracker" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
               <BarChart3 className="w-4 h-4 mr-2" /> Tracker
             </TabsTrigger>
-            <TabsTrigger value="budget" className="text-zinc-400 data-[state=active]:bg-white/10 data-[state=active]:text-white">
+            <TabsTrigger value="budget" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
               <DollarSign className="w-4 h-4 mr-2" /> Budget
             </TabsTrigger>
+            <TabsTrigger value="resources" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
+              <Lightbulb className="w-4 h-4 mr-2" /> Targets & Resources
+            </TabsTrigger>
             {channel.slug === 'hubspot' && (
-              <TabsTrigger value="hubspot-contacts" className="text-zinc-400 data-[state=active]:bg-white/10 data-[state=active]:text-white">
+              <TabsTrigger value="hubspot-contacts" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
                 <Users className="w-4 h-4 mr-2" /> HubSpot Synced Contacts
               </TabsTrigger>
             )}
@@ -253,7 +268,7 @@ export default function ChannelPage({ params }: { params: Promise<{ id: string }
 
           {/* Tracker Tab */}
           <TabsContent value="tracker" className="mt-6">
-            <Card className="bg-zinc-900/30 border-white/5 backdrop-blur-xl">
+            <Card className="bg-white border-zinc-200 backdrop-blur-xl">
               <CardContent className="p-0 overflow-x-auto">
                 {trackerTasks.length === 0 ? (
                   <div className="text-center py-16 text-zinc-500 text-sm">
@@ -262,7 +277,7 @@ export default function ChannelPage({ params }: { params: Promise<{ id: string }
                 ) : (
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="border-b border-white/5 bg-white/[0.01] text-zinc-400">
+                      <tr className="border-b border-zinc-200 bg-zinc-100/40 text-zinc-600">
                         <th className="text-left font-medium py-3 px-4 min-w-[150px]">Task</th>
                         <th className="text-left font-medium py-3 px-4">Status</th>
                         {trackerFields.map(field => (
@@ -272,7 +287,7 @@ export default function ChannelPage({ params }: { params: Promise<{ id: string }
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody className="divide-y divide-zinc-200">
                       {trackerTasks.map(task => {
                         const tFields = task.tracker_fields || {}
                         
@@ -280,11 +295,11 @@ export default function ChannelPage({ params }: { params: Promise<{ id: string }
                           <tr 
                             key={task.id}
                             onClick={() => setSelectedTaskId(task.id)}
-                            className="hover:bg-white/5 transition-colors cursor-pointer"
+                            className="hover:bg-zinc-100 transition-colors cursor-pointer"
                           >
-                            <td className="py-3.5 px-4 font-medium text-zinc-200">{task.title}</td>
+                            <td className="py-3.5 px-4 font-medium text-zinc-800">{task.title}</td>
                             <td className="py-3.5 px-4">
-                              <Badge className="bg-zinc-800 text-zinc-400 border-zinc-700">
+                              <Badge className="bg-zinc-200 text-zinc-600 border-zinc-300">
                                 {task.status}
                               </Badge>
                             </td>
@@ -306,14 +321,14 @@ export default function ChannelPage({ params }: { params: Promise<{ id: string }
                               }
 
                               return (
-                                <td key={field.slug} className="py-3.5 px-4 text-zinc-400 max-w-[200px] truncate">
+                                <td key={field.slug} className="py-3.5 px-4 text-zinc-600 max-w-[200px] truncate">
                                   {field.field_type === 'url' && rawVal ? (
                                     <a 
                                       href={String(rawVal)} 
                                       target="_blank" 
                                       rel="noreferrer" 
                                       onClick={(e) => e.stopPropagation()}
-                                      className="text-blue-400 hover:underline"
+                                      className="text-blue-600 hover:underline"
                                     >
                                       Link
                                     </a>
@@ -335,34 +350,34 @@ export default function ChannelPage({ params }: { params: Promise<{ id: string }
 
           {/* Budget Tab */}
           <TabsContent value="budget" className="mt-6">
-            <Card className="bg-zinc-900/30 border-white/5 backdrop-blur-xl">
+            <Card className="bg-white border-zinc-200 backdrop-blur-xl">
               <CardContent className="p-0 overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-white/5 bg-white/[0.01] text-zinc-400">
+                    <tr className="border-b border-zinc-200 bg-zinc-100/40 text-zinc-600">
                       <th className="text-left font-medium py-3 px-4">Task</th>
                       <th className="text-left font-medium py-3 px-4">Owner</th>
                       <th className="text-left font-medium py-3 px-4">Status</th>
                       <th className="text-right font-medium py-3 px-4">Allocated Budget</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5">
+                  <tbody className="divide-y divide-zinc-200">
                     {channelTasks.filter(t => t.budget_allocated).map(task => (
                       <tr 
                         key={task.id}
                         onClick={() => setSelectedTaskId(task.id)}
-                        className="hover:bg-white/5 transition-colors cursor-pointer"
+                        className="hover:bg-zinc-100 transition-colors cursor-pointer"
                       >
-                        <td className="py-3.5 px-4 font-medium text-zinc-200">{task.title}</td>
-                        <td className="py-3.5 px-4 text-zinc-400">
+                        <td className="py-3.5 px-4 font-medium text-zinc-800">{task.title}</td>
+                        <td className="py-3.5 px-4 text-zinc-600">
                           {task.assignments?.find(a => a.role === 'primary')?.user?.display_name || 'Unassigned'}
                         </td>
                         <td className="py-3.5 px-4">
-                          <Badge className="bg-zinc-800 text-zinc-400 border-zinc-700">
+                          <Badge className="bg-zinc-200 text-zinc-600 border-zinc-300">
                             {task.status}
                           </Badge>
                         </td>
-                        <td className="py-3.5 px-4 text-right text-emerald-400 font-semibold">
+                        <td className="py-3.5 px-4 text-right text-emerald-600 font-semibold">
                           ${Number(task.budget_allocated).toLocaleString()}
                         </td>
                       </tr>
@@ -380,10 +395,19 @@ export default function ChannelPage({ params }: { params: Promise<{ id: string }
             </Card>
           </TabsContent>
 
+          {/* Targets, Resources & Learnings Tab */}
+          <TabsContent value="resources" className="mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <ChannelTargetsCard channelId={channel.id} />
+              <ChannelResourcesCard channelId={channel.id} />
+              <ChannelLearningsCard channelId={channel.id} />
+            </div>
+          </TabsContent>
+
           {/* HubSpot Synced Contacts Tab */}
           {channel.slug === 'hubspot' && (
             <TabsContent value="hubspot-contacts" className="mt-6">
-              <Card className="bg-zinc-900/30 border-white/5 backdrop-blur-xl">
+              <Card className="bg-white border-zinc-200 backdrop-blur-xl">
                 <CardContent className="p-0 overflow-x-auto">
                   {!syncedContacts || syncedContacts.length === 0 ? (
                     <div className="text-center py-16 text-zinc-500 text-sm">
@@ -392,7 +416,7 @@ export default function ChannelPage({ params }: { params: Promise<{ id: string }
                   ) : (
                     <table className="w-full text-xs">
                       <thead>
-                        <tr className="border-b border-white/5 bg-white/[0.01] text-zinc-400">
+                        <tr className="border-b border-zinc-200 bg-zinc-100/40 text-zinc-600">
                           <th className="text-left font-medium py-3 px-4">Name</th>
                           <th className="text-left font-medium py-3 px-4">Email</th>
                           <th className="text-left font-medium py-3 px-4">Company</th>
@@ -401,26 +425,26 @@ export default function ChannelPage({ params }: { params: Promise<{ id: string }
                           <th className="text-right py-3 px-4">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-white/5">
+                      <tbody className="divide-y divide-zinc-200">
                         {syncedContacts.map((contact: any) => (
-                          <tr key={contact.hubspot_contact_id} className="hover:bg-white/5 transition-colors">
-                            <td className="py-3 px-4 font-semibold text-zinc-200">
+                          <tr key={contact.hubspot_contact_id} className="hover:bg-zinc-100 transition-colors">
+                            <td className="py-3 px-4 font-semibold text-zinc-800">
                               {contact.first_name || ''} {contact.last_name || ''}
                             </td>
-                            <td className="py-3 px-4 text-zinc-400 font-mono">{contact.email}</td>
-                            <td className="py-3 px-4 text-zinc-300">{contact.company || '-'}</td>
+                            <td className="py-3 px-4 text-zinc-600 font-mono">{contact.email}</td>
+                            <td className="py-3 px-4 text-zinc-700">{contact.company || '-'}</td>
                             <td className="py-3 px-4">
-                              <Badge variant="outline" className="capitalize border-zinc-700 text-zinc-400 bg-white/[0.02]">
+                              <Badge variant="outline" className="capitalize border-zinc-300 text-zinc-600 bg-zinc-100/50">
                                 {contact.lifecycle_stage}
                               </Badge>
                             </td>
                             <td className="py-3 px-4 space-y-1">
                               {contact.sequence_memberships?.map((seq: any, idx: number) => (
                                 <div key={idx} className="flex items-center gap-1.5">
-                                  <Badge className="bg-blue-500/10 border-blue-500/20 text-blue-400 text-[10px]">
+                                  <Badge className="bg-blue-50 border-blue-200 text-blue-600 text-[10px]">
                                     {seq.name}
                                   </Badge>
-                                  <Badge className={seq.status === 'Active' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 text-[10px]' : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400 text-[10px]'}>
+                                  <Badge className={seq.status === 'Active' ? 'bg-emerald-50 border-emerald-200 text-emerald-600 text-[10px]' : 'bg-zinc-100 border-zinc-300 text-zinc-600 text-[10px]'}>
                                     {seq.status}
                                   </Badge>
                                 </div>
@@ -435,7 +459,7 @@ export default function ChannelPage({ params }: { params: Promise<{ id: string }
                                   setDefaultDescription(`Follow up with lead synced from HubSpot.\nEmail: ${contact.email}\nCompany: ${contact.company || 'None'}\nHubSpot Contact ID: ${contact.hubspot_contact_id}`)
                                   setCreateOpen(true)
                                 }}
-                                className="text-xs text-blue-400 hover:text-blue-300 h-8 px-2"
+                                className="text-xs text-blue-600 hover:text-blue-700 h-8 px-2"
                               >
                                 <Plus className="w-3.5 h-3.5 mr-1" /> Create Task
                               </Button>

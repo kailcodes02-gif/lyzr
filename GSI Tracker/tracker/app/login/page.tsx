@@ -13,7 +13,7 @@ function LoginContent() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH || ''}/auth/callback`,
         queryParams: {
           hd: 'lyzr.ai',
           prompt: 'select_account',
@@ -26,14 +26,14 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f]">
+    <div className="min-h-screen flex items-center justify-center bg-zinc-50">
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-50 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-50 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
       </div>
 
       <div className="relative z-10 w-full max-w-md px-6">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
+        <div className="bg-zinc-100 backdrop-blur-xl border border-zinc-300 rounded-2xl p-8 shadow-2xl">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 mb-4">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -42,12 +42,12 @@ function LoginContent() {
                 <path d="M6 20v-4" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-white mb-1">GSI Marketing Tracker</h1>
-            <p className="text-sm text-zinc-400">Lyzr internal operations tool</p>
+            <h1 className="text-2xl font-bold text-zinc-900 mb-1">GSI Marketing Tracker</h1>
+            <p className="text-sm text-zinc-600">Lyzr internal operations tool</p>
           </div>
 
           {error && (
-            <div className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
+            <div className="mb-6 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm text-center">
               Authentication failed. Please try again.
             </div>
           )}
@@ -77,8 +77,8 @@ function LoginContent() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f]">
-        <div className="animate-spin w-8 h-8 border-2 border-white/20 border-t-white rounded-full" />
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50">
+        <div className="animate-spin w-8 h-8 border-2 border-zinc-300 border-t-violet-500 rounded-full" />
       </div>
     }>
       <LoginContent />

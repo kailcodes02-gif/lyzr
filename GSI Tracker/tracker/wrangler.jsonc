@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "gsi-tracker",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  // Path-mount on the static site's domain: everything under /GSI_Tracker
+  // hits this Worker; all other paths keep hitting the Pages project.
+  "routes": [
+    { "pattern": "lyzr.kailash-gm.com/GSI_Tracker*", "zone_name": "kailash-gm.com" }
+  ],
+  // Non-secret runtime vars (secrets are set via `wrangler secret put`)
+  "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://lyzr.kailash-gm.com/GSI_Tracker",
+    "NEXT_PUBLIC_BASE_PATH": "/GSI_Tracker"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

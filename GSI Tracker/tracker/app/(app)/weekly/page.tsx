@@ -136,7 +136,7 @@ const statusBarColors: Record<string, string> = {
   in_progress: 'bg-violet-500',
   blocked: 'bg-red-500',
   not_started: 'bg-zinc-600',
-  cancelled: 'bg-zinc-700',
+  cancelled: 'bg-zinc-300',
 }
 
 export default function WeeklyReviewPage() {
@@ -323,11 +323,11 @@ export default function WeeklyReviewPage() {
   const maxOwner = byOwner.reduce((m, c) => Math.max(m, c.count), 0) || 1
 
   return (
-    <div className="p-4 lg:p-8 space-y-8 max-w-7xl mx-auto bg-[#0a0a0f] text-zinc-100 min-h-screen">
+    <div className="p-4 lg:p-8 space-y-8 max-w-7xl mx-auto bg-zinc-50 text-zinc-900 min-h-screen">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-          <CalendarIcon className="w-6 h-6 text-blue-400" /> Weekly Review
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
+          <CalendarIcon className="w-6 h-6 text-blue-600" /> Weekly Review
         </h1>
         <p className="text-sm text-zinc-500 mt-1">
           Time travel through completed ISO weeks. Pick a week to reconstruct the state of the world at end of week.
@@ -348,11 +348,11 @@ export default function WeeklyReviewPage() {
                 className={[
                   'group relative shrink-0 rounded-xl border px-4 py-2.5 text-xs font-medium transition-all',
                   isActive
-                    ? 'border-blue-500/50 bg-blue-500/15 text-white shadow-md shadow-blue-500/10'
-                    : 'border-white/5 bg-zinc-900/50 text-zinc-300 hover:border-white/10 hover:bg-white/5',
+                    ? 'border-blue-400 bg-blue-50 text-blue-800 shadow-md shadow-blue-200/50'
+                    : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-100',
                 ].join(' ')}
               >
-                <span className="block text-[10px] uppercase tracking-wider text-zinc-500 group-hover:text-zinc-400">
+                <span className="block text-[10px] uppercase tracking-wider text-zinc-500 group-hover:text-zinc-600">
                   {isCurrent ? 'This week' : `Week of ${format(w.start, 'MMM d')}`}
                 </span>
                 <span className="block mt-0.5 font-semibold">{w.label}</span>
@@ -372,11 +372,11 @@ export default function WeeklyReviewPage() {
           {format(selectedWeek.start, 'EEE d MMM')} to {format(selectedWeek.end, 'EEE d MMM, yyyy')}
         </span>
         {isCurrentWeek ? (
-          <Badge className="bg-blue-500/15 text-blue-400 border-blue-500/30">Live (current week)</Badge>
+          <Badge className="bg-blue-500/15 text-blue-600 border-blue-300">Live (current week)</Badge>
         ) : hasSnapshot ? (
-          <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">Snapshot</Badge>
+          <Badge className="bg-emerald-50 text-emerald-600 border-emerald-200">Snapshot</Badge>
         ) : (
-          <Badge className="bg-zinc-800 text-zinc-400 border-zinc-700">No snapshot</Badge>
+          <Badge className="bg-zinc-200 text-zinc-600 border-zinc-300">No snapshot</Badge>
         )}
       </div>
 
@@ -384,19 +384,19 @@ export default function WeeklyReviewPage() {
       {isLoading && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-pulse">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-28 bg-zinc-900/60 rounded-xl" />
+            <div key={i} className="h-28 bg-white rounded-xl" />
           ))}
         </div>
       )}
 
       {/* No snapshot empty state */}
       {!isLoading && !hasSnapshot && (
-        <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-xl">
+        <Card className="bg-white border-zinc-200 backdrop-blur-xl">
           <CardContent className="py-16 text-center space-y-3">
-            <div className="mx-auto w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center">
-              <Info className="w-5 h-5 text-zinc-400" />
+            <div className="mx-auto w-12 h-12 rounded-full bg-zinc-200 flex items-center justify-center">
+              <Info className="w-5 h-5 text-zinc-600" />
             </div>
-            <h3 className="text-base font-semibold text-zinc-200">No snapshot for this week</h3>
+            <h3 className="text-base font-semibold text-zinc-800">No snapshot for this week</h3>
             <p className="text-sm text-zinc-500 max-w-md mx-auto">
               Weekly snapshots are written every Sunday at 23:55 IST for the just-completed ISO week. This week is either
               before the snapshot system started or the job has not run yet.
@@ -419,10 +419,10 @@ export default function WeeklyReviewPage() {
           {/* Bars */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* By category (stacked by status if available) */}
-            <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-xl">
+            <Card className="bg-white border-zinc-200 backdrop-blur-xl">
               <CardHeader>
-                <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-blue-400" /> Tasks by Category
+                <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-600 flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-blue-600" /> Tasks by Category
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -437,10 +437,10 @@ export default function WeeklyReviewPage() {
                     return (
                       <div key={c.name} className="space-y-1.5">
                         <div className="flex justify-between items-center text-xs">
-                          <span className="font-semibold text-zinc-300 truncate max-w-[60%]">{c.name}</span>
-                          <span className="text-zinc-400">{c.count}</span>
+                          <span className="font-semibold text-zinc-700 truncate max-w-[60%]">{c.name}</span>
+                          <span className="text-zinc-600">{c.count}</span>
                         </div>
-                        <div className="relative h-2 rounded-full bg-zinc-800 overflow-hidden">
+                        <div className="relative h-2 rounded-full bg-zinc-200 overflow-hidden">
                           {segments.length > 0 ? (
                             <div className="absolute inset-0 flex" style={{ width: `${pct}%` }}>
                               {segments.map(([status, n]) => (
@@ -473,10 +473,10 @@ export default function WeeklyReviewPage() {
             </Card>
 
             {/* By owner */}
-            <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-xl">
+            <Card className="bg-white border-zinc-200 backdrop-blur-xl">
               <CardHeader>
-                <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
-                  <UsersIcon className="w-4 h-4 text-violet-400" /> Tasks by Owner
+                <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-600 flex items-center gap-2">
+                  <UsersIcon className="w-4 h-4 text-violet-600" /> Tasks by Owner
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -488,10 +488,10 @@ export default function WeeklyReviewPage() {
                     return (
                       <div key={o.name} className="space-y-1.5">
                         <div className="flex justify-between items-center text-xs">
-                          <span className="font-semibold text-zinc-300 truncate max-w-[60%]">{o.name}</span>
-                          <span className="text-zinc-400">{o.count}</span>
+                          <span className="font-semibold text-zinc-700 truncate max-w-[60%]">{o.name}</span>
+                          <span className="text-zinc-600">{o.count}</span>
                         </div>
-                        <Progress value={pct} className="h-2 bg-zinc-800" indicatorClassName="bg-violet-500" />
+                        <Progress value={pct} className="h-2 bg-zinc-200" indicatorClassName="bg-violet-500" />
                       </div>
                     )
                   })
@@ -502,10 +502,10 @@ export default function WeeklyReviewPage() {
 
           {/* Completed + Blocked lists */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-xl">
+            <Card className="bg-white border-zinc-200 backdrop-blur-xl">
               <CardHeader>
-                <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
-                  <CheckSquare className="w-4 h-4 text-emerald-400" /> Completed in This Week
+                <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-600 flex items-center gap-2">
+                  <CheckSquare className="w-4 h-4 text-emerald-600" /> Completed in This Week
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
@@ -514,15 +514,15 @@ export default function WeeklyReviewPage() {
                     Nothing shipped in this week.
                   </p>
                 ) : (
-                  <div className="divide-y divide-white/5">
+                  <div className="divide-y divide-zinc-200">
                     {completedTasksDisplay.map(t => (
                       <div
                         key={t.id}
                         onClick={() => setSelectedTaskId(t.id)}
-                        className="px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-between gap-3"
+                        className="px-4 py-3 hover:bg-zinc-100 transition-colors cursor-pointer flex items-center justify-between gap-3"
                       >
                         <div className="min-w-0 space-y-0.5">
-                          <p className="text-sm font-medium text-zinc-200 truncate">{t.title}</p>
+                          <p className="text-sm font-medium text-zinc-800 truncate">{t.title}</p>
                           {t.channel && (
                             <p className="text-[11px] text-zinc-500 truncate">{t.channel}</p>
                           )}
@@ -533,7 +533,7 @@ export default function WeeklyReviewPage() {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="shrink-0 inline-flex items-center gap-1 text-[11px] text-blue-400 hover:text-blue-300"
+                            className="shrink-0 inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-700"
                           >
                             Result <ExternalLink className="w-3 h-3" />
                           </a>
@@ -545,10 +545,10 @@ export default function WeeklyReviewPage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-xl">
+            <Card className="bg-white border-zinc-200 backdrop-blur-xl">
               <CardHeader>
-                <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-red-400" /> Blocked at End of Week
+                <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-600 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600" /> Blocked at End of Week
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
@@ -557,21 +557,21 @@ export default function WeeklyReviewPage() {
                     Nothing blocked at end of week.
                   </p>
                 ) : (
-                  <div className="divide-y divide-white/5">
+                  <div className="divide-y divide-zinc-200">
                     {blockedTasksDisplay.map(t => (
                       <div
                         key={t.id}
                         onClick={() => setSelectedTaskId(t.id)}
-                        className="px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer space-y-1"
+                        className="px-4 py-3 hover:bg-zinc-100 transition-colors cursor-pointer space-y-1"
                       >
                         <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm font-medium text-zinc-200 truncate">{t.title}</p>
+                          <p className="text-sm font-medium text-zinc-800 truncate">{t.title}</p>
                           {t.channel && (
                             <span className="shrink-0 text-[11px] text-zinc-500">{t.channel}</span>
                           )}
                         </div>
                         {t.reason && (
-                          <p className="text-[11px] text-red-400/80 line-clamp-2">{t.reason}</p>
+                          <p className="text-[11px] text-red-600/80 line-clamp-2">{t.reason}</p>
                         )}
                       </div>
                     ))}
@@ -582,27 +582,27 @@ export default function WeeklyReviewPage() {
           </div>
 
           {/* Budget summary */}
-          <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-xl">
+          <Card className="bg-white border-zinc-200 backdrop-blur-xl">
             <CardHeader>
-              <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
-                <Landmark className="w-4 h-4 text-emerald-400" /> Budget Summary
+              <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-600 flex items-center gap-2">
+                <Landmark className="w-4 h-4 text-emerald-600" /> Budget Summary
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="rounded-xl border border-white/5 bg-zinc-900/60 p-4 space-y-1">
+                <div className="rounded-xl border border-zinc-200 bg-white p-4 space-y-1">
                   <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
                     Total allocated this week
                   </span>
-                  <p className="text-2xl font-bold text-emerald-400">
+                  <p className="text-2xl font-bold text-emerald-600">
                     ${budgetSummary.totalAllocated.toLocaleString()}
                   </p>
                 </div>
-                <div className="rounded-xl border border-white/5 bg-zinc-900/60 p-4 space-y-1">
+                <div className="rounded-xl border border-zinc-200 bg-white p-4 space-y-1">
                   <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
                     Active buckets
                   </span>
-                  <p className="text-2xl font-bold text-white">{budgetSummary.buckets.length}</p>
+                  <p className="text-2xl font-bold text-zinc-900">{budgetSummary.buckets.length}</p>
                 </div>
               </div>
 
@@ -613,7 +613,7 @@ export default function WeeklyReviewPage() {
                   </div>
                   <ul className="space-y-1.5 text-xs">
                     {budgetSummary.unspentCallouts.map(c => (
-                      <li key={c.label} className="flex justify-between gap-3 text-zinc-200">
+                      <li key={c.label} className="flex justify-between gap-3 text-zinc-800">
                         <span className="truncate">{c.label}</span>
                         <span className="text-orange-300 font-semibold">
                           ${c.unspent.toLocaleString()} unspent of ${c.total_budget.toLocaleString()}
@@ -638,20 +638,20 @@ export default function WeeklyReviewPage() {
                       <div key={b.label} className="space-y-2">
                         <div className="flex justify-between items-center text-xs gap-3">
                           <div className="flex items-center gap-2 min-w-0">
-                            <span className="font-semibold text-zinc-300 truncate">{b.label}</span>
+                            <span className="font-semibold text-zinc-700 truncate">{b.label}</span>
                             {b.ended_in_week && (
                               <Badge className="bg-orange-500/15 text-orange-300 border-orange-500/30">
                                 Ended this week
                               </Badge>
                             )}
                           </div>
-                          <span className="text-zinc-400 shrink-0">
+                          <span className="text-zinc-600 shrink-0">
                             ${b.allocated.toLocaleString()} / ${b.total_budget.toLocaleString()} ({pct}%)
                           </span>
                         </div>
                         <Progress
                           value={pct}
-                          className="h-1.5 bg-zinc-800"
+                          className="h-1.5 bg-zinc-200"
                           indicatorClassName={pct > 100 ? 'bg-red-500' : pct > 80 ? 'bg-orange-500' : 'bg-emerald-500'}
                         />
                       </div>
@@ -688,17 +688,17 @@ function KpiTile({
   accent: 'blue' | 'emerald' | 'red' | 'violet'
 }) {
   const accentMap = {
-    blue: 'bg-blue-500/10 text-blue-400',
-    emerald: 'bg-emerald-500/10 text-emerald-400',
-    red: 'bg-red-500/10 text-red-400',
-    violet: 'bg-violet-500/10 text-violet-400',
+    blue: 'bg-blue-50 text-blue-600',
+    emerald: 'bg-emerald-50 text-emerald-600',
+    red: 'bg-red-50 text-red-600',
+    violet: 'bg-violet-50 text-violet-600',
   } as const
   return (
-    <Card className="bg-zinc-900/50 border-white/5 backdrop-blur-xl hover:border-white/10 transition-all">
+    <Card className="bg-white border-zinc-200 backdrop-blur-xl hover:border-zinc-300 transition-all">
       <CardContent className="p-6 flex items-center justify-between">
         <div>
-          <p className="text-xs font-medium text-zinc-400 uppercase tracking-wider">{label}</p>
-          <h3 className="text-3xl font-bold text-white mt-1">{value}</h3>
+          <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">{label}</p>
+          <h3 className="text-3xl font-bold text-zinc-900 mt-1">{value}</h3>
         </div>
         <div className={`p-3 rounded-xl ${accentMap[accent]}`}>{icon}</div>
       </CardContent>

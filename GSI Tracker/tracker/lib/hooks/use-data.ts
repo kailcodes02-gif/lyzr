@@ -2,7 +2,10 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { useQuery } from '@tanstack/react-query'
-import type { User, Category, Channel } from '@/lib/types/database'
+import type {
+  User, Category, Channel,
+  ChannelOwner, ChannelResource, ChannelLearning, ChannelTarget,
+} from '@/lib/types/database'
 
 // ============ AUTH ============
 
@@ -87,6 +90,115 @@ export function buildChannelTree(channels: Channel[]): Channel[] {
   return roots
 }
 
+// ============ CHANNEL METADATA (GTM blueprint) ============
+
+export function useChannelOwners(channelId?: string) {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['channelOwners', channelId],
+    enabled: !!channelId,
+    staleTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('channel_owners')
+        .select('*')
+        .eq('channel_id', channelId!)
+        .order('sort_order')
+        .order('created_at')
+      if (error) throw error
+      return data as ChannelOwner[]
+    },
+  })
+}
+
+export function useChannelResources(channelId?: string) {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['channelResources', channelId],
+    enabled: !!channelId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('channel_resources')
+        .select('*')
+        .eq('channel_id', channelId!)
+        .order('created_at')
+      if (error) throw error
+      return data as ChannelResource[]
+    },
+  })
+}
+
+// Every owner on every channel — used for owner inheritance on task cards
+// (task -> its sub-channel's owners -> its channel's owners).
+export function useAllChannelOwners() {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['channelOwners', 'all'],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('channel_owners').select('*').order('sort_order').order('created_at')
+      if (error) throw error
+      return data as ChannelOwner[]
+    },
+  })
+}
+
+// Union of every email the tracker knows (signed-in users, channel owners,
+// pending assignees) — feeds the owner-suggestion datalists.
+export function useKnownEmails() {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['knownEmails'],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const [u, co, pa] = await Promise.all([
+        supabase.from('users').select('email'),
+        supabase.from('channel_owners').select('email'),
+        supabase.from('pending_assignments').select('email'),
+      ])
+      const all = [
+        ...(u.data || []), ...(co.data || []), ...(pa.data || []),
+      ].map(r => r.email.toLowerCase()).filter(e => e !== 'preview@lyzr.ai')
+      return [...new Set(all)].sort()
+    },
+  })
+}
+
+export function useChannelTargets(channelId?: string) {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['channelTargets', channelId],
+    enabled: !!channelId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('channel_targets')
+        .select('*')
+        .eq('channel_id', channelId!)
+        .order('sort_order')
+      if (error) throw error
+      return data as ChannelTarget[]
+    },
+  })
+}
+
+export function useChannelLearnings(channelId?: string) {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['channelLearnings', channelId],
+    enabled: !!channelId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('channel_learnings')
+        .select('*')
+        .eq('channel_id', channelId!)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return data as ChannelLearning[]
+    },
+  })
+}
+
 // ============ TASKS ============
 
 export function useTasks(filters?: {
@@ -108,7 +220,8 @@ export function useTasks(filters?: {
           channel:channels!channel_id(*),
           creator:users!created_by(id, email, display_name, avatar_url),
           assignments:task_assignments(*, user:users!user_id(*)),
-          subtasks:tasks!parent_task_id(id, title, status, priority, nesting_level)
+          pending_assignments:pending_assignments(email, role, resolved_user_id),
+          subtasks:tasks!parent_task_id(id, title, description, status, priority, nesting_level, due_date, budget_allocated, planning_fields, assignments:task_assignments(user_id, role, user:users!user_id(display_name, avatar_url)), pending_assignments:pending_assignments(email, role, resolved_user_id))
         `)
         .order('created_at', { ascending: false })
 
@@ -144,10 +257,11 @@ export function useTask(taskId: string | null) {
         .from('tasks')
         .select(`
           *,
-          channel:channels!channel_id(*, category:categories!category_id(*)),
+          channel:channels!channel_id(*, category:categories!category_id(*), parent_channel:parent_channel_id(id, name, slug)),
           creator:users!created_by(id, email, display_name, avatar_url),
           assignments:task_assignments(*, user:users!user_id(*)),
-          subtasks:tasks!parent_task_id(id, title, status, priority, nesting_level, channel_id),
+          pending_assignments:pending_assignments(email, role, resolved_user_id),
+          subtasks:tasks!parent_task_id(id, title, description, status, priority, nesting_level, channel_id, due_date, budget_allocated, planning_fields, pending_assignments:pending_assignments(email, role, resolved_user_id), assignments:task_assignments(user_id, role, user:users!user_id(display_name))),
           checklist_items(* ),
           comments:task_comments(*, user:users(*))
         `)

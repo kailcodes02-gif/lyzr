@@ -1,0 +1,1679 @@
+{
+  "exported_from": "GSI_GTM_2/index.html",
+  "exported_at": "2026-08-03",
+  "channels": [
+    {
+      "id": "c1",
+      "num": 1,
+      "tier": "gold",
+      "cat": "paid",
+      "name": "Paid Ads",
+      "color": "var(--c1)",
+      "budget": "$3,000 / mo",
+      "owners": [
+        "Rishabh",
+        "Mothilal"
+      ],
+      "goal": "Low-CPA lead generation, traffic acquisition, and P90 retargeting pool creation. Split: LinkedIn $1,750, Meta $500, Taboola $500, Google $250.",
+      "resources": [],
+      "subs": [
+        {
+          "id": "c1s1",
+          "opp": 16,
+          "name": "1.1 LinkedIn Ads",
+          "owners": [
+            "Rishabh"
+          ],
+          "budget": "$1,750 / mo",
+          "target": "10K Impressions/mo • 2K Engagements • 6 Playbook leads/wk",
+          "acts": [
+            {
+              "id": "c1s1a1",
+              "bud": 500,
+              "t": "Brand Awareness Ads",
+              "f": "Ongoing",
+              "k": "10,000 Impressions/mo",
+              "sa": [
+                "Promote Lyzr value proposition and GSI framework",
+                "Amplify top executive thought leadership content"
+              ]
+            },
+            {
+              "id": "c1s1a2",
+              "grade": "gold",
+              "bud": 250,
+              "t": "Event Registration Ads",
+              "f": "Monthly 1x",
+              "k": "Event Attendee Capture",
+              "sa": [
+                "Promote monthly GSI-dedicated webinars",
+                "Drive registrations for closed room roundtables"
+              ]
+            },
+            {
+              "id": "c1s1a3",
+              "grade": "gold",
+              "bud": 1000,
+              "t": "Playbook Download Ads",
+              "f": "Ongoing",
+              "k": "6 Playbook Leads/wk",
+              "sa": [
+                "Gated access to GSI architecture playbooks",
+                "Target retargeted audience pool for higher conversion"
+              ]
+            }
+          ],
+          "learnings": [
+            "⚠️ Traffic generation is too expensive on LinkedIn",
+            "⚠️ BoFu 'Book a Demo' ads do NOT work directly",
+            "✅ Retargeted audience to playbook downloads works effectively",
+            "✅ Fresh playbook downloads work consistently",
+            "ℹ️ Post amplification from Anju, Ani & Siva's accounts yields engagements but no direct conversions",
+            "🎯 Conversation ads work specifically in India for Accenture targets"
+          ]
+        },
+        {
+          "id": "c1s2",
+          "opp": 8,
+          "name": "1.2 Meta Ads",
+          "owners": [
+            "Mothilal"
+          ],
+          "budget": "$500 / mo",
+          "target": "3,000 Generated Traffic Visits / month",
+          "acts": [
+            {
+              "id": "c1s2a1",
+              "bud": 300,
+              "t": "Traffic Generation",
+              "f": "Daily / Ongoing",
+              "k": "3,000 Web Visits/mo",
+              "sa": [
+                "Low-CPA traffic acquisition targeting enterprise AI keywords"
+              ]
+            },
+            {
+              "id": "c1s2a2",
+              "grade": "gold",
+              "bud": 200,
+              "t": "Video Ads (Retargeting P90 Traffic)",
+              "f": "Ongoing",
+              "k": "Retarget P90 Visitors",
+              "sa": [
+                "Retarget visitors who spent >90s on primary landing page with video demos"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c1s3",
+          "opp": 8,
+          "name": "1.3 Google Ads",
+          "owners": [
+            "Mothilal"
+          ],
+          "budget": "$250 / mo",
+          "target": "700 - 1,000 Traffic Visits / month",
+          "acts": [
+            {
+              "id": "c1s3a1",
+              "grade": "gold",
+              "bud": 50,
+              "t": "Keywords Mapping & Search Campaigns",
+              "f": "Ongoing",
+              "k": "Map Best Keywords for GSI",
+              "sa": [
+                "Map and bid on top performing GSI enterprise keywords"
+              ]
+            },
+            {
+              "id": "c1s3a2",
+              "bud": 200,
+              "t": "YouTube Ads (Retargeting P90 Traffic)",
+              "f": "Monthly",
+              "k": "Retarget P90 Visitors on YouTube",
+              "sa": [
+                "Retarget P90 audience cohorts with video case studies on YouTube"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c1s4",
+          "opp": 8,
+          "name": "1.4 Taboola Ads",
+          "isNew": true,
+          "owners": [
+            "Unassigned"
+          ],
+          "budget": "$500 / mo",
+          "target": "Native Discovery Reach (Targets TBD)",
+          "acts": [
+            {
+              "id": "c1s4a1",
+              "grade": "gold",
+              "t": "Native Discovery Campaigns (Details Pending)",
+              "f": "TBD",
+              "k": "Awaiting Targets & Owner",
+              "sa": [
+                "Placeholder: campaign structure, audiences, and KPIs to be defined",
+                "Assign owner and set monthly traffic / lead targets"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "num": 2,
+      "tier": "silver",
+      "cat": "outbound",
+      "name": "Email",
+      "color": "var(--c2)",
+      "budget": "Software Stack",
+      "owners": [
+        "Rida",
+        "Kailash",
+        "Nirupam",
+        "Partnership Team",
+        "Apoorva",
+        "Shifa",
+        "Shreya"
+      ],
+      "goal": "Outbound cold outreach (Instantly), inbound lead nurture (Hubspot), 1-1 partnership outreach, and Beehiiv newsletter.",
+      "resources": [],
+      "subs": [
+        {
+          "id": "c2s1",
+          "opp": 4,
+          "name": "2.1 Instantly (Outbound)",
+          "owners": [
+            "Rida",
+            "Kailash"
+          ],
+          "resources": [
+            {
+              "n": "Target Accounts Master List",
+              "u": "https://docs.google.com/spreadsheets/d/1j34AfSe2I0FXY2x5Pju7_ZQEadtuaf6k2xES2K89Scg/edit?gid=0#gid=0"
+            }
+          ],
+          "target": "8K-10K GSI Contacts/mo • 2K-5K SI Contacts/mo",
+          "acts": [
+            {
+              "id": "c2s1a1",
+              "grade": "silver",
+              "t": "Target 15 Accounts per Month",
+              "f": "Monthly (10K-12K Contacts)",
+              "k": "Drive Traffic & Warm Up Contacts",
+              "sa": [
+                "Go after 15 GSI accounts per month (10-12K total contacts pool)",
+                "Get initial traction and warm up decision maker contacts",
+                {
+                  "t": "5 Email Nurture Sequence",
+                  "d": "Automated cadence of 5 emails with embedded resources and 2 'Book a Demo' CTAs, running inside the monthly 15-account coverage. Not a standalone activity."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c2s2",
+          "opp": 1,
+          "name": "2.2 Hubspot (Inbound & Nurture)",
+          "owners": [
+            "Kailash",
+            "Nirupam"
+          ],
+          "target": "Warm Playbook Leads into 'Book a Demo' SQLs",
+          "acts": [
+            {
+              "id": "c2s2a1",
+              "grade": "silver",
+              "t": "Accenture Dedicated Email Sequence",
+              "f": "Automated Workflow",
+              "k": "Accenture Lead Nurture",
+              "sa": [
+                "Make Accenture specific sequence sitting with Praveen & Anju"
+              ]
+            },
+            {
+              "id": "c2s2a2",
+              "grade": "silver",
+              "opp": 3,
+              "t": "Playbooks & Use Cases Email Sequence",
+              "f": "Automated Workflow",
+              "k": "3 Opportunities/mo Target",
+              "sa": [
+                "Make Playbook specific sequence sitting with Alma"
+              ]
+            },
+            {
+              "id": "c2s2a3",
+              "t": "Auto-Enrollment Workflow Setup",
+              "f": "Ongoing Trigger",
+              "k": "Automatic Lead Progression",
+              "sa": [
+                "Set up auto enroll flow from inbound playbook leads directly into Hubspot email sequences"
+              ]
+            },
+            {
+              "id": "c2s2a4",
+              "grade": "silver",
+              "opp": 1,
+              "t": "Reactivate Old / Stale Leads",
+              "f": "Monthly Batches",
+              "k": "1 Opportunity/mo Target",
+              "sa": [
+                "Pull 60+ day stale GSI leads across playbook, cold, and lost categories",
+                "Run re-engagement sequences to revive dormant conversations"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c2s3",
+          "name": "2.3 1-1 Outreach (Partnership Team)",
+          "owners": [
+            "Partnership Team"
+          ],
+          "target": "Manual 1-1 Handling on All 'Book a Demo' Leads",
+          "acts": [
+            {
+              "id": "c2s3a1",
+              "t": "3 Email Cadence Follow-Up",
+              "f": "Sequential SLA",
+              "k": "Email Engagement",
+              "sa": [
+                "Execute 3 cadence follow-ups on email for all demo leads"
+              ]
+            },
+            {
+              "id": "c2s3a2",
+              "t": "3 LinkedIn Cadence Follow-Up",
+              "f": "Sequential SLA",
+              "k": "LinkedIn Direct Touchpoint",
+              "sa": [
+                "Execute 3 cadence follow-ups on LinkedIn"
+              ]
+            },
+            {
+              "id": "c2s3a3",
+              "t": "1 WhatsApp or iMessage Outreach",
+              "f": "Final Fallback Touch",
+              "k": "Convert Non-Responsive Leads",
+              "sa": [
+                "Send 1 WhatsApp or iMessage message after no response on Email & LinkedIn"
+              ]
+            }
+          ],
+          "learnings": [
+            "📌 All 'Book a Demo' leads are taken up by Partnership team on 1-1 basis with zero automated sequences."
+          ]
+        },
+        {
+          "id": "c2s4",
+          "opp": 0,
+          "name": "2.4 Newsletter (Beehiiv)",
+          "owners": [
+            "Kailash",
+            "Apoorva",
+            "Shifa",
+            "Shreya"
+          ],
+          "target": "Increase Subscribers to 1K in Q3",
+          "acts": [
+            {
+              "id": "c2s4a1",
+              "t": "Monthly Newsletter Edition",
+              "f": "Monthly (on/around 20th)",
+              "k": "Share Product Updates & Lyzr Story",
+              "sa": [
+                "Add Customers, BoFu, ToFu & MoFu in SQL (at least had conversation once)",
+                "Add all 'Book a Demo' no-show leads (after Partnership team's 3 follow ups)",
+                "Add landing page subscriber capture widget"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "num": 3,
+      "tier": "hygiene",
+      "cat": "organic",
+      "name": "LinkedIn Organic",
+      "color": "var(--c3)",
+      "budget": "Organic Team",
+      "owners": [
+        "Prince",
+        "Shifa",
+        "Anju",
+        "Ani",
+        "Praveen",
+        "Pooja",
+        "Kaushik",
+        "Bharath",
+        "Kailash"
+      ],
+      "goal": "Corporate pages, showcase hub, and individual executive personal social selling.",
+      "resources": [
+        {
+          "n": "LinkedIn GSI Showcase Page",
+          "u": "https://www.linkedin.com/showcase/lyzr-partners/"
+        }
+      ],
+      "subs": [
+        {
+          "id": "c3s1",
+          "name": "3.1 Lyzr Page",
+          "owners": [
+            "Prince",
+            "Shifa"
+          ],
+          "target": "100+ Attendees per Webinar",
+          "acts": [
+            {
+              "id": "c3s1a1",
+              "t": "Weekly 1 Post",
+              "f": "Weekly 1x",
+              "k": "Brand Awareness",
+              "sa": [
+                "Post weekly corporate updates and highlights"
+              ]
+            },
+            {
+              "id": "c3s1a2",
+              "t": "GSI Dedicated Webinar",
+              "f": "Monthly 1x",
+              "k": "100+ Attendees",
+              "sa": [
+                "Host monthly GSI dedicated webinar"
+              ]
+            },
+            {
+              "id": "c3s1a3",
+              "t": "Events Posts",
+              "f": "Event Basis",
+              "k": "Event Promotion",
+              "sa": [
+                "Promote upcoming and live event announcements"
+              ]
+            },
+            {
+              "id": "c3s1a4",
+              "t": "Repost GSI Monthly Article",
+              "f": "Monthly 1x",
+              "k": "Article Amplification",
+              "sa": [
+                "Repost monthly article published on GSI page"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c3s2",
+          "name": "3.2 GSI Page",
+          "owners": [
+            "Shifa"
+          ],
+          "target": "Increase Followers by 200 per Month",
+          "acts": [
+            {
+              "id": "c3s2a1",
+              "t": "Weekly 3x Posts",
+              "f": "Weekly 3x",
+              "k": "Case Study, Playbook & Thought Leadership",
+              "sa": [
+                "Post 3x weekly covering case studies, playbooks, and thought leadership"
+              ]
+            },
+            {
+              "id": "c3s2a2",
+              "t": "Monthly 1 LinkedIn Article",
+              "f": "Monthly 1x",
+              "k": "Longform GSI Article",
+              "sa": [
+                "Publish 1 dedicated LinkedIn article per month"
+              ]
+            },
+            {
+              "id": "c3s2a3",
+              "t": "Invite GSI ICPs to Follow Page",
+              "f": "Ongoing",
+              "k": "Growth (+200 followers/mo)",
+              "sa": [
+                "Send invitations to targeted GSI ICP profiles to follow page"
+              ]
+            },
+            {
+              "id": "c3s2a4",
+              "t": "Repost Webinars & Podcasts",
+              "f": "Ongoing",
+              "k": "Asset Cross-Promotion",
+              "sa": [
+                "Repost webinars and podcast episodes on showcase page"
+              ]
+            },
+            {
+              "id": "c3s2a5",
+              "t": "Podcast & Webinar Clips",
+              "f": "Monthly 2 Clips",
+              "k": "Short-Form Engagement",
+              "sa": [
+                "Share 2 video highlight clips per month"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c3s3",
+          "opp": 0,
+          "name": "3.3 Personal Accounts: Anju, Ani",
+          "owners": [
+            "Anju",
+            "Ani"
+          ],
+          "target": "100 Connection Requests/week to CXOs",
+          "acts": [
+            {
+              "id": "c3s3a1",
+              "t": "Weekly 2x Posts",
+              "f": "Weekly 2x",
+              "k": "Thought Leadership",
+              "sa": [
+                "Publish 2 thought leadership posts weekly"
+              ]
+            },
+            {
+              "id": "c3s3a2",
+              "t": "Send Connection Requests to 100 ICPs/wk",
+              "f": "Weekly (100 Request Target)",
+              "k": "CXO Account Leaders",
+              "sa": [
+                "Send connection requests to top CXO leaders of each target account"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c3s4",
+          "opp": 0,
+          "name": "3.4 Personal Accounts: Praveen, Pooja, Kaushik, Bharath",
+          "owners": [
+            "Praveen",
+            "Pooja",
+            "Kaushik",
+            "Bharath"
+          ],
+          "target": "Respective Account ICP Connections",
+          "acts": [
+            {
+              "id": "c3s4a1",
+              "t": "Weekly 2x Posts",
+              "f": "Weekly 2x",
+              "k": "GSI Activities & Reposts",
+              "sa": [
+                "Post GSI activities, repost Siva's content, and thought leadership"
+              ]
+            },
+            {
+              "id": "c3s4a2",
+              "t": "Send Connection Requests to Account ICPs",
+              "f": "Weekly Cadence",
+              "k": "Target Account Contacts",
+              "sa": [
+                "Send connection requests to assigned account ICPs"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c3s5",
+          "opp": 0,
+          "name": "3.5 Personal Accounts: Kailash",
+          "owners": [
+            "Kailash"
+          ],
+          "target": "Build Relationship with DMs & Ecosystem Players",
+          "acts": [
+            {
+              "id": "c3s5a1",
+              "t": "Connect with Ecosystem Players & Teams",
+              "f": "Ongoing",
+              "k": "PR, Events, L&D & Ecosystem Leaders",
+              "sa": [
+                "Connect with PR teams, GSI ecosystem players, Events team, L&D leaders"
+              ]
+            },
+            {
+              "id": "c3s5a2",
+              "t": "Build Relationship with DMs & Commenting",
+              "f": "Daily",
+              "k": "Active Decision Maker Engagement",
+              "sa": [
+                "Build relationships with decision makers through active commenting and interaction"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c4",
+      "num": 4,
+      "tier": "hygiene",
+      "cat": "organic",
+      "name": "Content",
+      "color": "var(--c4)",
+      "budget": "Content Team",
+      "owners": [
+        "Shreya",
+        "Alma",
+        "Kailash",
+        "Faraz",
+        "Ayush"
+      ],
+      "goal": "Landing pages, comparison pages, case studies, playbooks and blueprints, plus in-house creator videos for the Accenture-dedicated audience and video testimonial production.",
+      "resources": [
+        {
+          "n": "Content Repository (Build Monthly)",
+          "u": "https://docs.google.com/spreadsheets/d/1n3Xaaa-L8M70kjVVbruXPM3L2P0o61P7hS_46hKqv5A/edit?gid=1245354028#gid=1245354028"
+        }
+      ],
+      "subs": [
+        {
+          "id": "c4s1",
+          "opp": 0,
+          "name": "4.1 Content Portfolio & Velocity",
+          "owners": [
+            "Shreya",
+            "Alma",
+            "Kailash"
+          ],
+          "onote": "Kailash: Subowner",
+          "target": "Build 1-2 New Assets/mo • SEO Optimize 2-3 Existing/mo",
+          "acts": [
+            {
+              "id": "c4s1a1",
+              "t": "Build New Assets",
+              "f": "Monthly 1-2 Assets",
+              "k": "Expand Asset Formats",
+              "sa": [
+                "Build Landing pages, Comparison Pages, Case Studies, Playbooks, Bundles (Case study + Playbook + Assessment), Whitepaper, Assessment, Blueprint"
+              ]
+            },
+            {
+              "id": "c4s1a2",
+              "t": "SEO Optimize Existing Assets",
+              "f": "Monthly 2-3 Assets",
+              "k": "Higher Organic Search Rank",
+              "sa": [
+                "SEO optimize 2-3 existing content assets per month"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c4s2",
+          "name": "4.2 In-House Creator Videos (Accenture Focus)",
+          "isNew": true,
+          "owners": [
+            "Faraz"
+          ],
+          "onote": "+ Creator Team",
+          "platforms": [
+            "YouTube",
+            "Instagram"
+          ],
+          "target": "Expand Lyzr Brand Presence to the Accenture-Dedicated Audience",
+          "acts": [
+            {
+              "id": "c4s2a1",
+              "t": "Short-Form Creator Content Production",
+              "f": "Ongoing",
+              "k": "Accenture-Relevant Short Videos",
+              "sa": [
+                "Break the sub-channel down into short content built with in-house creators",
+                "Produce breakdowns of Accenture actions and dedicated content with Faraz's team"
+              ]
+            },
+            {
+              "id": "c4s2a2",
+              "t": "Why Accenture Leads the Agentic Era (Series)",
+              "f": "Ongoing Series",
+              "k": "Accenture Authority Positioning",
+              "sa": [
+                "Tell why Accenture is the best company in the agentic era",
+                "Highlight that Accenture invests the most in agentic systems and startups"
+              ]
+            },
+            {
+              "id": "c4s2a3",
+              "t": "YouTube + Instagram Distribution",
+              "f": "Per Video Release",
+              "k": "Accenture-Dedicated Audience Growth",
+              "sa": [
+                "Publish every creator video on YouTube and Instagram",
+                "Use this play to figure out how Lyzr expands brand presence to the Accenture-dedicated audience"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c4s3",
+          "name": "4.3 Video Testimonials",
+          "isNew": true,
+          "owners": [
+            "Ayush"
+          ],
+          "target": "Video Testimonial Captured & Production Ready",
+          "acts": [
+            {
+              "id": "c4s3a1",
+              "t": "Video Testimonial Capture",
+              "f": "Per Testimonial",
+              "k": "Testimonial Asset Ready",
+              "sa": [
+                "Get a video testimonial taken and produced",
+                "Hand off the finished asset for reuse across GSI channels"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c5",
+      "num": 5,
+      "tier": "gold",
+      "cat": "events",
+      "name": "Events",
+      "color": "var(--c5)",
+      "budget": "$3,000 / mo Flexi",
+      "owners": [
+        "Ankita",
+        "Kailash"
+      ],
+      "goal": "Independent subchannels for Lyzr Hosted, Hosted by Others, and Co-Hosted events.",
+      "resources": [
+        {
+          "n": "Lyzr GSI Events Portal",
+          "u": "https://www.lyzr.ai/gsi-events/"
+        }
+      ],
+      "subs": [
+        {
+          "id": "c5s1",
+          "opp": 4,
+          "name": "5.1 Hosted by Lyzr",
+          "owners": [
+            "Ankita",
+            "Kailash"
+          ],
+          "budget": "$2,000 / mo",
+          "target": "5 GSI Seats per Event",
+          "acts": [
+            {
+              "id": "c5s1a1",
+              "grade": "gold",
+              "t": "Side Events",
+              "f": "Event Basis",
+              "k": "5 GSI Seats per Event",
+              "sa": [
+                "Big conferences side events inviting GSIs (Budget: part of non-GSI events budget)"
+              ]
+            },
+            {
+              "id": "c5s1a2",
+              "grade": "gold",
+              "t": "Recurring IP Events (NY Sail boat - Siva)",
+              "f": "Monthly (2-5 seats)",
+              "k": "VIP Executive Bonding",
+              "sa": [
+                "Flagship IP events hosted by Siva in NY (Budget: part of non-GSI events budget)"
+              ]
+            },
+            {
+              "id": "c5s1a3",
+              "grade": "gold",
+              "t": "Closed Rooms",
+              "f": "Monthly / Bi-monthly",
+              "k": "5 GSI Seats per Event",
+              "sa": [
+                "Closed rooms in India, Berlin, London, New York, Dubai ($750 - $1,000 per room)"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c5s2",
+          "opp": 2,
+          "name": "5.2 Hosted by Others",
+          "owners": [
+            "Ankita",
+            "Kailash"
+          ],
+          "budget": "$1,000 Flexi / mo",
+          "target": "Bring 3-5 GSI Seats per Event",
+          "acts": [
+            {
+              "id": "c5s2a1",
+              "grade": "gold",
+              "t": "Attend",
+              "f": "Monthly (Flexi)",
+              "k": "Attend Top Events",
+              "sa": [
+                "Attend key industry events ($1,000 budget cap)"
+              ]
+            },
+            {
+              "id": "c5s2a2",
+              "t": "Sponsor + Stall",
+              "f": "Monthly (Flexi)",
+              "k": "Event Presence & Booth",
+              "sa": [
+                "Sponsor event and set up stall (Budget: part of non-GSI events budget)"
+              ]
+            },
+            {
+              "id": "c5s2a3",
+              "grade": "gold",
+              "t": "Speaker",
+              "f": "Monthly (Flexi)",
+              "k": "Keynote & Panel Speaking",
+              "sa": [
+                "Secure speaker slots at industry events"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c5s3",
+          "opp": 2,
+          "name": "5.3 Co-Hosted",
+          "owners": [
+            "Ankita",
+            "Kailash"
+          ],
+          "budget": "$1,000 Flexi / mo",
+          "target": "Bring 3-5 GSI Seats per Event",
+          "acts": [
+            {
+              "id": "c5s3a1",
+              "grade": "gold",
+              "t": "SIs & Partners",
+              "f": "Monthly (Flexi)",
+              "k": "New Accounts & Upsell",
+              "sa": [
+                "Co-market event with SIs & Partners to bring new accounts & upsell existing"
+              ]
+            },
+            {
+              "id": "c5s3a2",
+              "grade": "gold",
+              "t": "Agencies",
+              "f": "Monthly (Flexi)",
+              "k": "Co-Host with Agencies",
+              "sa": [
+                "Co-host events with agencies that work with GSIs"
+              ]
+            },
+            {
+              "id": "c5s3a3",
+              "grade": "gold",
+              "t": "Non-Rivalry Players",
+              "f": "Monthly (Flexi)",
+              "k": "Shared ICP Audience",
+              "sa": [
+                "Find non-rivalry players whose ICPs are same but for different business"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c6",
+      "num": 6,
+      "tier": "hygiene",
+      "cat": "paid",
+      "name": "Paid Organic",
+      "color": "var(--c6)",
+      "budget": "$2,000 / mo (Max 2 activities)",
+      "owners": [
+        "Prince",
+        "Kailash",
+        "Shreya",
+        "Deepyanthi"
+      ],
+      "goal": "Influencers/thought leaders, PR releases, and magazine features.",
+      "resources": [
+        {
+          "n": "GSI Communities Portal",
+          "u": "https://www.lyzr.ai/gsi-communities/"
+        }
+      ],
+      "subs": [
+        {
+          "id": "c6s1",
+          "name": "6.1 Influencers (Thought Leaders)",
+          "owners": [
+            "Prince",
+            "Kailash",
+            "Shreya",
+            "Deepyanthi"
+          ],
+          "resources": [
+            {
+              "n": "Communities / Influencers Repository",
+              "u": "https://www.lyzr.ai/gsi-communities/"
+            }
+          ],
+          "target": "Monthly 1 Post + 1 Newsletter Feature",
+          "acts": [
+            {
+              "id": "c6s1a1",
+              "t": "Monthly 1 Partnership for LinkedIn Post",
+              "f": "Monthly 1x",
+              "k": "Influencer LinkedIn Post",
+              "sa": [
+                "Partner with thought leaders to do 1 LinkedIn post monthly"
+              ]
+            },
+            {
+              "id": "c6s1a2",
+              "t": "Thought Leader Newsletter Mention",
+              "f": "Monthly 1x",
+              "k": "Newsletter Feature",
+              "sa": [
+                "Thought leaders to mention Lyzr on their newsletter monthly"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c6s2",
+          "name": "6.2 PR",
+          "owners": [
+            "Prince",
+            "Kailash",
+            "Shreya",
+            "Deepyanthi"
+          ],
+          "resources": [
+            {
+              "n": "PR & Internal Comms Repository",
+              "u": "https://www.lyzr.ai/gsi-pr-repo/"
+            }
+          ],
+          "target": "Media Announcements",
+          "acts": [
+            {
+              "id": "c6s2a1",
+              "t": "Quarterly 1/2 PRs",
+              "f": "Quarterly 1-2 PRs",
+              "k": "Press Release Coverage",
+              "sa": [
+                "Issue 1-2 press releases per quarter"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c6s3",
+          "name": "6.3 Magazines / Newsletters (GSI ICP Audience)",
+          "owners": [
+            "Prince",
+            "Kailash",
+            "Shreya",
+            "Deepyanthi"
+          ],
+          "target": "High ICP Eyeball Reach",
+          "acts": [
+            {
+              "id": "c6s3a1",
+              "t": "Logo Mention",
+              "f": "Monthly",
+              "k": "Brand Impression",
+              "sa": [
+                "Logo placements in GSI magazines/newsletters"
+              ]
+            },
+            {
+              "id": "c6s3a2",
+              "t": "Dedicated Content (Seem Organic)",
+              "f": "Monthly",
+              "k": "Organic Content Integration",
+              "sa": [
+                "Publish dedicated content that feels organic"
+              ]
+            },
+            {
+              "id": "c6s3a3",
+              "t": "Thought Leadership Content by Lyzr",
+              "f": "Monthly",
+              "k": "Lyzr Thought Leadership",
+              "sa": [
+                "Feature Lyzr thought leadership articles in target magazines"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c7",
+      "num": 7,
+      "tier": "bronze",
+      "cat": "organic",
+      "name": "Longform Content & Co-marketing",
+      "color": "var(--c7)",
+      "budget": "Content Team",
+      "owners": [
+        "Shifa",
+        "Pranamya"
+      ],
+      "goal": "Quarterly webinar series and podcast episodes.",
+      "resources": [],
+      "subs": [
+        {
+          "id": "c7s1",
+          "opp": 2,
+          "name": "7.1 Webinar",
+          "owners": [
+            "Shifa"
+          ],
+          "resources": [
+            {
+              "n": "PR & Internal Comms Repository",
+              "u": "https://www.lyzr.ai/gsi-pr-repo/"
+            }
+          ],
+          "target": "100 Attendees per Webinar",
+          "acts": [
+            {
+              "id": "c7s1a1",
+              "grade": "bronze",
+              "t": "Host 3x per Quarter",
+              "f": "Quarterly 3x",
+              "k": "100 Attendees/webinar",
+              "sa": [
+                "Host 3 webinars per quarter"
+              ]
+            },
+            {
+              "id": "c7s1a2",
+              "t": "Invite Existing Customers & PR Contacts",
+              "f": "Ongoing",
+              "k": "Get New Faces",
+              "sa": [
+                "Invite existing GSI customers, connect with PR team to get new faces"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c7s2",
+          "name": "7.2 Podcast",
+          "owners": [
+            "Pranamya"
+          ],
+          "target": "Host 2x/Qtr • Guest 2x/Qtr",
+          "acts": [
+            {
+              "id": "c7s2a1",
+              "t": "Host Quarterly 2x",
+              "f": "Quarterly 2x",
+              "k": "Host Podcast Episodes",
+              "sa": [
+                "Host 2 podcast episodes per quarter"
+              ]
+            },
+            {
+              "id": "c7s2a2",
+              "t": "Visit as Guest 2x Quarterly",
+              "f": "Quarterly 2x",
+              "k": "Guest Appearances",
+              "sa": [
+                "Visit external podcasts as guest 2x per quarter"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c8",
+      "num": 8,
+      "tier": "silver",
+      "cat": "organic",
+      "name": "Communities",
+      "color": "var(--c8)",
+      "budget": "$500 - $1,000 / mo",
+      "owners": [
+        "Ankita",
+        "Kailash",
+        "Prince"
+      ],
+      "goal": "Offline allies, paid memberships, online non-chatable groups, and Slack/equivalent communities.",
+      "resources": [
+        {
+          "n": "Communities / Influencers Repository",
+          "u": "https://www.lyzr.ai/gsi-communities/"
+        }
+      ],
+      "subs": [
+        {
+          "id": "c8s1",
+          "opp": 1,
+          "name": "8.1 Offline Communities",
+          "owners": [
+            "Ankita",
+            "Kailash"
+          ],
+          "target": "Community Allies & Event Sponsorship",
+          "acts": [
+            {
+              "id": "c8s1a1",
+              "t": "Make Allies with Hosts & Community Owners",
+              "f": "Ongoing",
+              "k": "Host Relationships",
+              "sa": [
+                "Build relationship with community hosts and owners"
+              ]
+            },
+            {
+              "id": "c8s1a2",
+              "grade": "silver",
+              "t": "Sponsor Events & Do Exclusive Events",
+              "f": "Monthly",
+              "k": "Exclusive Gathering",
+              "sa": [
+                "Sponsor community events and host exclusive gatherings"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c8s2",
+          "name": "8.2 Paid Membership",
+          "owners": [
+            "Ankita",
+            "Kailash"
+          ],
+          "target": "Active Network Participation",
+          "acts": [
+            {
+              "id": "c8s2a1",
+              "t": "Sponsor Events",
+              "f": "Monthly",
+              "k": "Event Sponsorship",
+              "sa": [
+                "Sponsor paid membership events"
+              ]
+            },
+            {
+              "id": "c8s2a2",
+              "t": "Be More Active",
+              "f": "Ongoing",
+              "k": "Active Engagement",
+              "sa": [
+                "Maintain active participation in paid member networks"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c8s3",
+          "name": "8.3 Online (Non Chatable)",
+          "owners": [
+            "Prince",
+            "Kailash"
+          ],
+          "target": "Growth Hacks & Thought Leadership",
+          "acts": [
+            {
+              "id": "c8s3a1",
+              "t": "Be More Active",
+              "f": "Ongoing",
+              "k": "Regular Activity",
+              "sa": [
+                "Maintain regular presence"
+              ]
+            },
+            {
+              "id": "c8s3a2",
+              "t": "Put Thought Leader Content",
+              "f": "Weekly",
+              "k": "Content Reach",
+              "sa": [
+                "Share thought leadership posts"
+              ]
+            },
+            {
+              "id": "c8s3a3",
+              "t": "Do Growth Hack Experiments",
+              "f": "Ongoing",
+              "k": "Growth Testing",
+              "sa": [
+                "Run growth hacking experiments"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c8s4",
+          "opp": 1,
+          "name": "8.4 Slack / Equivalent",
+          "owners": [
+            "Prince",
+            "Kailash"
+          ],
+          "target": "Direct Community Engagement",
+          "acts": [
+            {
+              "id": "c8s4a1",
+              "grade": "silver",
+              "t": "Active Engagements",
+              "f": "Daily",
+              "k": "Community Interaction",
+              "sa": [
+                "Active daily conversations and responses"
+              ]
+            },
+            {
+              "id": "c8s4a2",
+              "t": "Post Monthly Newsletter",
+              "f": "Monthly 1x",
+              "k": "Newsletter Distribution",
+              "sa": [
+                "Distribute monthly newsletter in channels"
+              ]
+            },
+            {
+              "id": "c8s4a3",
+              "t": "Post Hiring Messages",
+              "f": "Ongoing",
+              "k": "Talent & Brand Reach",
+              "sa": [
+                "Post company hiring updates"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c9",
+      "num": 9,
+      "tier": "silver",
+      "cat": "outbound",
+      "name": "Referrals",
+      "color": "var(--c9)",
+      "budget": "Incentive-Based",
+      "owners": [
+        "Sejal",
+        "Kailash",
+        "Ani",
+        "Anju"
+      ],
+      "goal": "1st degree connections export and employee referral incentive structure.",
+      "resources": [
+        {
+          "n": "Master Referrals Spreadsheet",
+          "u": "https://docs.google.com/spreadsheets/d/1bslg0niqKJCuvr6II8Gm5Vb_cmgKk83RSBsIfkqUqIQ/"
+        }
+      ],
+      "subs": [
+        {
+          "id": "c9s1",
+          "opp": 4,
+          "name": "9.1 1st Degree Connections of Leadership",
+          "owners": [
+            "Sejal",
+            "Kailash",
+            "Ani",
+            "Anju"
+          ],
+          "resources": [
+            {
+              "n": "Ani's 1st Degree Connection List",
+              "u": "https://claude.ai/public/artifacts/c4087ea4-5b3a-46e8-b86d-83aa1b3c0c65"
+            }
+          ],
+          "target": "Mapped Leadership Network Outreach",
+          "acts": [
+            {
+              "id": "c9s1a1",
+              "t": "1st Degree Connection Export",
+              "f": "One-time Export",
+              "k": "Leadership & Partner Network",
+              "sa": [
+                "Export 1st degree connections from Partnership team and Leadership team"
+              ]
+            },
+            {
+              "id": "c9s1a2",
+              "t": "Map Out Connections",
+              "f": "Ongoing",
+              "k": "Designation, Account & Relevance",
+              "sa": [
+                "Map out connection with designation, account and relevance"
+              ]
+            },
+            {
+              "id": "c9s1a3",
+              "grade": "silver",
+              "t": "Make Outreach Plan & Automation",
+              "f": "Ongoing",
+              "k": "Automated Campaign",
+              "sa": [
+                "Execute outreach plan and setup automation"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c9s2",
+          "opp": 2,
+          "name": "9.2 Employee Referral",
+          "owners": [
+            "Sejal",
+            "Kailash",
+            "Ani",
+            "Anju"
+          ],
+          "target": "$150 Win Reward • $20 Demo Gift (Permission Callout)",
+          "acts": [
+            {
+              "id": "c9s2a1",
+              "grade": "silver",
+              "t": "Tap Employee Social Circles",
+              "f": "Ongoing",
+              "k": "Social Network Referrals",
+              "sa": [
+                "Ask for referrals from different social circles of employees"
+              ]
+            },
+            {
+              "id": "c9s2a2",
+              "t": "Leadership Internal Push",
+              "f": "Weekly",
+              "k": "Leadership Endorsement",
+              "sa": [
+                "Push referral program from org leaders to the team"
+              ]
+            },
+            {
+              "id": "c9s2a3",
+              "t": "$150 Reward for Successful Referral (Win)",
+              "f": "Reward per Win",
+              "k": "$150 Closed-Won Incentive",
+              "sa": [
+                "Award $150 reward for a successful closed-won referral win"
+              ]
+            },
+            {
+              "id": "c9s2a4",
+              "t": "$20 Voucher/Gift for Demo Call",
+              "f": "Reward per Demo",
+              "k": "$20 Demo Incentive ([Permission Callout])",
+              "sa": [
+                "Award $20 voucher/gift for a completed demo call ([requires permission callout])"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c10",
+      "num": 10,
+      "tier": "silver",
+      "cat": "paid",
+      "name": "BTL",
+      "color": "var(--c10)",
+      "budget": "$1,500 / mo",
+      "owners": [
+        "Kailash",
+        "Ankita",
+        "Vaibhavi",
+        "Prasad",
+        "Ashish"
+      ],
+      "goal": "Targeted physical gifting ($1,000/mo), Out-Of-Home posters ($500/mo), and bottom-up Workshops & Cohorts whose ICP touchpoints get repurposed into other channels.",
+      "resources": [],
+      "subs": [
+        {
+          "id": "c10s1",
+          "opp": 1,
+          "name": "10.1 Gifting",
+          "owners": [
+            "Kailash",
+            "Ankita"
+          ],
+          "budget": "$1,000 / mo",
+          "target": "10 Gifts per Month ($30 value)",
+          "acts": [
+            {
+              "id": "c10s1a1",
+              "t": "Map NY & Indian Top ICP Addresses",
+              "f": "Monthly",
+              "k": "Personal & Office Addresses",
+              "sa": [
+                "Map out all NY & Indian top ICPs' personal & office addresses"
+              ]
+            },
+            {
+              "id": "c10s1a2",
+              "t": "Courier Creative Brochure + $30 Gift",
+              "f": "Monthly (10 Gifts)",
+              "k": "Physical Gift Delivery",
+              "sa": [
+                "Courier creative brochure + gift worth $30"
+              ]
+            },
+            {
+              "id": "c10s1a3",
+              "grade": "silver",
+              "t": "Invite to Events + CTA to Book Demo",
+              "f": "Monthly",
+              "k": "Demo / Event Conversion",
+              "sa": [
+                "Include invitation to events + CTA to book a demo"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c10s2",
+          "name": "10.2 OOH",
+          "owners": [
+            "Kailash",
+            "Ankita"
+          ],
+          "budget": "$500 / mo",
+          "target": "Target Eyeball Placements",
+          "acts": [
+            {
+              "id": "c10s2a1",
+              "t": "Map Out ICP's Eyeballs",
+              "f": "Monthly",
+              "k": "Location Mapping",
+              "sa": [
+                "Map out locations frequented by ICP decision makers"
+              ]
+            },
+            {
+              "id": "c10s2a2",
+              "t": "Put Up Posters",
+              "f": "Monthly",
+              "k": "Poster Displays",
+              "sa": [
+                "Put up high-visibility posters"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c10s3",
+          "opp": 5,
+          "name": "10.3 Workshops & Cohorts",
+          "isNew": true,
+          "owners": [
+            "Vaibhavi",
+            "Prasad",
+            "Ashish"
+          ],
+          "target": "Bottom-Up ICP Education • Touchpoints Repurposed into Other Channels",
+          "acts": [
+            {
+              "id": "c10s3a1",
+              "t": "In-House Workshop Hosting",
+              "f": "Ongoing",
+              "k": "GSI Team Education Sessions",
+              "sa": [
+                "Host in-house workshops that educate GSI teams on agentic systems",
+                "Work directly with GSIs to educate practice and delivery teams"
+              ]
+            },
+            {
+              "id": "c10s3a2",
+              "t": "L&D Teams + EdTech Agency Partnerships",
+              "f": "Ongoing",
+              "k": "Partnered Learning Programs",
+              "sa": [
+                "Do partnerships with learning & development teams inside target accounts",
+                "Partner with edutech agencies that already train GSI audiences"
+              ]
+            },
+            {
+              "id": "c10s3a3",
+              "grade": "silver",
+              "t": "Cross-Funnel Touchpoint Repurposing",
+              "f": "Per Cohort / Workshop",
+              "k": "Feed Other Channels with Warm ICPs",
+              "sa": [
+                "Repurpose ICP touchpoints from workshops and cohorts into other funnels and channels",
+                "Route educated contacts into email nurture, LinkedIn outreach, and events to increase conversation possibilities"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c11",
+      "num": 11,
+      "tier": "hygiene",
+      "cat": "events",
+      "name": "Foster Champions",
+      "color": "var(--c11)",
+      "budget": "Internal Resources",
+      "owners": [
+        "Anju",
+        "Kailash"
+      ],
+      "goal": "Video testimonials, champion advocacy, and analyst relationships around client accounts.",
+      "resources": [],
+      "subs": [
+        {
+          "id": "c11s1",
+          "name": "11.1 Testimonials",
+          "owners": [
+            "Anju"
+          ],
+          "onote": "Team-owned",
+          "target": "Monthly 1 Video Testimonial",
+          "acts": [
+            {
+              "id": "c11s1a1",
+              "t": "Get Testimonials as Video",
+              "f": "Monthly 1x",
+              "k": "1 Video Testimonial/mo",
+              "sa": [
+                "Get video testimonials monthly (1/mo)"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c11s2",
+          "name": "11.2 Champions",
+          "owners": [
+            "Kailash"
+          ],
+          "onote": "+ Team",
+          "resources": [
+            {
+              "n": "PR & Internal Comms Repository",
+              "u": "https://www.lyzr.ai/gsi-pr-repo/"
+            }
+          ],
+          "target": "2 Champions / Quarter",
+          "acts": [
+            {
+              "id": "c11s2a1",
+              "t": "Make New Champions in PR & Internal Comms Teams",
+              "f": "Quarterly 2 Champions",
+              "k": "2 Champions/qtr",
+              "sa": [
+                "Make new champions out of PR team and internal communication teams in client accounts"
+              ]
+            },
+            {
+              "id": "c11s2a2",
+              "t": "Spotlight with Older Champions",
+              "f": "Quarterly",
+              "k": "Webinar & Podcast Showcase",
+              "sa": [
+                "Spotlight, do podcast/webinar and showcase more with older champions"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c11s3",
+          "name": "11.3 Analyst Relationship",
+          "isNew": true,
+          "owners": [
+            "Unassigned"
+          ],
+          "target": "GSI-Informed Analyst Mindshare",
+          "acts": [
+            {
+              "id": "c11s3a1",
+              "t": "GSI-Specific Analyst Conversations",
+              "f": "Ongoing",
+              "k": "Analyst Briefings on GSI Motion",
+              "sa": [
+                "Give analysts insights on the GSIs we work with",
+                "Show how target GSIs are identified first and how the partnerships play out"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c12",
+      "num": 12,
+      "tier": "bronze",
+      "cat": "events",
+      "name": "ABM",
+      "color": "var(--c12)",
+      "budget": "Internal / ABM Stack",
+      "owners": [
+        "Kailash",
+        "Partnership Team"
+      ],
+      "goal": "Account-based outreach across Systems Integrators (> $500M ARR) and Global SIs.",
+      "resources": [
+        {
+          "n": "Target Accounts Master List",
+          "u": "https://docs.google.com/spreadsheets/d/1j34AfSe2I0FXY2x5Pju7_ZQEadtuaf6k2xES2K89Scg/edit?gid=0#gid=0"
+        }
+      ],
+      "subs": [
+        {
+          "id": "c12s1",
+          "opp": 2,
+          "name": "12.1 SI (> $500M ARR)",
+          "owners": [
+            "Kailash"
+          ],
+          "target": "500 SIs Mapped by End of July",
+          "acts": [
+            {
+              "id": "c12s1a1",
+              "t": "Map Out CXOs for Top 500 SIs",
+              "f": "By End of July",
+              "k": "500 Enterprise SIs",
+              "sa": [
+                "Map all CXOs for top 500 SIs"
+              ]
+            },
+            {
+              "id": "c12s1a2",
+              "t": "Build Context & Scrape Data per Account",
+              "f": "Ongoing",
+              "k": "Account Scraped Context",
+              "sa": [
+                "Build context and scrape data for each account"
+              ]
+            },
+            {
+              "id": "c12s1a3",
+              "grade": "bronze",
+              "t": "Build Outbound Sequence with Semi-Personalization",
+              "f": "Ongoing",
+              "k": "Outbound Sequence",
+              "sa": [
+                "Build an outbound sequence with semi-personalization"
+              ]
+            },
+            {
+              "id": "c12s1a4",
+              "t": "Add Demo / Prototype Links by Industry & Use Case",
+              "f": "Ongoing",
+              "k": "Tailored Demos",
+              "sa": [
+                "Add demo/prototype links based on industry/use case"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c12s2",
+          "opp": 2,
+          "name": "12.2 GSI",
+          "owners": [
+            "Partnership Team"
+          ],
+          "target": "2 Top GSIs/mo • Accenture 100% Mapping by End of August",
+          "acts": [
+            {
+              "id": "c12s2a1",
+              "t": "Map Out Region Leaders",
+              "f": "Monthly 2 GSIs",
+              "k": "Regional Practice Leaders",
+              "sa": [
+                "Map out region leaders across global accounts"
+              ]
+            },
+            {
+              "id": "c12s2a2",
+              "t": "Map Out Industry Specific Leaders",
+              "f": "Monthly",
+              "k": "Industry Practice Leaders",
+              "sa": [
+                "Map out industry specific leaders"
+              ]
+            },
+            {
+              "id": "c12s2a3",
+              "grade": "bronze",
+              "t": "Do Outbound with Personalization Touch",
+              "f": "Ongoing",
+              "k": "Personalized Outbound",
+              "sa": [
+                "Do outbound with personalization touch"
+              ]
+            },
+            {
+              "id": "c12s2a4",
+              "t": "Add Demo / Prototype Links by Industry & Use Case",
+              "f": "Ongoing",
+              "k": "Custom Prototypes",
+              "sa": [
+                "Add demo/prototype links based on industry/use case"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

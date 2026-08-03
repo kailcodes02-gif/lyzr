@@ -18,7 +18,7 @@ export default function MyCalendarShortcut() {
   }, [user, isLoading, router])
 
   return (
-    <div className="min-h-[60vh] flex items-center justify-center bg-[#0a0a0f] text-zinc-500 text-sm">
+    <div className="min-h-[60vh] flex items-center justify-center bg-zinc-50 text-zinc-500 text-sm">
       Loading your calendar...
     </div>
   )

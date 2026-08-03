@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/components/ui/sheet'
@@ -18,7 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import {
   Calendar, Layers, Plus, Trash2, Send, Loader2,
   CheckSquare, MessageSquare, Link as LinkIcon, Upload,
-  AlertTriangle,
+  AlertTriangle, Pencil, Target,
 } from 'lucide-react'
 import { useTask, useUsers, useTasks, useCurrentUser } from '@/lib/hooks/use-data'
 import {
@@ -39,6 +39,7 @@ import { ChannelFields } from './channel-fields'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { toZonedTime, format as formatTz } from 'date-fns-tz'
+import { TaskOwnersEditor } from './task-owners-editor'
 
 interface TaskDetailDrawerProps {
   taskId: string | null
@@ -101,6 +102,12 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
+
+  // Sub-activities never get their own drawer: opening one redirects to its
+  // parent activity, where all sub-activity operations live inline.
+  useEffect(() => {
+    if (task?.parent_task_id && onTaskIdChange) onTaskIdChange(task.parent_task_id)
+  }, [task?.parent_task_id, onTaskIdChange])
 
   if (!taskId) return null
 
@@ -308,14 +315,24 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="bg-[#0c0c12] border-white/5 text-white w-full sm:max-w-2xl overflow-y-auto p-0">
+        <SheetContent className="bg-white border-zinc-200 text-zinc-900 data-[side=right]:w-full data-[side=right]:sm:w-[50vw] data-[side=right]:sm:max-w-none overflow-y-auto p-0">
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
-              <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
+              <Loader2 className="w-6 h-6 animate-spin text-zinc-600" />
             </div>
           ) : task ? (
             <div className="p-6">
               <SheetHeader className="mb-4">
+                {/* Context breadcrumb: Category › Channel › Sub-channel */}
+                <div className="flex items-center gap-1.5 text-xs text-zinc-500 mb-2 flex-wrap">
+                  {(task.channel as any)?.category?.name && (
+                    <><span>{(task.channel as any).category.name}</span><span className="text-zinc-300">›</span></>
+                  )}
+                  {(task.channel as any)?.parent_channel?.name && (
+                    <><span>{(task.channel as any).parent_channel.name}</span><span className="text-zinc-300">›</span></>
+                  )}
+                  <span className="font-medium text-zinc-700">{task.channel?.name}</span>
+                </div>
                 {/* Status + Priority */}
                 <div className="flex items-center gap-2 mb-3">
                   <Select value={task.status} onValueChange={(val) => { if (val) handleStatusChange(val as TaskStatus) }}>
@@ -323,14 +340,14 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                       <Badge
                         className="text-xs font-medium border-0 cursor-pointer"
                         style={{
-                          backgroundColor: STATUS_CONFIG[task.status].bgColor + '30',
+                          backgroundColor: STATUS_CONFIG[task.status].bgColor,
                           color: STATUS_CONFIG[task.status].color,
                         }}
                       >
                         {STATUS_CONFIG[task.status].label}
                       </Badge>
                     </SelectTrigger>
-                    <SelectContent className="bg-zinc-800 border-white/10">
+                    <SelectContent className="bg-white shadow-lg border-zinc-300">
                       {Object.entries(STATUS_CONFIG).map(([key, config]) => (
                         <SelectItem key={key} value={key}>
                           <span className="flex items-center gap-2">
@@ -344,13 +361,13 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
 
                   <Select value={task.priority} onValueChange={(val) => { if (val) handlePriorityChange(val as TaskPriority) }}>
                     <SelectTrigger className="w-auto bg-transparent border-0 p-0 h-auto">
-                      <span className="flex items-center gap-1.5 text-xs text-zinc-400 cursor-pointer">
+                      <span className="flex items-center gap-1.5 text-xs text-zinc-600 cursor-pointer">
                         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: PRIORITY_COLORS[task.priority] }} />
                         {task.priority}
                       </span>
                     </SelectTrigger>
-                    <SelectContent className="bg-zinc-800 border-white/10">
-                      {(['P0', 'P1', 'P2', 'P3'] as TaskPriority[]).map(p => (
+                    <SelectContent className="bg-white shadow-lg border-zinc-300">
+                      {(['P0', 'P1', 'P2', 'P3', 'P4'] as TaskPriority[]).map(p => (
                         <SelectItem key={p} value={p}>
                           <span className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: PRIORITY_COLORS[p] }} />
@@ -372,38 +389,57 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                     <Input
                       value={editTitle}
                       onChange={e => setEditTitle(e.target.value)}
-                      className="bg-white/5 border-white/10 text-lg font-semibold"
+                      className="bg-zinc-100 border-zinc-300 text-lg font-semibold"
                     />
                     <Textarea
                       value={editDescription}
                       onChange={e => setEditDescription(e.target.value)}
-                      className="bg-white/5 border-white/10 min-h-[60px]"
+                      className="bg-zinc-100 border-zinc-300 min-h-[60px]"
                       placeholder="Description..."
                     />
                     <div className="flex gap-2">
                       <Button size="sm" onClick={handleSaveEdit} disabled={isPending} className="bg-blue-600 hover:bg-blue-700 text-white">Save</Button>
-                      <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)} className="text-zinc-400">Cancel</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)} className="text-zinc-600">Cancel</Button>
                     </div>
                   </div>
                 ) : (
                   <div>
-                    <SheetTitle
-                      className="text-xl font-semibold text-white cursor-pointer hover:text-blue-300"
-                      onClick={() => { setEditTitle(task.title); setEditDescription(task.description || ''); setIsEditing(true) }}
-                    >
-                      {task.title}
-                    </SheetTitle>
-                    {task.description && (
-                      <p className="text-sm text-zinc-400 mt-1">{task.description}</p>
+                    <div className="flex items-center gap-2">
+                      <SheetTitle className="text-xl font-semibold text-zinc-900">
+                        {task.title}
+                      </SheetTitle>
+                      <button
+                        onClick={() => { setEditTitle(task.title); setEditDescription(task.description || ''); setIsEditing(true) }}
+                        className="p-1.5 rounded-md bg-zinc-100 border border-zinc-300 text-zinc-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 shrink-0 transition-colors"
+                        title="Edit name & description"
+                      >
+                        <Pencil className="w-3.5 h-3.5" fill="currentColor" />
+                      </button>
+                    </div>
+                    {task.description ? (
+                      <p
+                        className="text-sm text-zinc-600 mt-1 whitespace-pre-wrap cursor-text"
+                        onClick={() => { setEditTitle(task.title); setEditDescription(task.description || ''); setIsEditing(true) }}
+                        title="Click to edit"
+                      >
+                        {task.description}
+                      </p>
+                    ) : (
+                      <button
+                        onClick={() => { setEditTitle(task.title); setEditDescription(''); setIsEditing(true) }}
+                        className="mt-1.5 text-xs text-zinc-500 border border-dashed border-zinc-300 rounded-md px-2.5 py-1 hover:text-blue-600 hover:border-blue-300 transition-colors"
+                      >
+                        + Add description
+                      </button>
                     )}
                   </div>
                 )}
               </SheetHeader>
 
               {/* Meta */}
-              <div className="grid grid-cols-2 gap-4 py-4 border-y border-white/5 my-4">
+              <div className="grid grid-cols-2 gap-4 py-4 border-y border-zinc-200 my-4">
                 <div>
-                  <p className="text-[11px] text-zinc-600 uppercase tracking-wider mb-1">Due Date</p>
+                  <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1">Due Date</p>
                   <Input
                     type="date"
                     value={task.due_date || ''}
@@ -419,11 +455,11 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                         }
                       })
                     }}
-                    className="bg-white/5 border-white/10 text-sm h-8"
+                    className="bg-zinc-100 border-zinc-300 text-sm h-8"
                   />
                 </div>
                 <div>
-                  <p className="text-[11px] text-zinc-600 uppercase tracking-wider mb-1">Result URL</p>
+                  <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1">Result URL</p>
                   <Input
                     value={task.result_url || ''}
                     placeholder="https://..."
@@ -440,16 +476,16 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                         }
                       })
                     }}
-                    className="bg-white/5 border-white/10 text-sm h-8"
+                    className="bg-zinc-100 border-zinc-300 text-sm h-8"
                   />
                 </div>
                 <div>
-                  <p className="text-[11px] text-zinc-600 uppercase tracking-wider mb-1">Created</p>
-                  <p className="text-sm text-zinc-300">{formatDate(task.created_at)}</p>
+                  <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1">Created</p>
+                  <p className="text-sm text-zinc-700">{formatDate(task.created_at)}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-zinc-600 uppercase tracking-wider mb-1">Result File</p>
-                  <label className="flex items-center gap-2 text-sm text-blue-400 cursor-pointer hover:text-blue-300">
+                  <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1">Result File</p>
+                  <label className="flex items-center gap-2 text-sm text-blue-600 cursor-pointer hover:text-blue-700">
                     <Upload className="w-3.5 h-3.5" />
                     {task.result_file_path ? 'Replace file' : 'Upload (2MB max)'}
                     <input type="file" className="hidden" onChange={handleFileUpload} />
@@ -457,42 +493,68 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                 </div>
               </div>
 
-              {/* Owners */}
-              <div className="mb-4">
-                <p className="text-[11px] text-zinc-600 uppercase tracking-wider mb-2">Owners</p>
-                <div className="flex flex-wrap gap-2">
-                  {task.assignments?.map(a => (
-                    <div key={a.user_id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5">
-                      <Avatar className="w-5 h-5">
-                        <AvatarImage src={a.user?.avatar_url || ''} />
-                        <AvatarFallback className="bg-zinc-700 text-[9px]">{a.user?.display_name?.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <span className="text-xs text-zinc-300">{a.user?.display_name}</span>
-                      <Badge variant="outline" className="text-[9px] border-white/10 text-zinc-500">{a.role}</Badge>
-                    </div>
-                  ))}
+              {/* Owners — signed-in + pending, with add/remove */}
+              <TaskOwnersEditor task={task} onChanged={() => {
+                queryClient.invalidateQueries({ queryKey: ['task', taskId] })
+                queryClient.invalidateQueries({ queryKey: ['tasks'] })
+              }} />
+
+              {/* Sub-activities — always visible, fully operable inline */}
+              {task.nesting_level === 0 && (
+                <div className="mb-4 rounded-xl border border-zinc-200 bg-zinc-50/60 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-semibold text-zinc-600 uppercase tracking-wider flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-violet-600" />
+                      Sub-activities ({task.subtasks?.length || 0})
+                    </h4>
+                    <Button
+                      size="sm"
+                      onClick={() => setCreateSubtaskOpen(true)}
+                      className="h-7 bg-blue-600 hover:bg-blue-500 text-white text-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1" /> Add
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {task.subtasks?.map(sub => (
+                      <SubtaskInlineRow
+                        key={sub.id}
+                        sub={sub as Task}
+                        parentPriority={task.priority}
+                        onChanged={() => {
+                          queryClient.invalidateQueries({ queryKey: ['task', taskId] })
+                          queryClient.invalidateQueries({ queryKey: ['tasks'] })
+                        }}
+                      />
+                    ))}
+                    {(!task.subtasks || task.subtasks.length === 0) && (
+                      <p className="text-xs text-zinc-500 py-2 text-center">No sub-activities yet — expand the work into steps with the Add button.</p>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <Tabs defaultValue="details" className="mt-4">
-                <TabsList className="bg-white/5 border border-white/5">
-                  <TabsTrigger value="details" className="text-xs data-[state=active]:bg-white/10">Details</TabsTrigger>
-                  <TabsTrigger value="dependencies" className="text-xs data-[state=active]:bg-white/10">Dependencies</TabsTrigger>
-                  <TabsTrigger value="subtasks" className="text-xs data-[state=active]:bg-white/10">
-                    Subtasks {task.subtasks?.length ? `(${task.subtasks.length})` : ''}
+                <TabsList className="bg-zinc-100 border border-zinc-200">
+                  <TabsTrigger value="details" className="text-xs data-[state=active]:bg-zinc-200/70">Details</TabsTrigger>
+                  <TabsTrigger value="dependencies" className="text-xs data-[state=active]:bg-zinc-200/70">
+                    Dependencies
+                    {((dependencies?.length || 0) + (blocks?.length || 0)) > 0 && <TabDot />}
                   </TabsTrigger>
-                  <TabsTrigger value="checklist" className="text-xs data-[state=active]:bg-white/10">
+                  <TabsTrigger value="checklist" className="text-xs data-[state=active]:bg-zinc-200/70">
                     Checklist {(task as any).checklist_items?.length ? `(${(task as any).checklist_items.length})` : ''}
+                    {((task as any).checklist_items?.length || 0) > 0 && <TabDot />}
                   </TabsTrigger>
-                  <TabsTrigger value="comments" className="text-xs data-[state=active]:bg-white/10">
+                  <TabsTrigger value="comments" className="text-xs data-[state=active]:bg-zinc-200/70">
                     Comments {(task as any).comments?.length ? `(${(task as any).comments.length})` : ''}
+                    {((task as any).comments?.length || 0) > 0 && <TabDot />}
                   </TabsTrigger>
                 </TabsList>
 
                 {/* Details / Channel Fields */}
                 <TabsContent value="details" className="mt-4 space-y-4">
                   {isFrozen && (
-                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg flex items-center justify-between text-xs mb-4">
+                    <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-lg flex items-center justify-between text-xs mb-4">
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4" />
                         <span>This tracker has been frozen (45 days elapsed since campaign went live).</span>
@@ -502,7 +564,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                           size="sm"
                           variant="outline"
                           onClick={() => setAdminOverride(!adminOverride)}
-                          className="border-red-500/30 hover:bg-red-500/20 text-red-400 h-7"
+                          className="border-red-500/30 hover:bg-red-500/20 text-red-600 h-7"
                         >
                           {adminOverride ? 'Disable Override' : 'Admin Override'}
                         </Button>
@@ -511,7 +573,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                   )}
 
                   {incompleteDeps.length > 0 && (
-                    <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-3 rounded-lg flex items-start gap-2.5 text-xs mb-4">
+                    <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 p-3 rounded-lg flex items-start gap-2.5 text-xs mb-4">
                       <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                       <div>
                         <span className="font-semibold block mb-0.5">Blocked by Incomplete Dependencies</span>
@@ -537,7 +599,13 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                     </div>
                   )}
 
-                  {/* Planning Fields */}
+                  {/* Targets — called out explicitly, above the generic fields */}
+                  <TargetsSection
+                    planningFields={task.planning_fields}
+                    onSave={(fields) => handleFieldUpdate('planning_fields', fields)}
+                  />
+
+                  {/* Planning Fields (frequency, star grade, etc.) */}
                   <div>
                     <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Planning Fields</h4>
                     <ChannelFields
@@ -545,6 +613,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                       parentChannelSlug={(task.channel as any)?.parent_channel?.slug}
                       surface="planning"
                       values={task.planning_fields}
+                      excludeSlugs={['kpi_target', 'opp_target', 'additional_targets']}
                       onChange={(fields: Record<string, unknown>) => handleFieldUpdate('planning_fields', fields)}
                     />
                   </div>
@@ -552,7 +621,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                   {/* Tracker Fields */}
                   {showTrackerFields && (
                     <div>
-                      <Separator className="bg-white/5 my-4" />
+                      <Separator className="bg-zinc-100 my-4" />
                       <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Tracker Fields</h4>
                       <ChannelFields
                         channelSlug={task.channel?.slug || ''}
@@ -561,6 +630,11 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                         values={task.tracker_fields}
                         onChange={(fields: Record<string, unknown>) => handleFieldUpdate('tracker_fields', fields)}
                         disabled={isFieldDisabled}
+                      />
+                      <ResultsEditor
+                        trackerFields={task.tracker_fields}
+                        disabled={isFieldDisabled}
+                        onSave={(fields) => handleFieldUpdate('tracker_fields', fields)}
                       />
                     </div>
                   )}
@@ -573,22 +647,22 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                     <div className="space-y-2 mb-4">
                       {dependencies && dependencies.length > 0 ? (
                         dependencies.map(dep => (
-                          <div key={dep.id} className="flex items-center justify-between bg-white/[0.03] rounded-lg px-3 py-2 border border-white/5">
+                          <div key={dep.id} className="flex items-center justify-between bg-zinc-100/60 rounded-lg px-3 py-2 border border-zinc-200">
                             <div className="flex items-center gap-2.5">
                               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: PRIORITY_COLORS[dep.depends_on_task?.priority as TaskPriority] || '#3b82f6' }} />
                               <div className="text-sm">
                                 {onTaskIdChange ? (
                                   <button
                                     onClick={() => onTaskIdChange(dep.depends_on_task_id)}
-                                    className="text-zinc-300 font-medium hover:underline hover:text-blue-400 text-left"
+                                    className="text-zinc-700 font-medium hover:underline hover:text-blue-600 text-left"
                                   >
                                     {dep.depends_on_task?.title}
                                   </button>
                                 ) : (
-                                  <span className="text-zinc-300 font-medium">{dep.depends_on_task?.title}</span>
+                                  <span className="text-zinc-700 font-medium">{dep.depends_on_task?.title}</span>
                                 )}
                                 <Badge className="ml-2 text-[9px] border-0" style={{
-                                  backgroundColor: STATUS_CONFIG[dep.depends_on_task?.status as TaskStatus]?.bgColor + '20',
+                                  backgroundColor: STATUS_CONFIG[dep.depends_on_task?.status as TaskStatus]?.bgColor,
                                   color: STATUS_CONFIG[dep.depends_on_task?.status as TaskStatus]?.color
                                 }}>
                                   {STATUS_CONFIG[dep.depends_on_task?.status as TaskStatus]?.label}
@@ -599,7 +673,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                               size="sm"
                               variant="ghost"
                               onClick={() => handleRemoveDependency(dep.depends_on_task_id)}
-                              className="text-zinc-500 hover:text-red-400 p-1 h-auto"
+                              className="text-zinc-500 hover:text-red-600 p-1 h-auto"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -610,28 +684,28 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                       )}
                     </div>
 
-                    <Separator className="bg-white/5 my-4" />
+                    <Separator className="bg-zinc-100 my-4" />
 
                     <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Blocks (Successors)</h4>
                     <div className="space-y-2 mb-4">
                       {blocks && blocks.length > 0 ? (
                         blocks.map(block => (
-                          <div key={block.id} className="flex items-center justify-between bg-white/[0.03] rounded-lg px-3 py-2 border border-white/5">
+                          <div key={block.id} className="flex items-center justify-between bg-zinc-100/60 rounded-lg px-3 py-2 border border-zinc-200">
                             <div className="flex items-center gap-2.5">
                               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: PRIORITY_COLORS[block.blocked_task?.priority as TaskPriority] || '#3b82f6' }} />
                               <div className="text-sm">
                                 {onTaskIdChange ? (
                                   <button
                                     onClick={() => onTaskIdChange(block.task_id)}
-                                    className="text-zinc-300 font-medium hover:underline hover:text-blue-400 text-left"
+                                    className="text-zinc-700 font-medium hover:underline hover:text-blue-600 text-left"
                                   >
                                     {block.blocked_task?.title}
                                   </button>
                                 ) : (
-                                  <span className="text-zinc-300 font-medium">{block.blocked_task?.title}</span>
+                                  <span className="text-zinc-700 font-medium">{block.blocked_task?.title}</span>
                                 )}
                                 <Badge className="ml-2 text-[9px] border-0" style={{
-                                  backgroundColor: STATUS_CONFIG[block.blocked_task?.status as TaskStatus]?.bgColor + '20',
+                                  backgroundColor: STATUS_CONFIG[block.blocked_task?.status as TaskStatus]?.bgColor,
                                   color: STATUS_CONFIG[block.blocked_task?.status as TaskStatus]?.color
                                 }}>
                                   {STATUS_CONFIG[block.blocked_task?.status as TaskStatus]?.label}
@@ -645,7 +719,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                       )}
                     </div>
 
-                    <Separator className="bg-white/5 my-4" />
+                    <Separator className="bg-zinc-100 my-4" />
 
                     <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Add Dependency</h4>
                     <div className="space-y-2">
@@ -653,18 +727,18 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                         value={depSearch}
                         onChange={e => setDepSearch(e.target.value)}
                         placeholder="Search tasks by title..."
-                        className="bg-white/5 border-white/10 text-sm h-9"
+                        className="bg-zinc-100 border-zinc-300 text-sm h-9"
                       />
                       {depSearch.trim() && eligibleTasks.length > 0 && (
-                        <div className="bg-[#12121a] border border-white/10 rounded-lg overflow-hidden divide-y divide-white/5 max-h-48 overflow-y-auto">
+                        <div className="bg-white border border-zinc-300 rounded-lg overflow-hidden divide-y divide-zinc-200 max-h-48 overflow-y-auto">
                           {eligibleTasks.map(t => (
                             <div
                               key={t.id}
                               onClick={() => { handleAddDependency(t.id); setDepSearch('') }}
-                              className="flex items-center justify-between px-3 py-2 hover:bg-white/5 cursor-pointer text-xs transition-colors"
+                              className="flex items-center justify-between px-3 py-2 hover:bg-zinc-100 cursor-pointer text-xs transition-colors"
                             >
-                              <span className="text-zinc-300 truncate mr-2">{t.title}</span>
-                              <Badge variant="outline" className="text-[9px] border-white/10 text-zinc-500 shrink-0">
+                              <span className="text-zinc-700 truncate mr-2">{t.title}</span>
+                              <Badge variant="outline" className="text-[9px] border-zinc-300 text-zinc-500 shrink-0">
                                 {STATUS_CONFIG[t.status]?.label}
                               </Badge>
                             </div>
@@ -679,49 +753,6 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                 </TabsContent>
 
                 {/* Subtasks */}
-                <TabsContent value="subtasks" className="mt-4">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setCreateSubtaskOpen(true)}
-                    className="mb-3 border-white/10 text-zinc-300 hover:bg-white/5"
-                    disabled={task.nesting_level >= 2}
-                  >
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Add Subtask
-                  </Button>
-                  {task.nesting_level >= 2 && (
-                    <p className="text-xs text-zinc-600 mb-2">Max nesting depth (3 levels) reached</p>
-                  )}
-                  <div className="space-y-2">
-                    {task.subtasks?.map(sub => (
-                      <div key={sub.id} className="flex items-center gap-3 bg-white/[0.03] rounded-lg px-3 py-2.5 border border-white/5">
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: PRIORITY_COLORS[sub.priority] }} />
-                        {onTaskIdChange ? (
-                          <button
-                            onClick={() => onTaskIdChange(sub.id)}
-                            className="text-sm text-zinc-300 flex-1 text-left hover:text-blue-400 hover:underline truncate"
-                          >
-                            {sub.title}
-                          </button>
-                        ) : (
-                          <span className="text-sm text-zinc-300 flex-1 truncate">{sub.title}</span>
-                        )}
-                        <Badge
-                          className="text-[10px] border-0"
-                          style={{
-                            backgroundColor: STATUS_CONFIG[sub.status].bgColor + '30',
-                            color: STATUS_CONFIG[sub.status].color,
-                          }}
-                        >
-                          {STATUS_CONFIG[sub.status].label}
-                        </Badge>
-                      </div>
-                    ))}
-                    {(!task.subtasks || task.subtasks.length === 0) && (
-                      <p className="text-sm text-zinc-600 py-4 text-center">No subtasks yet</p>
-                    )}
-                  </div>
-                </TabsContent>
 
                 {/* Checklist */}
                 <TabsContent value="checklist" className="mt-4">
@@ -731,11 +762,11 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                         <Checkbox
                           checked={item.is_done}
                           onCheckedChange={(checked) => handleToggleChecklist(item.id, !!checked)}
-                          className="border-white/20 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
+                          className="border-zinc-300 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
                         />
                         <span className={cn(
                           'text-sm flex-1',
-                          item.is_done ? 'text-zinc-600 line-through' : 'text-zinc-300'
+                          item.is_done ? 'text-zinc-600 line-through' : 'text-zinc-700'
                         )}>
                           {item.body}
                         </span>
@@ -752,7 +783,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                               }
                             })
                           }}
-                          className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-400 transition-opacity"
+                          className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-600 transition-opacity"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -764,10 +795,10 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                       value={newChecklistItem}
                       onChange={e => setNewChecklistItem(e.target.value)}
                       placeholder="Add checklist item..."
-                      className="bg-white/5 border-white/10 text-sm"
+                      className="bg-zinc-100 border-zinc-300 text-sm"
                       onKeyDown={e => e.key === 'Enter' && handleAddChecklist()}
                     />
-                    <Button size="sm" onClick={handleAddChecklist} disabled={isPending} className="bg-white/10 hover:bg-white/15 text-white shrink-0">
+                    <Button size="sm" onClick={handleAddChecklist} disabled={isPending} className="bg-zinc-200/70 hover:bg-zinc-300/70 text-zinc-900 shrink-0">
                       <Plus className="w-4 h-4" />
                     </Button>
                   </div>
@@ -780,14 +811,14 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                       <div key={comment.id} className="flex gap-3">
                         <Avatar className="w-7 h-7 shrink-0">
                           <AvatarImage src={comment.user?.avatar_url || ''} />
-                          <AvatarFallback className="bg-zinc-700 text-[10px]">{comment.user?.display_name?.charAt(0)}</AvatarFallback>
+                          <AvatarFallback className="bg-zinc-300 text-[10px]">{comment.user?.display_name?.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium text-zinc-300">{comment.user?.display_name}</span>
+                            <span className="text-xs font-medium text-zinc-700">{comment.user?.display_name}</span>
                             <span className="text-[11px] text-zinc-600">{formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}</span>
                           </div>
-                          <p className="text-sm text-zinc-400 mt-0.5">{comment.body}</p>
+                          <p className="text-sm text-zinc-600 mt-0.5">{comment.body}</p>
                         </div>
                       </div>
                     ))}
@@ -800,7 +831,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                       value={newComment}
                       onChange={e => setNewComment(e.target.value)}
                       placeholder="Add a comment... (use @email to mention)"
-                      className="bg-white/5 border-white/10 text-sm min-h-[60px]"
+                      className="bg-zinc-100 border-zinc-300 text-sm min-h-[60px]"
                     />
                   </div>
                   <div className="flex justify-end mt-2">
@@ -812,14 +843,13 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
               </Tabs>
 
               {/* Delete */}
-              <div className="mt-8 pt-4 border-t border-white/5">
+              <div className="mt-8 pt-4 border-t border-zinc-200">
                 <Button
-                  variant="ghost"
                   size="sm"
                   onClick={handleDelete}
-                  className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                  className="bg-red-600 hover:bg-red-500 text-white"
                 >
-                  <Trash2 className="w-4 h-4 mr-1" /> Delete Task
+                  <Trash2 className="w-4 h-4 mr-1" fill="currentColor" /> Delete Task
                 </Button>
               </div>
             </div>
@@ -837,5 +867,324 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
         />
       )}
     </>
+  )
+}
+
+// Small brown dot on drawer tabs that contain content — a glanceable "there's
+// something in here" signal.
+function TabDot() {
+  return <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-amber-700 align-middle" aria-label="has items" />
+}
+
+// One sub-activity, fully operable inline (no separate drawer): status,
+// priority (locked to P0 under a P0 parent), due date, description, delete.
+function SubtaskInlineRow({ sub, parentPriority, onChanged }: {
+  sub: Task
+  parentPriority: TaskPriority
+  onChanged: () => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const [desc, setDesc] = useState(sub.description || '')
+  const [busy, setBusy] = useState(false)
+  // Full record (checklist items etc.) fetched only when the row is expanded
+  const { data: subFull } = useTask(expanded ? sub.id : null)
+  const [newItem, setNewItem] = useState('')
+  const subQueryClient = useQueryClient()
+
+  const run = async (fn: () => Promise<unknown>, failMsg: string) => {
+    if (busy) return
+    setBusy(true)
+    try {
+      await fn()
+      subQueryClient.invalidateQueries({ queryKey: ['task', sub.id] })
+      onChanged()
+    } catch (err: any) {
+      toast.error(`${failMsg}: ${err?.message || 'unknown'}`)
+    } finally { setBusy(false) }
+  }
+
+  const priorityLocked = parentPriority === 'P0'
+
+  return (
+    <div className="rounded-lg bg-zinc-100/60 border border-zinc-200 px-3 py-2.5 space-y-2">
+      <div className="flex items-center gap-2.5">
+        <button
+          onClick={() => setExpanded(e => !e)}
+          className="text-zinc-500 hover:text-zinc-800 shrink-0"
+          title={expanded ? 'Collapse' : 'Edit description'}
+        >
+          {expanded ? '▾' : '▸'}
+        </button>
+        <span className="text-sm text-zinc-800 flex-1 truncate">{sub.title}</span>
+
+        {/* Priority — inline */}
+        <select
+          value={sub.priority}
+          disabled={busy || priorityLocked}
+          title={priorityLocked ? 'Parent activity is P0 — sub-activities inherit P0' : 'Priority'}
+          onChange={e => run(() => updateTask(sub.id, { priority: e.target.value as TaskPriority }), 'Priority update failed')}
+          className="text-[11px] font-bold rounded-md border border-zinc-300 bg-white px-1 py-0.5 disabled:opacity-60"
+          style={{ color: PRIORITY_COLORS[sub.priority] }}
+        >
+          {(['P0', 'P1', 'P2', 'P3', 'P4'] as TaskPriority[]).map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+
+        {/* Status — inline */}
+        <select
+          value={sub.status}
+          disabled={busy}
+          onChange={e => run(() => updateTask(sub.id, { status: e.target.value as TaskStatus }), 'Status update failed')}
+          className="text-[11px] font-medium rounded-md border border-zinc-300 bg-white px-1 py-0.5"
+          style={{ color: STATUS_CONFIG[sub.status].color }}
+        >
+          {Object.entries(STATUS_CONFIG).map(([k, c]) => <option key={k} value={k}>{c.label}</option>)}
+        </select>
+
+        {/* Due date — inline */}
+        <input
+          type="date"
+          value={sub.due_date || ''}
+          disabled={busy}
+          onChange={e => run(() => updateTask(sub.id, { due_date: e.target.value || null }), 'Due date update failed')}
+          className="text-[11px] rounded-md border border-zinc-300 bg-white px-1 py-0.5 text-zinc-700"
+        />
+
+        <button
+          onClick={() => { if (confirm(`Delete sub-activity "${sub.title}"?`)) run(() => deleteTask(sub.id), 'Delete failed') }}
+          className="p-1 rounded-md bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 shrink-0"
+          title="Delete sub-activity"
+        >
+          <Trash2 className="w-3.5 h-3.5" fill="currentColor" />
+        </button>
+      </div>
+      {expanded && (
+        <div className="pl-6 space-y-3">
+          {/* Description */}
+          <div className="flex items-start gap-2">
+            <Textarea
+              value={desc}
+              onChange={e => setDesc(e.target.value)}
+              rows={2}
+              placeholder="Describe this sub-activity…"
+              className="text-xs bg-white border-zinc-300 text-zinc-800 resize-none"
+            />
+            <Button
+              size="sm"
+              disabled={busy || desc === (sub.description || '')}
+              onClick={() => run(() => updateTask(sub.id, { description: desc || null }), 'Description save failed')}
+              className="h-7 bg-blue-600 hover:bg-blue-500 text-white text-xs"
+            >
+              Save
+            </Button>
+          </div>
+
+          {/* Owners — same primary/secondary controls as the activity */}
+          <TaskOwnersEditor task={(subFull || sub) as Task} onChanged={onChanged} />
+
+          {/* Checklist — plain line items, not tasks */}
+          <div>
+            <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1.5">Checklist</p>
+            <div className="space-y-1 mb-1.5">
+              {(subFull?.checklist_items || []).map(item => (
+                <div key={item.id} className="flex items-center gap-2 group">
+                  <Checkbox
+                    checked={item.is_done}
+                    onCheckedChange={() => run(() => toggleChecklistItem(item.id, !item.is_done), 'Checklist toggle failed')}
+                    className="border-zinc-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 w-3.5 h-3.5"
+                  />
+                  <span className={`text-xs flex-1 ${item.is_done ? 'line-through text-zinc-400' : 'text-zinc-700'}`}>{item.body}</span>
+                  <button
+                    onClick={() => run(() => deleteChecklistItem(item.id), 'Checklist delete failed')}
+                    className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-600"
+                    title="Remove item"
+                  >
+                    <Trash2 className="w-3 h-3" fill="currentColor" />
+                  </button>
+                </div>
+              ))}
+              {expanded && (subFull?.checklist_items || []).length === 0 && (
+                <p className="text-[11px] text-zinc-400 italic">No checklist items yet</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                value={newItem}
+                onChange={e => setNewItem(e.target.value)}
+                placeholder="Add checklist item…"
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && newItem.trim()) {
+                    run(() => addChecklistItem(sub.id, newItem.trim()).then(() => setNewItem('')), 'Checklist add failed')
+                  }
+                }}
+                className="h-7 text-xs bg-white border-zinc-300 text-zinc-800"
+              />
+              <Button
+                size="sm"
+                disabled={busy || !newItem.trim()}
+                onClick={() => run(() => addChecklistItem(sub.id, newItem.trim()).then(() => setNewItem('')), 'Checklist add failed')}
+                className="h-7 bg-blue-600 hover:bg-blue-500 text-white text-xs shrink-0"
+              >
+                <Plus className="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Multiple named results on completion — {name, value} pairs (text or number),
+// stored in tracker_fields.results alongside the channel's tracker metrics.
+function ResultsEditor({ trackerFields, disabled, onSave }: {
+  trackerFields: Record<string, unknown>
+  disabled?: boolean
+  onSave: (fields: Record<string, unknown>) => void
+}) {
+  const results = (trackerFields?.results as { name: string; value: string }[] | undefined) || []
+  const [name, setName] = useState('')
+  const [value, setValue] = useState('')
+
+  const save = (next: { name: string; value: string }[]) =>
+    onSave({ ...trackerFields, results: next })
+
+  const add = () => {
+    if (!name.trim() || !value.trim()) return
+    save([...results, { name: name.trim(), value: value.trim() }])
+    setName(''); setValue('')
+  }
+
+  return (
+    <div className="mt-4">
+      <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Results</h4>
+      <div className="space-y-1.5 mb-2">
+        {results.map((r, i) => (
+          <div key={i} className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1.5 group">
+            <span className="text-xs font-medium text-emerald-800">{r.name}</span>
+            <span className="text-xs text-emerald-700 flex-1">{r.value}</span>
+            {!disabled && (
+              <button
+                onClick={() => save(results.filter((_, j) => j !== i))}
+                className="p-0.5 rounded bg-white/60 text-zinc-500 hover:text-red-600"
+                title="Remove result"
+              >
+                <Trash2 className="w-3 h-3" fill="currentColor" />
+              </button>
+            )}
+          </div>
+        ))}
+        {results.length === 0 && (
+          <p className="text-xs text-zinc-500">No results recorded yet — add outcomes as name + value (e.g. &quot;Leads generated&quot; / &quot;42&quot;).</p>
+        )}
+      </div>
+      {!disabled && (
+        <div className="flex items-center gap-2">
+          <Input value={name} onChange={e => setName(e.target.value)} placeholder="Result name"
+            className="h-8 text-xs bg-white border-zinc-300 text-zinc-800 w-44" />
+          <Input value={value} onChange={e => setValue(e.target.value)} placeholder="Value (text or number)"
+            onKeyDown={e => e.key === 'Enter' && add()}
+            className="h-8 text-xs bg-white border-zinc-300 text-zinc-800 flex-1" />
+          <Button size="sm" onClick={add} disabled={!name.trim() || !value.trim()}
+            className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white text-xs">
+            <Plus className="w-3.5 h-3.5 mr-1" /> Add result
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Targets, explicitly called out: the main KPI target, an opportunity count,
+// and any number of additional targets (chips, one per entry).
+function TargetsSection({ planningFields, onSave }: {
+  planningFields: Record<string, unknown>
+  onSave: (fields: Record<string, unknown>) => void
+}) {
+  const kpi = (planningFields?.kpi_target as string) || ''
+  const opp = planningFields?.opp_target as number | undefined
+  const extras = ((planningFields?.additional_targets as string) || '').split('\n').map(s => s.trim()).filter(Boolean)
+
+  const [kpiDraft, setKpiDraft] = useState(kpi)
+  const [newTarget, setNewTarget] = useState('')
+
+  const merge = (patch: Record<string, unknown>) => onSave({ ...planningFields, ...patch })
+
+  return (
+    <div className="mb-4">
+      <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+        <Target className="w-3.5 h-3.5 text-emerald-600" /> Targets
+      </h4>
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 space-y-2.5">
+        {/* Primary KPI target */}
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-medium text-zinc-600 w-28 shrink-0">Main target</span>
+          <Input
+            value={kpiDraft}
+            onChange={e => setKpiDraft(e.target.value)}
+            onBlur={() => kpiDraft !== kpi && merge({ kpi_target: kpiDraft })}
+            onKeyDown={e => e.key === 'Enter' && kpiDraft !== kpi && merge({ kpi_target: kpiDraft })}
+            placeholder="e.g. 6 Playbook Leads/wk"
+            className="h-8 text-xs bg-white border-zinc-300 text-zinc-800"
+          />
+        </div>
+        {/* Opportunity target */}
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-medium text-zinc-600 w-28 shrink-0">Opportunities</span>
+          <Input
+            type="number"
+            defaultValue={opp ?? ''}
+            onBlur={e => {
+              const v = e.target.value === '' ? undefined : Number(e.target.value)
+              if (v !== opp) merge({ opp_target: v })
+            }}
+            placeholder="e.g. 4"
+            className="h-8 text-xs bg-white border-zinc-300 text-zinc-800 w-28"
+          />
+        </div>
+        {/* Additional targets as chips */}
+        <div className="flex items-start gap-2">
+          <span className="text-[11px] font-medium text-zinc-600 w-28 shrink-0 mt-1.5">More targets</span>
+          <div className="flex-1 space-y-1.5">
+            <div className="flex flex-wrap gap-1.5">
+              {extras.map((t, i) => (
+                <span key={i} className="inline-flex items-center gap-1 rounded-md bg-white border border-emerald-300 text-emerald-800 px-2 py-0.5 text-[11px] font-medium">
+                  <Target className="w-3 h-3" />{t}
+                  <button
+                    onClick={() => merge({ additional_targets: extras.filter((_, j) => j !== i).join('\n') })}
+                    className="text-zinc-400 hover:text-red-600 ml-0.5"
+                    title="Remove target"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              {extras.length === 0 && <span className="text-[11px] text-zinc-400 italic mt-1">None yet</span>}
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                value={newTarget}
+                onChange={e => setNewTarget(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && newTarget.trim()) {
+                    merge({ additional_targets: [...extras, newTarget.trim()].join('\n') })
+                    setNewTarget('')
+                  }
+                }}
+                placeholder="Add another target…"
+                className="h-7 text-xs bg-white border-zinc-300 text-zinc-800"
+              />
+              <Button
+                size="sm"
+                disabled={!newTarget.trim()}
+                onClick={() => { merge({ additional_targets: [...extras, newTarget.trim()].join('\n') }); setNewTarget('') }}
+                className="h-7 bg-emerald-600 hover:bg-emerald-500 text-white text-xs shrink-0"
+              >
+                <Plus className="w-3 h-3 mr-0.5" /> Add
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }

@@ -49,6 +49,14 @@ export async function createTask(data: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
+  // Priority cascade rule: a P0 parent forces P0 on its subtasks; under any
+  // other parent priority the subtask keeps its own.
+  if (data.parent_task_id) {
+    const { data: parent } = await supabase
+      .from('tasks').select('priority').eq('id', data.parent_task_id).single()
+    if (parent?.priority === 'P0') data.priority = 'P0'
+  }
+
   let templateId: string | null = null
 
   if (data.recurrence) {
@@ -170,7 +178,6 @@ export async function createTask(data: {
     console.warn(`Slack notify_on_create failed: ${err.message}`)
   }
 
-  revalidatePath('/')
   return task
 }
 
@@ -204,6 +211,15 @@ export async function updateTask(
     .eq('id', taskId)
     .single()
 
+  // Cascade guard: a subtask cannot drop below P0 while its parent is P0.
+  if (data.priority && data.priority !== 'P0' && oldTask?.parent_task_id) {
+    const { data: parent } = await supabase
+      .from('tasks').select('priority').eq('id', oldTask.parent_task_id).single()
+    if (parent?.priority === 'P0') {
+      throw new Error('Parent activity is P0 — sub-activities inherit P0. Lower the parent first.')
+    }
+  }
+
   // Server-side guard: a task cannot be closed while its blocker dependencies
   // (the tasks it depends on) are still open, unless an explicit override is
   // passed (the drawer offers this after a confirm). The previous guard lived
@@ -236,6 +252,18 @@ export async function updateTask(
     .single()
 
   if (error) throw error
+
+  // Priority cascade: setting a task to P0 forces ALL descendants to P0
+  // (nesting is capped at 3 levels, so one grandchild pass suffices).
+  // Other priorities leave subtask priorities independent.
+  if (data.priority === 'P0') {
+    const { data: children } = await supabase
+      .from('tasks').update({ priority: 'P0' }).eq('parent_task_id', taskId).select('id')
+    if (children?.length) {
+      await supabase.from('tasks').update({ priority: 'P0' })
+        .in('parent_task_id', children.map(c => c.id))
+    }
+  }
 
   // Auto-generate next task instance if recurring task is marked done
   if (data.status === 'done' && oldTask && oldTask.status !== 'done' && oldTask.recurring_template_id) {
@@ -416,7 +444,6 @@ export async function updateTask(
     }
   }
 
-  revalidatePath('/')
   return task
 }
 
@@ -430,7 +457,6 @@ export async function deleteTask(taskId: string) {
     .delete()
     .eq('id', taskId)
   if (error) throw error
-  revalidatePath('/')
 }
 
 export async function addTaskDependency(taskId: string, dependsOnTaskId: string) {
@@ -443,7 +469,6 @@ export async function addTaskDependency(taskId: string, dependsOnTaskId: string)
     .insert({ task_id: taskId, depends_on_task_id: dependsOnTaskId })
 
   if (error) throw error
-  revalidatePath('/')
 }
 
 export async function removeTaskDependency(taskId: string, dependsOnTaskId: string) {
@@ -458,7 +483,6 @@ export async function removeTaskDependency(taskId: string, dependsOnTaskId: stri
     .eq('depends_on_task_id', dependsOnTaskId)
 
   if (error) throw error
-  revalidatePath('/')
 }
 
 // ============ ASSIGNMENTS ============
@@ -492,7 +516,6 @@ export async function updateAssignments(
     if (error) throw error
   }
 
-  revalidatePath('/')
 }
 
 // ============ CHECKLISTS ============
@@ -513,7 +536,6 @@ export async function addChecklistItem(taskId: string, body: string) {
     .single()
 
   if (error) throw error
-  revalidatePath('/')
   return data
 }
 
@@ -532,7 +554,6 @@ export async function toggleChecklistItem(itemId: string, isDone: boolean) {
     .eq('id', itemId)
 
   if (error) throw error
-  revalidatePath('/')
 }
 
 export async function deleteChecklistItem(itemId: string) {
@@ -542,7 +563,6 @@ export async function deleteChecklistItem(itemId: string) {
     .delete()
     .eq('id', itemId)
   if (error) throw error
-  revalidatePath('/')
 }
 
 // ============ COMMENTS ============
@@ -595,7 +615,6 @@ export async function addComment(taskId: string, body: string) {
     to_value: { body: body.substring(0, 100) },
   })
 
-  revalidatePath('/')
   return data
 }
 
@@ -653,7 +672,6 @@ export async function createMention(
     })
   }
 
-  revalidatePath('/')
 }
 
 // ============ BUDGETS ============
@@ -692,7 +710,6 @@ export async function createBudgetPeriod(data: {
     .single()
 
   if (error) throw error
-  revalidatePath('/')
   return budget
 }
 
@@ -710,7 +727,6 @@ export async function markNotificationsRead(notificationIds: string[]) {
     .in('id', notificationIds)
     .eq('user_id', user.id)
   if (error) throw error
-  revalidatePath('/')
 }
 
 export async function markAllNotificationsRead() {
@@ -724,7 +740,6 @@ export async function markAllNotificationsRead() {
     .eq('user_id', user.id)
     .is('read_at', null)
   if (error) throw error
-  revalidatePath('/')
 }
 
 // ============ FILE UPLOAD ============
@@ -753,7 +768,6 @@ export async function uploadResultFile(taskId: string, formData: FormData) {
     .update({ result_file_path: path })
     .eq('id', taskId)
 
-  revalidatePath('/')
   return path
 }
 
@@ -835,7 +849,6 @@ export async function importLeads(leads: {
     to_value: { imported: importedCount, skipped: skippedCount },
   })
 
-  revalidatePath('/')
   return { imported: importedCount, skipped: skippedCount }
 }
 
@@ -844,7 +857,6 @@ export async function importLeads(leads: {
 export async function signOut() {
   const supabase = await createClient()
   await supabase.auth.signOut()
-  revalidatePath('/')
 }
 
 export async function updateUserRole(userId: string, role: 'admin' | 'member') {
@@ -869,7 +881,6 @@ export async function updateUserRole(userId: string, role: 'admin' | 'member') {
     .eq('id', userId)
 
   if (error) throw error
-  revalidatePath('/')
 }
 
 export async function upsertChannelField(data: {
@@ -931,7 +942,6 @@ export async function upsertChannelField(data: {
 
   if (error) throw error
   revalidatePath('/admin')
-  revalidatePath('/')
 }
 
 export async function deleteChannelField(fieldId: string) {
@@ -955,7 +965,6 @@ export async function deleteChannelField(fieldId: string) {
 
   if (error) throw error
   revalidatePath('/admin')
-  revalidatePath('/')
 }
 
 export async function disconnectHubSpot() {
@@ -1004,7 +1013,6 @@ export async function createCategory(data: { name: string; icon?: string; sort_o
 
   if (error) throw error
   revalidatePath('/admin')
-  revalidatePath('/')
 }
 
 export async function updateCategory(data: { id: string; name: string; icon?: string; sort_order?: number; is_active?: boolean }) {
@@ -1033,7 +1041,6 @@ export async function updateCategory(data: { id: string; name: string; icon?: st
 
   if (error) throw error
   revalidatePath('/admin')
-  revalidatePath('/')
 }
 
 export async function createChannel(data: { category_id: string; parent_channel_id?: string | null; name: string; sort_order?: number }) {
@@ -1075,7 +1082,6 @@ export async function createChannel(data: { category_id: string; parent_channel_
 
   if (error) throw error
   revalidatePath('/admin')
-  revalidatePath('/')
 }
 
 export async function updateChannel(data: { id: string; name: string; parent_channel_id?: string | null; sort_order?: number; is_active?: boolean }) {
@@ -1104,7 +1110,6 @@ export async function updateChannel(data: { id: string; name: string; parent_cha
 
   if (error) throw error
   revalidatePath('/admin')
-  revalidatePath('/')
 }
 
 // ============ INVITES ============
@@ -1254,7 +1259,6 @@ export async function assignTaskByEmail(args: {
       { onConflict: 'email', ignoreDuplicates: true }
     )
 
-  revalidatePath('/')
   return { mode: 'pending' as const, email: normalized }
 }
 
@@ -1294,7 +1298,6 @@ export async function saveView(args: {
     .single()
 
   if (error) throw error
-  revalidatePath('/')
   return data
 }
 
@@ -1312,7 +1315,6 @@ export async function deleteSavedView(viewId: string) {
     .eq('user_id', user.id)
 
   if (error) throw error
-  revalidatePath('/')
 }
 
 // ============ BULK OPERATIONS ============
@@ -1340,7 +1342,6 @@ export async function bulkUpdateTaskStatus(taskIds: string[], status: TaskStatus
     }
   }
 
-  revalidatePath('/')
   if (updated === 0 && errors.length > 0) {
     throw new Error(`Failed to update tasks: ${errors[0]}`)
   }
@@ -1394,7 +1395,6 @@ export async function bulkSetPrimaryAssignee(taskIds: string[], userId: string) 
     updated++
   }
 
-  revalidatePath('/')
   return { updated }
 }
 
@@ -1413,7 +1413,218 @@ export async function bulkDeleteTasks(taskIds: string[]) {
     .select('id')
 
   if (error) throw error
-  revalidatePath('/')
   return { deleted: data?.length ?? 0 }
 }
 
+
+// ============ CHANNEL RESOURCES & LEARNINGS (GTM blueprint) ============
+
+export async function addChannelResource(channelId: string, name: string, url: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  if (!name.trim() || !url.trim()) throw new Error('Name and URL are required')
+
+  const { data, error } = await supabase
+    .from('channel_resources')
+    .insert({ channel_id: channelId, name: name.trim(), url: url.trim(), added_by: user.id })
+    .select('*')
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function deleteChannelResource(resourceId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  // RLS (migration 010) restricts deletion to the adder or an admin.
+  const { error } = await supabase.from('channel_resources').delete().eq('id', resourceId)
+  if (error) throw error
+  return { deleted: true }
+}
+
+export async function addChannelLearning(channelId: string, body: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  if (!body.trim()) throw new Error('Learning text is required')
+
+  const { data, error } = await supabase
+    .from('channel_learnings')
+    .insert({ channel_id: channelId, body: body.trim(), added_by: user.id })
+    .select('*')
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function deleteChannelLearning(learningId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { error } = await supabase.from('channel_learnings').delete().eq('id', learningId)
+  if (error) throw error
+  return { deleted: true }
+}
+
+export async function addChannelTarget(channelId: string, body: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  if (!body.trim()) throw new Error('Target text is required')
+
+  const { data, error } = await supabase
+    .from('channel_targets')
+    .insert({ channel_id: channelId, body: body.trim(), added_by: user.id })
+    .select('*')
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function deleteChannelTarget(targetId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { error } = await supabase.from('channel_targets').delete().eq('id', targetId)
+  if (error) throw error
+  return { deleted: true }
+}
+
+// ============ CHANNEL OWNERS & DESCRIPTION (admin, RLS-enforced) ============
+
+export async function updateChannelDescription(channelId: string, goal: string | null) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data, error } = await supabase
+    .from('channels')
+    .update({ goal: goal?.trim() || null })
+    .eq('id', channelId)
+    .select('id')
+
+  if (error) throw error
+  // RLS silently matches 0 rows for non-admins — surface that as an error.
+  if (!data?.length) throw new Error('Only admins can edit channel details')
+  return { updated: true }
+}
+
+export async function addChannelOwner(channelId: string, email: string, makePrimary: boolean) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const clean = email.trim().toLowerCase()
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) throw new Error('Enter a valid email')
+
+  const { data: existing, error: readErr } = await supabase
+    .from('channel_owners').select('email, sort_order').eq('channel_id', channelId).order('sort_order')
+  if (readErr) throw readErr
+
+  const sortOrder = makePrimary
+    ? (existing?.length ? Math.min(...existing.map(o => o.sort_order)) - 1 : 0)
+    : (existing?.length ? Math.max(...existing.map(o => o.sort_order)) + 1 : 0)
+
+  const { data: matched } = await supabase.from('users').select('id').eq('email', clean).maybeSingle()
+  const { error } = await supabase
+    .from('channel_owners')
+    .upsert(
+      { channel_id: channelId, email: clean, user_id: matched?.id ?? null, sort_order: sortOrder },
+      { onConflict: 'channel_id,email' }
+    )
+  if (error) {
+    if (error.code === '42501' || /policy/i.test(error.message)) throw new Error('Only admins can edit channel owners')
+    throw error
+  }
+  return { added: clean, primary: makePrimary }
+}
+
+export async function removeChannelOwner(channelId: string, email: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data, error } = await supabase
+    .from('channel_owners').delete().eq('channel_id', channelId).eq('email', email.toLowerCase())
+    .select('email')
+  if (error) throw error
+  if (!data?.length) throw new Error('Nothing removed — only admins can edit channel owners')
+  return { removed: true }
+}
+
+export async function setPrimaryChannelOwner(channelId: string, email: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: existing, error: readErr } = await supabase
+    .from('channel_owners').select('email, sort_order').eq('channel_id', channelId).order('sort_order')
+  if (readErr) throw readErr
+  if (!existing?.length) throw new Error('No owners on this channel')
+
+  const minOrder = Math.min(...existing.map(o => o.sort_order))
+  const { data, error } = await supabase
+    .from('channel_owners')
+    .update({ sort_order: minOrder - 1 })
+    .eq('channel_id', channelId)
+    .eq('email', email.toLowerCase())
+    .select('email')
+  if (error) throw error
+  if (!data?.length) throw new Error('Nothing updated — only admins can edit channel owners')
+  return { primary: email }
+}
+
+// ============ TASK OWNERS (add/remove at activity & sub-activity level) ============
+
+export async function addTaskOwner(taskId: string, email: string, role: 'primary' | 'secondary') {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const clean = normalizeEmail(email)
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) throw new Error('Enter a valid email')
+
+  // One primary per task: making someone primary demotes the current one.
+  if (role === 'primary') {
+    await supabase.from('task_assignments')
+      .update({ role: 'secondary' }).eq('task_id', taskId).eq('role', 'primary')
+    await supabase.from('pending_assignments')
+      .update({ role: 'secondary' }).eq('task_id', taskId).eq('role', 'primary').is('resolved_user_id', null)
+  }
+
+  const { data: matched } = await supabase.from('users').select('id').eq('email', clean).maybeSingle()
+  if (matched) {
+    const { error } = await supabase.from('task_assignments')
+      .upsert({ task_id: taskId, user_id: matched.id, role, assigned_by: user.id }, { onConflict: 'task_id,user_id' })
+    if (error) throw error
+  } else {
+    const { error } = await supabase.from('pending_assignments')
+      .upsert({ task_id: taskId, email: clean, role, assigned_by: user.id }, { onConflict: 'task_id,email' })
+    if (error) throw error
+  }
+  return { email: clean, role, pending: !matched }
+}
+
+export async function removeTaskOwner(taskId: string, ref: { userId?: string; email?: string }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  if (ref.userId) {
+    const { error } = await supabase.from('task_assignments')
+      .delete().eq('task_id', taskId).eq('user_id', ref.userId)
+    if (error) throw error
+  }
+  if (ref.email) {
+    const { error } = await supabase.from('pending_assignments')
+      .delete().eq('task_id', taskId).eq('email', ref.email.toLowerCase())
+    if (error) throw error
+  }
+  return { removed: true }
+}

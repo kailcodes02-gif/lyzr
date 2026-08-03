@@ -21,10 +21,10 @@ export default function NotificationsPage() {
   if (isLoading) {
     return (
       <div className="p-8 space-y-6 animate-pulse">
-        <div className="h-8 bg-zinc-800 rounded w-1/4" />
+        <div className="h-8 bg-zinc-200 rounded w-1/4" />
         <div className="space-y-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-20 bg-zinc-800 rounded-xl" />
+            <div key={i} className="h-20 bg-zinc-200 rounded-xl" />
           ))}
         </div>
       </div>
@@ -73,15 +73,15 @@ export default function NotificationsPage() {
   }
 
   const notificationIcons = {
-    assigned: <CheckSquare className="w-4 h-4 text-blue-400" />,
-    mentioned: <MessageSquare className="w-4 h-4 text-violet-400" />,
-    comment: <MessageSquare className="w-4 h-4 text-emerald-400" />,
-    status_change: <Info className="w-4 h-4 text-zinc-400" />,
-    dependency_completed: <Check className="w-4 h-4 text-emerald-400" />,
-    subtask_completed: <Check className="w-4 h-4 text-emerald-400" />,
-    parent_blocked: <ShieldAlert className="w-4 h-4 text-red-400" />,
-    budget_overrun_warning: <ShieldAlert className="w-4 h-4 text-orange-400" />,
-    overdue: <AlertCircle className="w-4 h-4 text-red-400" />,
+    assigned: <CheckSquare className="w-4 h-4 text-blue-600" />,
+    mentioned: <MessageSquare className="w-4 h-4 text-violet-600" />,
+    comment: <MessageSquare className="w-4 h-4 text-emerald-600" />,
+    status_change: <Info className="w-4 h-4 text-zinc-600" />,
+    dependency_completed: <Check className="w-4 h-4 text-emerald-600" />,
+    subtask_completed: <Check className="w-4 h-4 text-emerald-600" />,
+    parent_blocked: <ShieldAlert className="w-4 h-4 text-red-600" />,
+    budget_overrun_warning: <ShieldAlert className="w-4 h-4 text-orange-600" />,
+    overdue: <AlertCircle className="w-4 h-4 text-red-600" />,
   }
 
   const getNotificationText = (type: string, payload: any) => {
@@ -110,13 +110,13 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="p-4 lg:p-8 space-y-6 max-w-4xl mx-auto bg-[#0a0a0f] text-zinc-100 min-h-screen">
+    <div className="p-4 lg:p-8 space-y-6 max-w-4xl mx-auto bg-zinc-50 text-zinc-900 min-h-screen">
       
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Bell className="w-6 h-6 text-violet-400" /> Notifications
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
+            <Bell className="w-6 h-6 text-violet-600" /> Notifications
           </h1>
           <p className="text-sm text-zinc-500 mt-1">Stay updated with assignments, mentions, and updates</p>
         </div>
@@ -126,7 +126,7 @@ export default function NotificationsPage() {
             size="sm" 
             onClick={handleMarkAllRead}
             disabled={isPending}
-            className="border-white/10 text-zinc-300 hover:text-white"
+            className="border-zinc-300 text-zinc-700 hover:text-zinc-900"
           >
             Mark all as read
           </Button>
@@ -134,27 +134,27 @@ export default function NotificationsPage() {
       </div>
 
       {/* Notifications List */}
-      <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-xl">
+      <Card className="bg-white border-zinc-200 backdrop-blur-xl">
         <CardContent className="p-0">
           {notifications && notifications.length > 0 ? (
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-zinc-200">
               {notifications.map(notif => (
                 <div 
                   key={notif.id}
                   onClick={() => handleNotificationClick(notif.task_id, notif.id)}
-                  className="p-4 hover:bg-white/5 transition-colors cursor-pointer flex items-start gap-4"
+                  className="p-4 hover:bg-zinc-100 transition-colors cursor-pointer flex items-start gap-4"
                 >
-                  <div className="p-2 bg-white/5 rounded-lg shrink-0 mt-0.5">
-                    {notificationIcons[notif.type] || <Info className="w-4 h-4 text-zinc-400" />}
+                  <div className="p-2 bg-zinc-100 rounded-lg shrink-0 mt-0.5">
+                    {notificationIcons[notif.type] || <Info className="w-4 h-4 text-zinc-600" />}
                   </div>
                   
                   <div className="flex-1 space-y-1 min-w-0">
-                    <p className="text-sm text-zinc-200 leading-snug">
+                    <p className="text-sm text-zinc-800 leading-snug">
                       {getNotificationText(notif.type, notif.payload)}
                     </p>
                     <div className="flex items-center gap-2 text-xs text-zinc-500">
                       {notif.task && (
-                        <span className="text-blue-400 font-medium hover:underline">
+                        <span className="text-blue-600 font-medium hover:underline">
                           {notif.task.title}
                         </span>
                       )}
@@ -167,7 +167,7 @@ export default function NotificationsPage() {
                     variant="ghost"
                     size="icon"
                     onClick={(e) => handleMarkSingleRead(notif.id, e)}
-                    className="h-8 w-8 text-zinc-500 hover:text-zinc-300 rounded-lg"
+                    className="h-8 w-8 text-zinc-500 hover:text-zinc-700 rounded-lg"
                     title="Mark as read"
                   >
                     <Check className="w-4 h-4" />

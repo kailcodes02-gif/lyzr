@@ -29,15 +29,15 @@ export default function DashboardPage() {
   if (userLoading || tasksLoading) {
     return (
       <div className="p-8 space-y-6 animate-pulse">
-        <div className="h-8 bg-zinc-800 rounded w-1/4" />
+        <div className="h-8 bg-zinc-200 rounded w-1/4" />
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-28 bg-zinc-800 rounded-xl" />
+            <div key={i} className="h-28 bg-zinc-200 rounded-xl" />
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 h-96 bg-zinc-800 rounded-xl" />
-          <div className="h-96 bg-zinc-800 rounded-xl" />
+          <div className="lg:col-span-2 h-96 bg-zinc-200 rounded-xl" />
+          <div className="h-96 bg-zinc-200 rounded-xl" />
         </div>
       </div>
     )
@@ -87,7 +87,7 @@ export default function DashboardPage() {
     return isBefore(dueTime, todayStartIST) || isToday(dueTime)
   }).sort((a, b) => {
     // Sort priority P0 -> P1 -> P2 -> P3
-    const priorityMap = { P0: 0, P1: 1, P2: 2, P3: 3 }
+    const priorityMap = { P0: 0, P1: 1, P2: 2, P3: 3, P4: 4 }
     const pDiff = priorityMap[a.priority] - priorityMap[b.priority]
     if (pDiff !== 0) return pDiff
     if (!a.due_date) return 1
@@ -104,10 +104,11 @@ export default function DashboardPage() {
   }).slice(0, 5) || []
 
   const priorityColors = {
-    P0: 'bg-red-500/20 text-red-400 border-red-500/30',
-    P1: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    P2: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    P3: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
+    P0: 'bg-red-500/20 text-red-600 border-red-500/30',
+    P1: 'bg-orange-500/20 text-orange-600 border-orange-500/30',
+    P2: 'bg-blue-500/20 text-blue-600 border-blue-300',
+    P3: 'bg-zinc-500/20 text-zinc-600 border-zinc-500/30',
+    P4: 'bg-zinc-100 text-zinc-500 border-zinc-600/30',
   }
 
   const statusLabels = {
@@ -120,20 +121,20 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-4 lg:p-8 space-y-8 max-w-7xl mx-auto bg-[#0a0a0f] text-zinc-100 min-h-screen">
+    <div className="p-4 lg:p-8 space-y-8 max-w-7xl mx-auto bg-zinc-50 text-zinc-900 min-h-screen">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="pl-12 lg:pl-0">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-white via-zinc-200 to-zinc-500 bg-clip-text text-transparent">
             Welcome back, {user.display_name?.split(' ')[0]}
           </h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <p className="text-sm text-zinc-600 mt-1">
             Here's what's happening with GSI/SI marketing today
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <Link href="/calendar" className="flex-1 sm:flex-none">
-            <Button variant="outline" className="w-full border-white/10 hover:bg-white/5 text-zinc-300">
+            <Button variant="outline" className="w-full border-zinc-300 hover:bg-zinc-100 text-zinc-700">
               <Calendar className="w-4 h-4 mr-2" /> Calendar View
             </Button>
           </Link>
@@ -148,53 +149,53 @@ export default function DashboardPage() {
 
       {/* KPI Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-zinc-900/50 border-white/5 backdrop-blur-xl hover:border-white/10 transition-all">
+        <Card className="bg-white border-zinc-200 backdrop-blur-xl hover:border-zinc-300 transition-all">
           <CardContent className="p-6 flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-zinc-400 uppercase tracking-wider">My Open Tasks</p>
-              <h3 className="text-3xl font-bold text-white mt-1">{myOpenTasks.length}</h3>
+              <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">My Open Tasks</p>
+              <h3 className="text-3xl font-bold text-zinc-900 mt-1">{myOpenTasks.length}</h3>
             </div>
-            <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl">
+            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
               <CheckSquare className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-zinc-900/50 border-white/5 backdrop-blur-xl hover:border-white/10 transition-all">
+        <Card className="bg-white border-zinc-200 backdrop-blur-xl hover:border-zinc-300 transition-all">
           <CardContent className="p-6 flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Overdue</p>
-              <h3 className={`text-3xl font-bold mt-1 ${myOverdueTasks.length > 0 ? 'text-red-400' : 'text-white'}`}>
+              <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Overdue</p>
+              <h3 className={`text-3xl font-bold mt-1 ${myOverdueTasks.length > 0 ? 'text-red-600' : 'text-zinc-900'}`}>
                 {myOverdueTasks.length}
               </h3>
             </div>
-            <div className={`p-3 rounded-xl ${myOverdueTasks.length > 0 ? 'bg-red-500/15 text-red-400' : 'bg-zinc-800 text-zinc-400'}`}>
+            <div className={`p-3 rounded-xl ${myOverdueTasks.length > 0 ? 'bg-red-500/15 text-red-600' : 'bg-zinc-200 text-zinc-600'}`}>
               <AlertCircle className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-zinc-900/50 border-white/5 backdrop-blur-xl hover:border-white/10 transition-all">
+        <Card className="bg-white border-zinc-200 backdrop-blur-xl hover:border-zinc-300 transition-all">
           <CardContent className="p-6 flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Mentions</p>
-              <h3 className="text-3xl font-bold text-white mt-1">{mentionedTasksCount}</h3>
+              <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Mentions</p>
+              <h3 className="text-3xl font-bold text-zinc-900 mt-1">{mentionedTasksCount}</h3>
             </div>
-            <div className="p-3 bg-violet-500/10 text-violet-400 rounded-xl">
+            <div className="p-3 bg-violet-50 text-violet-600 rounded-xl">
               <MessageSquare className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-zinc-900/50 border-white/5 backdrop-blur-xl hover:border-white/10 transition-all">
+        <Card className="bg-white border-zinc-200 backdrop-blur-xl hover:border-zinc-300 transition-all">
           <CardContent className="p-6 flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Global Budget Left</p>
-              <h3 className="text-3xl font-bold text-emerald-400 mt-1">
+              <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Global Budget Left</p>
+              <h3 className="text-3xl font-bold text-emerald-600 mt-1">
                 ${remainingGlobalBudget.toLocaleString()}
               </h3>
             </div>
-            <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl">
+            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
               <DollarSign className="w-5 h-5" />
             </div>
           </CardContent>
@@ -208,12 +209,12 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 space-y-6">
           
           {/* My Day */}
-          <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-xl">
+          <Card className="bg-white border-zinc-200 backdrop-blur-xl">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-white">
-                <Calendar className="w-4 h-4 text-blue-400" /> My Day
+              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-zinc-900">
+                <Calendar className="w-4 h-4 text-blue-600" /> My Day
               </CardTitle>
-              <span className="text-xs text-zinc-400">{format(nowIST, 'EEEE, d MMMM')}</span>
+              <span className="text-xs text-zinc-600">{format(nowIST, 'EEEE, d MMMM')}</span>
             </CardHeader>
             <CardContent className="p-0">
               {myDayTasks.length === 0 ? (
@@ -221,29 +222,29 @@ export default function DashboardPage() {
                   No tasks due today. Sweet! 🙌
                 </div>
               ) : (
-                <div className="divide-y divide-white/5">
+                <div className="divide-y divide-zinc-200">
                   {myDayTasks.map(task => (
                     <div 
                       key={task.id}
                       onClick={() => setSelectedTaskId(task.id)}
-                      className="p-4 hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-between gap-4"
+                      className="p-4 hover:bg-zinc-100 transition-colors cursor-pointer flex items-center justify-between gap-4"
                     >
                       <div className="space-y-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className={priorityColors[task.priority]}>
                             {task.priority}
                           </Badge>
-                          <h4 className="text-sm font-medium text-zinc-200 truncate">{task.title}</h4>
+                          <h4 className="text-sm font-medium text-zinc-800 truncate">{task.title}</h4>
                         </div>
                         <p className="text-xs text-zinc-500 truncate">{task.description || 'No description'}</p>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
                         {task.due_date && (
-                          <span className={`text-xs ${isBefore(parseISO(task.due_date), todayStartIST) && !isToday(parseISO(task.due_date)) ? 'text-red-400 font-medium' : 'text-zinc-400'}`}>
+                          <span className={`text-xs ${isBefore(parseISO(task.due_date), todayStartIST) && !isToday(parseISO(task.due_date)) ? 'text-red-600 font-medium' : 'text-zinc-600'}`}>
                             {format(parseISO(task.due_date), 'd MMM')}
                           </span>
                         )}
-                        <Badge className="bg-zinc-800 text-zinc-400 border-zinc-700">
+                        <Badge className="bg-zinc-200 text-zinc-600 border-zinc-300">
                           {statusLabels[task.status]}
                         </Badge>
                       </div>
@@ -255,10 +256,10 @@ export default function DashboardPage() {
           </Card>
 
           {/* Going Live This Week */}
-          <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-xl">
+          <Card className="bg-white border-zinc-200 backdrop-blur-xl">
             <CardHeader>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-white">
-                <ArrowRight className="w-4 h-4 text-emerald-400" /> Going Live This Week
+              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-zinc-900">
+                <ArrowRight className="w-4 h-4 text-emerald-600" /> Going Live This Week
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -267,24 +268,24 @@ export default function DashboardPage() {
                   Nothing scheduled to go live in the next 7 days.
                 </div>
               ) : (
-                <div className="divide-y divide-white/5">
+                <div className="divide-y divide-zinc-200">
                   {goingLiveTasks.map(task => (
                     <div 
                       key={task.id}
                       onClick={() => setSelectedTaskId(task.id)}
-                      className="p-4 hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-between gap-4"
+                      className="p-4 hover:bg-zinc-100 transition-colors cursor-pointer flex items-center justify-between gap-4"
                     >
                       <div className="space-y-1 min-w-0">
-                        <h4 className="text-sm font-medium text-zinc-200 truncate">{task.title}</h4>
+                        <h4 className="text-sm font-medium text-zinc-800 truncate">{task.title}</h4>
                         <p className="text-xs text-zinc-500 truncate">Channel: {task.channel?.name}</p>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
                         {task.due_date && (
-                          <span className="text-xs text-zinc-400">
+                          <span className="text-xs text-zinc-600">
                             {format(parseISO(task.due_date), 'd MMM')}
                           </span>
                         )}
-                        <Badge className="bg-zinc-800 text-zinc-400 border-zinc-700">
+                        <Badge className="bg-zinc-200 text-zinc-600 border-zinc-300">
                           {statusLabels[task.status]}
                         </Badge>
                       </div>
@@ -300,9 +301,9 @@ export default function DashboardPage() {
         <div className="space-y-6">
           
           {/* Budget Progress */}
-          <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-xl">
+          <Card className="bg-white border-zinc-200 backdrop-blur-xl">
             <CardHeader>
-              <CardTitle className="text-lg font-semibold text-white">Budget Overview</CardTitle>
+              <CardTitle className="text-lg font-semibold text-zinc-900">Budget Overview</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {budgets && budgets.length > 0 ? (
@@ -314,16 +315,16 @@ export default function DashboardPage() {
                   return (
                     <div key={budget.budget_period_id} className="space-y-2">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="font-medium text-zinc-300 truncate max-w-[120px]">
+                        <span className="font-medium text-zinc-700 truncate max-w-[120px]">
                           {budget.period_label} ({budget.scope_type})
                         </span>
-                        <span className="text-zinc-400">
+                        <span className="text-zinc-600">
                           ${allocated.toLocaleString()} / ${limit.toLocaleString()} ({percent}%)
                         </span>
                       </div>
                       <Progress 
                         value={percent} 
-                        className="h-2 bg-zinc-800"
+                        className="h-2 bg-zinc-200"
                         indicatorClassName={percent > 100 ? 'bg-red-500' : percent > 80 ? 'bg-orange-500' : 'bg-blue-500'}
                       />
                     </div>
@@ -338,29 +339,29 @@ export default function DashboardPage() {
           </Card>
 
           {/* Recent Activity Log */}
-          <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-xl">
+          <Card className="bg-white border-zinc-200 backdrop-blur-xl">
             <CardHeader>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-white">
-                <Activity className="w-4 h-4 text-violet-400" /> Recent Activity
+              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-zinc-900">
+                <Activity className="w-4 h-4 text-violet-600" /> Recent Activity
               </CardTitle>
             </CardHeader>
             <CardContent className="max-h-[350px] overflow-y-auto pr-2 space-y-4">
               {activities && activities.length > 0 ? (
                 activities.map(log => (
                   <div key={log.id} className="flex gap-3 text-xs">
-                    <div className="w-6 h-6 rounded-full bg-zinc-800 border border-white/5 flex items-center justify-center shrink-0 text-[10px] font-semibold text-zinc-400 uppercase">
+                    <div className="w-6 h-6 rounded-full bg-zinc-200 border border-zinc-200 flex items-center justify-center shrink-0 text-[10px] font-semibold text-zinc-500 uppercase">
                       {log.actor?.display_name?.charAt(0) || '?'}
                     </div>
                     <div className="space-y-1">
-                      <p className="text-zinc-300 leading-snug">
-                        <span className="font-medium text-white">{log.actor?.display_name || 'System'}</span>{' '}
+                      <p className="text-zinc-700 leading-snug">
+                        <span className="font-medium text-zinc-900">{log.actor?.display_name || 'System'}</span>{' '}
                         {log.action === 'created' && 'created task'}{' '}
                         {log.action === 'status_changed' && 'updated status of'}{' '}
                         {log.action === 'commented' && 'commented on'}{' '}
                         {log.action === 'imported_leads' && 'imported CSV leads'}{' '}
                         <span 
                           onClick={() => log.task?.id && setSelectedTaskId(log.task.id)}
-                          className="text-blue-400 hover:underline cursor-pointer font-medium"
+                          className="text-blue-600 hover:underline cursor-pointer font-medium"
                         >
                           {log.task?.title || 'a task'}
                         </span>

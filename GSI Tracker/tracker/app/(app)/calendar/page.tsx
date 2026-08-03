@@ -11,8 +11,11 @@ import {
   format,
   isSameMonth,
   isSameDay,
+  isToday,
   addMonths,
   subMonths,
+  addWeeks,
+  subWeeks,
   parseISO,
 } from 'date-fns'
 import {
@@ -28,10 +31,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 
 const PRIORITY_STYLES = {
-  P0: 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20',
-  P1: 'bg-orange-500/10 border-orange-500/20 text-orange-400 hover:bg-orange-500/20',
-  P2: 'bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20',
-  P3: 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400 hover:bg-zinc-500/20',
+  P0: 'bg-red-50 border-red-200 text-red-600 hover:bg-red-500/20',
+  P1: 'bg-orange-500/10 border-orange-500/20 text-orange-600 hover:bg-orange-500/20',
+  P2: 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100',
+  P3: 'bg-zinc-100 border-zinc-300 text-zinc-600 hover:bg-zinc-500/20',
+  P4: 'bg-zinc-500/5 border-zinc-600/20 text-zinc-500 hover:bg-zinc-100',
 }
 
 function CalendarContent() {
@@ -40,6 +44,8 @@ function CalendarContent() {
   const channelParam = searchParams.get('channel')
 
   const [currentDate, setCurrentDate] = useState(new Date())
+  // Google-Calendar-style week view is the default; month remains available
+  const [viewMode, setViewMode] = useState<'week' | 'month'>('week')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedChannel, setSelectedChannel] = useState<string>('all')
   const [selectedOwner, setSelectedOwner] = useState<string>('all')
@@ -74,8 +80,13 @@ function CalendarContent() {
   const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 })
   const days = eachDayOfInterval({ start: startDate, end: endDate })
 
-  const nextMonth = () => setCurrentDate(addMonths(currentDate, 1))
-  const prevMonth = () => setCurrentDate(subMonths(currentDate, 1))
+  // Week range (Monday-start, like Google Calendar)
+  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
+  const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 })
+  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd })
+
+  const goNext = () => setCurrentDate(viewMode === 'week' ? addWeeks(currentDate, 1) : addMonths(currentDate, 1))
+  const goPrev = () => setCurrentDate(viewMode === 'week' ? subWeeks(currentDate, 1) : subMonths(currentDate, 1))
 
   // Filter tasks client side
   const filteredTasks = tasks?.filter(task => {
@@ -106,36 +117,58 @@ function CalendarContent() {
   }) || []
 
   return (
-    <div className="p-4 lg:p-6 space-y-6 bg-[#0a0a0f] min-h-screen text-white">
+    <div className="p-4 lg:p-6 space-y-6 bg-zinc-50 min-h-screen text-zinc-900">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2">
-            <CalendarIcon className="w-5 h-5 text-violet-400" />
+            <CalendarIcon className="w-5 h-5 text-violet-600" />
             Content & Campaign Calendar
           </h1>
-          <p className="text-xs text-zinc-400">Track and coordinate marketing timelines</p>
+          <p className="text-xs text-zinc-600">Track and coordinate marketing timelines</p>
         </div>
 
         <div className="flex items-center gap-2">
+          <div className="flex bg-zinc-100 border border-zinc-300 rounded-lg p-0.5 mr-1">
+            <button
+              onClick={() => setViewMode('week')}
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === 'week' ? 'bg-white shadow text-zinc-900' : 'text-zinc-600 hover:text-zinc-900'}`}
+            >
+              Week
+            </button>
+            <button
+              onClick={() => setViewMode('month')}
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === 'month' ? 'bg-white shadow text-zinc-900' : 'text-zinc-600 hover:text-zinc-900'}`}
+            >
+              Month
+            </button>
+          </div>
           <button
-            onClick={prevMonth}
-            className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors"
+            onClick={goPrev}
+            className="p-2 bg-zinc-100 border border-zinc-300 rounded-lg hover:bg-zinc-200/70 transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="text-sm font-semibold min-w-[120px] text-center">
-            {format(currentDate, 'MMMM yyyy')}
+          <span className="text-sm font-semibold min-w-[150px] text-center">
+            {viewMode === 'week'
+              ? `${format(weekStart, 'd MMM')} – ${format(weekEnd, 'd MMM yyyy')}`
+              : format(currentDate, 'MMMM yyyy')}
           </span>
           <button
-            onClick={nextMonth}
-            className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors"
+            onClick={goNext}
+            className="p-2 bg-zinc-100 border border-zinc-300 rounded-lg hover:bg-zinc-200/70 transition-colors"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
           <button
+            onClick={() => setCurrentDate(new Date())}
+            className="px-3 py-2 bg-zinc-100 border border-zinc-300 rounded-lg hover:bg-zinc-200/70 transition-colors text-xs font-medium"
+          >
+            Today
+          </button>
+          <button
             onClick={() => refetch()}
-            className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors ml-2"
+            className="p-2 bg-zinc-100 border border-zinc-300 rounded-lg hover:bg-zinc-200/70 transition-colors ml-2"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -143,8 +176,8 @@ function CalendarContent() {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex flex-wrap gap-4 items-center">
-        <div className="flex items-center gap-2 text-zinc-400 text-xs font-medium uppercase tracking-wider mr-2">
+      <div className="bg-zinc-100 border border-zinc-300 rounded-xl p-4 flex flex-wrap gap-4 items-center">
+        <div className="flex items-center gap-2 text-zinc-600 text-xs font-medium uppercase tracking-wider mr-2">
           <Filter className="w-3.5 h-3.5" />
           Filters
         </div>
@@ -158,7 +191,7 @@ function CalendarContent() {
               setSelectedCategory(e.target.value)
               setSelectedChannel('all') // reset channel on category change
             }}
-            className="bg-[#12121a] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-violet-500"
+            className="bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-violet-500"
           >
             <option value="all">All Categories</option>
             {categories?.map(cat => (
@@ -173,7 +206,7 @@ function CalendarContent() {
           <select
             value={selectedChannel}
             onChange={e => setSelectedChannel(e.target.value)}
-            className="bg-[#12121a] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-violet-500"
+            className="bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-violet-500"
           >
             <option value="all">All Channels</option>
             {channels?.map(ch => (
@@ -188,7 +221,7 @@ function CalendarContent() {
           <select
             value={selectedOwner}
             onChange={e => setSelectedOwner(e.target.value)}
-            className="bg-[#12121a] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-violet-500"
+            className="bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-violet-500"
           >
             <option value="all">All Owners</option>
             {users?.map(u => (
@@ -203,7 +236,7 @@ function CalendarContent() {
           <select
             value={selectedStatus}
             onChange={e => setSelectedStatus(e.target.value)}
-            className="bg-[#12121a] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-violet-500"
+            className="bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-violet-500"
           >
             <option value="all">All Statuses</option>
             <option value="not_started">Not Started</option>
@@ -216,15 +249,58 @@ function CalendarContent() {
         </div>
       </div>
 
-      {/* Calendar Grid */}
+      {/* Week view (default) — one column per day of the current week */}
+      {!isLoading && viewMode === 'week' && (
+        <div className="border border-zinc-300 rounded-xl overflow-hidden bg-white">
+          <div className="grid grid-cols-7 divide-x divide-zinc-200 min-h-[560px]">
+            {weekDays.map(day => {
+              const dayStr = format(day, 'yyyy-MM-dd')
+              const dayTasks = filteredTasks.filter(t => {
+                try { return format(parseISO(t.due_date!), 'yyyy-MM-dd') === dayStr } catch { return t.due_date === dayStr }
+              })
+              const today = isToday(day)
+              return (
+                <div key={dayStr} className={today ? 'bg-blue-50/50' : ''}>
+                  <div className={`text-center py-2.5 border-b border-zinc-200 ${today ? 'bg-blue-100/60' : 'bg-zinc-50'}`}>
+                    <p className="text-[10px] uppercase tracking-wider text-zinc-500">{format(day, 'EEE')}</p>
+                    <p className={`text-lg font-semibold leading-tight ${today ? 'text-blue-700' : 'text-zinc-800'}`}>
+                      {format(day, 'd')}
+                    </p>
+                  </div>
+                  <div className="p-1.5 space-y-1.5">
+                    {dayTasks.map(task => (
+                      <button
+                        key={task.id}
+                        onClick={() => setSelectedTaskId(task.id)}
+                        className={`w-full text-left rounded-md border px-2 py-1.5 text-[11px] leading-snug transition-colors ${PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.P2}`}
+                        title={`${task.title} · ${task.channel?.name || ''}`}
+                      >
+                        <span className="font-semibold">{task.priority}</span> {task.title}
+                        {task.channel?.name && (
+                          <span className="block text-[9px] opacity-70 truncate">{task.channel.name}</span>
+                        )}
+                      </button>
+                    ))}
+                    {dayTasks.length === 0 && (
+                      <p className="text-center text-[10px] text-zinc-300 pt-4">—</p>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Month grid */}
       {isLoading ? (
         <div className="flex justify-center items-center h-96">
-          <div className="animate-spin w-8 h-8 border-2 border-white/20 border-t-violet-500 rounded-full" />
+          <div className="animate-spin w-8 h-8 border-2 border-zinc-300 border-t-violet-500 rounded-full" />
         </div>
-      ) : (
-        <div className="border border-white/10 rounded-xl overflow-hidden bg-white/5 backdrop-blur-xl">
+      ) : viewMode === 'month' && (
+        <div className="border border-zinc-300 rounded-xl overflow-hidden bg-zinc-100 backdrop-blur-xl">
           {/* Days of week header */}
-          <div className="grid grid-cols-7 border-b border-white/10 bg-[#0f0f18] text-center py-3 text-xs font-semibold text-zinc-400">
+          <div className="grid grid-cols-7 border-b border-zinc-300 bg-white text-center py-3 text-xs font-semibold text-zinc-600">
             <div>Sunday</div>
             <div>Monday</div>
             <div>Tuesday</div>
@@ -235,7 +311,7 @@ function CalendarContent() {
           </div>
 
           {/* Month cells */}
-          <div className="grid grid-cols-7 grid-rows-6 auto-rows-[120px] min-h-[600px] divide-x divide-y divide-white/5">
+          <div className="grid grid-cols-7 grid-rows-6 auto-rows-[120px] min-h-[600px] divide-x divide-y divide-zinc-200">
             {days.map((day, dayIdx) => {
               const dayStr = format(day, 'yyyy-MM-dd')
               const isCurrentMonth = isSameMonth(day, currentDate)
@@ -254,7 +330,7 @@ function CalendarContent() {
                 <div
                   key={day.toString()}
                   className={`p-2 flex flex-col gap-1 overflow-hidden transition-all ${
-                    isCurrentMonth ? 'bg-transparent' : 'bg-white/[0.01] opacity-35'
+                    isCurrentMonth ? 'bg-transparent' : 'bg-zinc-100/40 opacity-35'
                   } ${dayIdx < 7 ? 'border-t-0' : ''}`}
                 >
                   {/* Date indicator */}
@@ -284,9 +360,9 @@ function CalendarContent() {
                           )}
                           <span className="truncate flex-1 font-medium">{task.title}</span>
                           {primaryOwner && (
-                            <Avatar className="w-3.5 h-3.5 shrink-0 border border-white/10">
+                            <Avatar className="w-3.5 h-3.5 shrink-0 border border-zinc-300">
                               <AvatarImage src={primaryOwner.avatar_url || ''} />
-                              <AvatarFallback className="bg-zinc-800 text-[8px] text-zinc-300">
+                              <AvatarFallback className="bg-zinc-200 text-[8px] text-zinc-700">
                                 {primaryOwner.display_name?.charAt(0) || '?'}
                               </AvatarFallback>
                             </Avatar>
@@ -316,8 +392,8 @@ function CalendarContent() {
 export default function CalendarPage() {
   return (
     <Suspense fallback={
-      <div className="flex justify-center items-center h-screen bg-[#0a0a0f] text-white">
-        <div className="animate-spin w-8 h-8 border-2 border-white/20 border-t-violet-500 rounded-full" />
+      <div className="flex justify-center items-center h-screen bg-zinc-50 text-zinc-900">
+        <div className="animate-spin w-8 h-8 border-2 border-zinc-300 border-t-violet-500 rounded-full" />
       </div>
     }>
       <CalendarContent />

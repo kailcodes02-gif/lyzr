@@ -36,3 +36,16 @@ extracted into `lib/task-logic.ts` because `lib/actions/index.ts` is a `'use ser
 module and may only export async functions, so its helpers cannot be imported by tests.
 First suite (`lib/task-logic.test.ts`) covers recurrence-date advancement, email
 normalization, and the blocker-completion filter (the closing-while-blocked guard).
+
+## D12: Taxonomy replaced by the GSI_GTM_2 blueprint (Aug 2026)
+The generic 7-category seed (001/006) is retired. The operating taxonomy now
+comes from the GSI_GTM_2 board: 4 categories → 12 channels → 38 sub-channels,
+with the 94 blueprint activities seeded as tasks. Channel-level tier / goal /
+target / budget-note / owners / resources / learnings live in migration 010.
+Data is seeded by `scripts/seed-gtm.mjs` from `scripts/gtm-blueprint.json`
+(exported verbatim from `GSI_GTM_2/index.html`) — the DB is reset with the
+generated `supabase/RESET_ALL.sql` (skips 006; see RESTRUCTURE.md). Activity
+star grades map to priority (gold→P0, silver→P1, bronze→P2) and are kept
+verbatim in `planning_fields.grade`. Owner names map to emails via
+`scripts/owner-emails.json`; unresolved people are held in pending_assignments
+until first sign-in.

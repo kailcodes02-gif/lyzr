@@ -151,6 +151,8 @@ interface ChannelFieldsProps {
   values: Record<string, unknown>
   onChange: (values: Record<string, unknown>) => void
   disabled?: boolean
+  // Slugs rendered elsewhere by a dedicated section (e.g. the Targets block)
+  excludeSlugs?: string[]
 }
 
 export function ChannelFields({
@@ -160,6 +162,7 @@ export function ChannelFields({
   values,
   onChange,
   disabled,
+  excludeSlugs,
 }: ChannelFieldsProps) {
   const { data: channels } = useChannels()
   const { data: allFields } = useChannelFields()
@@ -171,7 +174,7 @@ export function ChannelFields({
     surface,
     allFields || [],
     channels || []
-  )
+  ).filter(f => !excludeSlugs?.includes(f.slug))
   const autoCalcValues = computeAutoCalc(fields, values)
 
   if (fields.length === 0) {
@@ -194,12 +197,12 @@ export function ChannelFields({
           <div key={field.slug} className={field.field_type === 'long_text' ? 'col-span-2' : ''}>
             <Label className="text-[11px] text-zinc-500 mb-1 block">
               {field.name}
-              {field.is_required && <span className="text-red-400 ml-1">*</span>}
-              {isAutoCalc && <span className="ml-1 text-violet-400 font-medium">(auto)</span>}
+              {field.is_required && <span className="text-red-600 ml-1">*</span>}
+              {isAutoCalc && <span className="ml-1 text-violet-600 font-medium">(auto)</span>}
             </Label>
 
             {isAutoCalc ? (
-              <div className="bg-white/[0.03] border border-white/5 rounded-md px-3 py-2 text-sm text-zinc-300">
+              <div className="bg-zinc-100/60 border border-zinc-200 rounded-md px-3 py-2 text-sm text-zinc-700">
                 {displayValue !== null && displayValue !== '-' ? String(displayValue) : '-'}
               </div>
             ) : field.field_type === 'long_text' ? (
@@ -207,7 +210,7 @@ export function ChannelFields({
                 value={displayValue as string}
                 onChange={e => handleChange(field.slug, e.target.value)}
                 disabled={disabled}
-                className="bg-white/5 border-white/10 text-sm min-h-[60px] disabled:opacity-50"
+                className="bg-zinc-100 border-zinc-300 text-sm min-h-[60px] disabled:opacity-50"
                 placeholder={field.name}
               />
             ) : field.field_type === 'dropdown' ? (
@@ -216,10 +219,10 @@ export function ChannelFields({
                 onValueChange={v => handleChange(field.slug, v)}
                 disabled={disabled}
               >
-                <SelectTrigger className="bg-white/5 border-white/10 text-sm h-9 disabled:opacity-50">
+                <SelectTrigger className="bg-zinc-100 border-zinc-300 text-sm h-9 disabled:opacity-50">
                   <SelectValue placeholder={`Select ${field.name}`} />
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-800 border-white/10 text-white">
+                <SelectContent className="bg-white shadow-lg border-zinc-300 text-zinc-900">
                   {field.options?.map(opt => (
                     <SelectItem key={opt} value={opt}>{opt.replace(/_/g, ' ')}</SelectItem>
                   ))}
@@ -241,8 +244,8 @@ export function ChannelFields({
                       }}
                       className={`px-2.5 py-1 rounded-md text-[11px] border transition-colors disabled:opacity-50 ${
                         selected
-                          ? 'bg-blue-500/20 border-blue-500/30 text-blue-300'
-                          : 'bg-white/5 border-white/10 text-zinc-500 hover:text-zinc-300'
+                          ? 'bg-blue-500/20 border-blue-300 text-blue-600'
+                          : 'bg-zinc-100 border-zinc-300 text-zinc-500 hover:text-zinc-700'
                       }`}
                     >
                       {opt.replace(/_/g, ' ')}
@@ -257,9 +260,9 @@ export function ChannelFields({
                   checked={!!values[field.slug]}
                   onChange={e => handleChange(field.slug, e.target.checked)}
                   disabled={disabled}
-                  className="rounded border-zinc-700 bg-white/5 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                  className="rounded border-zinc-300 bg-zinc-100 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
                 />
-                <span className="text-xs text-zinc-400">Toggle {field.name}</span>
+                <span className="text-xs text-zinc-600">Toggle {field.name}</span>
               </div>
             ) : field.field_type === 'date_range' ? (
               <div className="grid grid-cols-2 gap-2">
@@ -271,7 +274,7 @@ export function ChannelFields({
                     handleChange(field.slug, { ...prev, start: e.target.value })
                   }}
                   disabled={disabled}
-                  className="bg-white/5 border-white/10 text-xs h-9 disabled:opacity-50"
+                  className="bg-zinc-100 border-zinc-300 text-xs h-9 disabled:opacity-50"
                 />
                 <Input
                   type="date"
@@ -281,7 +284,7 @@ export function ChannelFields({
                     handleChange(field.slug, { ...prev, end: e.target.value })
                   }}
                   disabled={disabled}
-                  className="bg-white/5 border-white/10 text-xs h-9 disabled:opacity-50"
+                  className="bg-zinc-100 border-zinc-300 text-xs h-9 disabled:opacity-50"
                 />
               </div>
             ) : field.field_type === 'person' ? (
@@ -290,10 +293,10 @@ export function ChannelFields({
                 onValueChange={v => handleChange(field.slug, v)}
                 disabled={disabled}
               >
-                <SelectTrigger className="bg-white/5 border-white/10 text-sm h-9 disabled:opacity-50">
+                <SelectTrigger className="bg-zinc-100 border-zinc-300 text-sm h-9 disabled:opacity-50">
                   <SelectValue placeholder={`Select ${field.name}`} />
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-800 border-white/10 text-white">
+                <SelectContent className="bg-white shadow-lg border-zinc-300 text-zinc-900">
                   {users?.map(u => (
                     <SelectItem key={u.id} value={u.id}>{u.display_name || u.email}</SelectItem>
                   ))}
@@ -328,7 +331,7 @@ export function ChannelFields({
                     )
                   }
                   disabled={disabled}
-                  className={`bg-white/5 border-white/10 text-sm h-9 disabled:opacity-50 ${
+                  className={`bg-zinc-100 border-zinc-300 text-sm h-9 disabled:opacity-50 ${
                     field.field_type === 'currency' ? 'pl-7' : ''
                   }`}
                   placeholder={field.name}

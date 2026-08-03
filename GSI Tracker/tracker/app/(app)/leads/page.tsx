@@ -49,11 +49,11 @@ const FIELD_HINTS: Record<LeadField, string[]> = {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  new: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  contacted: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  qualified: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
-  unqualified: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
-  converted: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  new: 'bg-blue-50 text-blue-600 border-blue-200',
+  contacted: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+  qualified: 'bg-violet-50 text-violet-600 border-violet-500/20',
+  unqualified: 'bg-zinc-100 text-zinc-600 border-zinc-300',
+  converted: 'bg-emerald-50 text-emerald-600 border-emerald-200',
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -135,13 +135,13 @@ export default function LeadsPage() {
   if (tasksLoading) {
     return (
       <div className="p-8 space-y-6 animate-pulse">
-        <div className="h-8 bg-zinc-800 rounded w-1/4" />
+        <div className="h-8 bg-zinc-200 rounded w-1/4" />
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-24 bg-zinc-800 rounded-xl" />
+            <div key={i} className="h-24 bg-zinc-200 rounded-xl" />
           ))}
         </div>
-        <div className="h-96 bg-zinc-800 rounded-xl" />
+        <div className="h-96 bg-zinc-200 rounded-xl" />
       </div>
     )
   }
@@ -259,12 +259,12 @@ export default function LeadsPage() {
   const previewRows = csvData?.slice(0, 5) || []
 
   return (
-    <div className="p-4 lg:p-8 space-y-8 max-w-7xl mx-auto bg-[#0a0a0f] text-zinc-100 min-h-screen">
+    <div className="p-4 lg:p-8 space-y-8 max-w-7xl mx-auto bg-zinc-50 text-zinc-900 min-h-screen">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Users className="w-6 h-6 text-blue-400" /> Leads Pipeline
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
+            <Users className="w-6 h-6 text-blue-600" /> Leads Pipeline
           </h1>
           <p className="text-sm text-zinc-500 mt-1">
             Import, view, and track prospective marketing leads
@@ -280,38 +280,38 @@ export default function LeadsPage() {
 
       {/* KPI stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-xl">
+        <Card className="bg-white border-zinc-200 backdrop-blur-xl">
           <CardContent className="p-6">
             <span className="text-[10px] text-zinc-500 uppercase font-semibold">Total leads</span>
-            <h3 className="text-2xl font-bold text-white mt-1">{totalLeads}</h3>
+            <h3 className="text-2xl font-bold text-zinc-900 mt-1">{totalLeads}</h3>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-xl">
+        <Card className="bg-white border-zinc-200 backdrop-blur-xl">
           <CardContent className="p-6">
             <span className="text-[10px] text-zinc-500 uppercase font-semibold">New leads</span>
-            <h3 className="text-2xl font-bold text-blue-400 mt-1">{newLeads}</h3>
+            <h3 className="text-2xl font-bold text-blue-600 mt-1">{newLeads}</h3>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-xl">
+        <Card className="bg-white border-zinc-200 backdrop-blur-xl">
           <CardContent className="p-6">
             <span className="text-[10px] text-zinc-500 uppercase font-semibold">Qualified</span>
-            <h3 className="text-2xl font-bold text-violet-400 mt-1">{qualifiedLeads}</h3>
+            <h3 className="text-2xl font-bold text-violet-600 mt-1">{qualifiedLeads}</h3>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-xl">
+        <Card className="bg-white border-zinc-200 backdrop-blur-xl">
           <CardContent className="p-6">
             <span className="text-[10px] text-zinc-500 uppercase font-semibold">Converted</span>
-            <h3 className="text-2xl font-bold text-emerald-400 mt-1">{convertedLeads}</h3>
+            <h3 className="text-2xl font-bold text-emerald-600 mt-1">{convertedLeads}</h3>
           </CardContent>
         </Card>
       </div>
 
       {/* Leads Grid */}
-      <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-xl">
+      <Card className="bg-white border-zinc-200 backdrop-blur-xl">
         <CardContent className="p-0 overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-white/5 bg-white/[0.01] text-zinc-400">
+              <tr className="border-b border-zinc-200 bg-zinc-100/40 text-zinc-600">
                 <th className="text-left font-medium py-3 px-4">Lead Name</th>
                 <th className="text-left font-medium py-3 px-4">Email</th>
                 <th className="text-left font-medium py-3 px-4">Company</th>
@@ -320,7 +320,7 @@ export default function LeadsPage() {
                 <th className="text-left font-medium py-3 px-4">Lead Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-zinc-200">
               {leadsTasks.map(lead => {
                 const name = lead.title
                 const email = (lead.planning_fields?.email as string) || '-'
@@ -333,12 +333,12 @@ export default function LeadsPage() {
                   <tr
                     key={lead.id}
                     onClick={() => setSelectedTaskId(lead.id)}
-                    className="hover:bg-white/5 transition-colors cursor-pointer"
+                    className="hover:bg-zinc-100 transition-colors cursor-pointer"
                   >
-                    <td className="py-3.5 px-4 font-medium text-zinc-200">{name}</td>
-                    <td className="py-3.5 px-4 text-zinc-400">{email}</td>
-                    <td className="py-3.5 px-4 text-zinc-400">{company}</td>
-                    <td className="py-3.5 px-4 text-zinc-400">{source}</td>
+                    <td className="py-3.5 px-4 font-medium text-zinc-800">{name}</td>
+                    <td className="py-3.5 px-4 text-zinc-600">{email}</td>
+                    <td className="py-3.5 px-4 text-zinc-600">{company}</td>
+                    <td className="py-3.5 px-4 text-zinc-600">{source}</td>
                     <td className="py-3.5 px-4 text-zinc-500">{date}</td>
                     <td className="py-3.5 px-4">
                       <Badge variant="outline" className={STATUS_COLORS[status] || STATUS_COLORS.new}>
@@ -368,28 +368,28 @@ export default function LeadsPage() {
           if (!open) resetUploadState()
         }}
       >
-        <BaseDialogContent className="bg-zinc-900 border-white/10 text-zinc-100 max-w-3xl max-h-[90vh] overflow-y-auto">
+        <BaseDialogContent className="bg-white border-zinc-300 text-zinc-900 max-w-3xl max-h-[90vh] overflow-y-auto">
           <BaseDialogHeader>
-            <BaseDialogTitle className="text-white flex items-center gap-2">
-              <Upload className="w-5 h-5 text-blue-400" /> Upload Leads CSV
+            <BaseDialogTitle className="text-zinc-900 flex items-center gap-2">
+              <Upload className="w-5 h-5 text-blue-600" /> Upload Leads CSV
             </BaseDialogTitle>
-            <BaseDialogDescription className="text-zinc-400 text-xs">
+            <BaseDialogDescription className="text-zinc-600 text-xs">
               Map your CSV columns to lead fields. Unmapped columns are stored as extra_fields on each lead.
             </BaseDialogDescription>
           </BaseDialogHeader>
 
           <div className="space-y-5 my-2">
             {!csvData ? (
-              <div className="border border-dashed border-white/10 rounded-lg p-8 flex flex-col items-center justify-center gap-3">
+              <div className="border border-dashed border-zinc-300 rounded-lg p-8 flex flex-col items-center justify-center gap-3">
                 <FileText className="w-8 h-8 text-zinc-500" />
                 <div className="text-center">
-                  <span className="text-xs text-zinc-400">Select a CSV file to begin parsing</span>
+                  <span className="text-xs text-zinc-600">Select a CSV file to begin parsing</span>
                 </div>
                 <Input
                   type="file"
                   accept=".csv"
                   onChange={handleFileChange}
-                  className="bg-white/5 border-white/10 text-xs h-9 cursor-pointer w-56"
+                  className="bg-zinc-100 border-zinc-300 text-xs h-9 cursor-pointer w-56"
                 />
               </div>
             ) : (
@@ -397,15 +397,15 @@ export default function LeadsPage() {
                 {/* Validation summary */}
                 {validation && (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
+                    <div className="rounded-lg border border-zinc-200 bg-zinc-100/50 p-3">
                       <div className="text-[10px] uppercase text-zinc-500 font-semibold">Total rows</div>
-                      <div className="text-lg font-bold text-white mt-0.5">{csvData.length}</div>
+                      <div className="text-lg font-bold text-zinc-900 mt-0.5">{csvData.length}</div>
                     </div>
-                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-                      <div className="text-[10px] uppercase text-emerald-400 font-semibold flex items-center gap-1">
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-500/5 p-3">
+                      <div className="text-[10px] uppercase text-emerald-600 font-semibold flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3" /> Valid
                       </div>
-                      <div className="text-lg font-bold text-emerald-300 mt-0.5">{validation.validCount}</div>
+                      <div className="text-lg font-bold text-emerald-600 mt-0.5">{validation.validCount}</div>
                     </div>
                     <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-3">
                       <div className="text-[10px] uppercase text-rose-400 font-semibold flex items-center gap-1">
@@ -414,7 +414,7 @@ export default function LeadsPage() {
                       <div className="text-lg font-bold text-rose-300 mt-0.5">{validation.invalidCount}</div>
                     </div>
                     <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-                      <div className="text-[10px] uppercase text-amber-400 font-semibold flex items-center gap-1">
+                      <div className="text-[10px] uppercase text-amber-600 font-semibold flex items-center gap-1">
                         <AlertCircle className="w-3 h-3" /> Dupes in file
                       </div>
                       <div className="text-lg font-bold text-amber-300 mt-0.5">{validation.dupeCount}</div>
@@ -425,13 +425,13 @@ export default function LeadsPage() {
                 {/* Column mapping form */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-semibold text-zinc-300">Map CSV columns to lead fields</h4>
+                    <h4 className="text-xs font-semibold text-zinc-700">Map CSV columns to lead fields</h4>
                     <span className="text-[10px] text-zinc-500">
                       {unmappedColumns.length} unmapped {unmappedColumns.length === 1 ? 'column' : 'columns'}
                       {unmappedColumns.length > 0 ? ' to extra_fields' : ''}
                     </span>
                   </div>
-                  <div className="bg-white/[0.02] p-3 rounded-lg border border-white/5 max-h-64 overflow-y-auto">
+                  <div className="bg-zinc-100/50 p-3 rounded-lg border border-zinc-200 max-h-64 overflow-y-auto">
                     <div className="grid grid-cols-[1fr_auto_1fr] gap-x-3 gap-y-2 items-center">
                       <div className="text-[10px] uppercase text-zinc-500 font-semibold">CSV column</div>
                       <div />
@@ -458,11 +458,11 @@ export default function LeadsPage() {
 
                 {/* Preview pane */}
                 <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-zinc-300">Preview (first 5 rows)</h4>
-                  <div className="bg-white/[0.01] border border-white/5 rounded-lg overflow-x-auto">
+                  <h4 className="text-xs font-semibold text-zinc-700">Preview (first 5 rows)</h4>
+                  <div className="bg-zinc-100/40 border border-zinc-200 rounded-lg overflow-x-auto">
                     <table className="w-full text-[11px]">
                       <thead>
-                        <tr className="border-b border-white/5 bg-white/[0.01] text-zinc-500">
+                        <tr className="border-b border-zinc-200 bg-zinc-100/40 text-zinc-500">
                           <th className="text-left font-medium py-2 px-3 w-8">#</th>
                           {LEAD_FIELDS.filter(f => fieldToColumn[f.value]).map(f => (
                             <th key={f.value} className="text-left font-medium py-2 px-3">
@@ -475,11 +475,11 @@ export default function LeadsPage() {
                           <th className="text-left font-medium py-2 px-3">Email valid?</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-white/5">
+                      <tbody className="divide-y divide-zinc-200">
                         {previewRows.map((row, i) => {
                           const flag = validation?.rowFlags[i]
                           return (
-                            <tr key={i} className="text-zinc-300">
+                            <tr key={i} className="text-zinc-700">
                               <td className="py-1.5 px-3 text-zinc-600">{i + 1}</td>
                               {LEAD_FIELDS.filter(f => fieldToColumn[f.value]).map(f => {
                                 const col = fieldToColumn[f.value]!
@@ -497,7 +497,7 @@ export default function LeadsPage() {
                               })}
                               <td className="py-1.5 px-3">
                                 {flag?.validEmail ? (
-                                  <span className="inline-flex items-center gap-1 text-emerald-400">
+                                  <span className="inline-flex items-center gap-1 text-emerald-600">
                                     <CheckCircle2 className="w-3 h-3" /> ok
                                   </span>
                                 ) : (
@@ -522,7 +522,7 @@ export default function LeadsPage() {
                   {unmappedColumns.length > 0 && (
                     <div className="text-[10px] text-zinc-500">
                       Unmapped columns stored as extra_fields:{' '}
-                      <span className="text-zinc-400">{unmappedColumns.join(', ')}</span>
+                      <span className="text-zinc-600">{unmappedColumns.join(', ')}</span>
                     </div>
                   )}
                 </div>
@@ -534,7 +534,7 @@ export default function LeadsPage() {
                     checked={dedup}
                     onCheckedChange={(checked) => setDedup(!!checked)}
                   />
-                  <Label htmlFor="dedup" className="text-xs text-zinc-400 cursor-pointer">
+                  <Label htmlFor="dedup" className="text-xs text-zinc-600 cursor-pointer">
                     Skip rows where email already exists in pipeline
                   </Label>
                 </div>
@@ -549,7 +549,7 @@ export default function LeadsPage() {
                 setUploadOpen(false)
                 resetUploadState()
               }}
-              className="text-zinc-400 hover:text-white"
+              className="text-zinc-600 hover:text-zinc-900"
             >
               Cancel
             </Button>
@@ -596,14 +596,14 @@ function FragmentRow({
 }) {
   return (
     <>
-      <div className="text-xs text-zinc-300 truncate" title={header}>
+      <div className="text-xs text-zinc-700 truncate" title={header}>
         {header}
       </div>
       <div className="text-zinc-600 text-xs">{'→'}</div>
       <select
         value={currentField}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-zinc-800 border border-white/10 rounded-md px-2 py-1 text-xs text-zinc-300 h-8"
+        className="w-full bg-zinc-200 border border-zinc-300 rounded-md px-2 py-1 text-xs text-zinc-700 h-8"
       >
         <option value="">Ignore this column</option>
         {LEAD_FIELDS.map(f => (

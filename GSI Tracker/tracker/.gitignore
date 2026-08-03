@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# cloudflare workers build + local state
+/.open-next/
+/.wrangler/
+.dev.vars*
+
+# seed input kept local: this repo's root is served publicly by Cloudflare
+# Pages, so the team email roster stays out of git
+/scripts/owner-emails.json

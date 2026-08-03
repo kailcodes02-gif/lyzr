@@ -6,7 +6,8 @@ import { useQuery } from '@tanstack/react-query'
 import { format, parseISO } from 'date-fns'
 import { ArrowLeft, CheckSquare, MessageSquare, Calendar as CalendarIcon, Activity, Clock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { useUsers, useTasks, useRecentActivity } from '@/lib/hooks/use-data'
+import { useUsers, useTasks, useRecentActivity, useAllChannelOwners } from '@/lib/hooks/use-data'
+import { effectiveOwnerEmails } from '@/lib/effective-owners'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -52,11 +53,23 @@ export default function OwnerDetailPage({ params }: { params: Promise<{ email: s
   const { data: users, isLoading: usersLoading } = useUsers()
   const { data: tasks, isLoading: tasksLoading } = useTasks()
   const { data: activities } = useRecentActivity(200)
+  const { data: channelOwners } = useAllChannelOwners()
 
-  const owner = useMemo(
+  const signedInOwner = useMemo(
     () => users?.find(u => u.email.toLowerCase() === email.toLowerCase()),
     [users, email]
   )
+  // People who haven't signed in yet still have pending assignments — show
+  // their page with a pseudo profile instead of a dead end.
+  const owner = useMemo(() => signedInOwner ?? {
+    id: '',
+    email: email.toLowerCase(),
+    display_name: email.split('@')[0].split('.')[0].replace(/^./, c => c.toUpperCase()),
+    avatar_url: null,
+    role: 'member' as const,
+    created_at: '',
+  }, [signedInOwner, email])
+  const isPendingOwner = !signedInOwner
 
   const { data: mentions, isLoading: mentionsLoading } = useMentionsByUserId(owner?.id)
 
@@ -66,38 +79,35 @@ export default function OwnerDetailPage({ params }: { params: Promise<{ email: s
 
   if (usersLoading || tasksLoading) {
     return (
-      <div className="p-4 lg:p-8 space-y-6 bg-[#0a0a0f] text-zinc-100 min-h-screen animate-pulse">
-        <div className="h-8 bg-zinc-800 rounded w-1/4" />
-        <div className="h-4 bg-zinc-800 rounded w-1/3" />
-        <div className="h-96 bg-zinc-800 rounded-xl" />
+      <div className="p-4 lg:p-8 space-y-6 bg-zinc-50 text-zinc-900 min-h-screen animate-pulse">
+        <div className="h-8 bg-zinc-200 rounded w-1/4" />
+        <div className="h-4 bg-zinc-200 rounded w-1/3" />
+        <div className="h-96 bg-zinc-200 rounded-xl" />
       </div>
     )
   }
 
-  if (!owner) {
-    return (
-      <div className="p-8 bg-[#0a0a0f] text-zinc-100 min-h-screen">
-        <Link href="/owners" className="text-xs text-zinc-400 hover:text-white inline-flex items-center gap-1.5 mb-6">
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to owners
-        </Link>
-        <Card className="bg-zinc-900/30 border-white/5 backdrop-blur-xl">
-          <CardContent className="p-12 text-center text-sm text-zinc-500">
-            No owner found for <span className="text-zinc-300">{email}</span>.
-          </CardContent>
-        </Card>
-      </div>
-    )
+  // A task belongs to this owner if they hold a real assignment (signed in)
+  // OR an unresolved pending assignment under their email.
+  const ownsTask = (t: Task, role?: string) =>
+    t.assignments?.some(a => a.user_id === owner.id && owner.id && (!role || a.role === role)) ||
+    (t.pending_assignments || []).some(p =>
+      !p.resolved_user_id && p.email.toLowerCase() === owner.email && (!role || p.role === role))
+
+  // Plus tasks inherited through the ownership chain
+  // (sub-activity → activity → sub-channel → channel).
+  const tasksById = new Map((tasks || []).map(t => [t.id, t]))
+  const inheritsTask = (t: Task) => {
+    if (ownsTask(t)) return false
+    const eff = effectiveOwnerEmails(t, tasksById, channelOwners || [], new Map())
+    return eff.source !== 'direct' && eff.emails.has(owner.email)
   }
 
-  const assignedTasks = tasks?.filter(t =>
-    t.assignments?.some(a => a.user_id === owner.id)
-  ) ?? []
+  const assignedTasks = tasks?.filter(t => ownsTask(t) || inheritsTask(t)) ?? []
 
   const getTasksByRole = (role?: string) => {
     if (!role) return assignedTasks
-    return assignedTasks.filter(t =>
-      t.assignments?.some(a => a.user_id === owner.id && a.role === role)
-    )
+    return assignedTasks.filter(t => ownsTask(t, role))
   }
 
   const mentionedTaskIds = new Set((mentions ?? []).map(m => m.task_id))
@@ -106,7 +116,7 @@ export default function OwnerDetailPage({ params }: { params: Promise<{ email: s
   const calendarTaskMap = new Map<string, Task[]>()
   const calendarTasks = (tasks ?? []).filter(t => {
     if (!t.due_date) return false
-    const isAssigned = t.assignments?.some(a => a.user_id === owner.id)
+    const isAssigned = ownsTask(t)
     const isMentioned = mentionedTaskIds.has(t.id)
     return isAssigned || isMentioned
   })
@@ -129,41 +139,46 @@ export default function OwnerDetailPage({ params }: { params: Promise<{ email: s
   const initial = (owner.display_name || owner.email).charAt(0).toUpperCase()
 
   return (
-    <div className="p-4 lg:p-8 space-y-6 max-w-7xl mx-auto bg-[#0a0a0f] text-zinc-100 min-h-screen">
+    <div className="p-4 lg:p-8 space-y-6 max-w-7xl mx-auto bg-zinc-50 text-zinc-900 min-h-screen">
       <Link
         href="/owners"
-        className="text-xs text-zinc-400 hover:text-white inline-flex items-center gap-1.5"
+        className="text-xs text-zinc-600 hover:text-zinc-900 inline-flex items-center gap-1.5"
       >
         <ArrowLeft className="w-3.5 h-3.5" /> Back to owners
       </Link>
 
       <div className="flex items-center gap-4">
-        <Avatar className="w-16 h-16 border border-white/10">
+        <Avatar className="w-16 h-16 border border-zinc-300">
           <AvatarImage src={owner.avatar_url || ''} />
-          <AvatarFallback className="bg-zinc-800 text-zinc-300 text-lg">
+          <AvatarFallback className="bg-zinc-200 text-zinc-700 text-lg">
             {initial}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-white truncate">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 truncate">
             {owner.display_name || owner.email.split('@')[0]}
+            {isPendingOwner && (
+              <span className="ml-2 align-middle text-[10px] font-semibold uppercase tracking-wide rounded-md border border-dashed border-zinc-300 bg-zinc-50 text-zinc-500 px-2 py-0.5">
+                Awaiting first sign-in
+              </span>
+            )}
           </h1>
           <p className="text-sm text-zinc-500 truncate">{owner.email}</p>
         </div>
       </div>
 
       <Tabs defaultValue="assigned" className="w-full">
-        <TabsList className="bg-zinc-900/60 border border-white/5 p-1 rounded-lg">
-          <TabsTrigger value="assigned" className="text-zinc-400 data-[state=active]:bg-white/10 data-[state=active]:text-white">
+        <TabsList className="bg-white border border-zinc-200 p-1 rounded-lg">
+          <TabsTrigger value="assigned" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
             <CheckSquare className="w-4 h-4 mr-2" /> Assigned to me
           </TabsTrigger>
-          <TabsTrigger value="mentioned" className="text-zinc-400 data-[state=active]:bg-white/10 data-[state=active]:text-white">
+          <TabsTrigger value="mentioned" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
             <MessageSquare className="w-4 h-4 mr-2" /> Mentioned ({mentionedTasks.length})
           </TabsTrigger>
-          <TabsTrigger value="calendar" className="text-zinc-400 data-[state=active]:bg-white/10 data-[state=active]:text-white">
+          <TabsTrigger value="calendar" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
             <CalendarIcon className="w-4 h-4 mr-2" /> Calendar
           </TabsTrigger>
-          <TabsTrigger value="activity" className="text-zinc-400 data-[state=active]:bg-white/10 data-[state=active]:text-white">
+          <TabsTrigger value="activity" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
             <Activity className="w-4 h-4 mr-2" /> Activity
           </TabsTrigger>
         </TabsList>
@@ -171,20 +186,20 @@ export default function OwnerDetailPage({ params }: { params: Promise<{ email: s
         <TabsContent value="assigned" className="mt-6 space-y-6">
           <Tabs defaultValue="all" className="w-full">
             <div className="flex justify-between items-center mb-4">
-              <TabsList className="bg-white/5 border border-white/5 p-0.5 rounded-lg">
-                <TabsTrigger value="all" className="text-xs text-zinc-400 data-[state=active]:bg-white/10 data-[state=active]:text-white py-1">
+              <TabsList className="bg-zinc-100 border border-zinc-200 p-0.5 rounded-lg">
+                <TabsTrigger value="all" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
                   All
                 </TabsTrigger>
-                <TabsTrigger value="primary" className="text-xs text-zinc-400 data-[state=active]:bg-white/10 data-[state=active]:text-white py-1">
+                <TabsTrigger value="primary" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
                   Primary
                 </TabsTrigger>
-                <TabsTrigger value="secondary" className="text-xs text-zinc-400 data-[state=active]:bg-white/10 data-[state=active]:text-white py-1">
+                <TabsTrigger value="secondary" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
                   Secondary
                 </TabsTrigger>
-                <TabsTrigger value="tertiary" className="text-xs text-zinc-400 data-[state=active]:bg-white/10 data-[state=active]:text-white py-1">
+                <TabsTrigger value="tertiary" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
                   Tertiary
                 </TabsTrigger>
-                <TabsTrigger value="other" className="text-xs text-zinc-400 data-[state=active]:bg-white/10 data-[state=active]:text-white py-1">
+                <TabsTrigger value="other" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
                   Other
                 </TabsTrigger>
               </TabsList>
@@ -209,7 +224,7 @@ export default function OwnerDetailPage({ params }: { params: Promise<{ email: s
         </TabsContent>
 
         <TabsContent value="mentioned" className="mt-6">
-          <Card className="bg-zinc-900/30 border-white/5 backdrop-blur-xl">
+          <Card className="bg-white border-zinc-200 backdrop-blur-xl">
             <CardContent className="p-0 overflow-hidden">
               {mentionsLoading ? (
                 <div className="p-8 text-center text-sm text-zinc-500">Loading mentions...</div>
@@ -218,26 +233,26 @@ export default function OwnerDetailPage({ params }: { params: Promise<{ email: s
                   No mentions for this owner yet.
                 </div>
               ) : (
-                <div className="divide-y divide-white/5">
+                <div className="divide-y divide-zinc-200">
                   {mentionedTasks.map(task => {
                     const taskMentions = (mentions ?? []).filter(m => m.task_id === task.id)
                     return (
                       <div
                         key={task.id}
                         onClick={() => setSelectedTaskId(task.id)}
-                        className="p-4 hover:bg-white/5 transition-colors cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4"
+                        className="p-4 hover:bg-zinc-100 transition-colors cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4"
                       >
                         <div className="space-y-1 min-w-0">
-                          <h4 className="text-sm font-medium text-zinc-200 truncate">{task.title}</h4>
+                          <h4 className="text-sm font-medium text-zinc-800 truncate">{task.title}</h4>
                           <div className="flex flex-wrap gap-2 items-center text-xs text-zinc-500">
                             <span>Status: {task.status}</span>
                             <span>{'•'}</span>
-                            <span className="text-violet-400">
+                            <span className="text-violet-600">
                               Mentioned in {taskMentions.map(m => SURFACE_LABELS[m.surface] || m.surface).join(', ')}
                             </span>
                           </div>
                         </div>
-                        <Badge className="bg-zinc-800 text-zinc-400 border-zinc-700 self-start md:self-auto">
+                        <Badge className="bg-zinc-200 text-zinc-600 border-zinc-300 self-start md:self-auto">
                           View Task
                         </Badge>
                       </div>
@@ -251,7 +266,7 @@ export default function OwnerDetailPage({ params }: { params: Promise<{ email: s
 
         <TabsContent value="calendar" className="mt-6">
           <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-6">
-            <Card className="bg-zinc-900/30 border-white/5 backdrop-blur-xl">
+            <Card className="bg-white border-zinc-200 backdrop-blur-xl">
               <CardContent className="p-3">
                 <DayPicker
                   mode="single"
@@ -267,10 +282,10 @@ export default function OwnerDetailPage({ params }: { params: Promise<{ email: s
               </CardContent>
             </Card>
 
-            <Card className="bg-zinc-900/30 border-white/5 backdrop-blur-xl">
+            <Card className="bg-white border-zinc-200 backdrop-blur-xl">
               <CardContent className="p-4 space-y-3">
-                <div className="flex items-center gap-2 text-sm text-zinc-300">
-                  <CalendarIcon className="w-4 h-4 text-violet-400" />
+                <div className="flex items-center gap-2 text-sm text-zinc-700">
+                  <CalendarIcon className="w-4 h-4 text-violet-600" />
                   {selectedDay
                     ? <span>{format(selectedDay, 'EEEE, d MMM yyyy')}</span>
                     : <span className="text-zinc-500">Select a day to see tasks</span>}
@@ -282,22 +297,22 @@ export default function OwnerDetailPage({ params }: { params: Promise<{ email: s
                       No tasks due on this day.
                     </p>
                   ) : (
-                    <div className="divide-y divide-white/5 -mx-4">
+                    <div className="divide-y divide-zinc-200 -mx-4">
                       {tasksForSelectedDay.map(task => {
                         const isAssigned = task.assignments?.some(a => a.user_id === owner.id)
                         return (
                           <button
                             key={task.id}
                             onClick={() => setSelectedTaskId(task.id)}
-                            className="w-full text-left px-4 py-3 hover:bg-white/5 transition-colors flex items-center justify-between gap-3"
+                            className="w-full text-left px-4 py-3 hover:bg-zinc-100 transition-colors flex items-center justify-between gap-3"
                           >
                             <div className="min-w-0 space-y-1">
-                              <p className="text-sm text-zinc-200 truncate">{task.title}</p>
+                              <p className="text-sm text-zinc-800 truncate">{task.title}</p>
                               <p className="text-[10px] text-zinc-500 uppercase tracking-wider">
                                 {task.status} {'·'} {task.priority}
                               </p>
                             </div>
-                            <Badge className={isAssigned ? 'bg-blue-500/10 border-blue-500/20 text-blue-300' : 'bg-violet-500/10 border-violet-500/20 text-violet-300'}>
+                            <Badge className={isAssigned ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-violet-50 border-violet-500/20 text-violet-600'}>
                               {isAssigned ? 'Assigned' : 'Mentioned'}
                             </Badge>
                           </button>
@@ -319,7 +334,7 @@ export default function OwnerDetailPage({ params }: { params: Promise<{ email: s
         </TabsContent>
 
         <TabsContent value="activity" className="mt-6">
-          <Card className="bg-zinc-900/30 border-white/5 backdrop-blur-xl">
+          <Card className="bg-white border-zinc-200 backdrop-blur-xl">
             <CardContent className="p-6 space-y-6 max-h-[600px] overflow-y-auto pr-2">
               {ownerActivities.length === 0 ? (
                 <div className="text-center py-12 text-zinc-500 text-sm">
@@ -328,12 +343,12 @@ export default function OwnerDetailPage({ params }: { params: Promise<{ email: s
               ) : (
                 ownerActivities.map(log => (
                   <div key={log.id} className="flex gap-3 text-xs">
-                    <div className="p-2 bg-zinc-800 text-zinc-400 rounded-lg shrink-0">
+                    <div className="p-2 bg-zinc-200 text-zinc-600 rounded-lg shrink-0">
                       <Clock className="w-4 h-4" />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-zinc-300">
-                        <span className="text-zinc-400">
+                      <p className="text-zinc-700">
+                        <span className="text-zinc-600">
                           {log.action === 'created' && 'Created task'}
                           {log.action === 'status_changed' && 'Updated status of'}
                           {log.action === 'commented' && 'Commented on'}
@@ -342,7 +357,7 @@ export default function OwnerDetailPage({ params }: { params: Promise<{ email: s
                         </span>{' '}
                         <span
                           onClick={() => log.task?.id && setSelectedTaskId(log.task.id)}
-                          className="text-blue-400 hover:underline cursor-pointer font-medium"
+                          className="text-blue-600 hover:underline cursor-pointer font-medium"
                         >
                           {log.task?.title || 'a task'}
                         </span>

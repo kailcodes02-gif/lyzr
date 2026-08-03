@@ -24,7 +24,7 @@ import { Plus, Trash2, Loader2 } from 'lucide-react'
 const schema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
-  priority: z.enum(['P0', 'P1', 'P2', 'P3']),
+  priority: z.enum(['P0', 'P1', 'P2', 'P3', 'P4']),
   due_date: z.string().optional(),
   channel_id: z.string().min(1, 'Channel is required'),
 })
@@ -53,7 +53,8 @@ export function CreateTaskDialog({
     P0: 'P0 (Critical)',
     P1: 'P1 (High)',
     P2: 'P2 (Medium)',
-    P3: 'P3 (Low)'
+    P3: 'P3 (Low)',
+    P4: 'P4 (Backlog)'
   }
 
   const recurrenceLabels = {
@@ -226,9 +227,9 @@ export function CreateTaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#0f0f18] border border-white/10 text-white max-w-lg max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl p-6">
+      <DialogContent className="bg-white border border-zinc-300 text-zinc-900 max-w-lg max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl p-6">
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold text-white">
+          <DialogTitle className="text-lg font-semibold text-zinc-900">
             {parentTaskId ? 'Create Subtask' : 'Create Task'}
           </DialogTitle>
         </DialogHeader>
@@ -236,21 +237,21 @@ export function CreateTaskDialog({
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
           {/* Title */}
           <div>
-            <Label className="text-zinc-400 text-xs">Title *</Label>
+            <Label className="text-zinc-600 text-xs">Title *</Label>
             <Input
               {...register('title')}
-              className="mt-1 bg-white/5 border-white/10 text-white"
+              className="mt-1 bg-zinc-100 border-zinc-300 text-zinc-900"
               placeholder="Task title"
             />
-            {errors.title && <p className="text-red-400 text-xs mt-1">{errors.title.message}</p>}
+            {errors.title && <p className="text-red-600 text-xs mt-1">{errors.title.message}</p>}
           </div>
 
           {/* Description */}
           <div>
-            <Label className="text-zinc-400 text-xs">Description</Label>
+            <Label className="text-zinc-600 text-xs">Description</Label>
             <Textarea
               {...register('description')}
-              className="mt-1 bg-white/5 border-white/10 text-white min-h-[80px]"
+              className="mt-1 bg-zinc-100 border-zinc-300 text-zinc-900 min-h-[80px]"
               placeholder="What needs to be done..."
             />
           </div>
@@ -258,28 +259,28 @@ export function CreateTaskDialog({
           {/* Priority + Due Date */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-zinc-400 text-xs">Priority</Label>
+              <Label className="text-zinc-600 text-xs">Priority</Label>
               <Select
                 value={watch('priority')}
                 onValueChange={(val) => setValue('priority', (val || 'P2') as any)}
               >
-                <SelectTrigger className="mt-1 w-full bg-white/5 border-white/10 text-white h-9 px-3 flex justify-between items-center rounded-lg">
+                <SelectTrigger className="mt-1 w-full bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 flex justify-between items-center rounded-lg">
                   <span>{priorityLabels[watch('priority')]}</span>
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border border-white/10 text-white rounded-lg">
-                  <SelectItem value="P0" className="text-sm py-2 px-3 hover:bg-white/5">P0 (Critical)</SelectItem>
-                  <SelectItem value="P1" className="text-sm py-2 px-3 hover:bg-white/5">P1 (High)</SelectItem>
-                  <SelectItem value="P2" className="text-sm py-2 px-3 hover:bg-white/5">P2 (Medium)</SelectItem>
-                  <SelectItem value="P3" className="text-sm py-2 px-3 hover:bg-white/5">P3 (Low)</SelectItem>
+                <SelectContent className="bg-white border border-zinc-300 text-zinc-900 rounded-lg">
+                  <SelectItem value="P0" className="text-sm py-2 px-3 hover:bg-zinc-100">P0 (Critical)</SelectItem>
+                  <SelectItem value="P1" className="text-sm py-2 px-3 hover:bg-zinc-100">P1 (High)</SelectItem>
+                  <SelectItem value="P2" className="text-sm py-2 px-3 hover:bg-zinc-100">P2 (Medium)</SelectItem>
+                  <SelectItem value="P3" className="text-sm py-2 px-3 hover:bg-zinc-100">P3 (Low)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label className="text-zinc-400 text-xs">Due Date</Label>
+              <Label className="text-zinc-600 text-xs">Due Date</Label>
               <Input
                 type="date"
                 {...register('due_date')}
-                className="mt-1 bg-white/5 border-white/10 text-white"
+                className="mt-1 bg-zinc-100 border-zinc-300 text-zinc-900"
               />
             </div>
           </div>
@@ -288,7 +289,7 @@ export function CreateTaskDialog({
           {!defaultChannelId && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-zinc-400 text-xs">Category</Label>
+                <Label className="text-zinc-600 text-xs">Category</Label>
                 <Select
                   value={selectedCategory}
                   onValueChange={(val) => {
@@ -296,49 +297,49 @@ export function CreateTaskDialog({
                     setValue('channel_id', '') // Reset channel on category change
                   }}
                 >
-                  <SelectTrigger className="mt-1 w-full bg-white/5 border-white/10 text-white h-9 px-3 flex justify-between items-center rounded-lg">
+                  <SelectTrigger className="mt-1 w-full bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 flex justify-between items-center rounded-lg">
                     <span>{categories?.find(cat => cat.id === selectedCategory)?.name || 'Select Category'}</span>
                   </SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border border-white/10 text-white rounded-lg">
-                    <SelectItem value="" className="text-sm py-2 px-3 hover:bg-white/5">Select Category</SelectItem>
+                  <SelectContent className="bg-white border border-zinc-300 text-zinc-900 rounded-lg">
+                    <SelectItem value="" className="text-sm py-2 px-3 hover:bg-zinc-100">Select Category</SelectItem>
                     {categories?.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id} className="text-sm py-2 px-3 hover:bg-white/5">{cat.name}</SelectItem>
+                      <SelectItem key={cat.id} value={cat.id} className="text-sm py-2 px-3 hover:bg-zinc-100">{cat.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label className="text-zinc-400 text-xs">Channel *</Label>
+                <Label className="text-zinc-600 text-xs">Channel *</Label>
                 <Select
                   value={channelId}
                   onValueChange={(val) => setValue('channel_id', val || '')}
                 >
-                  <SelectTrigger className="mt-1 w-full bg-white/5 border-white/10 text-white h-9 px-3 flex justify-between items-center rounded-lg">
+                  <SelectTrigger className="mt-1 w-full bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 flex justify-between items-center rounded-lg">
                     <span>{flattenChannels(filteredChannels).find(ch => ch.id === channelId)?.label || 'Select Channel'}</span>
                   </SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border border-white/10 text-white rounded-lg">
-                    <SelectItem value="" className="text-sm py-2 px-3 hover:bg-white/5">Select Channel</SelectItem>
+                  <SelectContent className="bg-white border border-zinc-300 text-zinc-900 rounded-lg">
+                    <SelectItem value="" className="text-sm py-2 px-3 hover:bg-zinc-100">Select Channel</SelectItem>
                     {flattenChannels(filteredChannels).map(ch => (
-                      <SelectItem key={ch.id} value={ch.id} className="text-sm py-2 px-3 hover:bg-white/5">{ch.label}</SelectItem>
+                      <SelectItem key={ch.id} value={ch.id} className="text-sm py-2 px-3 hover:bg-zinc-100">{ch.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.channel_id && <p className="text-red-400 text-xs mt-1">{errors.channel_id.message}</p>}
+                {errors.channel_id && <p className="text-red-600 text-xs mt-1">{errors.channel_id.message}</p>}
               </div>
             </div>
           )}
 
           {/* Recurrence Pattern Configuration */}
-          <div className="border border-white/5 bg-white/[0.02] rounded-lg p-3 space-y-3">
+          <div className="border border-zinc-200 bg-zinc-100/50 rounded-lg p-3 space-y-3">
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
                 id="is_recurring"
                 checked={isRecurring}
                 onChange={e => setIsRecurring(e.target.checked)}
-                className="rounded border-zinc-700 bg-white/5 text-violet-600 focus:ring-violet-500 w-4 h-4 cursor-pointer"
+                className="rounded border-zinc-300 bg-zinc-100 text-violet-600 focus:ring-violet-500 w-4 h-4 cursor-pointer"
               />
-              <Label htmlFor="is_recurring" className="text-zinc-400 text-xs cursor-pointer select-none font-medium">
+              <Label htmlFor="is_recurring" className="text-zinc-600 text-xs cursor-pointer select-none font-medium">
                 Is Recurring Task
               </Label>
             </div>
@@ -346,43 +347,43 @@ export function CreateTaskDialog({
             {isRecurring && (
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <div>
-                  <Label className="text-zinc-400 text-[10px]">Recurrence Pattern</Label>
+                  <Label className="text-zinc-600 text-[10px]">Recurrence Pattern</Label>
                   <Select
                     value={recurrencePattern}
                     onValueChange={(val) => setRecurrencePattern((val || 'weekly') as any)}
                   >
-                    <SelectTrigger className="mt-1 w-full bg-white/5 border-white/10 text-white h-8 text-xs px-3 flex justify-between items-center rounded-lg">
+                    <SelectTrigger className="mt-1 w-full bg-zinc-100 border-zinc-300 text-zinc-900 h-8 text-xs px-3 flex justify-between items-center rounded-lg">
                       <span>{recurrenceLabels[recurrencePattern]}</span>
                     </SelectTrigger>
-                    <SelectContent className="bg-zinc-900 border border-white/10 text-white rounded-lg">
-                      <SelectItem value="daily" className="text-xs py-1.5 px-2.5 hover:bg-white/5">Daily</SelectItem>
-                      <SelectItem value="weekly" className="text-xs py-1.5 px-2.5 hover:bg-white/5">Weekly</SelectItem>
-                      <SelectItem value="biweekly" className="text-xs py-1.5 px-2.5 hover:bg-white/5">Bi-weekly</SelectItem>
-                      <SelectItem value="monthly" className="text-xs py-1.5 px-2.5 hover:bg-white/5">Monthly</SelectItem>
-                      <SelectItem value="custom" className="text-xs py-1.5 px-2.5 hover:bg-white/5">Custom (Days)</SelectItem>
+                    <SelectContent className="bg-white border border-zinc-300 text-zinc-900 rounded-lg">
+                      <SelectItem value="daily" className="text-xs py-1.5 px-2.5 hover:bg-zinc-100">Daily</SelectItem>
+                      <SelectItem value="weekly" className="text-xs py-1.5 px-2.5 hover:bg-zinc-100">Weekly</SelectItem>
+                      <SelectItem value="biweekly" className="text-xs py-1.5 px-2.5 hover:bg-zinc-100">Bi-weekly</SelectItem>
+                      <SelectItem value="monthly" className="text-xs py-1.5 px-2.5 hover:bg-zinc-100">Monthly</SelectItem>
+                      <SelectItem value="custom" className="text-xs py-1.5 px-2.5 hover:bg-zinc-100">Custom (Days)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {recurrencePattern === 'custom' ? (
                   <div>
-                    <Label className="text-zinc-400 text-[10px]">Every X Days</Label>
+                    <Label className="text-zinc-600 text-[10px]">Every X Days</Label>
                     <Input
                       type="number"
                       value={customInterval}
                       onChange={e => setCustomInterval(Number(e.target.value) || 1)}
-                      className="mt-1 bg-white/5 border-white/10 h-8 text-xs text-white"
+                      className="mt-1 bg-zinc-100 border-zinc-300 h-8 text-xs text-zinc-900"
                       min="1"
                     />
                   </div>
                 ) : (
                   <div>
-                    <Label className="text-zinc-400 text-[10px]">End Date (Optional)</Label>
+                    <Label className="text-zinc-600 text-[10px]">End Date (Optional)</Label>
                     <Input
                       type="date"
                       value={recurrenceEndsOn}
                       onChange={e => setRecurrenceEndsOn(e.target.value)}
-                      className="mt-1 bg-white/5 border-white/10 h-8 text-xs text-white"
+                      className="mt-1 bg-zinc-100 border-zinc-300 h-8 text-xs text-zinc-900"
                     />
                   </div>
                 )}
@@ -393,13 +394,13 @@ export function CreateTaskDialog({
           {/* Owners */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <Label className="text-zinc-400 text-xs">Owners *</Label>
+              <Label className="text-zinc-600 text-xs">Owners *</Label>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={addAssignment}
-                className="text-xs text-blue-400 hover:text-blue-300 h-auto p-1"
+                className="text-xs text-blue-600 hover:text-blue-700 h-auto p-1"
               >
                 <Plus className="w-3 h-3 mr-1" /> Add Owner
               </Button>
@@ -411,13 +412,13 @@ export function CreateTaskDialog({
                     value={a.user_id}
                     onValueChange={(val) => updateAssignment(i, 'user_id', val || '')}
                   >
-                    <SelectTrigger className="flex-1 bg-white/5 border-white/10 text-white h-9 px-3 flex justify-between items-center rounded-lg">
+                    <SelectTrigger className="flex-1 bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 flex justify-between items-center rounded-lg">
                       <span>{users?.find(u => u.id === a.user_id)?.display_name || users?.find(u => u.id === a.user_id)?.email || 'Select user'}</span>
                     </SelectTrigger>
-                    <SelectContent className="bg-zinc-900 border border-white/10 text-white rounded-lg">
-                      <SelectItem value="" className="text-sm py-2 px-3 hover:bg-white/5">Select user</SelectItem>
+                    <SelectContent className="bg-white border border-zinc-300 text-zinc-900 rounded-lg">
+                      <SelectItem value="" className="text-sm py-2 px-3 hover:bg-zinc-100">Select user</SelectItem>
                       {users?.map(u => (
-                        <SelectItem key={u.id} value={u.id} className="text-sm py-2 px-3 hover:bg-white/5">{u.display_name || u.email}</SelectItem>
+                        <SelectItem key={u.id} value={u.id} className="text-sm py-2 px-3 hover:bg-zinc-100">{u.display_name || u.email}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -425,14 +426,14 @@ export function CreateTaskDialog({
                     value={a.role}
                     onValueChange={(val) => updateAssignment(i, 'role', (val || 'other') as any)}
                   >
-                    <SelectTrigger className="w-32 bg-white/5 border-white/10 text-white h-9 px-3 flex justify-between items-center rounded-lg">
+                    <SelectTrigger className="w-32 bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 flex justify-between items-center rounded-lg">
                       <span>{roleLabels[a.role]}</span>
                     </SelectTrigger>
-                    <SelectContent className="bg-zinc-900 border border-white/10 text-white rounded-lg">
-                      <SelectItem value="primary" className="text-sm py-2 px-3 hover:bg-white/5">Primary</SelectItem>
-                      <SelectItem value="secondary" className="text-sm py-2 px-3 hover:bg-white/5">Secondary</SelectItem>
-                      <SelectItem value="tertiary" className="text-sm py-2 px-3 hover:bg-white/5">Tertiary</SelectItem>
-                      <SelectItem value="other" className="text-sm py-2 px-3 hover:bg-white/5">Other</SelectItem>
+                    <SelectContent className="bg-white border border-zinc-300 text-zinc-900 rounded-lg">
+                      <SelectItem value="primary" className="text-sm py-2 px-3 hover:bg-zinc-100">Primary</SelectItem>
+                      <SelectItem value="secondary" className="text-sm py-2 px-3 hover:bg-zinc-100">Secondary</SelectItem>
+                      <SelectItem value="tertiary" className="text-sm py-2 px-3 hover:bg-zinc-100">Tertiary</SelectItem>
+                      <SelectItem value="other" className="text-sm py-2 px-3 hover:bg-zinc-100">Other</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button
@@ -440,7 +441,7 @@ export function CreateTaskDialog({
                     variant="ghost"
                     size="icon"
                     onClick={() => removeAssignment(i)}
-                    className="text-zinc-500 hover:text-red-400 shrink-0"
+                    className="text-zinc-500 hover:text-red-600 shrink-0"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -452,7 +453,7 @@ export function CreateTaskDialog({
             </div>
 
             {/* Assign by email (pre-signup) */}
-            <div className="mt-3 pt-3 border-t border-dashed border-white/5">
+            <div className="mt-3 pt-3 border-t border-dashed border-zinc-200">
               <div className="flex items-center justify-between mb-2">
                 <Label className="text-zinc-500 text-[11px] uppercase tracking-wider">Assign by email (pre-signup)</Label>
                 <Button
@@ -460,7 +461,7 @@ export function CreateTaskDialog({
                   variant="ghost"
                   size="sm"
                   onClick={addEmailAssignment}
-                  className="text-xs text-violet-400 hover:text-violet-300 h-auto p-1"
+                  className="text-xs text-violet-600 hover:text-violet-600 h-auto p-1"
                 >
                   <Plus className="w-3 h-3 mr-1" /> Add email
                 </Button>
@@ -473,20 +474,20 @@ export function CreateTaskDialog({
                       value={a.email}
                       onChange={e => updateEmailAssignment(i, 'email', e.target.value)}
                       placeholder="teammate@lyzr.ai"
-                      className="flex-1 bg-white/5 border-white/10 text-white h-9 px-3 text-sm"
+                      className="flex-1 bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 text-sm"
                     />
                     <Select
                       value={a.role}
                       onValueChange={(val) => updateEmailAssignment(i, 'role', (val || 'other') as any)}
                     >
-                      <SelectTrigger className="w-32 bg-white/5 border-white/10 text-white h-9 px-3 flex justify-between items-center rounded-lg">
+                      <SelectTrigger className="w-32 bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 flex justify-between items-center rounded-lg">
                         <span>{roleLabels[a.role]}</span>
                       </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border border-white/10 text-white rounded-lg">
-                        <SelectItem value="primary" className="text-sm py-2 px-3 hover:bg-white/5">Primary</SelectItem>
-                        <SelectItem value="secondary" className="text-sm py-2 px-3 hover:bg-white/5">Secondary</SelectItem>
-                        <SelectItem value="tertiary" className="text-sm py-2 px-3 hover:bg-white/5">Tertiary</SelectItem>
-                        <SelectItem value="other" className="text-sm py-2 px-3 hover:bg-white/5">Other</SelectItem>
+                      <SelectContent className="bg-white border border-zinc-300 text-zinc-900 rounded-lg">
+                        <SelectItem value="primary" className="text-sm py-2 px-3 hover:bg-zinc-100">Primary</SelectItem>
+                        <SelectItem value="secondary" className="text-sm py-2 px-3 hover:bg-zinc-100">Secondary</SelectItem>
+                        <SelectItem value="tertiary" className="text-sm py-2 px-3 hover:bg-zinc-100">Tertiary</SelectItem>
+                        <SelectItem value="other" className="text-sm py-2 px-3 hover:bg-zinc-100">Other</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button
@@ -494,7 +495,7 @@ export function CreateTaskDialog({
                       variant="ghost"
                       size="icon"
                       onClick={() => removeEmailAssignment(i)}
-                      className="text-zinc-500 hover:text-red-400 shrink-0"
+                      className="text-zinc-500 hover:text-red-600 shrink-0"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -515,7 +516,7 @@ export function CreateTaskDialog({
               type="button"
               variant="ghost"
               onClick={() => onOpenChange(false)}
-              className="text-zinc-400"
+              className="text-zinc-600"
             >
               Cancel
             </Button>

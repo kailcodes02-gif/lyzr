@@ -3,7 +3,7 @@
 
 export type UserRole = 'admin' | 'member'
 export type TaskStatus = 'not_started' | 'in_progress' | 'live' | 'blocked' | 'done' | 'cancelled'
-export type TaskPriority = 'P0' | 'P1' | 'P2' | 'P3'
+export type TaskPriority = 'P0' | 'P1' | 'P2' | 'P3' | 'P4'
 export type AssignmentRole = 'primary' | 'secondary' | 'tertiary' | 'other'
 export type MentionSurface = 'task_description' | 'task_comment' | 'checklist_item' | 'blocked_description' | 'insight'
 export type BudgetPeriodType = 'one_time' | 'monthly' | 'quarterly' | 'half_yearly' | 'annual' | 'custom'
@@ -31,6 +31,8 @@ export interface Category {
   created_at: string
 }
 
+export type ChannelTier = 'gold' | 'silver' | 'bronze' | 'hygiene'
+
 export interface Channel {
   id: string
   category_id: string
@@ -40,10 +42,62 @@ export interface Channel {
   sort_order: number
   is_active: boolean
   created_at: string
+  tier: ChannelTier | null
+  goal: string | null
+  target: string | null
+  budget_note: string | null
+  extra: Record<string, unknown>
   // Joined
   category?: Category
   parent_channel?: Channel
   children?: Channel[]
+}
+
+export interface ChannelOwner {
+  channel_id: string
+  email: string
+  user_id: string | null
+  sort_order: number
+  created_at: string
+}
+
+export interface ChannelResource {
+  id: string
+  channel_id: string
+  name: string
+  url: string
+  added_by: string | null
+  created_at: string
+}
+
+export interface ChannelLearning {
+  id: string
+  channel_id: string
+  body: string
+  added_by: string | null
+  created_at: string
+}
+
+export interface ChannelTarget {
+  id: string
+  channel_id: string
+  body: string
+  added_by: string | null
+  sort_order: number
+  created_at: string
+}
+
+export const TIER_CONFIG: Record<ChannelTier, { label: string; emoji: string; className: string }> = {
+  gold: { label: 'Gold', emoji: '🥇', className: 'bg-amber-100 text-amber-800 border-amber-300' },
+  silver: { label: 'Silver', emoji: '🥈', className: 'bg-slate-100 text-slate-700 border-slate-300' },
+  bronze: { label: 'Bronze', emoji: '🥉', className: 'bg-orange-100 text-orange-800 border-orange-300' },
+  hygiene: { label: 'Hygiene', emoji: '🧹', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+}
+
+export const GRADE_STAR: Record<string, string> = {
+  gold: 'text-amber-500',
+  silver: 'text-slate-400',
+  bronze: 'text-orange-600',
 }
 
 export interface Task {
@@ -77,6 +131,8 @@ export interface Task {
   channel?: Channel
   creator?: User
   assignments?: TaskAssignment[]
+  // Unresolved rows = owners who haven't signed in yet (email-only)
+  pending_assignments?: { email: string; role: AssignmentRole; resolved_user_id: string | null }[]
   subtasks?: Task[]
   checklist_items?: ChecklistItem[]
   comments?: TaskComment[]
@@ -189,16 +245,17 @@ export const PRIORITY_COLORS: Record<TaskPriority, string> = {
   P1: '#f97316', // orange
   P2: '#3b82f6', // blue
   P3: '#6b7280', // gray
+  P4: '#64748b', // slate — AA on white, distinct from P3
 }
 
 // Status config
 export const STATUS_CONFIG: Record<TaskStatus, { label: string; color: string; bgColor: string }> = {
-  not_started: { label: 'Not Started', color: '#6b7280', bgColor: '#f3f4f6' },
-  in_progress: { label: 'In Progress', color: '#3b82f6', bgColor: '#dbeafe' },
-  live: { label: 'Live', color: '#10b981', bgColor: '#d1fae5' },
-  blocked: { label: 'Blocked', color: '#ef4444', bgColor: '#fee2e2' },
-  done: { label: 'Done', color: '#059669', bgColor: '#a7f3d0' },
-  cancelled: { label: 'Cancelled', color: '#9ca3af', bgColor: '#e5e7eb' },
+  not_started: { label: 'Not Started', color: '#4b5563', bgColor: '#f3f4f6' },
+  in_progress: { label: 'In Progress', color: '#1d4ed8', bgColor: '#dbeafe' },
+  live: { label: 'Live', color: '#047857', bgColor: '#d1fae5' },
+  blocked: { label: 'Blocked', color: '#b91c1c', bgColor: '#fee2e2' },
+  done: { label: 'Done', color: '#065f46', bgColor: '#a7f3d0' },
+  cancelled: { label: 'Cancelled', color: '#57534e', bgColor: '#e5e7eb' },
 }
 
 // Kanban columns (cancelled hidden by default)

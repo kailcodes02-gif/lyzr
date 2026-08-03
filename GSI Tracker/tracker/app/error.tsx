@@ -16,21 +16,21 @@ export default function GlobalError({
   }, [error])
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-zinc-100 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-zinc-50 text-zinc-900 flex items-center justify-center p-6">
       <div className="max-w-lg w-full rounded-2xl border border-red-500/30 bg-red-500/5 backdrop-blur-xl p-8 space-y-5">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-red-500/15 text-red-400">
+          <div className="p-2.5 rounded-xl bg-red-500/15 text-red-600">
             <AlertTriangle className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-white">Something went wrong</h1>
+            <h1 className="text-lg font-semibold text-zinc-900">Something went wrong</h1>
             <p className="text-xs text-zinc-500 mt-0.5">
               An unexpected error stopped this page from loading.
             </p>
           </div>
         </div>
 
-        <div className="rounded-lg border border-white/5 bg-zinc-900/60 p-3 text-xs text-zinc-400 font-mono break-words max-h-40 overflow-y-auto">
+        <div className="rounded-lg border border-zinc-200 bg-white p-3 text-xs text-zinc-600 font-mono break-words max-h-40 overflow-y-auto">
           {error.message || 'Unknown error'}
           {error.digest && (
             <div className="mt-2 text-[10px] text-zinc-600">digest: {error.digest}</div>
@@ -46,7 +46,7 @@ export default function GlobalError({
           </Button>
           <a
             href="/"
-            className="text-xs text-zinc-400 hover:text-white transition-colors"
+            className="text-xs text-zinc-600 hover:text-zinc-900 transition-colors"
           >
             Go to dashboard
           </a>

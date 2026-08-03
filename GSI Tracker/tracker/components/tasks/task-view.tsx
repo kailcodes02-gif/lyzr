@@ -8,10 +8,21 @@ import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { Columns3, Table as TableIcon, Eye, EyeOff, Trash2, X, Loader2 } from 'lucide-react'
+import { Columns3, Table as TableIcon, Eye, EyeOff, Trash2, X, Loader2, Info } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+
+// Hover explanations for each board column
+const STATUS_HELP: Record<string, string> = {
+  not_started: 'Planned work that has not begun. Drag a card here (or use its status dropdown) to send it back to the queue.',
+  in_progress: 'Actively being worked on right now by its owners.',
+  live: 'The campaign/activity is running in the market. Once live, its Tracker fields open up for recording actual results (KPI actual, spend, evidence).',
+  blocked: 'Cannot move forward — something or someone is in the way. Open the card to record the blocker reason and who it waits on.',
+  done: 'Finished and results captured. Done tasks feed the Tracker and Weekly Review reports.',
+  cancelled: 'Deliberately abandoned. Kept for history; hidden from the board by default.',
+}
 import { cn } from '@/lib/utils'
 import { updateTask, bulkUpdateTaskStatus, bulkSetPrimaryAssignee, bulkDeleteTasks } from '@/lib/actions'
-import { useUsers } from '@/lib/hooks/use-data'
+import { useUsers, useTasks } from '@/lib/hooks/use-data'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
@@ -21,20 +32,26 @@ interface TaskViewProps {
   showChannelColumn?: boolean
 }
 
-export function TaskView({ tasks, onTaskClick, showChannelColumn }: TaskViewProps) {
+export function TaskView({ tasks: allTasks, onTaskClick, showChannelColumn }: TaskViewProps) {
   const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban')
   const [showCancelled, setShowCancelled] = useState(false)
+  // Sub-activities render nested INSIDE their parent activity card, so the
+  // board/table lists only top-level activities — EXCEPT orphans: on filtered
+  // pages (e.g. My Tasks) a sub-activity whose parent isn't in the list must
+  // still show as its own card or it would vanish entirely.
+  const presentIds = new Set(allTasks.map(t => t.id))
+  const tasks = allTasks.filter(t => !t.parent_task_id || !presentIds.has(t.parent_task_id))
 
   return (
     <div>
       {/* View toggle */}
       <div className="flex items-center gap-2 mb-4">
-        <div className="flex bg-white/5 rounded-lg p-0.5">
+        <div className="flex bg-zinc-100 rounded-lg p-0.5">
           <button
             onClick={() => setViewMode('kanban')}
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
-              viewMode === 'kanban' ? 'bg-white/10 text-white' : 'text-zinc-400 hover:text-white'
+              viewMode === 'kanban' ? 'bg-zinc-200/70 text-zinc-900' : 'text-zinc-600 hover:text-zinc-900'
             )}
           >
             <Columns3 className="w-3.5 h-3.5" /> Kanban
@@ -43,7 +60,7 @@ export function TaskView({ tasks, onTaskClick, showChannelColumn }: TaskViewProp
             onClick={() => setViewMode('table')}
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
-              viewMode === 'table' ? 'bg-white/10 text-white' : 'text-zinc-400 hover:text-white'
+              viewMode === 'table' ? 'bg-zinc-200/70 text-zinc-900' : 'text-zinc-600 hover:text-zinc-900'
             )}
           >
             <TableIcon className="w-3.5 h-3.5" /> Table
@@ -51,7 +68,7 @@ export function TaskView({ tasks, onTaskClick, showChannelColumn }: TaskViewProp
         </div>
         <button
           onClick={() => setShowCancelled(!showCancelled)}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-500 hover:text-zinc-700 transition-colors"
         >
           {showCancelled ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
           {showCancelled ? 'Hide' : 'Show'} Cancelled
@@ -106,10 +123,18 @@ function KanbanBoard({ tasks, onTaskClick, showCancelled }: {
             {/* Column header */}
             <div className="flex items-center gap-2 mb-3 px-1">
               <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: config.color }} />
-              <span className="text-sm font-medium text-zinc-300">{config.label}</span>
-              <span className="text-xs text-zinc-600 bg-white/5 px-1.5 py-0.5 rounded-full">
+              <span className="text-sm font-medium text-zinc-700">{config.label}</span>
+              <span className="text-xs text-zinc-600 bg-zinc-100 px-1.5 py-0.5 rounded-full">
                 {columnTasks.length}
               </span>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="w-3.5 h-3.5 text-zinc-400 hover:text-zinc-600" />
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[260px] text-xs leading-relaxed">
+                  {STATUS_HELP[status]}
+                </TooltipContent>
+              </Tooltip>
             </div>
 
             {/* Cards */}
@@ -122,11 +147,13 @@ function KanbanBoard({ tasks, onTaskClick, showCancelled }: {
                     e.dataTransfer.setData('taskId', task.id)
                   }}
                 >
-                  <TaskCard task={task} onClick={() => onTaskClick(task)} compact />
+                  {/* Clicking a nested sub-activity opens the PARENT activity
+                      drawer — sub-activity ops live inline there. */}
+                  <TaskCard task={task} onClick={() => onTaskClick(task)} onSubtaskClick={() => onTaskClick(task)} compact />
                 </div>
               ))}
               {columnTasks.length === 0 && (
-                <div className="text-center py-8 text-zinc-600 text-xs border border-dashed border-white/5 rounded-xl">
+                <div className="text-center py-8 text-zinc-600 text-xs border border-dashed border-zinc-200 rounded-xl">
                   No tasks
                 </div>
               )}
@@ -146,6 +173,13 @@ function TaskTable({ tasks, onTaskClick, showCancelled, showChannelColumn }: {
 }) {
   const queryClient = useQueryClient()
   const { data: users } = useUsers()
+  // Full task list (react-query cache) to resolve parent titles for
+  // sub-activity rows whose parent isn't part of the filtered list.
+  const { data: allTasksForParents } = useTasks()
+  const titleById = useMemo(
+    () => new Map((allTasksForParents || []).map(t => [t.id, t.title])),
+    [allTasksForParents]
+  )
 
   const filteredTasks = showCancelled ? tasks : tasks.filter(t => t.status !== 'cancelled')
 
@@ -233,18 +267,18 @@ function TaskTable({ tasks, onTaskClick, showCancelled, showChannelColumn }: {
   return (
     <div className="space-y-3">
       {selectedVisible.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-2.5">
-          <span className="text-xs font-medium text-blue-200">
+        <div className="flex flex-wrap items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5">
+          <span className="text-xs font-medium text-blue-800">
             {selectedVisible.length} selected
           </span>
 
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-zinc-400">Set status</span>
+            <span className="text-[11px] text-zinc-600">Set status</span>
             <Select onValueChange={val => { if (val) runBulkStatus(val as TaskStatus) }} disabled={isBulkRunning}>
-              <SelectTrigger className="h-7 w-[150px] bg-[#12121a] border-white/10 text-xs text-zinc-200">
+              <SelectTrigger className="h-7 w-[150px] bg-white border-zinc-300 text-xs text-zinc-800">
                 <SelectValue placeholder="Choose…" />
               </SelectTrigger>
-              <SelectContent className="bg-zinc-800 border-white/10">
+              <SelectContent className="bg-white shadow-lg border-zinc-300">
                 {Object.entries(STATUS_CONFIG).map(([key, config]) => (
                   <SelectItem key={key} value={key}>
                     <span className="flex items-center gap-2">
@@ -258,12 +292,12 @@ function TaskTable({ tasks, onTaskClick, showCancelled, showChannelColumn }: {
           </div>
 
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-zinc-400">Set owner</span>
+            <span className="text-[11px] text-zinc-600">Set owner</span>
             <Select onValueChange={val => { if (val) runBulkAssignee(val as string) }} disabled={isBulkRunning}>
-              <SelectTrigger className="h-7 w-[170px] bg-[#12121a] border-white/10 text-xs text-zinc-200">
+              <SelectTrigger className="h-7 w-[170px] bg-white border-zinc-300 text-xs text-zinc-800">
                 <SelectValue placeholder="Choose…" />
               </SelectTrigger>
-              <SelectContent className="bg-zinc-800 border-white/10 max-h-60">
+              <SelectContent className="bg-white shadow-lg border-zinc-300 max-h-60">
                 {users?.map(u => (
                   <SelectItem key={u.id} value={u.id}>
                     {u.display_name || u.email}
@@ -278,44 +312,44 @@ function TaskTable({ tasks, onTaskClick, showCancelled, showChannelColumn }: {
             variant="ghost"
             onClick={runBulkDelete}
             disabled={isBulkRunning}
-            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-7 text-xs"
+            className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 text-xs"
           >
             <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
           </Button>
 
-          {isBulkRunning && <Loader2 className="w-4 h-4 animate-spin text-blue-300" />}
+          {isBulkRunning && <Loader2 className="w-4 h-4 animate-spin text-blue-600" />}
 
           <Button
             size="sm"
             variant="ghost"
             onClick={clearSelection}
             disabled={isBulkRunning}
-            className="text-zinc-400 hover:text-zinc-200 h-7 text-xs ml-auto"
+            className="text-zinc-600 hover:text-zinc-800 h-7 text-xs ml-auto"
           >
             <X className="w-3.5 h-3.5 mr-1" /> Clear
           </Button>
         </div>
       )}
 
-      <div className="rounded-xl border border-white/5 overflow-hidden">
+      <div className="rounded-xl border border-zinc-200 overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-white/5 bg-white/[0.02]">
+            <tr className="border-b border-zinc-200 bg-zinc-100/50">
               <th className="text-left py-3 pl-4 pr-0 w-8">
                 <Checkbox
                   checked={allVisibleSelected}
                   onCheckedChange={checked => toggleAll(!!checked)}
                   disabled={filteredTasks.length === 0}
-                  className="border-white/20 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                  className="border-zinc-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                   aria-label="Select all tasks"
                 />
               </th>
-              <th className="text-left text-xs font-medium text-zinc-400 py-3 px-4">Title</th>
-              <th className="text-left text-xs font-medium text-zinc-400 py-3 px-4">Status</th>
-              <th className="text-left text-xs font-medium text-zinc-400 py-3 px-4">Owners</th>
-              <th className="text-left text-xs font-medium text-zinc-400 py-3 px-4">Due Date</th>
+              <th className="text-left text-xs font-medium text-zinc-600 py-3 px-4">Title</th>
+              <th className="text-left text-xs font-medium text-zinc-600 py-3 px-4">Status</th>
+              <th className="text-left text-xs font-medium text-zinc-600 py-3 px-4">Owners</th>
+              <th className="text-left text-xs font-medium text-zinc-600 py-3 px-4">Due Date</th>
               {showChannelColumn && (
-                <th className="text-left text-xs font-medium text-zinc-400 py-3 px-4">Channel</th>
+                <th className="text-left text-xs font-medium text-zinc-600 py-3 px-4">Channel</th>
               )}
             </tr>
           </thead>
@@ -328,6 +362,7 @@ function TaskTable({ tasks, onTaskClick, showCancelled, showChannelColumn }: {
                 selectable
                 selected={selectedIds.has(task.id)}
                 onSelectChange={checked => toggleOne(task.id, checked)}
+                parentLabel={task.parent_task_id ? titleById.get(task.parent_task_id) : undefined}
               />
             ))}
             {filteredTasks.length === 0 && (
