@@ -890,6 +890,7 @@ function SubtaskInlineRow({ sub, parentPriority, onChanged }: {
   onChanged: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
+  const [title, setTitle] = useState(sub.title)
   const [desc, setDesc] = useState(sub.description || '')
   const [busy, setBusy] = useState(false)
   // Full record (checklist items etc.) fetched only when the row is expanded
@@ -965,6 +966,23 @@ function SubtaskInlineRow({ sub, parentPriority, onChanged }: {
       </div>
       {expanded && (
         <div className="pl-6 space-y-3">
+          {/* Rename */}
+          <div className="flex items-center gap-2">
+            <Input
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              className="text-sm bg-white border-zinc-300 text-zinc-900 h-8 font-medium"
+            />
+            <Button
+              size="sm"
+              disabled={busy || !title.trim() || title === sub.title}
+              onClick={() => run(() => updateTask(sub.id, { title: title.trim() }), 'Rename failed')}
+              className="h-8 bg-blue-600 hover:bg-blue-500 text-white text-xs shrink-0"
+            >
+              Rename
+            </Button>
+          </div>
+
           {/* Description */}
           <div className="flex items-start gap-2">
             <Textarea
