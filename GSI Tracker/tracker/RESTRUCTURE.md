@@ -59,10 +59,14 @@ To ship a change:
 ```bash
 cd "GSI Tracker/tracker"
 NEXT_PUBLIC_SITE_URL=https://lyzr.kailash-gm.com/GSI_Tracker npm run build
-rm -rf ../../GSI_Tracker && cp -R out ../../GSI_Tracker
+cp -R out/. ../../GSI_Tracker/   # MERGE, do not delete: old builds' chunks
+                                 # must survive so open tabs don't break
 cd ../.. && git add GSI_Tracker "GSI Tracker" && git commit -m "deploy tracker" && git push
 ```
-Pages redeploys automatically in ~2 minutes.
+Pages redeploys automatically in ~2 minutes (occasionally slower when queued).
+Housekeeping: every ~20 deploys the accumulated old chunks can be pruned by
+doing one destructive deploy (`rm -rf ../../GSI_Tracker` before the copy) at a
+quiet time — that single deploy will break tabs that are already open.
 
 Notes:
 - Local dev: http://localhost:3000/GSI_Tracker (npm run dev). The old

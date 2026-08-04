@@ -12,7 +12,17 @@ export default function AppError({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error('App route error boundary:', error)
+    console.error('Global error boundary:', error)
+    // Stale-deploy self-heal: a chunk that no longer exists means this tab is
+    // running an old build. Reload once to pick up the current one.
+    if (/Failed to load chunk|ChunkLoadError|Loading chunk/i.test(error.message || '')) {
+      const key = 'chunk-reload-at'
+      const last = Number(sessionStorage.getItem(key) || 0)
+      if (Date.now() - last > 30_000) {
+        sessionStorage.setItem(key, String(Date.now()))
+        window.location.reload()
+      }
+    }
   }, [error])
 
   return (
