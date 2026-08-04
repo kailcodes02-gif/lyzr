@@ -15,7 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { useCategories, useChannels, useUsers, useKnownEmails, buildChannelTree } from '@/lib/hooks/use-data'
-import { createTask, assignTaskByEmail } from '@/lib/actions'
+import { createTask, assignTaskByEmail, addChecklistItem } from '@/lib/actions'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { TaskPriority, AssignmentRole } from '@/lib/types/database'
@@ -86,6 +86,9 @@ export function CreateTaskDialog({
   // teammates. Rows are keyed by email; picking a pending person queues the
   // assignment for their first login.
   const [ownerRows, setOwnerRows] = useState<{ email: string; role: AssignmentRole }[]>([])
+  // Checklist items to create along with the task
+  const [checklist, setChecklist] = useState<string[]>([])
+  const [checklistDraft, setChecklistDraft] = useState('')
   const { data: knownEmails } = useKnownEmails()
   const [selectedCategory, setSelectedCategory] = useState<string>(defaultCategoryId || '')
 
@@ -206,6 +209,15 @@ export function CreateTaskDialog({
           } : undefined,
         })
 
+        // Create checklist items added in the dialog
+        for (const body of checklist) {
+          try {
+            await addChecklistItem((task as any).id, body)
+          } catch (err) {
+            console.error('checklist item failed:', body, err)
+          }
+        }
+
         // Queue pending assignments for not-yet-signed-up emails.
         // Resolves automatically on first Google SSO sign-in via handle_new_user trigger.
         for (const a of validEmails) {
@@ -227,6 +239,8 @@ export function CreateTaskDialog({
         queryClient.invalidateQueries({ queryKey: ['pendingInvites'] })
         reset()
         setOwnerRows([])
+        setChecklist([])
+        setChecklistDraft('')
         setIsRecurring(false)
         setRecurrencePattern('weekly')
         setCustomInterval(7)
@@ -472,6 +486,54 @@ export function CreateTaskDialog({
               )}
             </div>
 
+          </div>
+
+          {/* Checklist */}
+          <div>
+            <Label className="text-zinc-600 text-xs">Checklist (optional)</Label>
+            <div className="mt-2 space-y-1.5">
+              {checklist.map((item, i) => (
+                <div key={i} className="flex items-center gap-2 rounded-lg bg-zinc-100 border border-zinc-200 px-3 py-1.5 group">
+                  <span className="w-3.5 h-3.5 rounded border border-zinc-400 shrink-0" />
+                  <span className="text-xs text-zinc-700 flex-1">{item}</span>
+                  <button
+                    type="button"
+                    onClick={() => setChecklist(checklist.filter((_, j) => j !== i))}
+                    className="text-zinc-400 hover:text-red-600"
+                    title="Remove item"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+              <div className="flex items-center gap-2">
+                <Input
+                  value={checklistDraft}
+                  onChange={e => setChecklistDraft(e.target.value)}
+                  placeholder="Add a checklist item and press Enter…"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      if (checklistDraft.trim()) {
+                        setChecklist([...checklist, checklistDraft.trim()])
+                        setChecklistDraft('')
+                      }
+                    }
+                  }}
+                  className="flex-1 bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={!checklistDraft.trim()}
+                  onClick={() => { setChecklist([...checklist, checklistDraft.trim()]); setChecklistDraft('') }}
+                  className="text-xs text-blue-600 hover:text-blue-700 h-9"
+                >
+                  <Plus className="w-3 h-3 mr-1" /> Add
+                </Button>
+              </div>
+            </div>
           </div>
 
           {/* Submit */}
