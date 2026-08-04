@@ -216,17 +216,18 @@ export function ChannelTargetsCard({ channelId }: { channelId: string }) {
   const queryClient = useQueryClient()
   const { data: targets } = useChannelTargets(channelId)
   const { data: me } = useCurrentUser()
-  const [body, setBody] = useState('')
+  const [ttype, setTtype] = useState('')
+  const [tvalue, setTvalue] = useState('')
   const [busy, setBusy] = useState(false)
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['channelTargets', channelId] })
 
   const submit = async () => {
-    if (!body.trim() || busy) return
+    if (!ttype.trim() || !tvalue.trim() || busy) return
     setBusy(true)
     try {
-      await addChannelTarget(channelId, body)
-      setBody('')
+      await addChannelTarget(channelId, `${ttype.trim()}: ${tvalue.trim()}`)
+      setTtype(''); setTvalue('')
       refresh()
     } catch (err) {
       toast.error(`Failed to add target: ${err instanceof Error ? err.message : 'unknown error'}`)
@@ -244,10 +245,12 @@ export function ChannelTargetsCard({ channelId }: { channelId: string }) {
       </CardHeader>
       <CardContent className="pt-0 space-y-2">
         <div className="flex gap-2">
-          <Input value={body} onChange={e => setBody(e.target.value)} placeholder="e.g. 100 attendees per webinar"
+          <Input value={ttype} onChange={e => setTtype(e.target.value)} placeholder="Type (e.g. Attendees)"
+            className="h-8 text-xs bg-white border-zinc-300 text-zinc-800 w-36" />
+          <Input value={tvalue} onChange={e => setTvalue(e.target.value)} placeholder="Value (e.g. 100/webinar)"
             onKeyDown={e => e.key === 'Enter' && submit()}
             className="h-8 text-xs bg-white border-zinc-300 text-zinc-800" />
-          <Button size="sm" onClick={submit} disabled={busy || !body.trim()}
+          <Button size="sm" onClick={submit} disabled={busy || !ttype.trim() || !tvalue.trim()}
             className="h-8 bg-blue-600 hover:bg-blue-500 text-white text-xs">Add</Button>
         </div>
         {!targets?.length && <p className="text-xs text-zinc-500 py-1">No targets set yet.</p>}

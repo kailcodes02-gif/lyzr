@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Calendar, MessageSquare, CheckSquare, Layers, DollarSign, Target, Repeat, Crown } from 'lucide-react'
+import { Calendar, MessageSquare, CheckSquare, Layers, DollarSign, Target, Repeat, Crown, Link as LinkIcon } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { useAllChannelOwners } from '@/lib/hooks/use-data'
@@ -123,10 +123,14 @@ interface TaskRowProps extends TaskCardProps {
 // Budget + KPI-target + frequency chips, on both activity and sub-activity cards
 function MetaChips({ task, tiny }: { task: Partial<Task>; tiny?: boolean }) {
   const pf = task.planning_fields as Record<string, unknown> | null
-  const target = pf?.kpi_target as string | undefined
+  const targetsArr = pf?.targets as { type: string; value: string }[] | undefined
+  const target = targetsArr?.length
+    ? `${targetsArr[0].type}: ${targetsArr[0].value}${targetsArr.length > 1 ? `  +${targetsArr.length - 1}` : ''}`
+    : (pf?.kpi_target as string | undefined)
+  const links = (pf?.links as { label: string; url: string }[] | undefined) || []
   const frequency = pf?.frequency as string | undefined
   const budget = task.budget_allocated
-  if (!target && !frequency && budget == null) return null
+  if (!target && !frequency && budget == null && !links.length) return null
   return (
     <div className={cn('flex items-center gap-1.5 flex-wrap', tiny ? 'mt-1' : 'mt-2')}>
       {budget != null && (
@@ -142,6 +146,11 @@ function MetaChips({ task, tiny }: { task: Partial<Task>; tiny?: boolean }) {
       {frequency && (
         <span className="inline-flex items-center gap-1 rounded-md bg-violet-50 border border-violet-200 text-violet-700 px-1.5 py-0.5 text-[10px] font-medium max-w-[160px] truncate" title={`Frequency: ${frequency}`}>
           <Repeat className="w-3 h-3 shrink-0" />{frequency}
+        </span>
+      )}
+      {links.length > 0 && (
+        <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 border border-blue-200 text-blue-700 px-1.5 py-0.5 text-[10px] font-medium" title={links.map(l => l.url).join('\n')}>
+          <LinkIcon className="w-3 h-3" />{links.length}
         </span>
       )}
     </div>

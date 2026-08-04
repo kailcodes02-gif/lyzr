@@ -605,6 +605,12 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                     onSave={(fields) => handleFieldUpdate('planning_fields', fields)}
                   />
 
+                  {/* Links — any number of URLs on this activity */}
+                  <LinksEditor
+                    planningFields={task.planning_fields}
+                    onSave={(fields) => handleFieldUpdate('planning_fields', fields)}
+                  />
+
                   {/* Planning Fields (frequency, star grade, etc.) */}
                   <div>
                     <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Planning Fields</h4>
@@ -981,6 +987,17 @@ function SubtaskInlineRow({ sub, parentPriority, onChanged }: {
           {/* Owners — same primary/secondary controls as the activity */}
           <TaskOwnersEditor task={(subFull || sub) as Task} onChanged={onChanged} />
 
+          {/* Targets + Links for this sub-activity */}
+          <TargetsSection
+            planningFields={(subFull || sub).planning_fields || {}}
+            onSave={(fields) => run(() => updateTask(sub.id, { planning_fields: fields }), 'Targets save failed')}
+          />
+          <LinksEditor
+            compact
+            planningFields={(subFull || sub).planning_fields || {}}
+            onSave={(fields) => run(() => updateTask(sub.id, { planning_fields: fields }), 'Links save failed')}
+          />
+
           {/* Checklist — plain line items, not tasks */}
           <div>
             <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1.5">Checklist</p>
@@ -1094,20 +1111,41 @@ function ResultsEditor({ trackerFields, disabled, onSave }: {
   )
 }
 
-// Targets, explicitly called out: the main KPI target, an opportunity count,
-// and any number of additional targets (chips, one per entry).
+// Targets: each target is a Type + Value pair (e.g. "Impressions" / "10k/mo").
+// Stored in planning_fields.targets; legacy single-string fields are shown as
+// initial rows until first save. kpi_target stays synced for the card chips.
+type TargetRow = { type: string; value: string }
+
+function readTargets(pf: Record<string, unknown>): TargetRow[] {
+  const arr = pf?.targets as TargetRow[] | undefined
+  if (arr) return arr
+  const legacy: TargetRow[] = []
+  if (pf?.kpi_target) legacy.push({ type: 'KPI', value: String(pf.kpi_target) })
+  if (pf?.opp_target != null) legacy.push({ type: 'Opportunities', value: String(pf.opp_target) })
+  ;((pf?.additional_targets as string) || '').split('\n').map(x => x.trim()).filter(Boolean)
+    .forEach(v => legacy.push({ type: 'Target', value: v }))
+  return legacy
+}
+
 function TargetsSection({ planningFields, onSave }: {
   planningFields: Record<string, unknown>
   onSave: (fields: Record<string, unknown>) => void
 }) {
-  const kpi = (planningFields?.kpi_target as string) || ''
-  const opp = planningFields?.opp_target as number | undefined
-  const extras = ((planningFields?.additional_targets as string) || '').split('\n').map(s => s.trim()).filter(Boolean)
+  const targets = readTargets(planningFields)
+  const [type, setType] = useState('')
+  const [value, setValue] = useState('')
 
-  const [kpiDraft, setKpiDraft] = useState(kpi)
-  const [newTarget, setNewTarget] = useState('')
+  const save = (next: TargetRow[]) => onSave({
+    ...planningFields,
+    targets: next,
+    kpi_target: next[0] ? `${next[0].type}: ${next[0].value}` : null,
+  })
 
-  const merge = (patch: Record<string, unknown>) => onSave({ ...planningFields, ...patch })
+  const add = () => {
+    if (!type.trim() || !value.trim()) return
+    save([...targets, { type: type.trim(), value: value.trim() }])
+    setType(''); setValue('')
+  }
 
   return (
     <div className="mb-4">
@@ -1115,75 +1153,90 @@ function TargetsSection({ planningFields, onSave }: {
         <Target className="w-3.5 h-3.5 text-emerald-600" /> Targets
       </h4>
       <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 space-y-2.5">
-        {/* Primary KPI target */}
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-medium text-zinc-600 w-28 shrink-0">Main target</span>
-          <Input
-            value={kpiDraft}
-            onChange={e => setKpiDraft(e.target.value)}
-            onBlur={() => kpiDraft !== kpi && merge({ kpi_target: kpiDraft })}
-            onKeyDown={e => e.key === 'Enter' && kpiDraft !== kpi && merge({ kpi_target: kpiDraft })}
-            placeholder="e.g. 6 Playbook Leads/wk"
-            className="h-8 text-xs bg-white border-zinc-300 text-zinc-800"
-          />
-        </div>
-        {/* Opportunity target */}
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-medium text-zinc-600 w-28 shrink-0">Opportunities</span>
-          <Input
-            type="number"
-            defaultValue={opp ?? ''}
-            onBlur={e => {
-              const v = e.target.value === '' ? undefined : Number(e.target.value)
-              if (v !== opp) merge({ opp_target: v })
-            }}
-            placeholder="e.g. 4"
-            className="h-8 text-xs bg-white border-zinc-300 text-zinc-800 w-28"
-          />
-        </div>
-        {/* Additional targets as chips */}
-        <div className="flex items-start gap-2">
-          <span className="text-[11px] font-medium text-zinc-600 w-28 shrink-0 mt-1.5">More targets</span>
-          <div className="flex-1 space-y-1.5">
-            <div className="flex flex-wrap gap-1.5">
-              {extras.map((t, i) => (
-                <span key={i} className="inline-flex items-center gap-1 rounded-md bg-white border border-emerald-300 text-emerald-800 px-2 py-0.5 text-[11px] font-medium">
-                  <Target className="w-3 h-3" />{t}
-                  <button
-                    onClick={() => merge({ additional_targets: extras.filter((_, j) => j !== i).join('\n') })}
-                    className="text-zinc-400 hover:text-red-600 ml-0.5"
-                    title="Remove target"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-              {extras.length === 0 && <span className="text-[11px] text-zinc-400 italic mt-1">None yet</span>}
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                value={newTarget}
-                onChange={e => setNewTarget(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && newTarget.trim()) {
-                    merge({ additional_targets: [...extras, newTarget.trim()].join('\n') })
-                    setNewTarget('')
-                  }
-                }}
-                placeholder="Add another target…"
-                className="h-7 text-xs bg-white border-zinc-300 text-zinc-800"
-              />
-              <Button
-                size="sm"
-                disabled={!newTarget.trim()}
-                onClick={() => { merge({ additional_targets: [...extras, newTarget.trim()].join('\n') }); setNewTarget('') }}
-                className="h-7 bg-emerald-600 hover:bg-emerald-500 text-white text-xs shrink-0"
+        <div className="flex flex-wrap gap-1.5">
+          {targets.map((t, i) => (
+            <span key={i} className="inline-flex items-center gap-1.5 rounded-md bg-white border border-emerald-300 px-2 py-1 text-[11px] group">
+              <span className="font-semibold text-emerald-900">{t.type}</span>
+              <span className="text-emerald-700">{t.value}</span>
+              <button
+                onClick={() => save(targets.filter((_, j) => j !== i))}
+                className="text-zinc-400 hover:text-red-600"
+                title="Remove target"
               >
-                <Plus className="w-3 h-3 mr-0.5" /> Add
-              </Button>
-            </div>
-          </div>
+                ×
+              </button>
+            </span>
+          ))}
+          {targets.length === 0 && <span className="text-[11px] text-zinc-400 italic">No targets yet</span>}
         </div>
+        <div className="flex items-center gap-2">
+          <Input value={type} onChange={e => setType(e.target.value)} placeholder="Type (e.g. Impressions)"
+            className="h-8 text-xs bg-white border-zinc-300 text-zinc-800 w-44" />
+          <Input value={value} onChange={e => setValue(e.target.value)} placeholder="Value (e.g. 10,000/mo)"
+            onKeyDown={e => e.key === 'Enter' && add()}
+            className="h-8 text-xs bg-white border-zinc-300 text-zinc-800 flex-1" />
+          <Button size="sm" onClick={add} disabled={!type.trim() || !value.trim()}
+            className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white text-xs shrink-0">
+            <Plus className="w-3.5 h-3.5 mr-1" /> Add
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Links: any number of URLs on an activity or sub-activity,
+// stored in planning_fields.links as {label, url}.
+export function LinksEditor({ planningFields, onSave, compact }: {
+  planningFields: Record<string, unknown>
+  onSave: (fields: Record<string, unknown>) => void
+  compact?: boolean
+}) {
+  const links = (planningFields?.links as { label: string; url: string }[] | undefined) || []
+  const [label, setLabel] = useState('')
+  const [url, setUrl] = useState('')
+
+  const save = (next: { label: string; url: string }[]) => onSave({ ...planningFields, links: next })
+
+  const add = () => {
+    if (!url.trim()) return
+    const clean = url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`
+    let name = label.trim()
+    if (!name) { try { name = new URL(clean).hostname.replace('www.', '') } catch { name = clean } }
+    save([...links, { label: name, url: clean }])
+    setLabel(''); setUrl('')
+  }
+
+  return (
+    <div className={compact ? '' : 'mb-4'}>
+      <h4 className={cn('font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5', compact ? 'text-[11px]' : 'text-xs')}>
+        <LinkIcon className={compact ? 'w-3 h-3 text-blue-600' : 'w-3.5 h-3.5 text-blue-600'} /> Links
+      </h4>
+      <div className="flex flex-wrap gap-1.5 mb-1.5">
+        {links.map((l, i) => (
+          <span key={i} className="inline-flex items-center gap-1 rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-[11px]">
+            <a href={l.url} target="_blank" rel="noreferrer" className="text-blue-700 hover:underline font-medium">{l.label}</a>
+            <button
+              onClick={() => save(links.filter((_, j) => j !== i))}
+              className="text-zinc-400 hover:text-red-600"
+              title="Remove link"
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        {links.length === 0 && <span className="text-[11px] text-zinc-400 italic">No links yet</span>}
+      </div>
+      <div className="flex items-center gap-2">
+        <Input value={label} onChange={e => setLabel(e.target.value)} placeholder="Name (optional)"
+          className="h-7 text-xs bg-white border-zinc-300 text-zinc-800 w-36" />
+        <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://…"
+          onKeyDown={e => e.key === 'Enter' && add()}
+          className="h-7 text-xs bg-white border-zinc-300 text-zinc-800 flex-1" />
+        <Button size="sm" onClick={add} disabled={!url.trim()}
+          className="h-7 bg-blue-600 hover:bg-blue-500 text-white text-xs shrink-0">
+          <Plus className="w-3 h-3 mr-0.5" /> Add
+        </Button>
       </div>
     </div>
   )
