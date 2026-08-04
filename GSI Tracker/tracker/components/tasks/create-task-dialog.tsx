@@ -242,7 +242,7 @@ export function CreateTaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white border border-zinc-300 text-zinc-900 max-w-lg max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl p-6">
+      <DialogContent className="bg-white border border-zinc-300 text-zinc-900 sm:max-w-xl max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl p-6">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold text-zinc-900">
             {parentTaskId ? 'Create Subtask' : 'Create Task'}
