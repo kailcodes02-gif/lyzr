@@ -87,7 +87,6 @@ export function CreateTaskDialog({
   // assignment for their first login.
   const [ownerRows, setOwnerRows] = useState<{ email: string; role: AssignmentRole }[]>([])
   const { data: knownEmails } = useKnownEmails()
-  const [emailAssignments, setEmailAssignments] = useState<{ email: string; role: AssignmentRole }[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string>(defaultCategoryId || '')
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
@@ -159,29 +158,27 @@ export function CreateTaskDialog({
     setOwnerRows(updated)
   }
 
-  const addEmailAssignment = () => {
-    setEmailAssignments([...emailAssignments, { email: '', role: 'other' }])
-  }
-
-  const removeEmailAssignment = (index: number) => {
-    setEmailAssignments(emailAssignments.filter((_, i) => i !== index))
-  }
-
-  const updateEmailAssignment = (index: number, field: 'email' | 'role', value: string) => {
-    const updated = [...emailAssignments]
-    updated[index] = { ...updated[index], [field]: value }
-    setEmailAssignments(updated)
-  }
 
   const onSubmit = (data: FormData) => {
-    const pickedRows = ownerRows.filter(r => r.email)
+    // Typed text can be an email or a name — resolve names to known emails.
+    const resolveRow = (raw: string) => {
+      const text = raw.trim().toLowerCase()
+      if (optionByEmail(text)) return text
+      const byName = ownerOptions.filter(o => o.label.toLowerCase() === text || o.label.toLowerCase().startsWith(text))
+      return byName.length === 1 ? byName[0].email : text
+    }
+    const pickedRows = ownerRows.filter(r => r.email.trim()).map(r => ({ ...r, email: resolveRow(r.email) }))
+    const invalid = pickedRows.filter(r => !optionByEmail(r.email) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email))
+    if (invalid.length) {
+      toast.error(`Unrecognized owner: "${invalid[0].email}" — pick a suggestion or type a full email`)
+      return
+    }
     const validAssignments = pickedRows
       .filter(r => optionByEmail(r.email)?.userId)
       .map(r => ({ user_id: optionByEmail(r.email)!.userId!, role: r.role }))
-    const validEmails = [
-      ...pickedRows.filter(r => !optionByEmail(r.email)?.userId).map(r => ({ email: r.email, role: r.role })),
-      ...emailAssignments.map(a => ({ ...a, email: a.email.trim().toLowerCase() })),
-    ].filter(a => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.email))
+    const validEmails = pickedRows
+      .filter(r => !optionByEmail(r.email)?.userId)
+      .map(r => ({ email: r.email, role: r.role }))
 
     if (validAssignments.length === 0 && validEmails.length === 0) {
       toast.error('At least one owner is required')
@@ -230,7 +227,6 @@ export function CreateTaskDialog({
         queryClient.invalidateQueries({ queryKey: ['pendingInvites'] })
         reset()
         setOwnerRows([])
-        setEmailAssignments([])
         setIsRecurring(false)
         setRecurrencePattern('weekly')
         setCustomInterval(7)
@@ -427,26 +423,20 @@ export function CreateTaskDialog({
             <div className="space-y-2">
               {ownerRows.map((a, i) => (
                 <div key={i} className="flex gap-2">
-                  <Select
-                    value={a.email}
-                    onValueChange={(val) => updateAssignment(i, 'email', val || '')}
-                  >
-                    <SelectTrigger className="flex-1 bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 flex justify-between items-center rounded-lg">
-                      <span>
-                        {a.email
-                          ? `${optionByEmail(a.email)?.label || a.email}${optionByEmail(a.email)?.pending ? ' (not signed in yet)' : ''}`
-                          : 'Select owner'}
+                  <div className="flex-1 relative">
+                    <Input
+                      value={a.email}
+                      onChange={e => updateAssignment(i, 'email', e.target.value)}
+                      placeholder="Type a name or email…"
+                      list="create-task-owner-options"
+                      className="w-full bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 text-sm"
+                    />
+                    {a.email && optionByEmail(a.email.trim().toLowerCase())?.pending && (
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-1 pointer-events-none">
+                        joins on first sign-in
                       </span>
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border border-zinc-300 text-zinc-900 rounded-lg max-h-64">
-                      <SelectItem value="" className="text-sm py-2 px-3 hover:bg-zinc-100">Select owner</SelectItem>
-                      {ownerOptions.map(o => (
-                        <SelectItem key={o.email} value={o.email} className="text-sm py-2 px-3 hover:bg-zinc-100">
-                          {o.label}{o.pending ? ' · not signed in yet' : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    )}
+                  </div>
                   <Select
                     value={a.role}
                     onValueChange={(val) => updateAssignment(i, 'role', (val || 'other') as any)}
@@ -472,67 +462,16 @@ export function CreateTaskDialog({
                   </Button>
                 </div>
               ))}
-              {ownerRows.length === 0 && emailAssignments.length === 0 && (
-                <p className="text-xs text-zinc-600 py-2">Click "Add Owner" to assign owners</p>
+              <datalist id="create-task-owner-options">
+                {ownerOptions.map(o => (
+                  <option key={o.email} value={o.email}>{`${o.label}${o.pending ? ' · not signed in yet' : ''}`}</option>
+                ))}
+              </datalist>
+              {ownerRows.length === 0 && (
+                <p className="text-xs text-zinc-600 py-2">Click "Add Owner", then type a name or email</p>
               )}
             </div>
 
-            {/* Assign by email (pre-signup) */}
-            <div className="mt-3 pt-3 border-t border-dashed border-zinc-200">
-              <div className="flex items-center justify-between mb-2">
-                <Label className="text-zinc-500 text-[11px] uppercase tracking-wider">Someone not in the list? Add by email</Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={addEmailAssignment}
-                  className="text-xs text-violet-600 hover:text-violet-600 h-auto p-1"
-                >
-                  <Plus className="w-3 h-3 mr-1" /> Add email
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {emailAssignments.map((a, i) => (
-                  <div key={i} className="flex gap-2">
-                    <Input
-                      type="email"
-                      value={a.email}
-                      onChange={e => updateEmailAssignment(i, 'email', e.target.value)}
-                      placeholder="teammate@lyzr.ai"
-                      className="flex-1 bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 text-sm"
-                    />
-                    <Select
-                      value={a.role}
-                      onValueChange={(val) => updateEmailAssignment(i, 'role', (val || 'other') as any)}
-                    >
-                      <SelectTrigger className="w-32 bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 flex justify-between items-center rounded-lg">
-                        <span>{roleLabels[a.role]}</span>
-                      </SelectTrigger>
-                      <SelectContent className="bg-white border border-zinc-300 text-zinc-900 rounded-lg">
-                        <SelectItem value="primary" className="text-sm py-2 px-3 hover:bg-zinc-100">Primary</SelectItem>
-                        <SelectItem value="secondary" className="text-sm py-2 px-3 hover:bg-zinc-100">Secondary</SelectItem>
-                        <SelectItem value="tertiary" className="text-sm py-2 px-3 hover:bg-zinc-100">Tertiary</SelectItem>
-                        <SelectItem value="other" className="text-sm py-2 px-3 hover:bg-zinc-100">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeEmailAssignment(i)}
-                      className="text-zinc-500 hover:text-red-600 shrink-0"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-                {emailAssignments.length > 0 && (
-                  <p className="text-[10px] text-zinc-500 pt-1">
-                    These emails will be queued. The task auto-attaches to their account on first @lyzr.ai sign-in.
-                  </p>
-                )}
-              </div>
-            </div>
           </div>
 
           {/* Submit */}
