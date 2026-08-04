@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition, useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { useCategories, useChannels, useUsers, buildChannelTree } from '@/lib/hooks/use-data'
+import { useCategories, useChannels, useUsers, useKnownEmails, buildChannelTree } from '@/lib/hooks/use-data'
 import { createTask, assignTaskByEmail } from '@/lib/actions'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -82,7 +82,11 @@ export function CreateTaskDialog({
   const [customInterval, setCustomInterval] = useState(7)
   const [recurrenceEndsOn, setRecurrenceEndsOn] = useState('')
 
-  const [assignments, setAssignments] = useState<{ user_id: string; role: AssignmentRole }[]>([])
+  // One unified owner list: signed-in users AND known-but-not-signed-in
+  // teammates. Rows are keyed by email; picking a pending person queues the
+  // assignment for their first login.
+  const [ownerRows, setOwnerRows] = useState<{ email: string; role: AssignmentRole }[]>([])
+  const { data: knownEmails } = useKnownEmails()
   const [emailAssignments, setEmailAssignments] = useState<{ email: string; role: AssignmentRole }[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string>(defaultCategoryId || '')
 
@@ -130,18 +134,29 @@ export function CreateTaskDialog({
     return result
   }
 
+  const ownerOptions = useMemo(() => {
+    const map = new Map<string, { email: string; userId?: string; label: string; pending: boolean }>()
+    users?.filter(u => u.email !== 'preview@lyzr.ai').forEach(u =>
+      map.set(u.email.toLowerCase(), { email: u.email.toLowerCase(), userId: u.id, label: u.display_name || u.email, pending: false }))
+    knownEmails?.forEach(e => {
+      if (!map.has(e)) map.set(e, { email: e, label: e.split('@')[0].split('.')[0].replace(/^./, (c: string) => c.toUpperCase()), pending: true })
+    })
+    return [...map.values()].sort((a, b) => a.label.localeCompare(b.label))
+  }, [users, knownEmails])
+  const optionByEmail = (email: string) => ownerOptions.find(o => o.email === email)
+
   const addAssignment = () => {
-    setAssignments([...assignments, { user_id: '', role: assignments.length === 0 ? 'primary' : 'other' }])
+    setOwnerRows([...ownerRows, { email: '', role: ownerRows.length === 0 ? 'primary' : 'secondary' }])
   }
 
   const removeAssignment = (index: number) => {
-    setAssignments(assignments.filter((_, i) => i !== index))
+    setOwnerRows(ownerRows.filter((_, i) => i !== index))
   }
 
-  const updateAssignment = (index: number, field: 'user_id' | 'role', value: string) => {
-    const updated = [...assignments]
+  const updateAssignment = (index: number, field: 'email' | 'role', value: string) => {
+    const updated = [...ownerRows]
     updated[index] = { ...updated[index], [field]: value }
-    setAssignments(updated)
+    setOwnerRows(updated)
   }
 
   const addEmailAssignment = () => {
@@ -159,10 +174,14 @@ export function CreateTaskDialog({
   }
 
   const onSubmit = (data: FormData) => {
-    const validAssignments = assignments.filter(a => a.user_id)
-    const validEmails = emailAssignments
-      .map(a => ({ ...a, email: a.email.trim().toLowerCase() }))
-      .filter(a => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.email))
+    const pickedRows = ownerRows.filter(r => r.email)
+    const validAssignments = pickedRows
+      .filter(r => optionByEmail(r.email)?.userId)
+      .map(r => ({ user_id: optionByEmail(r.email)!.userId!, role: r.role }))
+    const validEmails = [
+      ...pickedRows.filter(r => !optionByEmail(r.email)?.userId).map(r => ({ email: r.email, role: r.role })),
+      ...emailAssignments.map(a => ({ ...a, email: a.email.trim().toLowerCase() })),
+    ].filter(a => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.email))
 
     if (validAssignments.length === 0 && validEmails.length === 0) {
       toast.error('At least one owner is required')
@@ -210,7 +229,7 @@ export function CreateTaskDialog({
         queryClient.invalidateQueries({ queryKey: ['activity'] })
         queryClient.invalidateQueries({ queryKey: ['pendingInvites'] })
         reset()
-        setAssignments([])
+        setOwnerRows([])
         setEmailAssignments([])
         setIsRecurring(false)
         setRecurrencePattern('weekly')
@@ -406,19 +425,25 @@ export function CreateTaskDialog({
               </Button>
             </div>
             <div className="space-y-2">
-              {assignments.map((a, i) => (
+              {ownerRows.map((a, i) => (
                 <div key={i} className="flex gap-2">
                   <Select
-                    value={a.user_id}
-                    onValueChange={(val) => updateAssignment(i, 'user_id', val || '')}
+                    value={a.email}
+                    onValueChange={(val) => updateAssignment(i, 'email', val || '')}
                   >
                     <SelectTrigger className="flex-1 bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 flex justify-between items-center rounded-lg">
-                      <span>{users?.find(u => u.id === a.user_id)?.display_name || users?.find(u => u.id === a.user_id)?.email || 'Select user'}</span>
+                      <span>
+                        {a.email
+                          ? `${optionByEmail(a.email)?.label || a.email}${optionByEmail(a.email)?.pending ? ' (not signed in yet)' : ''}`
+                          : 'Select owner'}
+                      </span>
                     </SelectTrigger>
-                    <SelectContent className="bg-white border border-zinc-300 text-zinc-900 rounded-lg">
-                      <SelectItem value="" className="text-sm py-2 px-3 hover:bg-zinc-100">Select user</SelectItem>
-                      {users?.map(u => (
-                        <SelectItem key={u.id} value={u.id} className="text-sm py-2 px-3 hover:bg-zinc-100">{u.display_name || u.email}</SelectItem>
+                    <SelectContent className="bg-white border border-zinc-300 text-zinc-900 rounded-lg max-h-64">
+                      <SelectItem value="" className="text-sm py-2 px-3 hover:bg-zinc-100">Select owner</SelectItem>
+                      {ownerOptions.map(o => (
+                        <SelectItem key={o.email} value={o.email} className="text-sm py-2 px-3 hover:bg-zinc-100">
+                          {o.label}{o.pending ? ' · not signed in yet' : ''}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -447,7 +472,7 @@ export function CreateTaskDialog({
                   </Button>
                 </div>
               ))}
-              {assignments.length === 0 && emailAssignments.length === 0 && (
+              {ownerRows.length === 0 && emailAssignments.length === 0 && (
                 <p className="text-xs text-zinc-600 py-2">Click "Add Owner" to assign owners</p>
               )}
             </div>
@@ -455,7 +480,7 @@ export function CreateTaskDialog({
             {/* Assign by email (pre-signup) */}
             <div className="mt-3 pt-3 border-t border-dashed border-zinc-200">
               <div className="flex items-center justify-between mb-2">
-                <Label className="text-zinc-500 text-[11px] uppercase tracking-wider">Assign by email (pre-signup)</Label>
+                <Label className="text-zinc-500 text-[11px] uppercase tracking-wider">Someone not in the list? Add by email</Label>
                 <Button
                   type="button"
                   variant="ghost"
