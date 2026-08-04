@@ -20,10 +20,10 @@ import {
   CheckSquare, MessageSquare, Link as LinkIcon, Upload,
   AlertTriangle, Pencil, Target,
 } from 'lucide-react'
-import { useTask, useUsers, useTasks, useCurrentUser } from '@/lib/hooks/use-data'
+import { useTask, useUsers, useTasks, useCurrentUser, useKnownEmails } from '@/lib/hooks/use-data'
 import {
   updateTask, deleteTask, addChecklistItem, toggleChecklistItem,
-  deleteChecklistItem, addComment, updateAssignments, uploadResultFile,
+  deleteChecklistItem, addComment, createMention, updateAssignments, uploadResultFile,
   addTaskDependency, removeTaskDependency,
 } from '@/lib/actions'
 import { useQuery } from '@tanstack/react-query'
@@ -98,6 +98,9 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
   const [isPending, startTransition] = useTransition()
   const [newChecklistItem, setNewChecklistItem] = useState('')
   const [newComment, setNewComment] = useState('')
+  // @mention autocomplete over every known dashboard email
+  const { data: knownEmails } = useKnownEmails()
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null)
   const [createSubtaskOpen, setCreateSubtaskOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState('')
@@ -243,12 +246,59 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
     })
   }
 
+  const mentionPeople = (() => {
+    const map = new Map<string, { email: string; label: string }>()
+    users?.filter(u => u.email !== 'preview@lyzr.ai').forEach(u =>
+      map.set(u.email.toLowerCase(), { email: u.email.toLowerCase(), label: u.display_name || u.email }))
+    knownEmails?.forEach(e => {
+      if (!map.has(e)) map.set(e, { email: e, label: e.split('@')[0].split('.')[0].replace(/^./, (c: string) => c.toUpperCase()) })
+    })
+    return [...map.values()]
+  })()
+
+  const mentionSuggestions = mentionQuery === null ? [] : mentionPeople
+    .filter(pn => pn.email.includes(mentionQuery) || pn.label.toLowerCase().includes(mentionQuery))
+    .slice(0, 6)
+
+  const onCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const v = e.target.value
+    setNewComment(v)
+    const caret = e.target.selectionStart ?? v.length
+    const m = v.slice(0, caret).match(/@([\w.+-]*)$/)
+    setMentionQuery(m ? m[1].toLowerCase() : null)
+  }
+
+  const pickMention = (email: string) => {
+    setNewComment(prev => prev.replace(/@([\w.+-]*)$/, `@${email} `))
+    setMentionQuery(null)
+  }
+
+  // Resolve @tokens in a comment to known emails (full emails or name prefixes)
+  const extractMentionEmails = (body: string): string[] => {
+    const out = new Set<string>()
+    for (const m of body.matchAll(/@([\w.+-]+@[\w.-]+\.[A-Za-z]{2,})/g)) out.add(m[1].toLowerCase())
+    for (const m of body.matchAll(/@([A-Za-z][\w.-]{1,30})(?!\S*@)/g)) {
+      const token = m[1].toLowerCase()
+      if (token.includes('@')) continue
+      const matches = mentionPeople.filter(pn => pn.label.toLowerCase() === token || pn.email.split('@')[0] === token)
+      if (matches.length === 1) out.add(matches[0].email)
+    }
+    return [...out]
+  }
+
   const handleAddComment = () => {
     if (!newComment.trim()) return
     startTransition(async () => {
       try {
-        await addComment(taskId!, newComment.trim())
+        const body = newComment.trim()
+        await addComment(taskId!, body)
+        const mentioned = extractMentionEmails(body)
+        for (const email of mentioned) {
+          try { await createMention(taskId!, 'task_comment', email) } catch (err) { console.error('mention failed', email, err) }
+        }
+        if (mentioned.length) toast.success(`Mentioned ${mentioned.length} ${mentioned.length === 1 ? 'person' : 'people'}`)
         setNewComment('')
+        setMentionQuery(null)
         queryClient.invalidateQueries({ queryKey: ['tasks'] })
         queryClient.invalidateQueries({ queryKey: ['task', taskId] })
         queryClient.invalidateQueries({ queryKey: ['activity'] })
@@ -835,11 +885,26 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                       <p className="text-sm text-zinc-600 py-4 text-center">No comments yet</p>
                     )}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="relative">
+                    {mentionQuery !== null && mentionSuggestions.length > 0 && (
+                      <div className="absolute bottom-full mb-1 left-0 w-72 rounded-lg border border-zinc-300 bg-white shadow-lg z-50 overflow-hidden">
+                        {mentionSuggestions.map(pn => (
+                          <button
+                            key={pn.email}
+                            type="button"
+                            onMouseDown={e => { e.preventDefault(); pickMention(pn.email) }}
+                            className="w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50 flex items-center justify-between gap-2"
+                          >
+                            <span className="font-medium text-zinc-800 capitalize">{pn.label}</span>
+                            <span className="text-zinc-500 truncate">{pn.email}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <Textarea
                       value={newComment}
-                      onChange={e => setNewComment(e.target.value)}
-                      placeholder="Add a comment... (use @email to mention)"
+                      onChange={onCommentChange}
+                      placeholder="Add a comment... type @ to mention someone"
                       className="bg-zinc-100 border-zinc-300 text-sm min-h-[60px]"
                     />
                   </div>
