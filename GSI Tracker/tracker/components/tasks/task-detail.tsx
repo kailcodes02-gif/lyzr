@@ -499,6 +499,61 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                 queryClient.invalidateQueries({ queryKey: ['tasks'] })
               }} />
 
+              {/* Checklist — line items, right under owners */}
+              <div className="mb-4 rounded-xl border border-zinc-200 bg-zinc-50/60 p-3">
+                <h4 className="text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <CheckSquare className="w-3.5 h-3.5 text-green-600" />
+                  Checklist {((task as any).checklist_items || []).length > 0 ? `(${((task as any).checklist_items || []).length})` : ''}
+                </h4>
+
+                  <div className="space-y-2 mb-3">
+                    {((task as any).checklist_items || []).map((item: any) => (
+                      <div key={item.id} className="flex items-center gap-3 group">
+                        <Checkbox
+                          checked={item.is_done}
+                          onCheckedChange={(checked) => handleToggleChecklist(item.id, !!checked)}
+                          className="border-zinc-300 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
+                        />
+                        <span className={cn(
+                          'text-sm flex-1',
+                          item.is_done ? 'text-zinc-600 line-through' : 'text-zinc-700'
+                        )}>
+                          {item.body}
+                        </span>
+                        <button
+                          onClick={() => {
+                            startTransition(async () => {
+                              try {
+                                await deleteChecklistItem(item.id)
+                                queryClient.invalidateQueries({ queryKey: ['tasks'] })
+                                queryClient.invalidateQueries({ queryKey: ['task', taskId] })
+                              } catch (err: any) {
+                                console.error('deleteChecklistItem failed:', err)
+                                toast.error(err?.message || 'Failed to delete item')
+                              }
+                            })
+                          }}
+                          className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-600 transition-opacity"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newChecklistItem}
+                      onChange={e => setNewChecklistItem(e.target.value)}
+                      placeholder="Add checklist item..."
+                      className="bg-zinc-100 border-zinc-300 text-sm"
+                      onKeyDown={e => e.key === 'Enter' && handleAddChecklist()}
+                    />
+                    <Button size="sm" onClick={handleAddChecklist} disabled={isPending} className="bg-zinc-200/70 hover:bg-zinc-300/70 text-zinc-900 shrink-0">
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+              </div>
+
               {/* Sub-activities — always visible, fully operable inline */}
               {task.nesting_level === 0 && (
                 <div className="mb-4 rounded-xl border border-zinc-200 bg-zinc-50/60 p-3">
@@ -540,10 +595,6 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                   <TabsTrigger value="dependencies" className="text-xs data-[state=active]:bg-zinc-200/70">
                     Dependencies
                     {((dependencies?.length || 0) + (blocks?.length || 0)) > 0 && <TabDot />}
-                  </TabsTrigger>
-                  <TabsTrigger value="checklist" className="text-xs data-[state=active]:bg-zinc-200/70">
-                    Checklist {(task as any).checklist_items?.length ? `(${(task as any).checklist_items.length})` : ''}
-                    {((task as any).checklist_items?.length || 0) > 0 && <TabDot />}
                   </TabsTrigger>
                   <TabsTrigger value="comments" className="text-xs data-[state=active]:bg-zinc-200/70">
                     Comments {(task as any).comments?.length ? `(${(task as any).comments.length})` : ''}
@@ -761,54 +812,6 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                 {/* Subtasks */}
 
                 {/* Checklist */}
-                <TabsContent value="checklist" className="mt-4">
-                  <div className="space-y-2 mb-3">
-                    {((task as any).checklist_items || []).map((item: any) => (
-                      <div key={item.id} className="flex items-center gap-3 group">
-                        <Checkbox
-                          checked={item.is_done}
-                          onCheckedChange={(checked) => handleToggleChecklist(item.id, !!checked)}
-                          className="border-zinc-300 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
-                        />
-                        <span className={cn(
-                          'text-sm flex-1',
-                          item.is_done ? 'text-zinc-600 line-through' : 'text-zinc-700'
-                        )}>
-                          {item.body}
-                        </span>
-                        <button
-                          onClick={() => {
-                            startTransition(async () => {
-                              try {
-                                await deleteChecklistItem(item.id)
-                                queryClient.invalidateQueries({ queryKey: ['tasks'] })
-                                queryClient.invalidateQueries({ queryKey: ['task', taskId] })
-                              } catch (err: any) {
-                                console.error('deleteChecklistItem failed:', err)
-                                toast.error(err?.message || 'Failed to delete item')
-                              }
-                            })
-                          }}
-                          className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-600 transition-opacity"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      value={newChecklistItem}
-                      onChange={e => setNewChecklistItem(e.target.value)}
-                      placeholder="Add checklist item..."
-                      className="bg-zinc-100 border-zinc-300 text-sm"
-                      onKeyDown={e => e.key === 'Enter' && handleAddChecklist()}
-                    />
-                    <Button size="sm" onClick={handleAddChecklist} disabled={isPending} className="bg-zinc-200/70 hover:bg-zinc-300/70 text-zinc-900 shrink-0">
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </TabsContent>
 
                 {/* Comments */}
                 <TabsContent value="comments" className="mt-4">
@@ -1013,17 +1016,6 @@ function SubtaskInlineRow({ sub, parentPriority, onChanged }: {
             }}
           />
 
-          {/* Targets + Links for this sub-activity */}
-          <TargetsSection
-            planningFields={(subFull || sub).planning_fields || {}}
-            onSave={(fields) => run(() => updateTask(sub.id, { planning_fields: fields }), 'Targets save failed')}
-          />
-          <LinksEditor
-            compact
-            planningFields={(subFull || sub).planning_fields || {}}
-            onSave={(fields) => run(() => updateTask(sub.id, { planning_fields: fields }), 'Links save failed')}
-          />
-
           {/* Checklist — plain line items, not tasks */}
           <div>
             <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1.5">Checklist</p>
@@ -1071,6 +1063,19 @@ function SubtaskInlineRow({ sub, parentPriority, onChanged }: {
               </Button>
             </div>
           </div>
+
+          {/* Targets + Links for this sub-activity */}
+          <TargetsSection
+            planningFields={(subFull || sub).planning_fields || {}}
+            onSave={(fields) => run(() => updateTask(sub.id, { planning_fields: fields }), 'Targets save failed')}
+          />
+          <LinksEditor
+            compact
+            planningFields={(subFull || sub).planning_fields || {}}
+            onSave={(fields) => run(() => updateTask(sub.id, { planning_fields: fields }), 'Links save failed')}
+          />
+
+
         </div>
       )}
     </div>
