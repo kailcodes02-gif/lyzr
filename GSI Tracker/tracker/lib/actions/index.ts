@@ -1643,3 +1643,75 @@ export async function removeTaskOwner(taskId: string, ref: { userId?: string; em
   }
   return { removed: true }
 }
+
+// ============ RECURRENCE ON EXISTING TASKS ============
+
+export async function makeTaskRecurring(taskId: string, opts: {
+  pattern: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'custom'
+  custom_interval_days?: number
+  ends_on?: string
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: task, error: tErr } = await supabase
+    .from('tasks')
+    .select('*, assignments:task_assignments(user_id)')
+    .eq('id', taskId)
+    .single()
+  if (tErr) throw tErr
+  if (task.recurring_template_id) throw new Error('Task is already recurring')
+
+  const anchor = task.due_date || new Date().toISOString().split('T')[0]
+  const { data: template, error } = await supabase
+    .from('recurring_templates')
+    .insert({
+      channel_id: task.channel_id,
+      title: task.title,
+      description: task.description,
+      default_priority: task.priority,
+      default_planning_fields: task.planning_fields || {},
+      pattern: opts.pattern,
+      custom_interval_days: opts.pattern === 'custom' ? (opts.custom_interval_days || 7) : null,
+      starts_on: anchor,
+      ends_on: opts.ends_on || null,
+      // Next instance lands ONE interval after this task's due date
+      next_due_date: format(
+        advanceByPattern(new Date(anchor), opts.pattern, opts.custom_interval_days),
+        'yyyy-MM-dd'
+      ),
+      default_assignees: (task.assignments || []).map((a: { user_id: string }) => a.user_id),
+      created_by: user.id,
+    })
+    .select()
+    .single()
+  if (error) throw error
+
+  const { error: linkErr } = await supabase
+    .from('tasks')
+    .update({ recurring_template_id: template.id })
+    .eq('id', taskId)
+  if (linkErr) throw linkErr
+
+  return template
+}
+
+export async function stopTaskRecurring(taskId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: task } = await supabase
+    .from('tasks').select('recurring_template_id').eq('id', taskId).single()
+  if (!task?.recurring_template_id) throw new Error('Task is not recurring')
+
+  const { data, error } = await supabase
+    .from('recurring_templates')
+    .update({ is_active: false })
+    .eq('id', task.recurring_template_id)
+    .select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('Only the template creator or an admin can stop it')
+  return { stopped: true }
+}
