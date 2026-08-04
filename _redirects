@@ -12,3 +12,8 @@
 /GSI_GTM_2  /GSI_GTM_2/index.html  200
 /GSI_GTM_2/ /GSI_GTM_2/index.html  200
 /GSI_GTM_2/* /GSI_GTM_2/:splat     200
+
+# Rewrite /collegeevents_GSI -> serve from "college Events" folder
+/collegeevents_GSI    /college%20Events/index.html  200
+/collegeevents_GSI/   /college%20Events/index.html  200
+/collegeevents_GSI/*  /college%20Events/:splat      200
