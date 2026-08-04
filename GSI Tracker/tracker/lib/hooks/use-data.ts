@@ -148,6 +148,8 @@ export function useAllChannelOwners() {
 // owner suggestions even before their first sign-in or assignment.
 const EXTRA_KNOWN_EMAILS = [
   'isha@whitepath.in', // White Path (ads agency)
+  'anand@lyzr.ai',
+  'skanda@lyzr.ai',
 ]
 
 // Union of every email the tracker knows (signed-in users, channel owners,

@@ -89,6 +89,31 @@ export function CreateTaskDialog({
   // Checklist items to create along with the task
   const [checklist, setChecklist] = useState<string[]>([])
   const [checklistDraft, setChecklistDraft] = useState('')
+  // Targets (Type + Value pairs)
+  const [targets, setTargets] = useState<{ type: string; value: string }[]>([])
+  const [targetType, setTargetType] = useState('')
+  const [targetValue, setTargetValue] = useState('')
+  // Links (multiple URLs)
+  const [links, setLinks] = useState<{ label: string; url: string }[]>([])
+  const [linkLabel, setLinkLabel] = useState('')
+  const [linkUrl, setLinkUrl] = useState('')
+  // Frequency + budget
+  const [frequency, setFrequency] = useState('')
+  const [budget, setBudget] = useState('')
+
+  const addTargetRow = () => {
+    if (!targetType.trim() || !targetValue.trim()) return
+    setTargets([...targets, { type: targetType.trim(), value: targetValue.trim() }])
+    setTargetType(''); setTargetValue('')
+  }
+  const addLinkRow = () => {
+    if (!linkUrl.trim()) return
+    const clean = linkUrl.trim().startsWith('http') ? linkUrl.trim() : `https://${linkUrl.trim()}`
+    let name = linkLabel.trim()
+    if (!name) { try { name = new URL(clean).hostname.replace('www.', '') } catch { name = clean } }
+    setLinks([...links, { label: name, url: clean }])
+    setLinkLabel(''); setLinkUrl('')
+  }
   const { data: knownEmails } = useKnownEmails()
   const [selectedCategory, setSelectedCategory] = useState<string>(defaultCategoryId || '')
 
@@ -201,6 +226,12 @@ export function CreateTaskDialog({
           ...data,
           parent_task_id: parentTaskId,
           nesting_level: nestingLevel,
+          budget_allocated: budget.trim() === '' ? null : Number(budget),
+          planning_fields: {
+            ...(frequency.trim() ? { frequency: frequency.trim() } : {}),
+            ...(targets.length ? { targets, kpi_target: `${targets[0].type}: ${targets[0].value}` } : {}),
+            ...(links.length ? { links } : {}),
+          },
           assignments: validAssignments,
           recurrence: isRecurring ? {
             pattern: recurrencePattern,
@@ -241,6 +272,9 @@ export function CreateTaskDialog({
         setOwnerRows([])
         setChecklist([])
         setChecklistDraft('')
+        setTargets([]); setTargetType(''); setTargetValue('')
+        setLinks([]); setLinkLabel(''); setLinkUrl('')
+        setFrequency(''); setBudget('')
         setIsRecurring(false)
         setRecurrencePattern('weekly')
         setCustomInterval(7)
@@ -533,6 +567,80 @@ export function CreateTaskDialog({
                   <Plus className="w-3 h-3 mr-1" /> Add
                 </Button>
               </div>
+            </div>
+          </div>
+
+          {/* Frequency + Budget */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-zinc-600 text-xs">Frequency</Label>
+              <Input
+                value={frequency}
+                onChange={e => setFrequency(e.target.value)}
+                placeholder="e.g. Monthly 1x, Ongoing"
+                className="mt-1 bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 text-sm"
+              />
+            </div>
+            <div>
+              <Label className="text-zinc-600 text-xs">Budget ($)</Label>
+              <Input
+                type="number"
+                value={budget}
+                onChange={e => setBudget(e.target.value)}
+                placeholder="e.g. 500"
+                className="mt-1 bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Targets */}
+          <div>
+            <Label className="text-zinc-600 text-xs">Targets</Label>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {targets.map((t, i) => (
+                <span key={i} className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 border border-emerald-300 px-2 py-1 text-[11px]">
+                  <span className="font-semibold text-emerald-900">{t.type}</span>
+                  <span className="text-emerald-700">{t.value}</span>
+                  <button type="button" onClick={() => setTargets(targets.filter((_, j) => j !== i))}
+                    className="text-zinc-400 hover:text-red-600" title="Remove">×</button>
+                </span>
+              ))}
+            </div>
+            <div className="mt-1.5 flex items-center gap-2">
+              <Input value={targetType} onChange={e => setTargetType(e.target.value)} placeholder="Type (e.g. Impressions)"
+                className="bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 text-sm w-44" />
+              <Input value={targetValue} onChange={e => setTargetValue(e.target.value)} placeholder="Value (e.g. 10,000/mo)"
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTargetRow() } }}
+                className="bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 text-sm flex-1" />
+              <Button type="button" variant="ghost" size="sm" disabled={!targetType.trim() || !targetValue.trim()}
+                onClick={addTargetRow} className="text-xs text-emerald-700 hover:text-emerald-800 h-9">
+                <Plus className="w-3 h-3 mr-1" /> Add
+              </Button>
+            </div>
+          </div>
+
+          {/* Links */}
+          <div>
+            <Label className="text-zinc-600 text-xs">Links</Label>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {links.map((l, i) => (
+                <span key={i} className="inline-flex items-center gap-1 rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-[11px]">
+                  <span className="text-blue-700 font-medium">{l.label}</span>
+                  <button type="button" onClick={() => setLinks(links.filter((_, j) => j !== i))}
+                    className="text-zinc-400 hover:text-red-600" title="Remove">×</button>
+                </span>
+              ))}
+            </div>
+            <div className="mt-1.5 flex items-center gap-2">
+              <Input value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="Name (optional)"
+                className="bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 text-sm w-44" />
+              <Input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://…"
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addLinkRow() } }}
+                className="bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 text-sm flex-1" />
+              <Button type="button" variant="ghost" size="sm" disabled={!linkUrl.trim()}
+                onClick={addLinkRow} className="text-xs text-blue-600 hover:text-blue-700 h-9">
+                <Plus className="w-3 h-3 mr-1" /> Add
+              </Button>
             </div>
           </div>
 

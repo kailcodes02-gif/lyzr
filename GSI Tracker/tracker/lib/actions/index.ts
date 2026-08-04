@@ -35,6 +35,7 @@ export async function createTask(data: {
   due_date?: string
   parent_task_id?: string
   nesting_level?: number
+  budget_allocated?: number | null
   planning_fields?: Record<string, unknown>
   assignments: { user_id: string; role: AssignmentRole }[]
   recurrence?: {
@@ -101,6 +102,7 @@ export async function createTask(data: {
       due_date: data.due_date || null,
       parent_task_id: data.parent_task_id || null,
       nesting_level: data.nesting_level || 0,
+      budget_allocated: data.budget_allocated ?? null,
       planning_fields: data.planning_fields || {},
       recurring_template_id: templateId,
       created_by: user.id,
