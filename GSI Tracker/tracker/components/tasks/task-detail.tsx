@@ -1003,7 +1003,15 @@ function SubtaskInlineRow({ sub, parentPriority, onChanged }: {
           </div>
 
           {/* Owners — same primary/secondary controls as the activity */}
-          <TaskOwnersEditor task={(subFull || sub) as Task} onChanged={onChanged} />
+          <TaskOwnersEditor
+            task={(subFull || sub) as Task}
+            onChanged={() => {
+              // The expanded row renders from the sub's OWN query — refresh it
+              // too, or newly added owners don't appear until a full reload.
+              subQueryClient.invalidateQueries({ queryKey: ['task', sub.id] })
+              onChanged()
+            }}
+          />
 
           {/* Targets + Links for this sub-activity */}
           <TargetsSection
