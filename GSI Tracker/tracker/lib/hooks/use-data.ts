@@ -144,6 +144,12 @@ export function useAllChannelOwners() {
   })
 }
 
+// External collaborators (outside @lyzr.ai) who should always appear in
+// owner suggestions even before their first sign-in or assignment.
+const EXTRA_KNOWN_EMAILS = [
+  'isha@whitepath.in', // White Path (ads agency)
+]
+
 // Union of every email the tracker knows (signed-in users, channel owners,
 // pending assignees) — feeds the owner-suggestion datalists.
 export function useKnownEmails() {
@@ -160,7 +166,7 @@ export function useKnownEmails() {
       const all = [
         ...(u.data || []), ...(co.data || []), ...(pa.data || []),
       ].map(r => r.email.toLowerCase()).filter(e => e !== 'preview@lyzr.ai')
-      return [...new Set(all)].sort()
+      return [...new Set([...all, ...EXTRA_KNOWN_EMAILS])].sort()
     },
   })
 }
