@@ -1519,9 +1519,11 @@ export async function addChannelOwner(channelId: string, email: string, makePrim
     .from('channel_owners').select('email, sort_order').eq('channel_id', channelId).order('sort_order')
   if (readErr) throw readErr
 
+  // Convention: primary ⇔ sort_order <= 0. Multiple primaries are allowed;
+  // each new primary gets a smaller number, each secondary a larger one.
   const sortOrder = makePrimary
-    ? (existing?.length ? Math.min(...existing.map(o => o.sort_order)) - 1 : 0)
-    : (existing?.length ? Math.max(...existing.map(o => o.sort_order)) + 1 : 0)
+    ? (existing?.length ? Math.min(0, ...existing.map(o => o.sort_order)) - 1 : 0)
+    : (existing?.length ? Math.max(1, ...existing.map(o => o.sort_order + 1)) : 1)
 
   const { data: matched } = await supabase.from('users').select('id').eq('email', clean).maybeSingle()
   const { error } = await supabase
@@ -1560,7 +1562,7 @@ export async function setPrimaryChannelOwner(channelId: string, email: string) {
   if (readErr) throw readErr
   if (!existing?.length) throw new Error('No owners on this channel')
 
-  const minOrder = Math.min(...existing.map(o => o.sort_order))
+  const minOrder = Math.min(0, ...existing.map(o => o.sort_order))
   const { data, error } = await supabase
     .from('channel_owners')
     .update({ sort_order: minOrder - 1 })
@@ -1570,6 +1572,28 @@ export async function setPrimaryChannelOwner(channelId: string, email: string) {
   if (error) throw error
   if (!data?.length) throw new Error('Nothing updated — only admins can edit channel owners')
   return { primary: email }
+}
+
+export async function setSecondaryChannelOwner(channelId: string, email: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: existing, error: readErr } = await supabase
+    .from('channel_owners').select('email, sort_order').eq('channel_id', channelId).order('sort_order')
+  if (readErr) throw readErr
+  if (!existing?.length) throw new Error('No owners on this channel')
+
+  const maxOrder = Math.max(0, ...existing.map(o => o.sort_order))
+  const { data, error } = await supabase
+    .from('channel_owners')
+    .update({ sort_order: maxOrder + 1 })
+    .eq('channel_id', channelId)
+    .eq('email', email.toLowerCase())
+    .select('email')
+  if (error) throw error
+  if (!data?.length) throw new Error('Nothing updated — only admins can edit channel owners')
+  return { secondary: email }
 }
 
 // ============ TASK OWNERS (add/remove at activity & sub-activity level) ============

@@ -15,11 +15,11 @@ import {
   addChannelResource, deleteChannelResource,
   addChannelLearning, deleteChannelLearning,
   addChannelTarget, deleteChannelTarget,
-  addChannelOwner, removeChannelOwner, setPrimaryChannelOwner,
+  addChannelOwner, removeChannelOwner, setPrimaryChannelOwner, setSecondaryChannelOwner,
   updateChannelDescription,
 } from '@/lib/actions'
 import { TIER_CONFIG, type ChannelTier } from '@/lib/types/database'
-import { Crown, Link2, Lightbulb, Pencil, Plus, Target, Trash2, Users, X } from 'lucide-react'
+import { ArrowDown, Crown, Link2, Lightbulb, Pencil, Plus, Target, Trash2, Users, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 const errMsg = (err: unknown) => (err instanceof Error ? err.message : 'unknown error')
@@ -61,10 +61,11 @@ export function ChannelOwnerChips({ channelId }: { channelId: string }) {
       <div className="flex items-center gap-1.5 flex-wrap">
         <Users className="w-3.5 h-3.5 text-zinc-500" />
         {!owners?.length && <span className="text-xs text-zinc-400">No owners assigned</span>}
-        {owners?.map((o, idx) => {
+        {owners?.map((o) => {
           const user = users?.find(u => u.id === o.user_id)
           const label = user?.display_name || o.email.split('@')[0]
-          const isPrimary = idx === 0
+          // Multiple primaries allowed: primary ⇔ sort_order <= 0
+          const isPrimary = o.sort_order <= 0
           return (
             <Badge
               key={o.email}
@@ -88,6 +89,15 @@ export function ChannelOwnerChips({ channelId }: { channelId: string }) {
                       className="hover:text-amber-600"
                     >
                       <Crown className="w-3 h-3" />
+                    </button>
+                  )}
+                  {isPrimary && (
+                    <button
+                      title="Make secondary"
+                      onClick={() => run(() => setSecondaryChannelOwner(channelId, o.email), 'Failed to make secondary')}
+                      className="hover:text-zinc-700"
+                    >
+                      <ArrowDown className="w-3 h-3" />
                     </button>
                   )}
                   <button

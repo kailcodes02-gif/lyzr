@@ -216,7 +216,7 @@ export function TaskCard({ task, onClick, compact, onSubtaskClick }: TaskCardPro
   if (!entries.length && allChannelOwners) {
     const fromChannel = (chId?: string | null) =>
       allChannelOwners.filter(o => o.channel_id === chId)
-        .map((o, i) => ({ key: o.email, label: o.email.split('@')[0], primary: i === 0, pending: !o.user_id }))
+        .map(o => ({ key: o.email, label: o.email.split('@')[0], primary: o.sort_order <= 0, pending: !o.user_id }))
     entries = fromChannel(task.channel_id)
     if (!entries.length && task.channel?.parent_channel_id) entries = fromChannel(task.channel.parent_channel_id)
     inherited = entries.length > 0
