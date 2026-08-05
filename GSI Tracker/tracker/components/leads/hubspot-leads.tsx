@@ -19,6 +19,7 @@ import { format, startOfWeek, startOfMonth } from 'date-fns'
 type Lead = {
   id: string; name: string; email: string; company: string; source: string
   created: string; status: string; lifecycle: string; lastActivity: string; owner: string
+  via?: string[]
 }
 type Tracking = {
   hubspot_contact_id: string
@@ -111,7 +112,6 @@ export function HubSpotLeads() {
   }
 
   const pull = async () => {
-    if (!companies?.length) { toast.error('Add at least one company first'); return }
     setPulling(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -119,7 +119,7 @@ export function HubSpotLeads() {
       const res = await fetch('/api/hubspot-leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ companies: companies.map(c => c.name), ...rangeDates() }),
+        body: JSON.stringify({ extraCompanies: (companies || []).map(c => c.name), ...rangeDates() }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
@@ -175,7 +175,12 @@ export function HubSpotLeads() {
       <Card className="bg-white border-zinc-200">
         <CardContent className="p-4 space-y-2">
           <p className="text-xs font-semibold text-zinc-600 uppercase tracking-wider flex items-center gap-1.5">
-            <Building2 className="w-3.5 h-3.5 text-blue-600" /> Companies to pull
+            <Building2 className="w-3.5 h-3.5 text-blue-600" /> Extra companies (on top of the built-in rule)
+          </p>
+          <p className="text-[11px] text-zinc-500">
+            The pull always includes: the built-in ~90 GSI/SI target companies, every lead owned by
+            anju · praveen · bharath · kaushik · pooja, and any lead with &quot;GSI&quot; in its source
+            properties or searchable text. Add companies here only to extend that rule.
           </p>
           <div className="flex flex-wrap gap-1.5">
             {companies?.map(c => (
@@ -184,7 +189,7 @@ export function HubSpotLeads() {
                 <button onClick={() => removeCompany(c.id)} className="text-zinc-400 hover:text-red-600" title="Remove">×</button>
               </span>
             ))}
-            {!companies?.length && <span className="text-xs text-zinc-400 italic">No companies yet — add the accounts whose leads you want</span>}
+            {!companies?.length && <span className="text-xs text-zinc-400 italic">None — the built-in rule alone applies</span>}
           </div>
           <div className="flex items-center gap-2">
             <Input value={newCompany} onChange={e => setNewCompany(e.target.value)}
@@ -229,12 +234,13 @@ export function HubSpotLeads() {
         <CardContent className="p-0 overflow-x-auto">
           {leads.length === 0 ? (
             <p className="text-center text-sm text-zinc-500 py-14">
-              No leads pulled yet — add companies above, pick a date range and hit “Pull from HubSpot”.
+              No leads pulled yet — pick a date range and hit “Pull from HubSpot”. The built-in GSI rule applies automatically.
             </p>
           ) : (
             <table className="w-full text-xs min-w-[1100px]">
               <thead>
                 <tr className="border-b border-zinc-200 bg-zinc-50 text-zinc-500">
+                  <Th label="Via" />
                   <Th label="Lead" k="name" />
                   <Th label="Company" k="company" />
                   <Th label="Source" />
@@ -253,6 +259,15 @@ export function HubSpotLeads() {
                   const t = trackingById.get(lead.id) || EMPTY_TRACKING(lead.id)
                   return (
                     <tr key={lead.id} className="hover:bg-zinc-50">
+                      <td className="py-2 px-3">
+                        <div className="flex flex-col gap-0.5">
+                          {(lead.via || []).map(v => (
+                            <span key={v} className={`inline-flex w-fit rounded px-1 py-0.5 text-[9px] font-bold uppercase ${
+                              v === 'company' ? 'bg-blue-50 text-blue-700' : v === 'owner' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
+                            }`}>{v}</span>
+                          ))}
+                        </div>
+                      </td>
                       <td className="py-2 px-3">
                         <p className="font-medium text-zinc-800">{lead.name}</p>
                         <p className="text-[10px] text-zinc-500">{lead.email}</p>
