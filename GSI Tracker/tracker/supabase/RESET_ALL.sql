@@ -1381,9 +1381,9 @@ CREATE TABLE IF NOT EXISTS lead_companies (
 CREATE TABLE IF NOT EXISTS lead_tracking (
   ref_id TEXT PRIMARY KEY,
   email_stage TEXT CHECK (email_stage IN ('e1', 'e2', 'e3')),
-  call_status TEXT CHECK (call_status IN ('yes', 'no', 'declined', 'no_response')),
+  call_status TEXT CHECK (call_status IN ('yes', 'no', 'declined', 'no_response', 'scheduled', 'done', 'no_show')),
   li_stage TEXT CHECK (li_stage IN ('conn', 'm1', 'm2')),
-  wa_status TEXT CHECK (wa_status IN ('sent', 'not_sent', 'not_demo')),
+  wa_status TEXT CHECK (wa_status IN ('sent', 'not_demo')),
   updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -1403,6 +1403,15 @@ CREATE TABLE IF NOT EXISTS email_leads (
 );
 
 CREATE INDEX IF NOT EXISTS email_leads_demo_date_idx ON email_leads(demo_click_date);
+
+-- If lead_tracking pre-dates the 2026-08-05 option change, refresh its CHECKs
+UPDATE lead_tracking SET wa_status = NULL WHERE wa_status = 'not_sent';
+ALTER TABLE lead_tracking DROP CONSTRAINT IF EXISTS lead_tracking_call_status_check;
+ALTER TABLE lead_tracking ADD CONSTRAINT lead_tracking_call_status_check
+  CHECK (call_status IN ('yes', 'no', 'declined', 'no_response', 'scheduled', 'done', 'no_show'));
+ALTER TABLE lead_tracking DROP CONSTRAINT IF EXISTS lead_tracking_wa_status_check;
+ALTER TABLE lead_tracking ADD CONSTRAINT lead_tracking_wa_status_check
+  CHECK (wa_status IN ('sent', 'not_demo'));
 
 ALTER TABLE lead_companies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lead_tracking  ENABLE ROW LEVEL SECURITY;

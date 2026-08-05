@@ -13,9 +13,9 @@ import { toast } from 'sonner'
 export type Tracking = {
   ref_id: string
   email_stage: 'e1' | 'e2' | 'e3' | null
-  call_status: 'yes' | 'no' | 'declined' | 'no_response' | null
+  call_status: 'yes' | 'no' | 'declined' | 'no_response' | 'scheduled' | 'done' | 'no_show' | null
   li_stage: 'conn' | 'm1' | 'm2' | null
-  wa_status: 'sent' | 'not_sent' | 'not_demo' | null
+  wa_status: 'sent' | 'not_demo' | null
 }
 
 export const EMPTY_TRACKING = (ref: string): Tracking => ({
@@ -35,6 +35,9 @@ export const STAGE_OPTIONS = {
     { v: 'no', label: 'No' },
     { v: 'declined', label: 'Declined' },
     { v: 'no_response', label: 'No response' },
+    { v: 'scheduled', label: 'Call scheduled' },
+    { v: 'done', label: 'Call done' },
+    { v: 'no_show', label: 'Call no-show' },
   ],
   li_stage: [
     { v: '', label: '—' },
@@ -45,8 +48,7 @@ export const STAGE_OPTIONS = {
   wa_status: [
     { v: '', label: '—' },
     { v: 'sent', label: 'Message sent' },
-    { v: 'not_sent', label: 'Not sent' },
-    { v: 'not_demo', label: 'Not a book-a-demo lead' },
+    { v: 'not_demo', label: 'Not a demo lead' },
   ],
 } as const
 
@@ -118,7 +120,7 @@ export function TrackCells({ refId, byRef, save }: {
   return (
     <>
       <td className="py-2 px-3"><StageSelect refId={refId} field="email_stage" tracking={t} save={save} width="w-[120px]" /></td>
-      <td className="py-2 px-3"><StageSelect refId={refId} field="call_status" tracking={t} save={save} width="w-[110px]" /></td>
+      <td className="py-2 px-3"><StageSelect refId={refId} field="call_status" tracking={t} save={save} width="w-[130px]" /></td>
       <td className="py-2 px-3"><StageSelect refId={refId} field="li_stage" tracking={t} save={save} width="w-[170px]" /></td>
       <td className="py-2 px-3"><StageSelect refId={refId} field="wa_status" tracking={t} save={save} width="w-[160px]" /></td>
     </>

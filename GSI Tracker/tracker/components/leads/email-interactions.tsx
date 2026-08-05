@@ -103,7 +103,6 @@ function seedStatuses(li: string, wa: string, em: string): Partial<Tracking> {
   if (w) {
     if (/not.*demo/.test(w)) out.wa_status = 'not_demo'
     else if (/yes|true|sent/.test(w)) out.wa_status = 'sent'
-    else if (/no|false/.test(w)) out.wa_status = 'not_sent'
   }
   const e = em.toLowerCase()
   if (e) {
