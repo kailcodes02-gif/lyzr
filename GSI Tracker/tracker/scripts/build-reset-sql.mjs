@@ -20,6 +20,7 @@ const ORDER = [
   '008_rls_hardening.sql',
   '009_saved_views.sql',
   '010_gtm_blueprint_extensions.sql',
+  '011_lead_tracking.sql',
 ]
 
 let m001 = mig('001_initial_schema.sql')

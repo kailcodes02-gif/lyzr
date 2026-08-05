@@ -5,10 +5,12 @@ import { effectiveOwnerEmails } from '@/lib/effective-owners'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TaskView } from '@/components/tasks/task-view'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
+import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useState } from 'react'
-import { CheckSquare, MessageSquare, Clock, Activity, User as UserIcon } from 'lucide-react'
+import { CheckSquare, MessageSquare, Clock, Activity, User as UserIcon, Plus } from 'lucide-react'
 import { format } from 'date-fns'
 
 export default function MyTasksPage() {
@@ -19,6 +21,7 @@ export default function MyTasksPage() {
   const { data: channelOwners } = useAllChannelOwners()
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
 
   if (userLoading || tasksLoading) {
     return (
@@ -78,11 +81,16 @@ export default function MyTasksPage() {
     <div className="p-4 lg:p-8 space-y-6 max-w-7xl mx-auto bg-zinc-50 text-zinc-900 min-h-screen">
       
       {/* Header */}
-      <div className="pl-12 lg:pl-0">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
-          <UserIcon className="w-6 h-6 text-blue-600" /> My Tasks
-        </h1>
-        <p className="text-sm text-zinc-500 mt-1">Manage your campaigns, assignments, and mentions</p>
+      <div className="pl-12 lg:pl-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
+            <UserIcon className="w-6 h-6 text-blue-600" /> My Tasks
+          </h1>
+          <p className="text-sm text-zinc-500 mt-1">Manage your campaigns, assignments, and mentions</p>
+        </div>
+        <Button onClick={() => setCreateOpen(true)} className="bg-blue-600 hover:bg-blue-500 text-white self-start">
+          <Plus className="w-4 h-4 mr-2" /> New Task
+        </Button>
       </div>
 
       {/* Main Tabs */}
@@ -224,6 +232,15 @@ export default function MyTasksPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Create dialog — requires channel + sub-channel choice */}
+      {createOpen && (
+        <CreateTaskDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          onSuccess={() => setCreateOpen(false)}
+        />
+      )}
 
       {/* Task Detail Drawer */}
       {selectedTaskId && (

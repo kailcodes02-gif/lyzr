@@ -116,6 +116,7 @@ export function CreateTaskDialog({
   }
   const { data: knownEmails } = useKnownEmails()
   const [selectedCategory, setSelectedCategory] = useState<string>(defaultCategoryId || '')
+  const [pickedTop, setPickedTop] = useState<string>('')
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -348,45 +349,35 @@ export function CreateTaskDialog({
             </div>
           </div>
 
-          {/* Category + Channel */}
+          {/* Channel → Sub-channel (2 clicks) */}
           {!defaultChannelId && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-zinc-600 text-xs">Category</Label>
-                <Select
-                  value={selectedCategory}
-                  onValueChange={(val) => {
-                    setSelectedCategory(val || '')
-                    setValue('channel_id', '') // Reset channel on category change
-                  }}
+                <Label className="text-zinc-600 text-xs">1 · Channel *</Label>
+                <select
+                  value={pickedTop}
+                  onChange={e => { setPickedTop(e.target.value); setValue('channel_id', e.target.value || '') }}
+                  className="mt-1 w-full text-sm rounded-lg border border-zinc-300 bg-zinc-100 px-3 h-9 text-zinc-900"
                 >
-                  <SelectTrigger className="mt-1 w-full bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 flex justify-between items-center rounded-lg">
-                    <span>{categories?.find(cat => cat.id === selectedCategory)?.name || 'Select Category'}</span>
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border border-zinc-300 text-zinc-900 rounded-lg">
-                    <SelectItem value="" className="text-sm py-2 px-3 hover:bg-zinc-100">Select Category</SelectItem>
-                    {categories?.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id} className="text-sm py-2 px-3 hover:bg-zinc-100">{cat.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <option value="">Select channel…</option>
+                  {(channels || []).filter(c => !c.parent_channel_id).sort((a, b) => a.sort_order - b.sort_order).map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
-                <Label className="text-zinc-600 text-xs">Channel *</Label>
-                <Select
-                  value={channelId}
-                  onValueChange={(val) => setValue('channel_id', val || '')}
+                <Label className="text-zinc-600 text-xs">2 · Sub-channel</Label>
+                <select
+                  value={channelId !== pickedTop ? channelId : ''}
+                  disabled={!pickedTop}
+                  onChange={e => setValue('channel_id', e.target.value || pickedTop)}
+                  className="mt-1 w-full text-sm rounded-lg border border-zinc-300 bg-zinc-100 px-3 h-9 text-zinc-900 disabled:opacity-50"
                 >
-                  <SelectTrigger className="mt-1 w-full bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 flex justify-between items-center rounded-lg">
-                    <span>{flattenChannels(filteredChannels).find(ch => ch.id === channelId)?.label || 'Select Channel'}</span>
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border border-zinc-300 text-zinc-900 rounded-lg">
-                    <SelectItem value="" className="text-sm py-2 px-3 hover:bg-zinc-100">Select Channel</SelectItem>
-                    {flattenChannels(filteredChannels).map(ch => (
-                      <SelectItem key={ch.id} value={ch.id} className="text-sm py-2 px-3 hover:bg-zinc-100">{ch.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <option value="">{pickedTop ? 'Entire channel (or pick below)' : 'Pick a channel first'}</option>
+                  {(channels || []).filter(c => c.parent_channel_id === pickedTop).sort((a, b) => a.sort_order - b.sort_order).map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
                 {errors.channel_id && <p className="text-red-600 text-xs mt-1">{errors.channel_id.message}</p>}
               </div>
             </div>

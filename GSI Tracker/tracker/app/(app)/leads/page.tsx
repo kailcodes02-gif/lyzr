@@ -14,6 +14,7 @@ import { importLeads } from '@/lib/actions'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import Papa from 'papaparse'
+import { HubSpotLeads } from '@/components/leads/hubspot-leads'
 
 import {
   Dialog as BaseDialog,
@@ -85,7 +86,7 @@ function autoSuggestMapping(headers: string[]): Record<string, LeadField | ''> {
   return result
 }
 
-export default function LeadsPage() {
+function CsvImportSection() {
   const queryClient = useQueryClient()
   const { data: tasks, isLoading: tasksLoading } = useTasks()
   useChannels()
@@ -613,5 +614,41 @@ function FragmentRow({
         ))}
       </select>
     </>
+  )
+}
+
+
+export default function LeadsPage() {
+  return (
+    <div className="p-4 lg:p-8 space-y-5 max-w-7xl mx-auto bg-zinc-50 text-zinc-900 min-h-screen">
+      <LeadsTabs />
+    </div>
+  )
+}
+
+function LeadsTabs() {
+  const [tab, setTab] = useState<'hubspot' | 'csv'>('hubspot')
+  return (
+    <div className="space-y-5">
+      <div className="pl-12 lg:pl-0 flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Leads Pipeline</h1>
+          <p className="text-sm text-zinc-500 mt-1">
+            Pull target-account leads from HubSpot (read-only) and track your outreach here.
+          </p>
+        </div>
+        <div className="flex bg-zinc-100 border border-zinc-200 rounded-lg p-0.5">
+          <button onClick={() => setTab('hubspot')}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === 'hubspot' ? 'bg-white shadow text-zinc-900' : 'text-zinc-600 hover:text-zinc-900'}`}>
+            HubSpot Leads
+          </button>
+          <button onClick={() => setTab('csv')}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === 'csv' ? 'bg-white shadow text-zinc-900' : 'text-zinc-600 hover:text-zinc-900'}`}>
+            CSV Import
+          </button>
+        </div>
+      </div>
+      {tab === 'hubspot' ? <HubSpotLeads /> : <CsvImportSection />}
+    </div>
   )
 }
