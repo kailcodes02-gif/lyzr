@@ -39,6 +39,7 @@ const DEFAULT_COMPANIES = [
 const OWNER_EMAILS = [
   'anju@lyzr.ai',
   'praveen.sukumar@lyzr.ai',
+  'praveen.s@lyzr.ai', // Praveen's actual HubSpot owner email (verified 2026-08-05)
   'bharath@lyzr.ai',
   'kaushik.venkatesan@lyzr.ai',
   'pooja@lyzr.ai',
