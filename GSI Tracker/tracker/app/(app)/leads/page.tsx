@@ -15,6 +15,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import Papa from 'papaparse'
 import { HubSpotLeads } from '@/components/leads/hubspot-leads'
+import { EmailInteractions } from '@/components/leads/email-interactions'
 
 import {
   Dialog as BaseDialog,
@@ -627,7 +628,7 @@ export default function LeadsPage() {
 }
 
 function LeadsTabs() {
-  const [tab, setTab] = useState<'hubspot' | 'csv'>('hubspot')
+  const [tab, setTab] = useState<'hubspot' | 'email' | 'csv'>('hubspot')
   return (
     <div className="space-y-5">
       <div className="pl-12 lg:pl-0 flex items-center justify-between flex-wrap gap-3">
@@ -642,13 +643,17 @@ function LeadsTabs() {
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === 'hubspot' ? 'bg-white shadow text-zinc-900' : 'text-zinc-600 hover:text-zinc-900'}`}>
             HubSpot Leads
           </button>
+          <button onClick={() => setTab('email')}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === 'email' ? 'bg-white shadow text-zinc-900' : 'text-zinc-600 hover:text-zinc-900'}`}>
+            Email Interactions
+          </button>
           <button onClick={() => setTab('csv')}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === 'csv' ? 'bg-white shadow text-zinc-900' : 'text-zinc-600 hover:text-zinc-900'}`}>
-            CSV Import
+            Task CSV Import
           </button>
         </div>
       </div>
-      {tab === 'hubspot' ? <HubSpotLeads /> : <CsvImportSection />}
+      {tab === 'hubspot' ? <HubSpotLeads /> : tab === 'email' ? <EmailInteractions /> : <CsvImportSection />}
     </div>
   )
 }
