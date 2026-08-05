@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { format, startOfWeek, startOfMonth } from 'date-fns'
 import { usePersisted, keyFor, writeRaw } from '@/lib/hooks/use-persisted'
 import { SortBar, SortableTh, applySorts, toggleSortLevel, type SortLevel, type SortColumn } from './sort-bar'
+import { MultiSelect } from './multi-select'
 import { useLeadTracking, TrackCells, TrackCellHeaders, stageRank, type Tracking } from './track-cells'
 
 // READ-ONLY pull from HubSpot via the Pages Function (token stays server-side).
@@ -190,15 +191,20 @@ export function HubSpotLeads() {
   }, [pulledAt, leads.length, pulling])
 
   // --- filters (applied to whatever was pulled) ---
-  const [fVia, setFVia] = usePersisted(k('hs:fVia'), '')
-  const [fCompany, setFCompany] = usePersisted(k('hs:fCompany'), '')
-  const [fSource, setFSource] = usePersisted(k('hs:fSource'), '')
-  const [fScoreCat, setFScoreCat] = usePersisted(k('hs:fScoreCat'), '')
-  const [fOwner, setFOwner] = usePersisted(k('hs:fOwner'), '')
+  // Multi-select: an empty array means "all". New keys — the previous ones
+  // stored a single string and must not be restored into an array.
+  const [fVia, setFVia] = usePersisted<string[]>(k('hs:fViaM'), [])
+  const [fCompany, setFCompany] = usePersisted<string[]>(k('hs:fCompanyM'), [])
+  const [fSource, setFSource] = usePersisted<string[]>(k('hs:fSourceM'), [])
+  const [fScoreCat, setFScoreCat] = usePersisted<string[]>(k('hs:fScoreCatM'), [])
+  const [fOwner, setFOwner] = usePersisted<string[]>(k('hs:fOwnerM'), [])
   const [fMinScore, setFMinScore] = usePersisted(k('hs:fMinScore'), '')
   const [fSearch, setFSearch] = usePersisted(k('hs:fSearch'), '')
-  const hasFilters = !!(fVia || fCompany || fSource || fScoreCat || fOwner || fMinScore || fSearch)
-  const clearFilters = () => { setFVia(''); setFCompany(''); setFSource(''); setFScoreCat(''); setFOwner(''); setFMinScore(''); setFSearch('') }
+  const hasFilters = !!(fVia.length || fCompany.length || fSource.length || fScoreCat.length || fOwner.length || fMinScore || fSearch)
+  const clearFilters = () => {
+    setFVia([]); setFCompany([]); setFSource([]); setFScoreCat([]); setFOwner([])
+    setFMinScore(''); setFSearch('')
+  }
 
   const opts = useMemo(() => {
     const distinct = (get: (l: Lead) => string | number | undefined) =>
@@ -214,19 +220,23 @@ export function HubSpotLeads() {
   // Drop any selected filter value that vanished from a fresh pull
   useEffect(() => {
     if (!leads.length) return // nothing to validate against yet (still restoring)
-    if (fCompany && !opts.companies.includes(fCompany)) setFCompany('')
-    if (fSource && !opts.sources.includes(fSource)) setFSource('')
-    if (fScoreCat && !opts.scoreCats.includes(fScoreCat)) setFScoreCat('')
-    if (fOwner && !opts.owners.includes(fOwner)) setFOwner('')
+    const prune = (sel: string[], valid: string[], set: (v: string[]) => void) => {
+      const kept = sel.filter(v => valid.includes(v))
+      if (kept.length !== sel.length) set(kept)
+    }
+    prune(fCompany, opts.companies, setFCompany)
+    prune(fSource, opts.sources, setFSource)
+    prune(fScoreCat, opts.scoreCats, setFScoreCat)
+    prune(fOwner, opts.owners, setFOwner)
   }, [leads, opts, fCompany, fSource, fScoreCat, fOwner, setFCompany, setFSource, setFScoreCat, setFOwner])
 
   const deferredSearch = useDeferredValue(fSearch)
   const filtered = useMemo(() => leads.filter(l => {
-    if (fVia && !(l.via || []).includes(fVia)) return false
-    if (fCompany && (l.company || '').trim() !== fCompany) return false
-    if (fSource && (l.leadSource || '').trim() !== fSource) return false
-    if (fScoreCat && (l.scoreCategory || '').trim() !== fScoreCat) return false
-    if (fOwner && (l.owner || '').trim() !== fOwner) return false
+    if (fVia.length && !(l.via || []).some(v => fVia.includes(v))) return false
+    if (fCompany.length && !fCompany.includes((l.company || '').trim())) return false
+    if (fSource.length && !fSource.includes((l.leadSource || '').trim())) return false
+    if (fScoreCat.length && !fScoreCat.includes((l.scoreCategory || '').trim())) return false
+    if (fOwner.length && !fOwner.includes((l.owner || '').trim())) return false
     if (fMinScore && (Number(l.leadScore) || 0) < Number(fMinScore)) return false
     if (deferredSearch) {
       const q = deferredSearch.toLowerCase()
@@ -383,33 +393,11 @@ export function HubSpotLeads() {
             </span>
             <Input value={fSearch} onChange={e => setFSearch(e.target.value)} placeholder="Search name / email / company…"
               className="h-8 w-56 text-xs bg-zinc-50 border-zinc-300 text-zinc-800" />
-            <select value={fVia} onChange={e => setFVia(e.target.value)}
-              className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-zinc-700">
-              <option value="">Via: all</option>
-              <option value="company">Via company</option>
-              <option value="owner">Via owner</option>
-              <option value="gsi">Via GSI</option>
-            </select>
-            <select value={fCompany} onChange={e => setFCompany(e.target.value)}
-              className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-zinc-700 max-w-[180px]">
-              <option value="">Company: all</option>
-              {opts.companies.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select value={fSource} onChange={e => setFSource(e.target.value)}
-              className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-zinc-700 max-w-[170px]">
-              <option value="">Lead source: all</option>
-              {opts.sources.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <select value={fScoreCat} onChange={e => setFScoreCat(e.target.value)}
-              className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-zinc-700">
-              <option value="">Score category: all</option>
-              {opts.scoreCats.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <select value={fOwner} onChange={e => setFOwner(e.target.value)}
-              className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-zinc-700 max-w-[160px]">
-              <option value="">HS owner: all</option>
-              {opts.owners.map(o => <option key={o} value={o}>{o}</option>)}
-            </select>
+            <MultiSelect label="Via" options={['company', 'owner', 'gsi']} selected={fVia} onChange={setFVia} width="w-[150px]" />
+            <MultiSelect label="Company" options={opts.companies} selected={fCompany} onChange={setFCompany} />
+            <MultiSelect label="Lead source" options={opts.sources} selected={fSource} onChange={setFSource} />
+            <MultiSelect label="Score category" options={opts.scoreCats} selected={fScoreCat} onChange={setFScoreCat} width="w-[180px]" />
+            <MultiSelect label="HS owner" options={opts.owners} selected={fOwner} onChange={setFOwner} width="w-[170px]" />
             <Input type="number" value={fMinScore} onChange={e => setFMinScore(e.target.value)} placeholder="Min score"
               className="h-8 w-24 text-xs bg-zinc-50 border-zinc-300 text-zinc-800" />
             {hasFilters && (

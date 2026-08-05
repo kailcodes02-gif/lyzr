@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { usePersisted, keyFor } from '@/lib/hooks/use-persisted'
 import { SortBar, SortableTh, applySorts, toggleSortLevel, type SortLevel, type SortColumn } from './sort-bar'
+import { MultiSelect } from './multi-select'
 import { useLeadTracking, TrackCells, TrackCellHeaders, stageRank, type Tracking } from './track-cells'
 
 // Email Interactions dashboard: upload the book-a-demo clickers CSV (same format
@@ -260,12 +261,12 @@ export function EmailInteractions() {
   const [customTo, setCustomTo] = usePersisted(k('csv:to'), '')
 
   // --- filters ---
-  const [fCompany, setFCompany] = usePersisted(k('csv:fCompany'), '')
-  const [fSequence, setFSequence] = usePersisted(k('csv:fSequence'), '')
+  const [fCompany, setFCompany] = usePersisted<string[]>(k('csv:fCompanyM'), [])
+  const [fSequence, setFSequence] = usePersisted<string[]>(k('csv:fSequenceM'), [])
   const [fSearch, setFSearch] = usePersisted(k('csv:fSearch'), '')
-  const hasFilters = !!(fCompany || fSequence || fSearch || range !== 'all' || customFrom || customTo)
+  const hasFilters = !!(fCompany.length || fSequence.length || fSearch || range !== 'all' || customFrom || customTo)
   const clearFilters = () => {
-    setFCompany(''); setFSequence(''); setFSearch('')
+    setFCompany([]); setFSequence([]); setFSearch('')
     setRange('all'); setCustomFrom(''); setCustomTo('') // the range can hide every row too
   }
 
@@ -280,8 +281,12 @@ export function EmailInteractions() {
 
   useEffect(() => {
     if (!rows?.length) return // still loading — don't clear a saved filter
-    if (fCompany && !opts.companies.includes(fCompany)) setFCompany('')
-    if (fSequence && !opts.sequences.includes(fSequence)) setFSequence('')
+    const prune = (sel: string[], valid: string[], set: (v: string[]) => void) => {
+      const kept = sel.filter(v => valid.includes(v))
+      if (kept.length !== sel.length) set(kept)
+    }
+    prune(fCompany, opts.companies, setFCompany)
+    prune(fSequence, opts.sequences, setFSequence)
   }, [rows, opts, fCompany, fSequence, setFCompany, setFSequence])
 
   const filtered = useMemo(() => {
@@ -293,8 +298,8 @@ export function EmailInteractions() {
       if (customFrom) arr = arr.filter(r => r.demo_click_date && r.demo_click_date >= customFrom)
       if (customTo) arr = arr.filter(r => r.demo_click_date && r.demo_click_date <= customTo)
     }
-    if (fCompany) arr = arr.filter(r => (r.company || '').trim() === fCompany)
-    if (fSequence) arr = arr.filter(r => ((r.extra || {}).sequence || '').trim() === fSequence)
+    if (fCompany.length) arr = arr.filter(r => fCompany.includes((r.company || '').trim()))
+    if (fSequence.length) arr = arr.filter(r => fSequence.includes(((r.extra || {}).sequence || '').trim()))
     if (fSearch) {
       const q = fSearch.toLowerCase()
       arr = arr.filter(r => [r.name, r.email, r.company, (r.extra || {}).sequence].some(v => (v || '').toLowerCase().includes(q)))
@@ -425,16 +430,8 @@ export function EmailInteractions() {
             </span>
             <Input value={fSearch} onChange={e => setFSearch(e.target.value)} placeholder="Search email / company / sequence…"
               className="h-8 w-56 text-xs bg-zinc-50 border-zinc-300 text-zinc-800" />
-            <select value={fCompany} onChange={e => setFCompany(e.target.value)}
-              className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-zinc-700 max-w-[180px]">
-              <option value="">Company: all</option>
-              {opts.companies.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select value={fSequence} onChange={e => setFSequence(e.target.value)}
-              className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-zinc-700 max-w-[200px]">
-              <option value="">Sequence/Account: all</option>
-              {opts.sequences.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
+            <MultiSelect label="Company" options={opts.companies} selected={fCompany} onChange={setFCompany} />
+            <MultiSelect label="Sequence" options={opts.sequences} selected={fSequence} onChange={setFSequence} width="w-[210px]" />
             {hasFilters && (
               <button onClick={clearFilters} className="text-xs text-blue-600 hover:text-blue-500 font-medium">Clear ✕</button>
             )}
