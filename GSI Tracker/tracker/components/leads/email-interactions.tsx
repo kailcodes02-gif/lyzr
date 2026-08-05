@@ -11,7 +11,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ArrowUpDown, ChevronDown, ChevronRight, FileUp, Filter, Loader2, MousePointerClick, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
-import { usePersisted } from '@/lib/hooks/use-persisted'
+import { usePersisted, keyFor } from '@/lib/hooks/use-persisted'
 import { useLeadTracking, TrackCells, TrackCellHeaders, stageRank, type Tracking } from './track-cells'
 
 // Email Interactions dashboard: upload the book-a-demo clickers CSV (same format
@@ -141,6 +141,7 @@ export function EmailInteractions() {
   const queryClient = useQueryClient()
   const { data: me } = useCurrentUser()
   const { byRef, save } = useLeadTracking()
+  const k = (name: string) => keyFor(me?.id, name)
   const fileRef = useRef<HTMLInputElement>(null)
   const [importing, setImporting] = useState(false)
 
@@ -253,16 +254,19 @@ export function EmailInteractions() {
   }
 
   // --- date range on the latest book-a-demo click date ---
-  const [range, setRange] = usePersisted<'all' | 'month' | 'custom'>('gsi:csv:v1:range', 'all')
-  const [customFrom, setCustomFrom] = usePersisted('gsi:csv:v1:from', '')
-  const [customTo, setCustomTo] = usePersisted('gsi:csv:v1:to', '')
+  const [range, setRange] = usePersisted<'all' | 'month' | 'custom'>(k('csv:range'), 'all')
+  const [customFrom, setCustomFrom] = usePersisted(k('csv:from'), '')
+  const [customTo, setCustomTo] = usePersisted(k('csv:to'), '')
 
   // --- filters ---
-  const [fCompany, setFCompany] = usePersisted('gsi:csv:v1:fCompany', '')
-  const [fSequence, setFSequence] = usePersisted('gsi:csv:v1:fSequence', '')
-  const [fSearch, setFSearch] = usePersisted('gsi:csv:v1:fSearch', '')
-  const hasFilters = !!(fCompany || fSequence || fSearch)
-  const clearFilters = () => { setFCompany(''); setFSequence(''); setFSearch('') }
+  const [fCompany, setFCompany] = usePersisted(k('csv:fCompany'), '')
+  const [fSequence, setFSequence] = usePersisted(k('csv:fSequence'), '')
+  const [fSearch, setFSearch] = usePersisted(k('csv:fSearch'), '')
+  const hasFilters = !!(fCompany || fSequence || fSearch || range !== 'all' || customFrom || customTo)
+  const clearFilters = () => {
+    setFCompany(''); setFSequence(''); setFSearch('')
+    setRange('all'); setCustomFrom(''); setCustomTo('') // the range can hide every row too
+  }
 
   const opts = useMemo(() => {
     const distinct = (get: (r: EmailLead) => string | undefined) =>
@@ -302,8 +306,8 @@ export function EmailInteractions() {
     | 'demo_click_date' | 'company' | 'clicks' | 'total' | 'contact' | 'sequence'
     | 'email_stage' | 'call_status' | 'li_stage' | 'wa_status'
   const TRACK_SORT_KEYS: SortKey[] = ['email_stage', 'call_status', 'li_stage', 'wa_status']
-  const [sortKey, setSortKey] = usePersisted<SortKey>('gsi:csv:v1:sortKey', 'demo_click_date')
-  const [sortDir, setSortDir] = usePersisted<'asc' | 'desc'>('gsi:csv:v1:sortDir', 'desc')
+  const [sortKey, setSortKey] = usePersisted<SortKey>(k('csv:sortKey'), 'demo_click_date')
+  const [sortDir, setSortDir] = usePersisted<'asc' | 'desc'>(k('csv:sortDir'), 'desc')
   const sorted = useMemo(() => {
     const arr = [...filtered]
     const text = (r: EmailLead): string => {

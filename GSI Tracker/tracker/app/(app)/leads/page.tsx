@@ -1,6 +1,7 @@
 'use client'
 
-import { useTasks, useChannels } from '@/lib/hooks/use-data'
+import { useTasks, useChannels, useCurrentUser } from '@/lib/hooks/use-data'
+import { usePersisted, keyFor } from '@/lib/hooks/use-persisted'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -628,7 +629,10 @@ export default function LeadsPage() {
 }
 
 function LeadsTabs() {
-  const [tab, setTab] = useState<'hubspot' | 'email' | 'csv'>('hubspot')
+  const { data: me } = useCurrentUser()
+  // Persisted with the rest of the view state — otherwise a refresh silently
+  // returns you to HubSpot while your Email Interactions filters sit unused.
+  const [tab, setTab] = usePersisted<'hubspot' | 'email' | 'csv'>(keyFor(me?.id, 'leads:tab'), 'hubspot')
   return (
     <div className="space-y-5">
       <div className="pl-12 lg:pl-0 flex items-center justify-between flex-wrap gap-3">

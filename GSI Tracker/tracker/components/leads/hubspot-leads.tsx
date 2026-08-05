@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useCurrentUser } from '@/lib/hooks/use-data'
@@ -10,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Building2, Download, Filter, Loader2, Plus, ArrowUpDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, startOfWeek, startOfMonth } from 'date-fns'
-import { usePersisted } from '@/lib/hooks/use-persisted'
+import { usePersisted, keyFor, writeRaw } from '@/lib/hooks/use-persisted'
 import { useLeadTracking, TrackCells, TrackCellHeaders, stageRank, type Tracking } from './track-cells'
 
 // READ-ONLY pull from HubSpot via the Pages Function (token stays server-side).
@@ -31,7 +31,9 @@ const PULL_TTL_MS = 60 * 60 * 1000
 // Persisted timestamps are user-editable storage — never let one crash the page
 function safeStamp(iso: string): string | null {
   const d = new Date(iso)
-  return isNaN(d.getTime()) ? null : format(d, 'd MMM, h:mm a')
+  if (isNaN(d.getTime())) return null
+  const old = Date.now() - d.getTime() > 30 * 24 * 60 * 60 * 1000
+  return format(d, old ? 'd MMM yyyy, h:mm a' : 'd MMM, h:mm a')
 }
 
 // Lead Score Category (Lead Scoring Agent) → chip color
@@ -59,6 +61,9 @@ export function HubSpotLeads() {
   const queryClient = useQueryClient()
   const { data: me } = useCurrentUser()
   const { byRef, save } = useLeadTracking()
+  // Pulled leads are customer PII — every persisted key is scoped to the
+  // signed-in user, and all of them are purged on sign-out.
+  const k = (name: string) => keyFor(me?.id, name)
 
   // --- extra companies (stored in our DB, extend the built-in rule) ---
   const { data: companies, error: companiesError } = useQuery({
@@ -85,12 +90,14 @@ export function HubSpotLeads() {
 
   // --- date range + pull ---
   // Persisted so leaving the page (or refreshing) never forces a re-pull
-  const [range, setRange] = usePersisted<'all' | 'today' | 'week' | 'month' | 'custom'>('gsi:hs:v1:range', 'month')
-  const [customFrom, setCustomFrom] = usePersisted('gsi:hs:v1:from', '')
-  const [customTo, setCustomTo] = usePersisted('gsi:hs:v1:to', '')
-  const [leads, setLeads] = usePersisted<Lead[]>('gsi:hs:v1:leads', [])
+  const [range, setRange] = usePersisted<'all' | 'today' | 'week' | 'month' | 'custom'>(k('hs:range'), 'month')
+  const [customFrom, setCustomFrom] = usePersisted(k('hs:from'), '')
+  const [customTo, setCustomTo] = usePersisted(k('hs:to'), '')
+  // One record: a stored "last pulled" time can never describe rows that aren't there.
+  const [pull0, setPull0] = usePersisted<{ leads: Lead[]; at: string } | null>(k('hs:pull'), null)
+  const leads = pull0?.leads ?? []
+  const pulledAt = pull0?.at ?? null
   const [pulling, setPulling] = useState(false)
-  const [pulledAt, setPulledAt] = usePersisted<string | null>('gsi:hs:v1:pulledAt', null)
 
   const rangeDates = (): { from?: string; to?: string } => {
     const today = new Date()
@@ -113,8 +120,13 @@ export function HubSpotLeads() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
-      setLeads(data.leads || [])
-      setPulledAt(new Date().toISOString())
+      const record = { leads: (data.leads || []) as Lead[], at: new Date().toISOString() }
+      // Write through immediately: if this resolved after the component
+      // unmounted (tab switch mid-pull), the effect would never run and the
+      // pull would be silently thrown away.
+      const pk = k('hs:pull')
+      if (pk) writeRaw(pk, JSON.stringify(record))
+      setPull0(record)
       if (data.truncated) toast.warning(`Pulled ${data.count} leads — results were capped; narrow the date range for a complete pull`)
       else toast.success(`Pulled ${data.count} leads from HubSpot (read-only)`)
     } catch (err) {
@@ -138,13 +150,13 @@ export function HubSpotLeads() {
   }, [pulledAt, leads.length, pulling])
 
   // --- filters (applied to whatever was pulled) ---
-  const [fVia, setFVia] = usePersisted('gsi:hs:v1:fVia', '')
-  const [fCompany, setFCompany] = usePersisted('gsi:hs:v1:fCompany', '')
-  const [fSource, setFSource] = usePersisted('gsi:hs:v1:fSource', '')
-  const [fScoreCat, setFScoreCat] = usePersisted('gsi:hs:v1:fScoreCat', '')
-  const [fOwner, setFOwner] = usePersisted('gsi:hs:v1:fOwner', '')
-  const [fMinScore, setFMinScore] = usePersisted('gsi:hs:v1:fMinScore', '')
-  const [fSearch, setFSearch] = usePersisted('gsi:hs:v1:fSearch', '')
+  const [fVia, setFVia] = usePersisted(k('hs:fVia'), '')
+  const [fCompany, setFCompany] = usePersisted(k('hs:fCompany'), '')
+  const [fSource, setFSource] = usePersisted(k('hs:fSource'), '')
+  const [fScoreCat, setFScoreCat] = usePersisted(k('hs:fScoreCat'), '')
+  const [fOwner, setFOwner] = usePersisted(k('hs:fOwner'), '')
+  const [fMinScore, setFMinScore] = usePersisted(k('hs:fMinScore'), '')
+  const [fSearch, setFSearch] = usePersisted(k('hs:fSearch'), '')
   const hasFilters = !!(fVia || fCompany || fSource || fScoreCat || fOwner || fMinScore || fSearch)
   const clearFilters = () => { setFVia(''); setFCompany(''); setFSource(''); setFScoreCat(''); setFOwner(''); setFMinScore(''); setFSearch('') }
 
@@ -168,6 +180,7 @@ export function HubSpotLeads() {
     if (fOwner && !opts.owners.includes(fOwner)) setFOwner('')
   }, [leads, opts, fCompany, fSource, fScoreCat, fOwner, setFCompany, setFSource, setFScoreCat, setFOwner])
 
+  const deferredSearch = useDeferredValue(fSearch)
   const filtered = useMemo(() => leads.filter(l => {
     if (fVia && !(l.via || []).includes(fVia)) return false
     if (fCompany && (l.company || '').trim() !== fCompany) return false
@@ -175,12 +188,12 @@ export function HubSpotLeads() {
     if (fScoreCat && (l.scoreCategory || '').trim() !== fScoreCat) return false
     if (fOwner && (l.owner || '').trim() !== fOwner) return false
     if (fMinScore && (Number(l.leadScore) || 0) < Number(fMinScore)) return false
-    if (fSearch) {
-      const q = fSearch.toLowerCase()
+    if (deferredSearch) {
+      const q = deferredSearch.toLowerCase()
       if (![l.name, l.email, l.company, l.leadSource, l.owner].some(v => (v || '').toLowerCase().includes(q))) return false
     }
     return true
-  }), [leads, fVia, fCompany, fSource, fScoreCat, fOwner, fMinScore, fSearch])
+  }), [leads, fVia, fCompany, fSource, fScoreCat, fOwner, fMinScore, deferredSearch])
 
   // --- sorting ---
   type SortKey =
@@ -201,8 +214,8 @@ export function HubSpotLeads() {
       default:         return ''
     }
   }
-  const [sortKey, setSortKey] = usePersisted<SortKey>('gsi:hs:v1:sortKey', 'created')
-  const [sortDir, setSortDir] = usePersisted<'asc' | 'desc'>('gsi:hs:v1:sortDir', 'desc')
+  const [sortKey, setSortKey] = usePersisted<SortKey>(k('hs:sortKey'), 'created')
+  const [sortDir, setSortDir] = usePersisted<'asc' | 'desc'>(k('hs:sortDir'), 'desc')
   const sorted = useMemo(() => {
     const arr = [...filtered]
     arr.sort((a, b) => {

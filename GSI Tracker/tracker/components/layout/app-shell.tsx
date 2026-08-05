@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Calendar,
   LayoutDashboard, ListTodo, ChevronDown, ChevronRight,
@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { TIER_CONFIG, type Channel } from '@/lib/types/database'
+import { purgePersisted, purgeLegacyKeys } from '@/lib/hooks/use-persisted'
 
 function ChannelItem({ channel, depth }: { channel: Channel; depth: number }) {
   const pathname = usePathname()
@@ -89,7 +90,13 @@ export function AppSidebar() {
     { href: '/resources', icon: BookOpen, label: 'GSI Resources' },
   ]
 
+  // Clear lead data written by the earlier, un-scoped version of persistence.
+  useEffect(() => { purgeLegacyKeys() }, [])
+
   const handleSignOut = async () => {
+    // Pulled lead data is customer PII — it must not outlive the session on a
+    // shared browser profile, where the next person to sign in would see it.
+    purgePersisted()
     await signOut()
     router.push('/login')
   }
