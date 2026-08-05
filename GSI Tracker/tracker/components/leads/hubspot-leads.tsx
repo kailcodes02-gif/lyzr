@@ -7,7 +7,7 @@ import { useCurrentUser } from '@/lib/hooks/use-data'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
-import { Building2, Download, Loader2, Plus, ArrowUpDown } from 'lucide-react'
+import { Building2, Download, Filter, Loader2, Plus, ArrowUpDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, startOfWeek, startOfMonth } from 'date-fns'
 import { useLeadTracking, TrackCells, TrackCellHeaders } from './track-cells'
@@ -40,7 +40,7 @@ export function HubSpotLeads() {
   const { byRef, save } = useLeadTracking()
 
   // --- extra companies (stored in our DB, extend the built-in rule) ---
-  const { data: companies } = useQuery({
+  const { data: companies, error: companiesError } = useQuery({
     queryKey: ['leadCompanies'],
     queryFn: async () => {
       const { data, error } = await supabase.from('lead_companies').select('*').order('name')
@@ -101,29 +101,67 @@ export function HubSpotLeads() {
     }
   }
 
+  // --- filters (applied to whatever was pulled) ---
+  const [fVia, setFVia] = useState('')
+  const [fCompany, setFCompany] = useState('')
+  const [fSource, setFSource] = useState('')
+  const [fScoreCat, setFScoreCat] = useState('')
+  const [fOwner, setFOwner] = useState('')
+  const [fMinScore, setFMinScore] = useState('')
+  const [fSearch, setFSearch] = useState('')
+  const hasFilters = !!(fVia || fCompany || fSource || fScoreCat || fOwner || fMinScore || fSearch)
+  const clearFilters = () => { setFVia(''); setFCompany(''); setFSource(''); setFScoreCat(''); setFOwner(''); setFMinScore(''); setFSearch('') }
+
+  const opts = useMemo(() => {
+    const distinct = (get: (l: Lead) => string | number | undefined) =>
+      [...new Set(leads.map(get).map(v => String(v ?? '').trim()).filter(Boolean))].sort()
+    return {
+      companies: distinct(l => l.company),
+      sources: distinct(l => l.leadSource),
+      scoreCats: distinct(l => l.scoreCategory),
+      owners: distinct(l => l.owner),
+    }
+  }, [leads])
+
+  const filtered = useMemo(() => leads.filter(l => {
+    if (fVia && !(l.via || []).includes(fVia)) return false
+    if (fCompany && (l.company || '').trim() !== fCompany) return false
+    if (fSource && (l.leadSource || '').trim() !== fSource) return false
+    if (fScoreCat && (l.scoreCategory || '').trim() !== fScoreCat) return false
+    if (fOwner && (l.owner || '').trim() !== fOwner) return false
+    if (fMinScore && (Number(l.leadScore) || 0) < Number(fMinScore)) return false
+    if (fSearch) {
+      const q = fSearch.toLowerCase()
+      if (![l.name, l.email, l.company, l.leadSource, l.owner].some(v => (v || '').toLowerCase().includes(q))) return false
+    }
+    return true
+  }), [leads, fVia, fCompany, fSource, fScoreCat, fOwner, fMinScore, fSearch])
+
   // --- sorting ---
-  const [sortKey, setSortKey] = useState<'created' | 'company' | 'name' | 'score'>('created')
+  type SortKey = 'created' | 'company' | 'name' | 'score' | 'source' | 'owner' | 'activity'
+  const [sortKey, setSortKey] = useState<SortKey>('created')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const sorted = useMemo(() => {
-    const arr = [...leads]
+    const arr = [...filtered]
     arr.sort((a, b) => {
       let cmp: number
       if (sortKey === 'score') {
         cmp = (Number(a.leadScore) || 0) - (Number(b.leadScore) || 0)
       } else {
-        cmp = String(a[sortKey] || '').toLowerCase().localeCompare(String(b[sortKey] || '').toLowerCase())
+        const field = sortKey === 'source' ? 'leadSource' : sortKey === 'activity' ? 'lastActivity' : sortKey
+        cmp = String(a[field] || '').toLowerCase().localeCompare(String(b[field] || '').toLowerCase())
       }
       return sortDir === 'asc' ? cmp : -cmp
     })
     return arr
-  }, [leads, sortKey, sortDir])
+  }, [filtered, sortKey, sortDir])
 
-  const toggleSort = (key: 'created' | 'company' | 'name' | 'score') => {
+  const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
     else { setSortKey(key); setSortDir('desc') }
   }
 
-  const Th = ({ label, k }: { label: string; k?: 'created' | 'company' | 'name' | 'score' }) => (
+  const Th = ({ label, k }: { label: string; k?: SortKey }) => (
     <th className="text-left font-medium py-2.5 px-3 whitespace-nowrap">
       {k ? (
         <button onClick={() => toggleSort(k)} className="inline-flex items-center gap-1 hover:text-zinc-900">
@@ -146,6 +184,12 @@ export function HubSpotLeads() {
             anju · praveen · bharath · kaushik · pooja, and any lead with &quot;GSI&quot; in its source
             properties or searchable text. Add companies here only to extend that rule.
           </p>
+          {companiesError && (
+            <p className="text-[11px] text-red-600">
+              Couldn&apos;t load: {(companiesError as Error).message}. If this mentions a missing
+              table, run supabase/migrations/011_lead_tracking.sql in the Supabase SQL Editor.
+            </p>
+          )}
           <div className="flex flex-wrap gap-1.5">
             {companies?.map(c => (
               <span key={c.id} className="inline-flex items-center gap-1 rounded-md bg-zinc-100 border border-zinc-300 px-2 py-0.5 text-[11px] text-zinc-700">
@@ -193,12 +237,58 @@ export function HubSpotLeads() {
         {pulledAt && <span className="text-[11px] text-zinc-500">Last pulled {pulledAt} · read-only, nothing is written to HubSpot</span>}
       </div>
 
+      {/* Filters */}
+      {leads.length > 0 && (
+        <Card className="bg-white border-zinc-200">
+          <CardContent className="p-3 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-600">
+              <Filter className="w-3.5 h-3.5 text-blue-600" /> Filter
+            </span>
+            <Input value={fSearch} onChange={e => setFSearch(e.target.value)} placeholder="Search name / email / company…"
+              className="h-8 w-56 text-xs bg-zinc-50 border-zinc-300 text-zinc-800" />
+            <select value={fVia} onChange={e => setFVia(e.target.value)}
+              className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-zinc-700">
+              <option value="">Via: all</option>
+              <option value="company">Via company</option>
+              <option value="owner">Via owner</option>
+              <option value="gsi">Via GSI</option>
+            </select>
+            <select value={fCompany} onChange={e => setFCompany(e.target.value)}
+              className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-zinc-700 max-w-[180px]">
+              <option value="">Company: all</option>
+              {opts.companies.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select value={fSource} onChange={e => setFSource(e.target.value)}
+              className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-zinc-700 max-w-[170px]">
+              <option value="">Lead source: all</option>
+              {opts.sources.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select value={fScoreCat} onChange={e => setFScoreCat(e.target.value)}
+              className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-zinc-700">
+              <option value="">Score category: all</option>
+              {opts.scoreCats.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select value={fOwner} onChange={e => setFOwner(e.target.value)}
+              className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-zinc-700 max-w-[160px]">
+              <option value="">HS owner: all</option>
+              {opts.owners.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+            <Input type="number" value={fMinScore} onChange={e => setFMinScore(e.target.value)} placeholder="Min score"
+              className="h-8 w-24 text-xs bg-zinc-50 border-zinc-300 text-zinc-800" />
+            {hasFilters && (
+              <button onClick={clearFilters} className="text-xs text-blue-600 hover:text-blue-500 font-medium">Clear ✕</button>
+            )}
+            <span className="ml-auto text-[11px] text-zinc-500">{sorted.length} of {leads.length} leads</span>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Leads table */}
       <Card className="bg-white border-zinc-200">
         <CardContent className="p-0 overflow-x-auto">
-          {leads.length === 0 ? (
+          {sorted.length === 0 ? (
             <p className="text-center text-sm text-zinc-500 py-14">
-              No leads pulled yet — pick a date range and hit “Pull from HubSpot”. The built-in GSI rule applies automatically.
+              {leads.length ? 'No leads match the current filters.' : 'No leads pulled yet — pick a date range and hit “Pull from HubSpot”. The built-in GSI rule applies automatically.'}
             </p>
           ) : (
             <table className="w-full text-xs min-w-[1500px]">
@@ -208,11 +298,10 @@ export function HubSpotLeads() {
                   <Th label="Lead" k="name" />
                   <Th label="Company" k="company" />
                   <Th label="Lead score" k="score" />
-                  <Th label="Lead source" />
-                  <Th label="Source" />
+                  <Th label="Lead source" k="source" />
                   <Th label="Created" k="created" />
-                  <Th label="Status / activity" />
-                  <Th label="HS owner" />
+                  <Th label="Status / activity" k="activity" />
+                  <Th label="HS owner" k="owner" />
                   <TrackCellHeaders />
                 </tr>
               </thead>
@@ -241,11 +330,10 @@ export function HubSpotLeads() {
                         </span>
                       )}
                     </td>
-                    <td className="py-2 px-3 text-zinc-600 max-w-[130px]">
+                    <td className="py-2 px-3 text-zinc-600 max-w-[150px]">
                       <p className="truncate" title={lead.leadSource}>{lead.leadSource || '—'}</p>
                       {lead.sourceCategory && <p className="text-[10px] text-zinc-400 truncate" title={lead.sourceCategory}>{lead.sourceCategory}</p>}
                     </td>
-                    <td className="py-2 px-3 text-zinc-600 max-w-[130px] truncate" title={lead.source}>{lead.source || '—'}</td>
                     <td className="py-2 px-3 text-zinc-600 whitespace-nowrap">
                       {lead.created ? format(new Date(lead.created), 'd MMM yyyy') : '—'}
                     </td>

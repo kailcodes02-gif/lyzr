@@ -8,7 +8,7 @@ import { useCurrentUser } from '@/lib/hooks/use-data'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
-import { ArrowUpDown, ChevronDown, ChevronRight, FileUp, Loader2, MousePointerClick, Trash2 } from 'lucide-react'
+import { ArrowUpDown, ChevronDown, ChevronRight, FileUp, Filter, Loader2, MousePointerClick, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { useLeadTracking, TrackCells, TrackCellHeaders, type Tracking } from './track-cells'
@@ -129,7 +129,7 @@ export function EmailInteractions() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [importing, setImporting] = useState(false)
 
-  const { data: rows, isLoading } = useQuery({
+  const { data: rows, isLoading, error: loadError } = useQuery({
     queryKey: ['emailLeads'],
     queryFn: async () => {
       const { data, error } = await supabase.from('email_leads').select('*').order('demo_click_date', { ascending: false })
@@ -140,7 +140,8 @@ export function EmailInteractions() {
 
   const importFiles = async (files: FileList) => {
     setImporting(true)
-    let ok = 0, skipped = 0
+    let ok = 0, invalid = 0, failed = 0
+    let firstError = ''
     try {
       for (const file of Array.from(files)) {
         const text = await file.text()
@@ -156,7 +157,7 @@ export function EmailInteractions() {
             else generic[key.trim()] = v
           }
           const email = (slots.email || '').toLowerCase()
-          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { skipped++; continue }
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { invalid++; continue }
           const name = slots.name || [slots.first, slots.last].filter(Boolean).join(' ')
           const demoDate = parseClickDate(slots.latest_click || '')
           const extra: Record<string, string> = {
@@ -178,14 +179,22 @@ export function EmailInteractions() {
             uploaded_by: me?.id,
             uploaded_at: new Date().toISOString(),
           }, { onConflict: 'email' })
-          if (error) { skipped++; continue }
+          if (error) { failed++; if (!firstError) firstError = error.message; continue }
           ok++
           const seeded = seedStatuses(slots.st_linkedin || '', slots.st_whatsapp || '', slots.st_email || '')
           if (Object.keys(seeded).length) await save(`email:${email}`, seeded)
         }
       }
       queryClient.invalidateQueries({ queryKey: ['emailLeads'] })
-      toast.success(`Imported/updated ${ok} contact${ok === 1 ? '' : 's'}${skipped ? ` · ${skipped} rows skipped (no valid email)` : ''}`)
+      if (failed) {
+        const missingTable = /could not find the table|schema cache/i.test(firstError)
+        toast.error(missingTable
+          ? 'Nothing saved — the lead tables are missing in Supabase. Run supabase/migrations/011_lead_tracking.sql in the SQL Editor, then re-upload.'
+          : `Saved ${ok}, failed ${failed}: ${firstError}`,
+          { duration: 12000 })
+      } else {
+        toast.success(`Imported/updated ${ok} contact${ok === 1 ? '' : 's'}${invalid ? ` · ${invalid} rows skipped (no valid email)` : ''}`)
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Import failed')
     } finally {
@@ -205,6 +214,22 @@ export function EmailInteractions() {
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
 
+  // --- filters ---
+  const [fCompany, setFCompany] = useState('')
+  const [fSequence, setFSequence] = useState('')
+  const [fSearch, setFSearch] = useState('')
+  const hasFilters = !!(fCompany || fSequence || fSearch)
+  const clearFilters = () => { setFCompany(''); setFSequence(''); setFSearch('') }
+
+  const opts = useMemo(() => {
+    const distinct = (get: (r: EmailLead) => string | undefined) =>
+      [...new Set((rows || []).map(get).map(v => (v || '').trim()).filter(Boolean))].sort()
+    return {
+      companies: distinct(r => r.company || ''),
+      sequences: distinct(r => (r.extra || {}).sequence),
+    }
+  }, [rows])
+
   const filtered = useMemo(() => {
     let arr = rows || []
     if (range === 'month') {
@@ -214,8 +239,14 @@ export function EmailInteractions() {
       if (customFrom) arr = arr.filter(r => r.demo_click_date && r.demo_click_date >= customFrom)
       if (customTo) arr = arr.filter(r => r.demo_click_date && r.demo_click_date <= customTo)
     }
+    if (fCompany) arr = arr.filter(r => (r.company || '').trim() === fCompany)
+    if (fSequence) arr = arr.filter(r => ((r.extra || {}).sequence || '').trim() === fSequence)
+    if (fSearch) {
+      const q = fSearch.toLowerCase()
+      arr = arr.filter(r => [r.name, r.email, r.company, (r.extra || {}).sequence].some(v => (v || '').toLowerCase().includes(q)))
+    }
     return arr
-  }, [rows, range, customFrom, customTo])
+  }, [rows, range, customFrom, customTo, fCompany, fSequence, fSearch])
 
   // --- sorting ---
   const [sortKey, setSortKey] = useState<'demo_click_date' | 'company' | 'clicks' | 'total'>('demo_click_date')
@@ -261,6 +292,14 @@ export function EmailInteractions() {
 
   return (
     <div className="space-y-4">
+      {loadError && (
+        <Card className="bg-red-50 border-red-200">
+          <CardContent className="p-3 text-xs text-red-700">
+            Couldn&apos;t load saved contacts: {(loadError as Error).message}. If this mentions a
+            missing table, run supabase/migrations/011_lead_tracking.sql in the Supabase SQL Editor.
+          </CardContent>
+        </Card>
+      )}
       {/* CSV format reference — always visible */}
       <Card className="bg-blue-50/50 border-blue-200">
         <CardContent className="p-3">
@@ -308,6 +347,33 @@ export function EmailInteractions() {
         </span>
       </div>
 
+      {/* Filters */}
+      {(rows?.length || 0) > 0 && (
+        <Card className="bg-white border-zinc-200">
+          <CardContent className="p-3 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-600">
+              <Filter className="w-3.5 h-3.5 text-blue-600" /> Filter
+            </span>
+            <Input value={fSearch} onChange={e => setFSearch(e.target.value)} placeholder="Search email / company / sequence…"
+              className="h-8 w-56 text-xs bg-zinc-50 border-zinc-300 text-zinc-800" />
+            <select value={fCompany} onChange={e => setFCompany(e.target.value)}
+              className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-zinc-700 max-w-[180px]">
+              <option value="">Company: all</option>
+              {opts.companies.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select value={fSequence} onChange={e => setFSequence(e.target.value)}
+              className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-zinc-700 max-w-[200px]">
+              <option value="">Sequence/Account: all</option>
+              {opts.sequences.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            {hasFilters && (
+              <button onClick={clearFilters} className="text-xs text-blue-600 hover:text-blue-500 font-medium">Clear ✕</button>
+            )}
+            <span className="ml-auto text-[11px] text-zinc-500">{sorted.length} of {rows?.length || 0} contacts</span>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Table */}
       <Card className="bg-white border-zinc-200">
         <CardContent className="p-0 overflow-x-auto">
@@ -315,7 +381,7 @@ export function EmailInteractions() {
             <p className="text-center text-sm text-zinc-500 py-14">Loading…</p>
           ) : sorted.length === 0 ? (
             <p className="text-center text-sm text-zinc-500 py-14">
-              {rows?.length ? 'Nothing in this date range.' : 'No contacts yet — upload the book-a-demo clickers CSV (Download Sample CSV shows the exact format).'}
+              {rows?.length ? 'Nothing matches the current filters / date range.' : 'No contacts yet — upload the book-a-demo clickers CSV (Download Sample CSV shows the exact format).'}
             </p>
           ) : (
             <table className="w-full text-xs min-w-[1250px]">
