@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Papa from 'papaparse'
 import { createClient } from '@/lib/supabase/client'
@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ArrowUpDown, ChevronDown, ChevronRight, FileUp, Filter, Loader2, MousePointerClick, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
+import { usePersisted } from '@/lib/hooks/use-persisted'
 import { useLeadTracking, TrackCells, TrackCellHeaders, type Tracking } from './track-cells'
 
 // Email Interactions dashboard: upload the book-a-demo clickers CSV (same format
@@ -150,6 +151,7 @@ export function EmailInteractions() {
       if (error) throw error
       return data as EmailLead[]
     },
+    staleTime: 5 * 60 * 1000, // uploads persist in Postgres; no need to refetch on every visit
   })
 
   const importFiles = async (files: FileList) => {
@@ -251,14 +253,14 @@ export function EmailInteractions() {
   }
 
   // --- date range on the latest book-a-demo click date ---
-  const [range, setRange] = useState<'all' | 'month' | 'custom'>('all')
-  const [customFrom, setCustomFrom] = useState('')
-  const [customTo, setCustomTo] = useState('')
+  const [range, setRange] = usePersisted<'all' | 'month' | 'custom'>('gsi:csv:v1:range', 'all')
+  const [customFrom, setCustomFrom] = usePersisted('gsi:csv:v1:from', '')
+  const [customTo, setCustomTo] = usePersisted('gsi:csv:v1:to', '')
 
   // --- filters ---
-  const [fCompany, setFCompany] = useState('')
-  const [fSequence, setFSequence] = useState('')
-  const [fSearch, setFSearch] = useState('')
+  const [fCompany, setFCompany] = usePersisted('gsi:csv:v1:fCompany', '')
+  const [fSequence, setFSequence] = usePersisted('gsi:csv:v1:fSequence', '')
+  const [fSearch, setFSearch] = usePersisted('gsi:csv:v1:fSearch', '')
   const hasFilters = !!(fCompany || fSequence || fSearch)
   const clearFilters = () => { setFCompany(''); setFSequence(''); setFSearch('') }
 
@@ -270,6 +272,12 @@ export function EmailInteractions() {
       sequences: distinct(r => (r.extra || {}).sequence),
     }
   }, [rows])
+
+  useEffect(() => {
+    if (!rows?.length) return // still loading — don't clear a saved filter
+    if (fCompany && !opts.companies.includes(fCompany)) setFCompany('')
+    if (fSequence && !opts.sequences.includes(fSequence)) setFSequence('')
+  }, [rows, opts, fCompany, fSequence, setFCompany, setFSequence])
 
   const filtered = useMemo(() => {
     let arr = rows || []
@@ -290,8 +298,8 @@ export function EmailInteractions() {
   }, [rows, range, customFrom, customTo, fCompany, fSequence, fSearch])
 
   // --- sorting ---
-  const [sortKey, setSortKey] = useState<'demo_click_date' | 'company' | 'clicks' | 'total'>('demo_click_date')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const [sortKey, setSortKey] = usePersisted<'demo_click_date' | 'company' | 'clicks' | 'total'>('gsi:csv:v1:sortKey', 'demo_click_date')
+  const [sortDir, setSortDir] = usePersisted<'asc' | 'desc'>('gsi:csv:v1:sortDir', 'desc')
   const sorted = useMemo(() => {
     const arr = [...filtered]
     arr.sort((a, b) => {

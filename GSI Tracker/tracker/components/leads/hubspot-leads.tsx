@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Building2, Download, Filter, Loader2, Plus, ArrowUpDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, startOfWeek, startOfMonth } from 'date-fns'
+import { usePersisted } from '@/lib/hooks/use-persisted'
 import { useLeadTracking, TrackCells, TrackCellHeaders } from './track-cells'
 
 // READ-ONLY pull from HubSpot via the Pages Function (token stays server-side).
@@ -22,6 +23,12 @@ type Lead = {
   leadScore?: string | number; scoreCategory?: string
   leadSource?: string; sourceCategory?: string
   via?: string[]
+}
+
+// Persisted timestamps are user-editable storage — never let one crash the page
+function safeStamp(iso: string): string | null {
+  const d = new Date(iso)
+  return isNaN(d.getTime()) ? null : format(d, 'd MMM, h:mm a')
 }
 
 // Lead Score Category (Lead Scoring Agent) → chip color
@@ -63,12 +70,13 @@ export function HubSpotLeads() {
   }
 
   // --- date range + pull ---
-  const [range, setRange] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>('month')
-  const [customFrom, setCustomFrom] = useState('')
-  const [customTo, setCustomTo] = useState('')
-  const [leads, setLeads] = useState<Lead[]>([])
+  // Persisted so leaving the page (or refreshing) never forces a re-pull
+  const [range, setRange] = usePersisted<'all' | 'today' | 'week' | 'month' | 'custom'>('gsi:hs:v1:range', 'month')
+  const [customFrom, setCustomFrom] = usePersisted('gsi:hs:v1:from', '')
+  const [customTo, setCustomTo] = usePersisted('gsi:hs:v1:to', '')
+  const [leads, setLeads] = usePersisted<Lead[]>('gsi:hs:v1:leads', [])
   const [pulling, setPulling] = useState(false)
-  const [pulledAt, setPulledAt] = useState<string | null>(null)
+  const [pulledAt, setPulledAt] = usePersisted<string | null>('gsi:hs:v1:pulledAt', null)
 
   const rangeDates = (): { from?: string; to?: string } => {
     const today = new Date()
@@ -92,7 +100,7 @@ export function HubSpotLeads() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       setLeads(data.leads || [])
-      setPulledAt(new Date().toLocaleTimeString())
+      setPulledAt(new Date().toISOString())
       if (data.truncated) toast.warning(`Pulled ${data.count} leads — results were capped; narrow the date range for a complete pull`)
       else toast.success(`Pulled ${data.count} leads from HubSpot (read-only)`)
     } catch (err) {
@@ -103,13 +111,13 @@ export function HubSpotLeads() {
   }
 
   // --- filters (applied to whatever was pulled) ---
-  const [fVia, setFVia] = useState('')
-  const [fCompany, setFCompany] = useState('')
-  const [fSource, setFSource] = useState('')
-  const [fScoreCat, setFScoreCat] = useState('')
-  const [fOwner, setFOwner] = useState('')
-  const [fMinScore, setFMinScore] = useState('')
-  const [fSearch, setFSearch] = useState('')
+  const [fVia, setFVia] = usePersisted('gsi:hs:v1:fVia', '')
+  const [fCompany, setFCompany] = usePersisted('gsi:hs:v1:fCompany', '')
+  const [fSource, setFSource] = usePersisted('gsi:hs:v1:fSource', '')
+  const [fScoreCat, setFScoreCat] = usePersisted('gsi:hs:v1:fScoreCat', '')
+  const [fOwner, setFOwner] = usePersisted('gsi:hs:v1:fOwner', '')
+  const [fMinScore, setFMinScore] = usePersisted('gsi:hs:v1:fMinScore', '')
+  const [fSearch, setFSearch] = usePersisted('gsi:hs:v1:fSearch', '')
   const hasFilters = !!(fVia || fCompany || fSource || fScoreCat || fOwner || fMinScore || fSearch)
   const clearFilters = () => { setFVia(''); setFCompany(''); setFSource(''); setFScoreCat(''); setFOwner(''); setFMinScore(''); setFSearch('') }
 
@@ -126,11 +134,12 @@ export function HubSpotLeads() {
 
   // Drop any selected filter value that vanished from a fresh pull
   useEffect(() => {
+    if (!leads.length) return // nothing to validate against yet (still restoring)
     if (fCompany && !opts.companies.includes(fCompany)) setFCompany('')
     if (fSource && !opts.sources.includes(fSource)) setFSource('')
     if (fScoreCat && !opts.scoreCats.includes(fScoreCat)) setFScoreCat('')
     if (fOwner && !opts.owners.includes(fOwner)) setFOwner('')
-  }, [opts, fCompany, fSource, fScoreCat, fOwner])
+  }, [leads, opts, fCompany, fSource, fScoreCat, fOwner, setFCompany, setFSource, setFScoreCat, setFOwner])
 
   const filtered = useMemo(() => leads.filter(l => {
     if (fVia && !(l.via || []).includes(fVia)) return false
@@ -148,8 +157,8 @@ export function HubSpotLeads() {
 
   // --- sorting ---
   type SortKey = 'created' | 'company' | 'name' | 'score' | 'source' | 'owner' | 'activity'
-  const [sortKey, setSortKey] = useState<SortKey>('created')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const [sortKey, setSortKey] = usePersisted<SortKey>('gsi:hs:v1:sortKey', 'created')
+  const [sortDir, setSortDir] = usePersisted<'asc' | 'desc'>('gsi:hs:v1:sortDir', 'desc')
   const sorted = useMemo(() => {
     const arr = [...filtered]
     arr.sort((a, b) => {
@@ -243,7 +252,11 @@ export function HubSpotLeads() {
           {pulling ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
           Pull from HubSpot
         </Button>
-        {pulledAt && <span className="text-[11px] text-zinc-500">Last pulled {pulledAt} · read-only, nothing is written to HubSpot</span>}
+        {pulledAt && safeStamp(pulledAt) && (
+          <span className="text-[11px] text-zinc-500">
+            Last pulled {safeStamp(pulledAt)} · kept until you pull again · read-only, nothing is written to HubSpot
+          </span>
+        )}
       </div>
 
       {/* Filters */}
