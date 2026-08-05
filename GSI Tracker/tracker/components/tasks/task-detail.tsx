@@ -1513,7 +1513,7 @@ function AlsoChannelsEditor({ homeChannelId, planningFields, onSave }: {
   onSave: (fields: Record<string, unknown>) => void
 }) {
   const { data: channels } = useChannels()
-  const [pick, setPick] = useState('')
+  const [pickedChannel, setPickedChannel] = useState('')
   const also = (planningFields?.also_channels as string[] | undefined) || []
 
   const label = (id: string) => {
@@ -1523,12 +1523,21 @@ function AlsoChannelsEditor({ homeChannelId, planningFields, onSave }: {
     return parent ? `${parent.name} › ${ch.name}` : ch.name
   }
 
-  const options = (channels || [])
-    .filter(c => c.id !== homeChannelId && !also.includes(c.id))
-    .map(c => ({ id: c.id, label: label(c.id) }))
-    .sort((a, b) => a.label.localeCompare(b.label))
+  const topChannels = (channels || [])
+    .filter(c => !c.parent_channel_id)
+    .sort((a, b) => a.sort_order - b.sort_order)
+  const subOptions = (channels || [])
+    .filter(c => c.parent_channel_id === pickedChannel && c.id !== homeChannelId && !also.includes(c.id))
+    .sort((a, b) => a.sort_order - b.sort_order)
+  const channelItself = channels?.find(c => c.id === pickedChannel)
+  const canAddWholeChannel = !!channelItself && pickedChannel !== homeChannelId && !also.includes(pickedChannel)
 
   const save = (next: string[]) => onSave({ ...planningFields, also_channels: next })
+  const addAndReset = (id: string) => {
+    if (!id) return
+    save([...also, id])
+    setPickedChannel('')
+  }
 
   return (
     <div className="mb-4">
@@ -1552,23 +1561,32 @@ function AlsoChannelsEditor({ homeChannelId, planningFields, onSave }: {
           </span>
         ))}
       </div>
+      {/* Two clicks: 1) channel, 2) sub-channel — adds instantly on the second pick */}
       <div className="flex items-center gap-2">
         <select
-          value={pick}
-          onChange={e => setPick(e.target.value)}
-          className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-zinc-700 flex-1 max-w-sm"
+          value={pickedChannel}
+          onChange={e => setPickedChannel(e.target.value)}
+          className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-zinc-700 w-44"
         >
-          <option value="">Add to another channel…</option>
-          {options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+          <option value="">1 · Channel…</option>
+          {topChannels.map(c => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
         </select>
-        <Button
-          size="sm"
-          disabled={!pick}
-          onClick={() => { save([...also, pick]); setPick('') }}
-          className="h-7 bg-violet-600 hover:bg-violet-500 text-white text-xs"
+        <select
+          value=""
+          disabled={!pickedChannel}
+          onChange={e => addAndReset(e.target.value)}
+          className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-zinc-700 flex-1 max-w-xs disabled:opacity-50"
         >
-          <Plus className="w-3 h-3 mr-0.5" /> Add
-        </Button>
+          <option value="">{pickedChannel ? '2 · Sub-channel — adds instantly' : '2 · Sub-channel…'}</option>
+          {canAddWholeChannel && channelItself && (
+            <option value={channelItself.id}>Entire "{channelItself.name}" channel</option>
+          )}
+          {subOptions.map(c => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
       </div>
     </div>
   )
