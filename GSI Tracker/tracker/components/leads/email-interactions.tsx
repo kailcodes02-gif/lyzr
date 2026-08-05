@@ -451,9 +451,10 @@ export function EmailInteractions() {
               {rows?.length ? 'Nothing matches the current filters / date range.' : 'No contacts yet — upload the book-a-demo clickers CSV (Download Sample CSV shows the exact format).'}
             </p>
           ) : (
-            <table className="w-full text-xs min-w-[1400px]">
+            <table className="w-full text-xs min-w-[1440px]">
               <thead>
                 <tr className="border-b border-zinc-200 bg-zinc-50 text-zinc-500">
+                  <Th label="#" />
                   <Th label="" />
                   <Th label="Contact" k="contact" />
                   <Th label="Company" k="company" />
@@ -466,13 +467,14 @@ export function EmailInteractions() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
-                {sorted.map(lead => {
+                {sorted.map((lead, i) => {
                   const x = lead.extra || {}
                   const isOpen = open.has(lead.id)
                   const otherExtras = Object.entries(x).filter(([k]) => !KNOWN_EXTRAS.includes(k))
                   return (
                     <Fragment key={lead.id}>
                       <tr className="hover:bg-zinc-50">
+                        <td className="py-2 pl-3 pr-1 text-zinc-400 tabular-nums align-top">{i + 1}</td>
                         <td className="py-2 pl-3">
                           <button onClick={() => toggleOpen(lead.id)} className="text-zinc-400 hover:text-blue-600" title="Show click details">
                             {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -505,7 +507,7 @@ export function EmailInteractions() {
                       </tr>
                       {isOpen && (
                         <tr className="bg-zinc-50/60">
-                          <td />
+                          <td colSpan={2} />
                           <td colSpan={11} className="py-3 px-3 space-y-2.5">
                             {x.all_clicks && (
                               <div>

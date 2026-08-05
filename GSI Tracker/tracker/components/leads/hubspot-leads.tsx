@@ -410,9 +410,10 @@ export function HubSpotLeads() {
               {leads.length ? 'No leads match the current filters.' : 'No leads pulled yet — pick a date range and hit “Pull from HubSpot”. The built-in GSI rule applies automatically.'}
             </p>
           ) : (
-            <table className="w-full text-xs min-w-[1680px]">
+            <table className="w-full text-xs min-w-[1720px]">
               <thead>
                 <tr className="border-b border-zinc-200 bg-zinc-50 text-zinc-500">
+                  <Th label="#" />
                   <Th label="Via" k="via" />
                   <Th label="Lead" k="name" />
                   <Th label="Company" k="company" />
@@ -426,8 +427,9 @@ export function HubSpotLeads() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
-                {sorted.map(lead => (
+                {sorted.map((lead, i) => (
                   <tr key={lead.id} className="hover:bg-zinc-50">
+                    <td className="py-2 pl-3 pr-1 text-zinc-400 tabular-nums align-top">{i + 1}</td>
                     <td className="py-2 px-3">
                       <div className="flex flex-col gap-0.5">
                         {(lead.via || []).map(v => (
