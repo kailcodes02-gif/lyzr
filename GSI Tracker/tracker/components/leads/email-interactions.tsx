@@ -8,10 +8,11 @@ import { useCurrentUser } from '@/lib/hooks/use-data'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
-import { ArrowUpDown, ChevronDown, ChevronRight, FileUp, Filter, Loader2, MousePointerClick, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, FileUp, Filter, Loader2, MousePointerClick, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { usePersisted, keyFor } from '@/lib/hooks/use-persisted'
+import { SortBar, SortableTh, applySorts, toggleSortLevel, type SortLevel, type SortColumn } from './sort-bar'
 import { useLeadTracking, TrackCells, TrackCellHeaders, stageRank, type Tracking } from './track-cells'
 
 // Email Interactions dashboard: upload the book-a-demo clickers CSV (same format
@@ -301,42 +302,53 @@ export function EmailInteractions() {
     return arr
   }, [rows, range, customFrom, customTo, fCompany, fSequence, fSearch])
 
-  // --- sorting ---
+  // --- sorting (Excel-style: multiple levels applied in order) ---
   type SortKey =
     | 'demo_click_date' | 'company' | 'clicks' | 'total' | 'contact' | 'sequence'
     | 'email_stage' | 'call_status' | 'li_stage' | 'wa_status'
   const TRACK_SORT_KEYS: SortKey[] = ['email_stage', 'call_status', 'li_stage', 'wa_status']
-  const [sortKey, setSortKey] = usePersisted<SortKey>(k('csv:sortKey'), 'demo_click_date')
-  const [sortDir, setSortDir] = usePersisted<'asc' | 'desc'>(k('csv:sortDir'), 'desc')
-  const sorted = useMemo(() => {
-    const arr = [...filtered]
+  const SORT_COLUMNS: SortColumn[] = [
+    { key: 'contact', label: 'Contact' },
+    { key: 'company', label: 'Company' },
+    { key: 'sequence', label: 'Sequence / Account' },
+    { key: 'clicks', label: 'Demo clicks' },
+    { key: 'demo_click_date', label: 'Latest click' },
+    { key: 'total', label: 'Total clicks' },
+    { key: 'email_stage', label: 'Email sent' },
+    { key: 'call_status', label: 'Call booked' },
+    { key: 'li_stage', label: 'LinkedIn' },
+    { key: 'wa_status', label: 'WhatsApp' },
+  ]
+  const [sorts, setSorts] = usePersisted<SortLevel[]>(k('csv:sorts'), [{ key: 'demo_click_date', dir: 'desc' }])
+
+  const compareBy = (a: EmailLead, b: EmailLead, key: string): number => {
+    if (key === 'clicks' || key === 'total') {
+      const f = key === 'clicks' ? 'demo_clicks' : 'total_clicks'
+      return (Number((a.extra || {})[f]) || 0) - (Number((b.extra || {})[f]) || 0)
+    }
+    if (TRACK_SORT_KEYS.includes(key as SortKey)) {
+      const f = key as keyof Pick<Tracking, 'email_stage' | 'call_status' | 'li_stage' | 'wa_status'>
+      return stageRank(f, byRef.get(`email:${a.email}`)) - stageRank(f, byRef.get(`email:${b.email}`))
+    }
     const text = (r: EmailLead): string => {
-      if (sortKey === 'contact') return r.name || r.email || ''
-      if (sortKey === 'sequence') return (r.extra || {}).sequence || ''
-      if (sortKey === 'company') return r.company || ''
+      if (key === 'contact') return r.name || r.email || ''
+      if (key === 'sequence') return (r.extra || {}).sequence || ''
+      if (key === 'company') return r.company || ''
       return r.demo_click_date || ''
     }
-    arr.sort((a, b) => {
-      let cmp: number
-      if (sortKey === 'clicks' || sortKey === 'total') {
-        const field = sortKey === 'clicks' ? 'demo_clicks' : 'total_clicks'
-        cmp = (Number((a.extra || {})[field]) || 0) - (Number((b.extra || {})[field]) || 0)
-      } else if (TRACK_SORT_KEYS.includes(sortKey)) {
-        const f = sortKey as keyof Pick<Tracking, 'email_stage' | 'call_status' | 'li_stage' | 'wa_status'>
-        cmp = stageRank(f, byRef.get(`email:${a.email}`)) - stageRank(f, byRef.get(`email:${b.email}`))
-      } else {
-        cmp = text(a).toLowerCase().localeCompare(text(b).toLowerCase())
-      }
-      return sortDir === 'asc' ? cmp : -cmp
-    })
-    return arr
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtered, sortKey, sortDir, byRef])
-
-  const toggleSort = (key: SortKey) => {
-    if (sortKey === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
-    else { setSortKey(key); setSortDir('desc') }
+    return text(a).toLowerCase().localeCompare(text(b).toLowerCase())
   }
+
+  const sorted = useMemo(
+    () => applySorts(filtered, sorts, compareBy),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtered, sorts, byRef],
+  )
+
+  const onSort = (key: string, additive: boolean) => setSorts(toggleSortLevel(sorts, key, additive))
+  const Th = ({ label, k: col }: { label: string; k?: SortKey }) => (
+    <SortableTh label={label} k={col} sorts={sorts} onSort={onSort} />
+  )
 
   const [open, setOpen] = useState<Set<string>>(new Set())
   const toggleOpen = (id: string) => setOpen(prev => {
@@ -346,16 +358,6 @@ export function EmailInteractions() {
   })
 
   const KNOWN_EXTRAS = ['sequence', 'demo_clicks', 'latest_click', 'all_clicks', 'other_links', 'total_clicks']
-
-  const Th = ({ label, k }: { label: string; k?: SortKey }) => (
-    <th className="text-left font-medium py-2.5 px-3 whitespace-nowrap">
-      {k ? (
-        <button onClick={() => toggleSort(k)} className="inline-flex items-center gap-1 hover:text-zinc-900">
-          {label} <ArrowUpDown className={`w-3 h-3 ${sortKey === k ? 'text-blue-600' : 'text-zinc-400'}`} />
-        </button>
-      ) : label}
-    </th>
-  )
 
   return (
     <div className="space-y-4">
@@ -437,6 +439,11 @@ export function EmailInteractions() {
               <button onClick={clearFilters} className="text-xs text-blue-600 hover:text-blue-500 font-medium">Clear ✕</button>
             )}
             <span className="ml-auto text-[11px] text-zinc-500">{sorted.length} of {rows?.length || 0} contacts</span>
+          </CardContent>
+          <CardContent className="px-3 pb-3 pt-0 border-t border-zinc-100">
+            <div className="pt-3">
+              <SortBar columns={SORT_COLUMNS} sorts={sorts} setSorts={setSorts} />
+            </div>
           </CardContent>
         </Card>
       )}

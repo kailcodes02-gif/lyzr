@@ -7,10 +7,11 @@ import { useCurrentUser } from '@/lib/hooks/use-data'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
-import { Building2, Download, Filter, Loader2, Plus, ArrowUpDown } from 'lucide-react'
+import { Building2, Download, Filter, Loader2, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, startOfWeek, startOfMonth } from 'date-fns'
 import { usePersisted, keyFor, writeRaw } from '@/lib/hooks/use-persisted'
+import { SortBar, SortableTh, applySorts, toggleSortLevel, type SortLevel, type SortColumn } from './sort-bar'
 import { useLeadTracking, TrackCells, TrackCellHeaders, stageRank, type Tracking } from './track-cells'
 
 // READ-ONLY pull from HubSpot via the Pages Function (token stays server-side).
@@ -230,14 +231,14 @@ export function HubSpotLeads() {
     return true
   }), [leads, fVia, fCompany, fSource, fScoreCat, fOwner, fMinScore, deferredSearch])
 
-  // --- sorting ---
+  // --- sorting (Excel-style: multiple levels applied in order) ---
   type SortKey =
     | 'created' | 'company' | 'name' | 'score' | 'source' | 'owner'
     | 'activity' | 'status' | 'via'
     | 'email_stage' | 'call_status' | 'li_stage' | 'wa_status'
   const TRACK_SORT_KEYS: SortKey[] = ['email_stage', 'call_status', 'li_stage', 'wa_status']
-  const sortText = (l: Lead, k: SortKey): string => {
-    switch (k) {
+  const sortText = (l: Lead, key: SortKey): string => {
+    switch (key) {
       case 'source':   return l.leadSource || ''
       case 'activity': return l.lastActivity || ''
       case 'status':   return l.status || l.lifecycle || ''
@@ -249,39 +250,41 @@ export function HubSpotLeads() {
       default:         return ''
     }
   }
-  const [sortKey, setSortKey] = usePersisted<SortKey>(k('hs:sortKey'), 'created')
-  const [sortDir, setSortDir] = usePersisted<'asc' | 'desc'>(k('hs:sortDir'), 'desc')
-  const sorted = useMemo(() => {
-    const arr = [...filtered]
-    arr.sort((a, b) => {
-      let cmp: number
-      if (sortKey === 'score') {
-        cmp = (Number(a.leadScore) || 0) - (Number(b.leadScore) || 0)
-      } else if (TRACK_SORT_KEYS.includes(sortKey)) {
-        const f = sortKey as keyof Pick<Tracking, 'email_stage' | 'call_status' | 'li_stage' | 'wa_status'>
-        cmp = stageRank(f, byRef.get(a.id)) - stageRank(f, byRef.get(b.id))
-      } else {
-        cmp = sortText(a, sortKey).toLowerCase().localeCompare(sortText(b, sortKey).toLowerCase())
-      }
-      return sortDir === 'asc' ? cmp : -cmp
-    })
-    return arr
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtered, sortKey, sortDir, byRef])
+  const SORT_COLUMNS: SortColumn[] = [
+    { key: 'via', label: 'Via' },
+    { key: 'name', label: 'Lead' },
+    { key: 'company', label: 'Company' },
+    { key: 'score', label: 'Lead score' },
+    { key: 'source', label: 'Lead source' },
+    { key: 'created', label: 'Created' },
+    { key: 'status', label: 'Status' },
+    { key: 'activity', label: 'Last activity' },
+    { key: 'owner', label: 'HS owner' },
+    { key: 'email_stage', label: 'Email sent' },
+    { key: 'call_status', label: 'Call booked' },
+    { key: 'li_stage', label: 'LinkedIn' },
+    { key: 'wa_status', label: 'WhatsApp' },
+  ]
+  const [sorts, setSorts] = usePersisted<SortLevel[]>(k('hs:sorts'), [{ key: 'created', dir: 'desc' }])
 
-  const toggleSort = (key: SortKey) => {
-    if (sortKey === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
-    else { setSortKey(key); setSortDir('desc') }
+  const compareBy = (a: Lead, b: Lead, key: string): number => {
+    if (key === 'score') return (Number(a.leadScore) || 0) - (Number(b.leadScore) || 0)
+    if (TRACK_SORT_KEYS.includes(key as SortKey)) {
+      const f = key as keyof Pick<Tracking, 'email_stage' | 'call_status' | 'li_stage' | 'wa_status'>
+      return stageRank(f, byRef.get(a.id)) - stageRank(f, byRef.get(b.id))
+    }
+    return sortText(a, key as SortKey).toLowerCase().localeCompare(sortText(b, key as SortKey).toLowerCase())
   }
 
-  const Th = ({ label, k }: { label: string; k?: SortKey }) => (
-    <th className="text-left font-medium py-2.5 px-3 whitespace-nowrap">
-      {k ? (
-        <button onClick={() => toggleSort(k)} className="inline-flex items-center gap-1 hover:text-zinc-900">
-          {label} <ArrowUpDown className={`w-3 h-3 ${sortKey === k ? 'text-blue-600' : 'text-zinc-400'}`} />
-        </button>
-      ) : label}
-    </th>
+  const sorted = useMemo(
+    () => applySorts(filtered, sorts, compareBy),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtered, sorts, byRef],
+  )
+
+  const onSort = (key: string, additive: boolean) => setSorts(toggleSortLevel(sorts, key, additive))
+  const Th = ({ label, k: col }: { label: string; k?: SortKey }) => (
+    <SortableTh label={label} k={col} sorts={sorts} onSort={onSort} />
   )
 
   return (
@@ -398,6 +401,11 @@ export function HubSpotLeads() {
               <button onClick={clearFilters} className="text-xs text-blue-600 hover:text-blue-500 font-medium">Clear ✕</button>
             )}
             <span className="ml-auto text-[11px] text-zinc-500">{sorted.length} of {leads.length} leads</span>
+          </CardContent>
+          <CardContent className="px-3 pb-3 pt-0 border-t border-zinc-100">
+            <div className="pt-3">
+              <SortBar columns={SORT_COLUMNS} sorts={sorts} setSorts={setSorts} />
+            </div>
           </CardContent>
         </Card>
       )}
