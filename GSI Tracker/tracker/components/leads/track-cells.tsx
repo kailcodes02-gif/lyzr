@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { Fragment, useMemo, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useCurrentUser } from '@/lib/hooks/use-data'
@@ -102,14 +102,33 @@ export function StageSelect({ refId, field, tracking, save, width = 'w-[150px]' 
   )
 }
 
-// Table cells shared by both dashboards
-export function TrackCellHeaders() {
+// How far along a lead is in one channel — the sort order of the dropdown
+// options themselves ('—' = 0, then each stage in sequence).
+export function stageRank(field: keyof typeof STAGE_OPTIONS, t?: Tracking): number {
+  const v = (t?.[field] as string) || ''
+  const idx = (STAGE_OPTIONS[field] as readonly { v: string }[]).findIndex(o => o.v === v)
+  return idx < 0 ? 0 : idx
+}
+
+export const TRACK_COLUMNS: { label: string; field: keyof typeof STAGE_OPTIONS }[] = [
+  { label: 'Email sent', field: 'email_stage' },
+  { label: 'Call booked', field: 'call_status' },
+  { label: 'LinkedIn', field: 'li_stage' },
+  { label: 'WhatsApp', field: 'wa_status' },
+]
+
+// Table cells shared by both dashboards. Pass renderTh to make the four
+// outreach columns sortable using the caller's own header component.
+export function TrackCellHeaders({ renderTh }: {
+  renderTh?: (label: string, field: keyof typeof STAGE_OPTIONS) => ReactNode
+}) {
   return (
     <>
-      <th className="text-left font-medium py-2.5 px-3 whitespace-nowrap">Email sent</th>
-      <th className="text-left font-medium py-2.5 px-3 whitespace-nowrap">Call booked</th>
-      <th className="text-left font-medium py-2.5 px-3 whitespace-nowrap">LinkedIn</th>
-      <th className="text-left font-medium py-2.5 px-3 whitespace-nowrap">WhatsApp</th>
+      {TRACK_COLUMNS.map(({ label, field }) =>
+        renderTh
+          ? <Fragment key={field}>{renderTh(label, field)}</Fragment>
+          : <th key={field} className="text-left font-medium py-2.5 px-3 whitespace-nowrap">{label}</th>
+      )}
     </>
   )
 }

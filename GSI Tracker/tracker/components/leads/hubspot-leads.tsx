@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useCurrentUser } from '@/lib/hooks/use-data'
@@ -11,7 +11,7 @@ import { Building2, Download, Filter, Loader2, Plus, ArrowUpDown } from 'lucide-
 import { toast } from 'sonner'
 import { format, startOfWeek, startOfMonth } from 'date-fns'
 import { usePersisted } from '@/lib/hooks/use-persisted'
-import { useLeadTracking, TrackCells, TrackCellHeaders } from './track-cells'
+import { useLeadTracking, TrackCells, TrackCellHeaders, stageRank, type Tracking } from './track-cells'
 
 // READ-ONLY pull from HubSpot via the Pages Function (token stays server-side).
 // The pull rule (built into the server): ~90 GSI/SI companies + leads owned by
@@ -25,6 +25,9 @@ type Lead = {
   via?: string[]
 }
 
+// A pull is reused for an hour; after that the next visit refreshes it once.
+const PULL_TTL_MS = 60 * 60 * 1000
+
 // Persisted timestamps are user-editable storage — never let one crash the page
 function safeStamp(iso: string): string | null {
   const d = new Date(iso)
@@ -32,6 +35,17 @@ function safeStamp(iso: string): string | null {
 }
 
 // Lead Score Category (Lead Scoring Agent) → chip color
+// "· 12 min ago" — makes the freshness of kept data obvious at a glance
+function ageLabel(iso: string): string {
+  const t = new Date(iso).getTime()
+  if (isNaN(t)) return ''
+  const mins = Math.floor((Date.now() - t) / 60000)
+  if (mins < 1) return ' · just now'
+  if (mins < 60) return ` · ${mins} min ago`
+  const hrs = Math.floor(mins / 60)
+  return hrs < 24 ? ` · ${hrs}h ago` : ` · ${Math.floor(hrs / 24)}d ago`
+}
+
 function scoreChipClass(cat: string) {
   const c = cat.toLowerCase()
   if (c.includes('high') || c.includes('hot')) return 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -110,6 +124,19 @@ export function HubSpotLeads() {
     }
   }
 
+  // Kept data is reused as-is for an hour. Past that, the next time the page is
+  // opened it refreshes itself once — never mid-session while you are working.
+  const autoPulled = useRef(false)
+  useEffect(() => {
+    if (autoPulled.current || pulling) return
+    if (!pulledAt || leads.length === 0) return
+    const t = new Date(pulledAt).getTime()
+    if (isNaN(t) || Date.now() - t < PULL_TTL_MS) return
+    autoPulled.current = true
+    void pull()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pulledAt, leads.length, pulling])
+
   // --- filters (applied to whatever was pulled) ---
   const [fVia, setFVia] = usePersisted('gsi:hs:v1:fVia', '')
   const [fCompany, setFCompany] = usePersisted('gsi:hs:v1:fCompany', '')
@@ -156,7 +183,24 @@ export function HubSpotLeads() {
   }), [leads, fVia, fCompany, fSource, fScoreCat, fOwner, fMinScore, fSearch])
 
   // --- sorting ---
-  type SortKey = 'created' | 'company' | 'name' | 'score' | 'source' | 'owner' | 'activity'
+  type SortKey =
+    | 'created' | 'company' | 'name' | 'score' | 'source' | 'owner'
+    | 'activity' | 'status' | 'via'
+    | 'email_stage' | 'call_status' | 'li_stage' | 'wa_status'
+  const TRACK_SORT_KEYS: SortKey[] = ['email_stage', 'call_status', 'li_stage', 'wa_status']
+  const sortText = (l: Lead, k: SortKey): string => {
+    switch (k) {
+      case 'source':   return l.leadSource || ''
+      case 'activity': return l.lastActivity || ''
+      case 'status':   return l.status || l.lifecycle || ''
+      case 'via':      return (l.via || []).join(',')
+      case 'created':  return l.created || ''
+      case 'company':  return l.company || ''
+      case 'name':     return l.name || ''
+      case 'owner':    return l.owner || ''
+      default:         return ''
+    }
+  }
   const [sortKey, setSortKey] = usePersisted<SortKey>('gsi:hs:v1:sortKey', 'created')
   const [sortDir, setSortDir] = usePersisted<'asc' | 'desc'>('gsi:hs:v1:sortDir', 'desc')
   const sorted = useMemo(() => {
@@ -165,14 +209,17 @@ export function HubSpotLeads() {
       let cmp: number
       if (sortKey === 'score') {
         cmp = (Number(a.leadScore) || 0) - (Number(b.leadScore) || 0)
+      } else if (TRACK_SORT_KEYS.includes(sortKey)) {
+        const f = sortKey as keyof Pick<Tracking, 'email_stage' | 'call_status' | 'li_stage' | 'wa_status'>
+        cmp = stageRank(f, byRef.get(a.id)) - stageRank(f, byRef.get(b.id))
       } else {
-        const field = sortKey === 'source' ? 'leadSource' : sortKey === 'activity' ? 'lastActivity' : sortKey
-        cmp = String(a[field] || '').toLowerCase().localeCompare(String(b[field] || '').toLowerCase())
+        cmp = sortText(a, sortKey).toLowerCase().localeCompare(sortText(b, sortKey).toLowerCase())
       }
       return sortDir === 'asc' ? cmp : -cmp
     })
     return arr
-  }, [filtered, sortKey, sortDir])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, sortKey, sortDir, byRef])
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
@@ -254,7 +301,8 @@ export function HubSpotLeads() {
         </Button>
         {pulledAt && safeStamp(pulledAt) && (
           <span className="text-[11px] text-zinc-500">
-            Last pulled {safeStamp(pulledAt)} · kept until you pull again · read-only, nothing is written to HubSpot
+            Last pulled {safeStamp(pulledAt)}{ageLabel(pulledAt)} · kept for 1 hour, then refreshed on your next visit ·
+            read-only, nothing is written to HubSpot
           </span>
         )}
       </div>
@@ -313,18 +361,19 @@ export function HubSpotLeads() {
               {leads.length ? 'No leads match the current filters.' : 'No leads pulled yet — pick a date range and hit “Pull from HubSpot”. The built-in GSI rule applies automatically.'}
             </p>
           ) : (
-            <table className="w-full text-xs min-w-[1500px]">
+            <table className="w-full text-xs min-w-[1680px]">
               <thead>
                 <tr className="border-b border-zinc-200 bg-zinc-50 text-zinc-500">
-                  <Th label="Via" />
+                  <Th label="Via" k="via" />
                   <Th label="Lead" k="name" />
                   <Th label="Company" k="company" />
                   <Th label="Lead score" k="score" />
                   <Th label="Lead source" k="source" />
                   <Th label="Created" k="created" />
-                  <Th label="Status / activity" k="activity" />
+                  <Th label="Status" k="status" />
+                  <Th label="Last activity" k="activity" />
                   <Th label="HS owner" k="owner" />
-                  <TrackCellHeaders />
+                  <TrackCellHeaders renderTh={(label, field) => <Th label={label} k={field} />} />
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
@@ -361,9 +410,11 @@ export function HubSpotLeads() {
                     </td>
                     <td className="py-2 px-3 text-zinc-600 max-w-[130px]">
                       <p className="truncate" title={lead.status || lead.lifecycle || ''}>{lead.status || lead.lifecycle || '—'}</p>
-                      {lead.lastActivity && (
-                        <p className="text-[10px] text-zinc-500 truncate">act: {format(new Date(lead.lastActivity), 'd MMM')}</p>
-                      )}
+                    </td>
+                    <td className="py-2 px-3 text-zinc-600 whitespace-nowrap">
+                      {lead.lastActivity && !isNaN(new Date(lead.lastActivity).getTime())
+                        ? format(new Date(lead.lastActivity), 'd MMM yyyy')
+                        : '—'}
                     </td>
                     <td className="py-2 px-3 text-zinc-600">{lead.owner || '—'}</td>
                     <TrackCells refId={lead.id} byRef={byRef} save={save} />

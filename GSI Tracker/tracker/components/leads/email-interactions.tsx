@@ -12,7 +12,7 @@ import { ArrowUpDown, ChevronDown, ChevronRight, FileUp, Filter, Loader2, MouseP
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { usePersisted } from '@/lib/hooks/use-persisted'
-import { useLeadTracking, TrackCells, TrackCellHeaders, type Tracking } from './track-cells'
+import { useLeadTracking, TrackCells, TrackCellHeaders, stageRank, type Tracking } from './track-cells'
 
 // Email Interactions dashboard: upload the book-a-demo clickers CSV (same format
 // every time — see Sample CSV). Rows persist forever; re-uploads merge by email.
@@ -298,24 +298,38 @@ export function EmailInteractions() {
   }, [rows, range, customFrom, customTo, fCompany, fSequence, fSearch])
 
   // --- sorting ---
-  const [sortKey, setSortKey] = usePersisted<'demo_click_date' | 'company' | 'clicks' | 'total'>('gsi:csv:v1:sortKey', 'demo_click_date')
+  type SortKey =
+    | 'demo_click_date' | 'company' | 'clicks' | 'total' | 'contact' | 'sequence'
+    | 'email_stage' | 'call_status' | 'li_stage' | 'wa_status'
+  const TRACK_SORT_KEYS: SortKey[] = ['email_stage', 'call_status', 'li_stage', 'wa_status']
+  const [sortKey, setSortKey] = usePersisted<SortKey>('gsi:csv:v1:sortKey', 'demo_click_date')
   const [sortDir, setSortDir] = usePersisted<'asc' | 'desc'>('gsi:csv:v1:sortDir', 'desc')
   const sorted = useMemo(() => {
     const arr = [...filtered]
+    const text = (r: EmailLead): string => {
+      if (sortKey === 'contact') return r.name || r.email || ''
+      if (sortKey === 'sequence') return (r.extra || {}).sequence || ''
+      if (sortKey === 'company') return r.company || ''
+      return r.demo_click_date || ''
+    }
     arr.sort((a, b) => {
       let cmp: number
       if (sortKey === 'clicks' || sortKey === 'total') {
         const field = sortKey === 'clicks' ? 'demo_clicks' : 'total_clicks'
         cmp = (Number((a.extra || {})[field]) || 0) - (Number((b.extra || {})[field]) || 0)
+      } else if (TRACK_SORT_KEYS.includes(sortKey)) {
+        const f = sortKey as keyof Pick<Tracking, 'email_stage' | 'call_status' | 'li_stage' | 'wa_status'>
+        cmp = stageRank(f, byRef.get(`email:${a.email}`)) - stageRank(f, byRef.get(`email:${b.email}`))
       } else {
-        cmp = String(a[sortKey] || '').toLowerCase().localeCompare(String(b[sortKey] || '').toLowerCase())
+        cmp = text(a).toLowerCase().localeCompare(text(b).toLowerCase())
       }
       return sortDir === 'asc' ? cmp : -cmp
     })
     return arr
-  }, [filtered, sortKey, sortDir])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, sortKey, sortDir, byRef])
 
-  const toggleSort = (key: typeof sortKey) => {
+  const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
     else { setSortKey(key); setSortDir('desc') }
   }
@@ -329,7 +343,7 @@ export function EmailInteractions() {
 
   const KNOWN_EXTRAS = ['sequence', 'demo_clicks', 'latest_click', 'all_clicks', 'other_links', 'total_clicks']
 
-  const Th = ({ label, k }: { label: string; k?: typeof sortKey }) => (
+  const Th = ({ label, k }: { label: string; k?: SortKey }) => (
     <th className="text-left font-medium py-2.5 px-3 whitespace-nowrap">
       {k ? (
         <button onClick={() => toggleSort(k)} className="inline-flex items-center gap-1 hover:text-zinc-900">
@@ -433,17 +447,17 @@ export function EmailInteractions() {
               {rows?.length ? 'Nothing matches the current filters / date range.' : 'No contacts yet — upload the book-a-demo clickers CSV (Download Sample CSV shows the exact format).'}
             </p>
           ) : (
-            <table className="w-full text-xs min-w-[1250px]">
+            <table className="w-full text-xs min-w-[1400px]">
               <thead>
                 <tr className="border-b border-zinc-200 bg-zinc-50 text-zinc-500">
                   <Th label="" />
-                  <Th label="Contact" />
+                  <Th label="Contact" k="contact" />
                   <Th label="Company" k="company" />
-                  <Th label="Sequence / Account" />
+                  <Th label="Sequence / Account" k="sequence" />
                   <Th label="Demo clicks" k="clicks" />
                   <Th label="Latest click" k="demo_click_date" />
                   <Th label="Total clicks" k="total" />
-                  <TrackCellHeaders />
+                  <TrackCellHeaders renderTh={(label, field) => <Th label={label} k={field} />} />
                   <Th label="" />
                 </tr>
               </thead>
