@@ -67,10 +67,13 @@ async function requireUser(request, env) {
   return user?.email ? user : null
 }
 
-function dateFilters(from, to) {
+// Boundaries are calendar days in the VIEWER's timezone (IST unless the client
+// says otherwise) — a UTC reading would drop/add a day's worth of leads.
+function dateFilters(from, to, tzOffsetMinutes) {
+  const off = Number.isFinite(tzOffsetMinutes) ? tzOffsetMinutes : 330 // IST = UTC+05:30
   const f = []
-  if (from) f.push({ propertyName: 'createdate', operator: 'GTE', value: new Date(from).getTime() })
-  if (to) f.push({ propertyName: 'createdate', operator: 'LTE', value: new Date(to + 'T23:59:59').getTime() })
+  if (from) f.push({ propertyName: 'createdate', operator: 'GTE', value: Date.parse(from + 'T00:00:00Z') - off * 60000 })
+  if (to) f.push({ propertyName: 'createdate', operator: 'LTE', value: Date.parse(to + 'T23:59:59.999Z') - off * 60000 })
   return f
 }
 
@@ -100,6 +103,7 @@ async function collect(token, searchBody, tag, into, maxPages = 2) {
     after = data.paging?.next?.after
     pages++
   } while (after && pages < maxPages)
+  return Boolean(after) // more results existed than the page cap allowed
 }
 
 async function fetchOwners(token) {
@@ -137,37 +141,38 @@ export async function onRequestPost({ request, env }) {
     const extra = (body.extraCompanies || []).map(c => String(c).trim()).filter(Boolean)
     const companies = [...new Set([...DEFAULT_COMPANIES, ...extra])]
     const { from, to } = body
-    const dates = dateFilters(from, to)
+    const dates = dateFilters(from, to, body.tzOffsetMinutes)
 
     const { byId: ownerNames, idByEmail } = await fetchOwners(token)
     const found = new Map() // id -> { raw, via[] }
+    let truncated = false
 
     // Rule 1: company list — 5 filterGroups per search request
     for (let i = 0; i < companies.length; i += 5) {
       const batch = companies.slice(i, i + 5)
-      await collect(token, {
+      truncated = await collect(token, {
         filterGroups: batch.map(name => ({
           filters: [{ propertyName: 'company', operator: 'CONTAINS_TOKEN', value: name }, ...dates],
         })),
-      }, 'company', found, 1) // 1 page per batch keeps us under the 50-subrequest cap
+      }, 'company', found, 1) || truncated // 1 page per batch keeps us under the 50-subrequest cap
     }
 
     // Rule 2: owned by the GSI owner emails
     const ownerIds = OWNER_EMAILS.map(e => idByEmail[e]).filter(Boolean)
     if (ownerIds.length) {
-      await collect(token, {
+      truncated = await collect(token, {
         filterGroups: [{
           filters: [{ propertyName: 'hubspot_owner_id', operator: 'IN', values: ownerIds }, ...dates],
         }],
-      }, 'owner', found, 4)
+      }, 'owner', found, 4) || truncated
     }
 
     // Rule 3: "GSI" anywhere — free-text index + all source-detail properties
-    await collect(token, { query: 'GSI', filterGroups: dates.length ? [{ filters: dates }] : undefined }, 'gsi', found, 3)
+    truncated = await collect(token, { query: 'GSI', filterGroups: dates.length ? [{ filters: dates }] : undefined }, 'gsi', found, 3) || truncated
     for (const prop of ['hs_analytics_source_data_1', 'hs_analytics_source_data_2', 'hs_latest_source_data_1', 'hs_latest_source_data_2']) {
-      await collect(token, {
+      truncated = await collect(token, {
         filterGroups: [{ filters: [{ propertyName: prop, operator: 'CONTAINS_TOKEN', value: 'GSI' }, ...dates] }],
-      }, 'gsi', found)
+      }, 'gsi', found) || truncated
     }
 
     const leads = [...found.values()].map(({ raw, via }) => {
@@ -183,7 +188,7 @@ export async function onRequestPost({ request, env }) {
         lifecycle: p.lifecyclestage || '',
         lastActivity: p.notes_last_updated || p.lastmodifieddate || '',
         owner: ownerNames[p.hubspot_owner_id] || '',
-        leadScore: p.lsa_lead_score ?? p.lyzr_lead_score ?? p.hubspotscore ?? '',
+        leadScore: p.lsa_lead_score || p.lyzr_lead_score || p.hubspotscore || '',
         scoreCategory: p.lsa_lead_score_category || p.lyzr_lead_score_category || '',
         leadSource: p.lead_source || p.lsa_lead_source || '',
         sourceCategory: p.lead_source_category || '',
@@ -191,7 +196,7 @@ export async function onRequestPost({ request, env }) {
       }
     })
     leads.sort((a, b) => (b.created || '').localeCompare(a.created || ''))
-    return new Response(JSON.stringify({ leads, count: leads.length }), { status: 200, headers })
+    return new Response(JSON.stringify({ leads, count: leads.length, truncated }), { status: 200, headers })
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err.message || err).slice(0, 300) }), { status: 502, headers })
   }

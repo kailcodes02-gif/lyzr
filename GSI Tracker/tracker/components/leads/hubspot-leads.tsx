@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useCurrentUser } from '@/lib/hooks/use-data'
@@ -87,13 +87,14 @@ export function HubSpotLeads() {
       const res = await fetch('/api/hubspot-leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ extraCompanies: (companies || []).map(c => c.name), ...rangeDates() }),
+        body: JSON.stringify({ extraCompanies: (companies || []).map(c => c.name), tzOffsetMinutes: -new Date().getTimezoneOffset(), ...rangeDates() }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       setLeads(data.leads || [])
       setPulledAt(new Date().toLocaleTimeString())
-      toast.success(`Pulled ${data.count} leads from HubSpot (read-only)`)
+      if (data.truncated) toast.warning(`Pulled ${data.count} leads — results were capped; narrow the date range for a complete pull`)
+      else toast.success(`Pulled ${data.count} leads from HubSpot (read-only)`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Pull failed')
     } finally {
@@ -122,6 +123,14 @@ export function HubSpotLeads() {
       owners: distinct(l => l.owner),
     }
   }, [leads])
+
+  // Drop any selected filter value that vanished from a fresh pull
+  useEffect(() => {
+    if (fCompany && !opts.companies.includes(fCompany)) setFCompany('')
+    if (fSource && !opts.sources.includes(fSource)) setFSource('')
+    if (fScoreCat && !opts.scoreCats.includes(fScoreCat)) setFScoreCat('')
+    if (fOwner && !opts.owners.includes(fOwner)) setFOwner('')
+  }, [opts, fCompany, fSource, fScoreCat, fOwner])
 
   const filtered = useMemo(() => leads.filter(l => {
     if (fVia && !(l.via || []).includes(fVia)) return false
@@ -332,15 +341,15 @@ export function HubSpotLeads() {
                     </td>
                     <td className="py-2 px-3 text-zinc-600 max-w-[150px]">
                       <p className="truncate" title={lead.leadSource}>{lead.leadSource || '—'}</p>
-                      {lead.sourceCategory && <p className="text-[10px] text-zinc-400 truncate" title={lead.sourceCategory}>{lead.sourceCategory}</p>}
+                      {lead.sourceCategory && <p className="text-[10px] text-zinc-500 truncate" title={lead.sourceCategory}>{lead.sourceCategory}</p>}
                     </td>
                     <td className="py-2 px-3 text-zinc-600 whitespace-nowrap">
                       {lead.created ? format(new Date(lead.created), 'd MMM yyyy') : '—'}
                     </td>
                     <td className="py-2 px-3 text-zinc-600 max-w-[130px]">
-                      <p className="truncate">{lead.status || lead.lifecycle || '—'}</p>
+                      <p className="truncate" title={lead.status || lead.lifecycle || ''}>{lead.status || lead.lifecycle || '—'}</p>
                       {lead.lastActivity && (
-                        <p className="text-[10px] text-zinc-400 truncate">act: {format(new Date(lead.lastActivity), 'd MMM')}</p>
+                        <p className="text-[10px] text-zinc-500 truncate">act: {format(new Date(lead.lastActivity), 'd MMM')}</p>
                       )}
                     </td>
                     <td className="py-2 px-3 text-zinc-600">{lead.owner || '—'}</td>

@@ -95,8 +95,8 @@ function seedStatuses(li: string, wa: string, em: string): Partial<Tracking> {
   const out: Partial<Tracking> = {}
   const l = li.toLowerCase()
   if (l) {
-    if (/m(sg|essage)?\s*2|2/.test(l)) out.li_stage = 'm2'
-    else if (/m(sg|essage)?\s*1|1/.test(l)) out.li_stage = 'm1'
+    if (/m(?:sg|essage)?\s*2\b|^2$/.test(l)) out.li_stage = 'm2'
+    else if (/m(?:sg|essage)?\s*1\b|^1$/.test(l)) out.li_stage = 'm1'
     else if (/conn|request|yes|true|sent/.test(l)) out.li_stage = 'conn'
   }
   const w = wa.toLowerCase()
@@ -106,19 +106,33 @@ function seedStatuses(li: string, wa: string, em: string): Partial<Tracking> {
   }
   const e = em.toLowerCase()
   if (e) {
-    if (/3/.test(e)) out.email_stage = 'e3'
-    else if (/2/.test(e)) out.email_stage = 'e2'
-    else if (/1|yes|true|sent/.test(e)) out.email_stage = 'e1'
+    if (/e(?:mail)?\s*3\b|^3$/.test(e)) out.email_stage = 'e3'
+    else if (/e(?:mail)?\s*2\b|^2$/.test(e)) out.email_stage = 'e2'
+    else if (/e(?:mail)?\s*1\b|^1$|yes|true|sent/.test(e)) out.email_stage = 'e1'
   }
   return out
 }
 
 const splitList = (v: string) => v.split(';').map(s => s.trim()).filter(Boolean)
 
+// Union semicolon lists, preserving order, deduping exact entries
+function unionList(oldV: string, newV: string): string {
+  const seen = new Set<string>()
+  return [...splitList(oldV), ...splitList(newV)].filter(i => !seen.has(i) && (seen.add(i), true)).join('; ')
+}
+
 // "Case Study: NTT Data x13" -> { label, count }
 function parseLink(item: string): { label: string; count: number } {
   const m = item.match(/^(.*?)\s+x(\d+)$/)
   return m ? { label: m[1], count: Number(m[2]) } : { label: item, count: 1 }
+}
+
+// Union link lists by label; the newer report's count wins on collision
+function unionLinks(oldV: string, newV: string): string {
+  const map = new Map<string, string>()
+  for (const item of splitList(oldV)) map.set(parseLink(item).label, item)
+  for (const item of splitList(newV)) map.set(parseLink(item).label, item)
+  return [...map.values()].join('; ')
 }
 
 export function EmailInteractions() {
@@ -146,6 +160,13 @@ export function EmailInteractions() {
       for (const file of Array.from(files)) {
         const text = await file.text()
         const parsed = Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: true })
+
+        // Pass 1: classify every row
+        type ParsedRow = {
+          email: string; name: string; company: string; demoDate: string | null
+          extra: Record<string, string>; seeded: Partial<Tracking>
+        }
+        const parsedRows: ParsedRow[] = []
         for (const row of parsed.data) {
           const slots: Record<string, string> = {}
           const generic: Record<string, string> = {}
@@ -158,31 +179,51 @@ export function EmailInteractions() {
           }
           const email = (slots.email || '').toLowerCase()
           if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { invalid++; continue }
-          const name = slots.name || [slots.first, slots.last].filter(Boolean).join(' ')
-          const demoDate = parseClickDate(slots.latest_click || '')
-          const extra: Record<string, string> = {
-            ...(slots.sequence ? { sequence: slots.sequence } : {}),
-            ...(slots.demo_clicks ? { demo_clicks: slots.demo_clicks } : {}),
-            ...(slots.latest_click ? { latest_click: slots.latest_click } : {}),
-            ...(slots.all_clicks ? { all_clicks: slots.all_clicks } : {}),
-            ...(slots.other_links ? { other_links: slots.other_links } : {}),
-            ...(slots.total_clicks ? { total_clicks: slots.total_clicks } : {}),
-            ...generic,
-          }
-          const { error } = await supabase.from('email_leads').upsert({
+          parsedRows.push({
             email,
-            ...(name ? { name } : {}),
-            ...(slots.company ? { company: slots.company } : {}),
-            ...(demoDate ? { demo_click_date: demoDate } : {}),
-            ...(Object.keys(extra).length ? { extra } : {}),
+            name: slots.name || [slots.first, slots.last].filter(Boolean).join(' '),
+            company: slots.company || '',
+            demoDate: parseClickDate(slots.latest_click || ''),
+            extra: {
+              ...(slots.sequence ? { sequence: slots.sequence } : {}),
+              ...(slots.demo_clicks ? { demo_clicks: slots.demo_clicks } : {}),
+              ...(slots.latest_click ? { latest_click: slots.latest_click } : {}),
+              ...(slots.all_clicks ? { all_clicks: slots.all_clicks } : {}),
+              ...(slots.other_links ? { other_links: slots.other_links } : {}),
+              ...(slots.total_clicks ? { total_clicks: slots.total_clicks } : {}),
+              ...generic,
+            },
+            seeded: seedStatuses(slots.st_linkedin || '', slots.st_whatsapp || '', slots.st_email || ''),
+          })
+        }
+
+        // Pass 2: fetch previously saved extras so re-uploads merge click history
+        const prevExtra = new Map<string, Record<string, string>>()
+        const emails = parsedRows.map(r => r.email)
+        for (let i = 0; i < emails.length; i += 200) {
+          const { data: prev } = await supabase.from('email_leads')
+            .select('email, extra').in('email', emails.slice(i, i + 200))
+          for (const r of prev || []) prevExtra.set(r.email, (r.extra || {}) as Record<string, string>)
+        }
+
+        for (const pr of parsedRows) {
+          const old = prevExtra.get(pr.email) || {}
+          const merged = { ...old, ...pr.extra }
+          if (old.all_clicks && pr.extra.all_clicks) merged.all_clicks = unionList(old.all_clicks, pr.extra.all_clicks)
+          if (old.other_links && pr.extra.other_links) merged.other_links = unionLinks(old.other_links, pr.extra.other_links)
+          const { error } = await supabase.from('email_leads').upsert({
+            email: pr.email,
+            ...(pr.name ? { name: pr.name } : {}),
+            ...(pr.company ? { company: pr.company } : {}),
+            ...(pr.demoDate ? { demo_click_date: pr.demoDate } : {}),
+            ...(Object.keys(merged).length ? { extra: merged } : {}),
             source_file: file.name,
             uploaded_by: me?.id,
             uploaded_at: new Date().toISOString(),
           }, { onConflict: 'email' })
           if (error) { failed++; if (!firstError) firstError = error.message; continue }
           ok++
-          const seeded = seedStatuses(slots.st_linkedin || '', slots.st_whatsapp || '', slots.st_email || '')
-          if (Object.keys(seeded).length) await save(`email:${email}`, seeded)
+          if (Object.keys(pr.seeded).length) await save(`email:${pr.email}`, pr.seeded)
         }
       }
       queryClient.invalidateQueries({ queryKey: ['emailLeads'] })
@@ -426,12 +467,12 @@ export function EmailInteractions() {
                         </td>
                         <td className="py-2 px-3 whitespace-nowrap">
                           <p className="text-zinc-700">{lead.demo_click_date ? format(new Date(lead.demo_click_date), 'd MMM yyyy') : '—'}</p>
-                          {x.latest_click && <p className="text-[10px] text-zinc-400">{x.latest_click} IST</p>}
+                          {x.latest_click && <p className="text-[10px] text-zinc-500">{x.latest_click} IST</p>}
                         </td>
                         <td className="py-2 px-3 text-zinc-700 font-medium">{x.total_clicks || '—'}</td>
                         <TrackCells refId={`email:${lead.email}`} byRef={byRef} save={save} />
                         <td className="py-2 px-3">
-                          <button onClick={() => removeLead(lead)} className="text-zinc-300 hover:text-red-600" title="Remove contact">
+                          <button onClick={() => removeLead(lead)} className="text-zinc-500 hover:text-red-600" title="Remove contact">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </td>
@@ -474,7 +515,7 @@ export function EmailInteractions() {
                               </div>
                             )}
                             {lead.source_file && (
-                              <p className="text-[10px] text-zinc-400">From {lead.source_file} · uploaded {format(new Date(lead.uploaded_at), 'd MMM yyyy')}</p>
+                              <p className="text-[10px] text-zinc-500">From {lead.source_file} · uploaded {format(new Date(lead.uploaded_at), 'd MMM yyyy')}</p>
                             )}
                           </td>
                         </tr>

@@ -68,14 +68,17 @@ export function useLeadTracking() {
   const byRef = useMemo(() => new Map((rows || []).map(t => [t.ref_id, t])), [rows])
 
   const save = async (ref: string, patch: Partial<Tracking>) => {
-    const next = { ...(byRef.get(ref) || EMPTY_TRACKING(ref)), ...patch, updated_by: me?.id, updated_at: new Date().toISOString() }
+    const stamp = { updated_by: me?.id, updated_at: new Date().toISOString() }
+    const next = { ...(byRef.get(ref) || EMPTY_TRACKING(ref)), ...patch, ...stamp }
     queryClient.setQueryData(['leadTracking'], (old: Tracking[] | undefined) =>
       [...(old || []).filter(t => t.ref_id !== ref), next])
-    const { error } = await supabase.from('lead_tracking').upsert(next, { onConflict: 'ref_id' })
+    // Patch-only upsert: on conflict only these columns are updated, so a stale
+    // local cache can never null out statuses saved by someone else.
+    const { error } = await supabase.from('lead_tracking').upsert({ ref_id: ref, ...patch, ...stamp }, { onConflict: 'ref_id' })
     if (error) {
       toast.error(`Save failed: ${error.message}`)
-      queryClient.invalidateQueries({ queryKey: ['leadTracking'] })
     }
+    queryClient.invalidateQueries({ queryKey: ['leadTracking'] })
   }
 
   return { byRef, save }
