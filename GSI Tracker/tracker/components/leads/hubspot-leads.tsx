@@ -98,6 +98,7 @@ export function HubSpotLeads() {
   const leads = pull0?.leads ?? []
   const pulledAt = pull0?.at ?? null
   const [pulling, setPulling] = useState(false)
+  const [pullNote, setPullNote] = useState('')
 
   const rangeDates = (): { from?: string; to?: string } => {
     const today = new Date()
@@ -110,29 +111,63 @@ export function HubSpotLeads() {
 
   const pull = async () => {
     setPulling(true)
+    setPullNote('')
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Sign in required')
-      const res = await fetch('/api/hubspot-leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ extraCompanies: (companies || []).map(c => c.name), tzOffsetMinutes: -new Date().getTimezoneOffset(), ...rangeDates() }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
-      const record = { leads: (data.leads || []) as Lead[], at: new Date().toISOString() }
+
+      // The server processes as many HubSpot searches as its per-invocation
+      // subrequest budget allows, then hands back a cursor. Keep calling until
+      // it says it is finished, so no rule is ever silently cut short.
+      const merged = new Map<string, Lead>()
+      let cursor: unknown = null
+      let rounds = 0
+      let complete = false
+      do {
+        const res = await fetch('/api/hubspot-leads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({
+            extraCompanies: (companies || []).map(c => c.name),
+            tzOffsetMinutes: -new Date().getTimezoneOffset(),
+            cursor,
+            ...rangeDates(),
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+        for (const l of (data.leads || []) as Lead[]) {
+          const prev = merged.get(l.id)
+          if (prev) {
+            for (const v of l.via || []) if (!(prev.via || []).includes(v)) (prev.via = prev.via || []).push(v)
+          } else {
+            merged.set(l.id, l)
+          }
+        }
+        cursor = data.nextCursor ?? null
+        if (cursor) {
+          const p = data.progress
+          setPullNote(`${merged.size} leads so far${p ? ` · ${Math.round((p.done / p.total) * 100)}%` : ''}…`)
+        } else {
+          complete = true
+        }
+      } while (cursor && ++rounds < 40)
+
+      const all = [...merged.values()].sort((a, b) => (b.created || '').localeCompare(a.created || ''))
+      const record = { leads: all, at: new Date().toISOString() }
       // Write through immediately: if this resolved after the component
       // unmounted (tab switch mid-pull), the effect would never run and the
       // pull would be silently thrown away.
       const pk = k('hs:pull')
       if (pk) writeRaw(pk, JSON.stringify(record))
       setPull0(record)
-      if (data.truncated) toast.warning(`Pulled ${data.count} leads — results were capped; narrow the date range for a complete pull`)
-      else toast.success(`Pulled ${data.count} leads from HubSpot (read-only)`)
+      if (complete) toast.success(`Pulled ${all.length} leads from HubSpot — complete (read-only)`)
+      else toast.warning(`Pulled ${all.length} leads, but the pull did not finish. Narrow the date range and pull again.`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Pull failed')
     } finally {
       setPulling(false)
+      setPullNote('')
     }
   }
 
@@ -312,6 +347,7 @@ export function HubSpotLeads() {
           {pulling ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
           Pull from HubSpot
         </Button>
+        {pulling && pullNote && <span className="text-[11px] text-zinc-600 font-medium">{pullNote}</span>}
         {pulledAt && safeStamp(pulledAt) && (
           <span className="text-[11px] text-zinc-500">
             Last pulled {safeStamp(pulledAt)}{ageLabel(pulledAt)} · kept for 1 hour, then refreshed on your next visit ·

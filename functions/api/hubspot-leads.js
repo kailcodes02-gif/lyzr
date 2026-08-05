@@ -145,34 +145,56 @@ export async function onRequestPost({ request, env }) {
 
     const { byId: ownerNames, idByEmail } = await fetchOwners(token)
     const found = new Map() // id -> { raw, via[] }
-    let truncated = false
 
-    // Rule 1: company list — 5 filterGroups per search request
+    // Every search this pull needs, as a flat resumable list. No rule has a
+    // page cap any more: when this invocation runs out of subrequest budget it
+    // returns a cursor and the browser calls straight back to continue, so the
+    // pull is limited only by how many leads actually match.
+    const ownerIds = OWNER_EMAILS.map(e => idByEmail[e]).filter(Boolean)
+    const tasks = []
     for (let i = 0; i < companies.length; i += 5) {
-      const batch = companies.slice(i, i + 5)
-      truncated = await collect(token, {
+      const batch = companies.slice(i, i + 5) // HubSpot allows 5 filterGroups per search
+      tasks.push({ tag: 'company', body: {
         filterGroups: batch.map(name => ({
           filters: [{ propertyName: 'company', operator: 'CONTAINS_TOKEN', value: name }, ...dates],
         })),
-      }, 'company', found, 1) || truncated // 1 page per batch keeps us under the 50-subrequest cap
+      } })
     }
-
-    // Rule 2: owned by the GSI owner emails
-    const ownerIds = OWNER_EMAILS.map(e => idByEmail[e]).filter(Boolean)
     if (ownerIds.length) {
-      truncated = await collect(token, {
-        filterGroups: [{
-          filters: [{ propertyName: 'hubspot_owner_id', operator: 'IN', values: ownerIds }, ...dates],
-        }],
-      }, 'owner', found, 4) || truncated
+      tasks.push({ tag: 'owner', body: {
+        filterGroups: [{ filters: [{ propertyName: 'hubspot_owner_id', operator: 'IN', values: ownerIds }, ...dates] }],
+      } })
+    }
+    tasks.push({ tag: 'gsi', body: { query: 'GSI', filterGroups: dates.length ? [{ filters: dates }] : undefined } })
+    for (const prop of ['hs_analytics_source_data_1', 'hs_analytics_source_data_2', 'hs_latest_source_data_1', 'hs_latest_source_data_2']) {
+      tasks.push({ tag: 'gsi', body: {
+        filterGroups: [{ filters: [{ propertyName: prop, operator: 'CONTAINS_TOKEN', value: 'GSI' }, ...dates] }],
+      } })
     }
 
-    // Rule 3: "GSI" anywhere — free-text index + all source-detail properties
-    truncated = await collect(token, { query: 'GSI', filterGroups: dates.length ? [{ filters: dates }] : undefined }, 'gsi', found, 3) || truncated
-    for (const prop of ['hs_analytics_source_data_1', 'hs_analytics_source_data_2', 'hs_latest_source_data_1', 'hs_latest_source_data_2']) {
-      truncated = await collect(token, {
-        filterGroups: [{ filters: [{ propertyName: prop, operator: 'CONTAINS_TOKEN', value: 'GSI' }, ...dates] }],
-      }, 'gsi', found) || truncated
+    // Cloudflare allows 50 subrequests per invocation; fetchOwners used one.
+    const BUDGET = 44
+    let used = 0
+    const cursor = body.cursor || {}
+    let taskIndex = Number.isInteger(cursor.taskIndex) ? cursor.taskIndex : 0
+    let after = cursor.after || undefined
+    let nextCursor = null
+
+    while (taskIndex < tasks.length) {
+      if (used >= BUDGET) { nextCursor = { taskIndex, after: after ?? null }; break }
+      const task = tasks[taskIndex]
+      const data = await hsSearch(token, after ? { ...task.body, after } : task.body)
+      used++
+      for (const r of data.results || []) {
+        const existing = found.get(r.id)
+        if (existing) {
+          if (!existing.via.includes(task.tag)) existing.via.push(task.tag)
+        } else {
+          found.set(r.id, { raw: r, via: [task.tag] })
+        }
+      }
+      after = data.paging?.next?.after
+      if (!after) { taskIndex++; after = undefined }
     }
 
     const leads = [...found.values()].map(({ raw, via }) => {
@@ -196,7 +218,12 @@ export async function onRequestPost({ request, env }) {
       }
     })
     leads.sort((a, b) => (b.created || '').localeCompare(a.created || ''))
-    return new Response(JSON.stringify({ leads, count: leads.length, truncated }), { status: 200, headers })
+    return new Response(JSON.stringify({
+      leads,
+      count: leads.length,
+      nextCursor,                       // non-null => call again to continue
+      progress: { done: taskIndex, total: tasks.length },
+    }), { status: 200, headers })
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err.message || err).slice(0, 300) }), { status: 502, headers })
   }
