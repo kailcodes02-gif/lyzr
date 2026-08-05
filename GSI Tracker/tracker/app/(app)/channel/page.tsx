@@ -16,6 +16,7 @@ import { Plus, DollarSign, ListTodo, ChevronDown, ChevronRight, BarChart3, Calen
 import Link from 'next/link'
 import { TierBadge, ChannelOwnerChips, ChannelResourcesCard, ChannelLearningsCard, ChannelTargetsCard, ChannelTargetChips, ChannelDescription } from '@/components/channel/channel-meta'
 import { TIER_CONFIG } from '@/lib/types/database'
+import { taskInScope } from '@/lib/task-channels'
 
 function ChannelContent() {
   const channelId = useSearchParams().get('id') || ''
@@ -70,7 +71,8 @@ function ChannelContent() {
   const scopeChannelIds = [channel.id, ...getChildChannelIds(channel.id)]
 
   // Filter tasks in scope
-  const channelTasks = tasks?.filter(t => scopeChannelIds.includes(t.channel_id)) || []
+  // Includes multi-homed tasks whose "also in" list touches this scope
+  const channelTasks = tasks?.filter(t => taskInScope(t, scopeChannelIds)) || []
 
   // Channel Budget calculations
   const channelBudget = budgets?.find(b => b.scope_type === 'channel' && b.scope_id === channel.id)

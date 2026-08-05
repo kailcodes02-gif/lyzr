@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Calendar, MessageSquare, CheckSquare, Layers, DollarSign, Target, Repeat, Crown, Link as LinkIcon } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
-import { useAllChannelOwners } from '@/lib/hooks/use-data'
+import { useAllChannelOwners, useChannels } from '@/lib/hooks/use-data'
 import { updateTask } from '@/lib/actions'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -128,9 +128,10 @@ function MetaChips({ task, tiny }: { task: Partial<Task>; tiny?: boolean }) {
     ? `${targetsArr[0].type}: ${targetsArr[0].value}${targetsArr.length > 1 ? `  +${targetsArr.length - 1}` : ''}`
     : (pf?.kpi_target as string | undefined)
   const links = (pf?.links as { label: string; url: string }[] | undefined) || []
+  const also = (pf?.also_channels as string[] | undefined) || []
   const frequency = pf?.frequency as string | undefined
   const budget = task.budget_allocated
-  if (!target && !frequency && budget == null && !links.length) return null
+  if (!target && !frequency && budget == null && !links.length && !also.length) return null
   return (
     <div className={cn('flex items-center gap-1.5 flex-wrap', tiny ? 'mt-1' : 'mt-2')}>
       {budget != null && (
@@ -153,7 +154,19 @@ function MetaChips({ task, tiny }: { task: Partial<Task>; tiny?: boolean }) {
           <LinkIcon className="w-3 h-3" />{links.length}
         </span>
       )}
+      {also.length > 0 && <AlsoChip ids={also} />}
     </div>
+  )
+}
+
+// Cross-channel indicator: this task also appears on other boards
+function AlsoChip({ ids }: { ids: string[] }) {
+  const { data: channels } = useChannels()
+  const names = ids.map(id => channels?.find(c => c.id === id)?.name || '…').join(', ')
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md bg-violet-50 border border-violet-200 text-violet-700 px-1.5 py-0.5 text-[10px] font-medium max-w-[180px] truncate" title={`Also shows in: ${names}`}>
+      <Layers className="w-3 h-3 shrink-0" />also in {ids.length}
+    </span>
   )
 }
 

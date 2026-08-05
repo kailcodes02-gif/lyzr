@@ -15,6 +15,7 @@ import { Plus, DollarSign, ListTodo, Clipboard, ChevronDown, ChevronRight, BarCh
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import { TIER_CONFIG } from '@/lib/types/database'
+import { taskInScope } from '@/lib/task-channels'
 
 function CategoryContent() {
   const slug = useSearchParams().get('slug') || ''
@@ -54,7 +55,7 @@ function CategoryContent() {
 
   // Filter tasks belonging to the channels in this category
   const categoryChannelIds = channels?.map(c => c.id) || []
-  const categoryTasks = tasks?.filter(t => categoryChannelIds.includes(t.channel_id)) || []
+  const categoryTasks = tasks?.filter(t => taskInScope(t, categoryChannelIds)) || []
 
   // Category Budget calculations
   const categoryBudget = budgets?.find(b => b.scope_type === 'category' && b.scope_id === category.id)

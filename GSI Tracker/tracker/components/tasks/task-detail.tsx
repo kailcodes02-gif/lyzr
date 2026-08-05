@@ -20,7 +20,7 @@ import {
   CheckSquare, MessageSquare, Link as LinkIcon, Upload,
   AlertTriangle, Pencil, Target, Repeat,
 } from 'lucide-react'
-import { useTask, useUsers, useTasks, useCurrentUser, useKnownEmails } from '@/lib/hooks/use-data'
+import { useTask, useUsers, useTasks, useCurrentUser, useKnownEmails, useChannels } from '@/lib/hooks/use-data'
 import {
   updateTask, deleteTask, addChecklistItem, toggleChecklistItem,
   deleteChecklistItem, addComment, createMention, updateAssignments, uploadResultFile,
@@ -718,6 +718,13 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                     onSave={(fields) => handleFieldUpdate('planning_fields', fields)}
                   />
 
+                  {/* Multi-homing: show this task on other channels' boards too */}
+                  <AlsoChannelsEditor
+                    homeChannelId={task.channel_id}
+                    planningFields={task.planning_fields}
+                    onSave={(fields) => handleFieldUpdate('planning_fields', fields)}
+                  />
+
                   {/* Planning Fields (frequency, star grade, etc.) */}
                   <div>
                     <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Planning Fields</h4>
@@ -1146,6 +1153,13 @@ function SubtaskInlineRow({ sub, parentPriority, onChanged }: {
             onSave={(fields) => run(() => updateTask(sub.id, { planning_fields: fields }), 'Links save failed')}
           />
 
+          {/* Multi-homing for this sub-activity */}
+          <AlsoChannelsEditor
+            homeChannelId={sub.channel_id || ''}
+            planningFields={(subFull || sub).planning_fields || {}}
+            onSave={(fields) => run(() => updateTask(sub.id, { planning_fields: fields }), 'Channels save failed')}
+          />
+
 
         </div>
       )}
@@ -1486,6 +1500,76 @@ function RecurrenceSection({ task, onChanged }: { task: Task; onChanged: () => v
           </Button>
         </div>
       )}
+    </div>
+  )
+}
+
+
+// "Also in" channels: multi-home a task onto other channels' boards.
+// Home stays fixed (tasks.channel_id); extras live in planning_fields.also_channels.
+function AlsoChannelsEditor({ homeChannelId, planningFields, onSave }: {
+  homeChannelId: string
+  planningFields: Record<string, unknown>
+  onSave: (fields: Record<string, unknown>) => void
+}) {
+  const { data: channels } = useChannels()
+  const [pick, setPick] = useState('')
+  const also = (planningFields?.also_channels as string[] | undefined) || []
+
+  const label = (id: string) => {
+    const ch = channels?.find(c => c.id === id)
+    if (!ch) return 'Unknown channel'
+    const parent = channels?.find(c => c.id === ch.parent_channel_id)
+    return parent ? `${parent.name} › ${ch.name}` : ch.name
+  }
+
+  const options = (channels || [])
+    .filter(c => c.id !== homeChannelId && !also.includes(c.id))
+    .map(c => ({ id: c.id, label: label(c.id) }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+
+  const save = (next: string[]) => onSave({ ...planningFields, also_channels: next })
+
+  return (
+    <div className="mb-4">
+      <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+        <Layers className="w-3.5 h-3.5 text-violet-600" /> Also shows in
+      </h4>
+      <div className="flex flex-wrap gap-1.5 mb-1.5">
+        <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 border border-zinc-300 px-2 py-0.5 text-[11px] text-zinc-600" title="Home board (fixed)">
+          {label(homeChannelId)} · home
+        </span>
+        {also.map(id => (
+          <span key={id} className="inline-flex items-center gap-1 rounded-md bg-violet-50 border border-violet-200 px-2 py-0.5 text-[11px] text-violet-700">
+            {label(id)}
+            <button
+              onClick={() => save(also.filter(x => x !== id))}
+              className="text-zinc-400 hover:text-red-600"
+              title="Remove from this board"
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <select
+          value={pick}
+          onChange={e => setPick(e.target.value)}
+          className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-zinc-700 flex-1 max-w-sm"
+        >
+          <option value="">Add to another channel…</option>
+          {options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+        </select>
+        <Button
+          size="sm"
+          disabled={!pick}
+          onClick={() => { save([...also, pick]); setPick('') }}
+          className="h-7 bg-violet-600 hover:bg-violet-500 text-white text-xs"
+        >
+          <Plus className="w-3 h-3 mr-0.5" /> Add
+        </Button>
+      </div>
     </div>
   )
 }
