@@ -19,7 +19,18 @@ import { useLeadTracking, TrackCells, TrackCellHeaders } from './track-cells'
 type Lead = {
   id: string; name: string; email: string; company: string; source: string
   created: string; status: string; lifecycle: string; lastActivity: string; owner: string
+  leadScore?: string | number; scoreCategory?: string
+  leadSource?: string; sourceCategory?: string
   via?: string[]
+}
+
+// Lead Score Category (Lead Scoring Agent) → chip color
+function scoreChipClass(cat: string) {
+  const c = cat.toLowerCase()
+  if (c.includes('high') || c.includes('hot')) return 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  if (c.includes('med') || c.includes('warm')) return 'bg-amber-50 text-amber-700 border-amber-200'
+  if (c.includes('low') || c.includes('cold')) return 'bg-zinc-100 text-zinc-600 border-zinc-200'
+  return 'bg-blue-50 text-blue-700 border-blue-200'
 }
 
 export function HubSpotLeads() {
@@ -91,24 +102,28 @@ export function HubSpotLeads() {
   }
 
   // --- sorting ---
-  const [sortKey, setSortKey] = useState<'created' | 'company' | 'name'>('created')
+  const [sortKey, setSortKey] = useState<'created' | 'company' | 'name' | 'score'>('created')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const sorted = useMemo(() => {
     const arr = [...leads]
     arr.sort((a, b) => {
-      const va = String(a[sortKey] || '').toLowerCase()
-      const vb = String(b[sortKey] || '').toLowerCase()
-      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+      let cmp: number
+      if (sortKey === 'score') {
+        cmp = (Number(a.leadScore) || 0) - (Number(b.leadScore) || 0)
+      } else {
+        cmp = String(a[sortKey] || '').toLowerCase().localeCompare(String(b[sortKey] || '').toLowerCase())
+      }
+      return sortDir === 'asc' ? cmp : -cmp
     })
     return arr
   }, [leads, sortKey, sortDir])
 
-  const toggleSort = (key: 'created' | 'company' | 'name') => {
+  const toggleSort = (key: 'created' | 'company' | 'name' | 'score') => {
     if (sortKey === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
     else { setSortKey(key); setSortDir('desc') }
   }
 
-  const Th = ({ label, k }: { label: string; k?: 'created' | 'company' | 'name' }) => (
+  const Th = ({ label, k }: { label: string; k?: 'created' | 'company' | 'name' | 'score' }) => (
     <th className="text-left font-medium py-2.5 px-3 whitespace-nowrap">
       {k ? (
         <button onClick={() => toggleSort(k)} className="inline-flex items-center gap-1 hover:text-zinc-900">
@@ -186,12 +201,14 @@ export function HubSpotLeads() {
               No leads pulled yet — pick a date range and hit “Pull from HubSpot”. The built-in GSI rule applies automatically.
             </p>
           ) : (
-            <table className="w-full text-xs min-w-[1250px]">
+            <table className="w-full text-xs min-w-[1500px]">
               <thead>
                 <tr className="border-b border-zinc-200 bg-zinc-50 text-zinc-500">
                   <Th label="Via" />
                   <Th label="Lead" k="name" />
                   <Th label="Company" k="company" />
+                  <Th label="Lead score" k="score" />
+                  <Th label="Lead source" />
                   <Th label="Source" />
                   <Th label="Created" k="created" />
                   <Th label="Status / activity" />
@@ -216,6 +233,18 @@ export function HubSpotLeads() {
                       <p className="text-[10px] text-zinc-500">{lead.email}</p>
                     </td>
                     <td className="py-2 px-3 text-zinc-700">{lead.company}</td>
+                    <td className="py-2 px-3 whitespace-nowrap">
+                      <p className="font-semibold text-zinc-800">{lead.leadScore !== '' && lead.leadScore != null ? lead.leadScore : '—'}</p>
+                      {lead.scoreCategory && (
+                        <span className={`inline-flex rounded border px-1 py-0.5 text-[9px] font-semibold uppercase ${scoreChipClass(lead.scoreCategory)}`}>
+                          {lead.scoreCategory}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2 px-3 text-zinc-600 max-w-[130px]">
+                      <p className="truncate" title={lead.leadSource}>{lead.leadSource || '—'}</p>
+                      {lead.sourceCategory && <p className="text-[10px] text-zinc-400 truncate" title={lead.sourceCategory}>{lead.sourceCategory}</p>}
+                    </td>
                     <td className="py-2 px-3 text-zinc-600 max-w-[130px] truncate" title={lead.source}>{lead.source || '—'}</td>
                     <td className="py-2 px-3 text-zinc-600 whitespace-nowrap">
                       {lead.created ? format(new Date(lead.created), 'd MMM yyyy') : '—'}

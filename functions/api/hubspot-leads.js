@@ -50,6 +50,10 @@ const PROPS = [
   'hs_latest_source', 'hs_latest_source_data_1', 'hs_latest_source_data_2',
   'hs_lead_status', 'lifecyclestage', 'notes_last_updated', 'lastmodifieddate',
   'hubspot_owner_id',
+  // Lead Scoring Agent + lead source properties (per Kailash 2026-08-05)
+  'lsa_lead_score', 'lsa_lead_score_category', 'lsa_lead_source',
+  'lyzr_lead_score', 'lyzr_lead_score_category', 'hubspotscore',
+  'lead_source', 'lead_source_category',
 ]
 
 async function requireUser(request, env) {
@@ -179,6 +183,10 @@ export async function onRequestPost({ request, env }) {
         lifecycle: p.lifecyclestage || '',
         lastActivity: p.notes_last_updated || p.lastmodifieddate || '',
         owner: ownerNames[p.hubspot_owner_id] || '',
+        leadScore: p.lsa_lead_score ?? p.lyzr_lead_score ?? p.hubspotscore ?? '',
+        scoreCategory: p.lsa_lead_score_category || p.lyzr_lead_score_category || '',
+        leadSource: p.lead_source || p.lsa_lead_source || '',
+        sourceCategory: p.lead_source_category || '',
         via,
       }
     })
