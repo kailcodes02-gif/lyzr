@@ -100,6 +100,7 @@ export function HubSpotLeads() {
   const pulledAt = pull0?.at ?? null
   const [pulling, setPulling] = useState(false)
   const [pullNote, setPullNote] = useState('')
+  const [warnings, setWarnings] = usePersisted<string[]>(k('hs:warnings'), [])
 
   const rangeDates = (): { from?: string; to?: string } => {
     const today = new Date()
@@ -121,6 +122,7 @@ export function HubSpotLeads() {
       // subrequest budget allows, then hands back a cursor. Keep calling until
       // it says it is finished, so no rule is ever silently cut short.
       const merged = new Map<string, Lead>()
+      const warn = new Set<string>()
       let cursor: unknown = null
       let rounds = 0
       let complete = false
@@ -145,6 +147,7 @@ export function HubSpotLeads() {
             merged.set(l.id, l)
           }
         }
+        for (const w of (data.warnings || []) as string[]) warn.add(w)
         cursor = data.nextCursor ?? null
         if (cursor) {
           const p = data.progress
@@ -154,6 +157,7 @@ export function HubSpotLeads() {
         }
       } while (cursor && ++rounds < 40)
 
+      setWarnings([...warn])
       const all = [...merged.values()].sort((a, b) => (b.created || '').localeCompare(a.created || ''))
       const record = { leads: all, at: new Date().toISOString() }
       // Write through immediately: if this resolved after the component
@@ -326,6 +330,17 @@ export function HubSpotLeads() {
           </div>
         </CardContent>
       </Card>
+
+      {warnings.length > 0 && (
+        <Card className="bg-amber-50 border-amber-300">
+          <CardContent className="p-3 space-y-1">
+            <p className="text-xs font-semibold text-amber-900">Part of the pull rule could not run</p>
+            {warnings.map((w, i) => (
+              <p key={i} className="text-[11px] text-amber-800">{w}</p>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Range + pull */}
       <div className="flex flex-wrap items-center gap-2">

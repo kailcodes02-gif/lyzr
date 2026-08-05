@@ -109,6 +109,7 @@ async function collect(token, searchBody, tag, into, maxPages = 2) {
 async function fetchOwners(token) {
   const byId = {}
   const idByEmail = {}
+  let error = null
   try {
     const res = await fetch('https://api.hubapi.com/crm/v3/owners?limit=500', {
       headers: { Authorization: `Bearer ${token}` },
@@ -119,9 +120,13 @@ async function fetchOwners(token) {
         byId[o.id] = [o.firstName, o.lastName].filter(Boolean).join(' ') || o.email || o.id
         if (o.email) idByEmail[o.email.toLowerCase()] = o.id
       }
+    } else {
+      error = `owners lookup failed (HTTP ${res.status})`
     }
-  } catch { /* names are nice-to-have */ }
-  return { byId, idByEmail }
+  } catch {
+    error = 'owners lookup failed (network)'
+  }
+  return { byId, idByEmail, error }
 }
 
 export async function onRequestPost({ request, env }) {
@@ -143,7 +148,7 @@ export async function onRequestPost({ request, env }) {
     const { from, to } = body
     const dates = dateFilters(from, to, body.tzOffsetMinutes)
 
-    const { byId: ownerNames, idByEmail } = await fetchOwners(token)
+    const { byId: ownerNames, idByEmail, error: ownerError } = await fetchOwners(token)
     const found = new Map() // id -> { raw, via[] }
 
     // Every search this pull needs, as a flat resumable list. No rule has a
@@ -151,6 +156,14 @@ export async function onRequestPost({ request, env }) {
     // returns a cursor and the browser calls straight back to continue, so the
     // pull is limited only by how many leads actually match.
     const ownerIds = OWNER_EMAILS.map(e => idByEmail[e]).filter(Boolean)
+    const warnings = []
+    if (ownerError) {
+      // Without the owners list we cannot resolve owner emails to ids, so the
+      // "owned by a GSI owner" rule cannot run and owner names stay blank.
+      warnings.push(`Rule 2 (leads owned by the GSI owners) was skipped: ${ownerError}. Grant the HubSpot private app the crm.objects.owners.read scope.`)
+    } else if (!ownerIds.length) {
+      warnings.push('None of the 5 GSI owner emails matched a HubSpot owner, so rule 2 matched nothing.')
+    }
     const tasks = []
     for (let i = 0; i < companies.length; i += 5) {
       const batch = companies.slice(i, i + 5) // HubSpot allows 5 filterGroups per search
@@ -166,7 +179,13 @@ export async function onRequestPost({ request, env }) {
       } })
     }
     tasks.push({ tag: 'gsi', body: { query: 'GSI', filterGroups: dates.length ? [{ filters: dates }] : undefined } })
-    for (const prop of ['hs_analytics_source_data_1', 'hs_analytics_source_data_2', 'hs_latest_source_data_1', 'hs_latest_source_data_2']) {
+    for (const prop of [
+      'hs_analytics_source_data_1', 'hs_analytics_source_data_2',
+      'hs_latest_source_data_1', 'hs_latest_source_data_2',
+      // Paid-ads leads carry "LinkedIn Ads - GSI & SI" here, not in the
+      // analytics source fields — without these two they were never pulled.
+      'lsa_lead_source', 'lead_source',
+    ]) {
       tasks.push({ tag: 'gsi', body: {
         filterGroups: [{ filters: [{ propertyName: prop, operator: 'CONTAINS_TOKEN', value: 'GSI' }, ...dates] }],
       } })
@@ -223,6 +242,7 @@ export async function onRequestPost({ request, env }) {
       count: leads.length,
       nextCursor,                       // non-null => call again to continue
       progress: { done: taskIndex, total: tasks.length },
+      warnings,
     }), { status: 200, headers })
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err.message || err).slice(0, 300) }), { status: 502, headers })
