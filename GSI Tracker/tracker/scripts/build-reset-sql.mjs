@@ -21,6 +21,7 @@ const ORDER = [
   '009_saved_views.sql',
   '010_gtm_blueprint_extensions.sql',
   '011_lead_tracking.sql',
+  '012_recurrence_builder.sql',
 ]
 
 let m001 = mig('001_initial_schema.sql')

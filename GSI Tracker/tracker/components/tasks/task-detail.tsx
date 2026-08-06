@@ -40,6 +40,8 @@ import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { toZonedTime, format as formatTz } from 'date-fns-tz'
 import { TaskOwnersEditor } from './task-owners-editor'
+import { RecurrencePicker, DEFAULT_RECURRENCE, type RecurrenceValue } from './recurrence-picker'
+import { recurrenceLabel, type RecurrenceRule, type RecurrenceEnd } from '@/lib/task-logic'
 
 interface TaskDetailDrawerProps {
   taskId: string | null
@@ -1366,9 +1368,7 @@ function RecurrenceSection({ task, onChanged }: { task: Task; onChanged: () => v
   const supabase = createClient()
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
-  const [pattern, setPattern] = useState<'daily' | 'weekly' | 'biweekly' | 'monthly' | 'custom'>('weekly')
-  const [intervalDays, setIntervalDays] = useState(7)
-  const [endsOn, setEndsOn] = useState('')
+  const [value, setValue] = useState<RecurrenceValue>(DEFAULT_RECURRENCE)
   const [busy, setBusy] = useState(false)
 
   const { data: template } = useQuery({
@@ -1377,7 +1377,7 @@ function RecurrenceSection({ task, onChanged }: { task: Task; onChanged: () => v
     queryFn: async () => {
       const { data, error } = await supabase
         .from('recurring_templates')
-        .select('id, pattern, custom_interval_days, ends_on, is_active, next_due_date')
+        .select('id, is_active, next_due_date, interval_count, interval_unit, by_weekdays, end_type, ends_on, occurrences_total, occurrences_done')
         .eq('id', task.recurring_template_id!)
         .single()
       if (error) throw error
@@ -1397,19 +1397,27 @@ function RecurrenceSection({ task, onChanged }: { task: Task; onChanged: () => v
     } finally { setBusy(false) }
   }
 
-  const patternLabel = (t: { pattern: string; custom_interval_days: number | null }) =>
-    t.pattern === 'custom' ? `every ${t.custom_interval_days} days` : t.pattern
+  const templateLabel = (t: NonNullable<typeof template>) => {
+    const rule: RecurrenceRule = { interval_count: t.interval_count, interval_unit: t.interval_unit, by_weekdays: t.by_weekdays }
+    const end: RecurrenceEnd = t.end_type === 'on_date' ? { type: 'on_date', date: t.ends_on }
+      : t.end_type === 'after_count' ? { type: 'after_count', total: t.occurrences_total }
+      : { type: 'never' }
+    return recurrenceLabel(rule, end)
+  }
 
   if (task.recurring_template_id && template) {
+    const occurrenceProgress = template.end_type === 'after_count' && template.occurrences_total
+      ? ` · ${template.occurrences_done} of ${template.occurrences_total} done`
+      : ''
     return (
       <div className="mb-4 flex items-center gap-2 flex-wrap rounded-xl border border-violet-200 bg-violet-50/50 px-3 py-2">
         <Repeat className="w-3.5 h-3.5 text-violet-600" />
         {template.is_active ? (
           <>
             <span className="text-xs text-violet-800 font-medium">
-              Recurring · {patternLabel(template)}
+              Recurring · {templateLabel(template)}
               {template.next_due_date && ` · next on ${template.next_due_date}`}
-              {template.ends_on && ` · until ${template.ends_on}`}
+              {occurrenceProgress}
             </span>
             <Button
               size="sm"
@@ -1422,7 +1430,7 @@ function RecurrenceSection({ task, onChanged }: { task: Task; onChanged: () => v
           </>
         ) : (
           <>
-            <span className="text-xs text-zinc-500">Recurrence stopped ({patternLabel(template)})</span>
+            <span className="text-xs text-zinc-500">Recurrence stopped ({templateLabel(template)})</span>
             <Button
               size="sm"
               disabled={busy}
@@ -1455,49 +1463,29 @@ function RecurrenceSection({ task, onChanged }: { task: Task; onChanged: () => v
           <Repeat className="w-3 h-3" /> Make recurring
         </button>
       ) : (
-        <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-3 flex items-center gap-2 flex-wrap">
-          <Repeat className="w-3.5 h-3.5 text-violet-600 shrink-0" />
-          <select
-            value={pattern}
-            onChange={e => setPattern(e.target.value as any)}
-            className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1 text-zinc-800"
-          >
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="biweekly">Bi-weekly</option>
-            <option value="monthly">Monthly</option>
-            <option value="custom">Custom (days)</option>
-          </select>
-          {pattern === 'custom' && (
-            <Input
-              type="number"
-              value={intervalDays}
-              onChange={e => setIntervalDays(Number(e.target.value) || 7)}
-              className="h-7 w-20 text-xs bg-white border-zinc-300 text-zinc-800"
-            />
-          )}
-          <span className="text-[11px] text-zinc-500">ends (optional)</span>
-          <Input
-            type="date"
-            value={endsOn}
-            onChange={e => setEndsOn(e.target.value)}
-            className="h-7 w-36 text-xs bg-white border-zinc-300 text-zinc-800"
+        <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-3 space-y-2.5">
+          <div className="flex items-center gap-1.5">
+            <Repeat className="w-3.5 h-3.5 text-violet-600 shrink-0" />
+            <span className="text-xs font-medium text-violet-800">Repeat</span>
+          </div>
+          <RecurrencePicker
+            value={value}
+            onChange={setValue}
+            anchorWeekday={task.due_date ? new Date(task.due_date).getDay() : undefined}
           />
-          <Button
-            size="sm"
-            disabled={busy}
-            onClick={() => run(() => makeTaskRecurring(task.id, {
-              pattern,
-              custom_interval_days: pattern === 'custom' ? intervalDays : undefined,
-              ends_on: endsOn || undefined,
-            }).then(() => setOpen(false)), 'Failed to make recurring')}
-            className="h-7 bg-violet-600 hover:bg-violet-500 text-white text-xs"
-          >
-            Start
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => setOpen(false)} className="h-7 text-xs text-zinc-500">
-            Cancel
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              disabled={busy}
+              onClick={() => run(() => makeTaskRecurring(task.id, value).then(() => setOpen(false)), 'Failed to make recurring')}
+              className="h-7 bg-violet-600 hover:bg-violet-500 text-white text-xs"
+            >
+              Start
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setOpen(false)} className="h-7 text-xs text-zinc-500">
+              Cancel
+            </Button>
+          </div>
         </div>
       )}
     </div>

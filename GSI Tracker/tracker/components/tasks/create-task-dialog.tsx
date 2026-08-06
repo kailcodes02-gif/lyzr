@@ -20,6 +20,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { TaskPriority, AssignmentRole } from '@/lib/types/database'
 import { Plus, Trash2, Loader2 } from 'lucide-react'
+import { RecurrencePicker, DEFAULT_RECURRENCE, type RecurrenceValue } from './recurrence-picker'
 
 const schema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -57,14 +58,6 @@ export function CreateTaskDialog({
     P4: 'P4 (Backlog)'
   }
 
-  const recurrenceLabels = {
-    daily: 'Daily',
-    weekly: 'Weekly',
-    biweekly: 'Bi-weekly',
-    monthly: 'Monthly',
-    custom: 'Custom (Days)'
-  }
-
   const roleLabels = {
     primary: 'Primary',
     secondary: 'Secondary',
@@ -76,11 +69,9 @@ export function CreateTaskDialog({
   const { data: channels } = useChannels()
   const { data: users } = useUsers()
   
-  // Recurrence states
+  // Recurrence state
   const [isRecurring, setIsRecurring] = useState(false)
-  const [recurrencePattern, setRecurrencePattern] = useState<'daily' | 'weekly' | 'biweekly' | 'monthly' | 'custom'>('weekly')
-  const [customInterval, setCustomInterval] = useState(7)
-  const [recurrenceEndsOn, setRecurrenceEndsOn] = useState('')
+  const [recurrence, setRecurrence] = useState<RecurrenceValue>(DEFAULT_RECURRENCE)
 
   // One unified owner list: signed-in users AND known-but-not-signed-in
   // teammates. Rows are keyed by email; picking a pending person queues the
@@ -234,11 +225,7 @@ export function CreateTaskDialog({
             ...(links.length ? { links } : {}),
           },
           assignments: validAssignments,
-          recurrence: isRecurring ? {
-            pattern: recurrencePattern,
-            custom_interval_days: recurrencePattern === 'custom' ? customInterval : undefined,
-            ends_on: recurrenceEndsOn || undefined,
-          } : undefined,
+          recurrence: isRecurring ? { rule: recurrence.rule, end: recurrence.end } : undefined,
         })
 
         // Create checklist items added in the dialog
@@ -277,9 +264,7 @@ export function CreateTaskDialog({
         setLinks([]); setLinkLabel(''); setLinkUrl('')
         setFrequency(''); setBudget('')
         setIsRecurring(false)
-        setRecurrencePattern('weekly')
-        setCustomInterval(7)
-        setRecurrenceEndsOn('')
+        setRecurrence(DEFAULT_RECURRENCE)
         onOpenChange(false)
         if (onSuccess) onSuccess()
       } catch (err: any) {
@@ -399,48 +384,12 @@ export function CreateTaskDialog({
             </div>
 
             {isRecurring && (
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <div>
-                  <Label className="text-zinc-600 text-[10px]">Recurrence Pattern</Label>
-                  <Select
-                    value={recurrencePattern}
-                    onValueChange={(val) => setRecurrencePattern((val || 'weekly') as any)}
-                  >
-                    <SelectTrigger className="mt-1 w-full bg-zinc-100 border-zinc-300 text-zinc-900 h-8 text-xs px-3 flex justify-between items-center rounded-lg">
-                      <span>{recurrenceLabels[recurrencePattern]}</span>
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border border-zinc-300 text-zinc-900 rounded-lg">
-                      <SelectItem value="daily" className="text-xs py-1.5 px-2.5 hover:bg-zinc-100">Daily</SelectItem>
-                      <SelectItem value="weekly" className="text-xs py-1.5 px-2.5 hover:bg-zinc-100">Weekly</SelectItem>
-                      <SelectItem value="biweekly" className="text-xs py-1.5 px-2.5 hover:bg-zinc-100">Bi-weekly</SelectItem>
-                      <SelectItem value="monthly" className="text-xs py-1.5 px-2.5 hover:bg-zinc-100">Monthly</SelectItem>
-                      <SelectItem value="custom" className="text-xs py-1.5 px-2.5 hover:bg-zinc-100">Custom (Days)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {recurrencePattern === 'custom' ? (
-                  <div>
-                    <Label className="text-zinc-600 text-[10px]">Every X Days</Label>
-                    <Input
-                      type="number"
-                      value={customInterval}
-                      onChange={e => setCustomInterval(Number(e.target.value) || 1)}
-                      className="mt-1 bg-zinc-100 border-zinc-300 h-8 text-xs text-zinc-900"
-                      min="1"
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <Label className="text-zinc-600 text-[10px]">End Date (Optional)</Label>
-                    <Input
-                      type="date"
-                      value={recurrenceEndsOn}
-                      onChange={e => setRecurrenceEndsOn(e.target.value)}
-                      className="mt-1 bg-zinc-100 border-zinc-300 h-8 text-xs text-zinc-900"
-                    />
-                  </div>
-                )}
+              <div className="pt-1">
+                <RecurrencePicker
+                  value={recurrence}
+                  onChange={setRecurrence}
+                  anchorWeekday={watch('due_date') ? new Date(watch('due_date')!).getDay() : undefined}
+                />
               </div>
             )}
           </div>

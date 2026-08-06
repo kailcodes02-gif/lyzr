@@ -3,7 +3,25 @@
 import { createClient } from '@/lib/supabase/client'
 import type { TaskStatus, TaskPriority, AssignmentRole, BudgetScopeType, BudgetPeriodType } from '@/lib/types/database'
 import { format } from 'date-fns'
-import { advanceByPattern, normalizeEmail, incompleteBlockers } from '@/lib/task-logic'
+import { advanceRecurrence, legacyPatternFields, normalizeEmail, incompleteBlockers } from '@/lib/task-logic'
+import type { RecurrenceRule, RecurrenceEnd } from '@/lib/task-logic'
+
+// The row shape recurring_templates needs for interval_count/unit/weekdays/
+// end-condition, shared by createTask, makeTaskRecurring, and the auto-spawn
+// logic below.
+function recurrenceInsertFields(rule: RecurrenceRule, end: RecurrenceEnd) {
+  const legacy = legacyPatternFields(rule)
+  return {
+    ...legacy,
+    interval_count: rule.interval_count,
+    interval_unit: rule.interval_unit,
+    by_weekdays: rule.by_weekdays && rule.by_weekdays.length ? rule.by_weekdays : null,
+    end_type: end.type,
+    ends_on: end.type === 'on_date' ? end.date : null,
+    occurrences_total: end.type === 'after_count' ? end.total : null,
+    occurrences_done: 1, // the originating task is occurrence #1
+  }
+}
 
 export async function queueSlackNotification(channelId: string, message: string) {
   console.log(`[SLACK NOTIFICATION STUB] Channel/User: ${channelId} | Message: ${message}`)
@@ -39,9 +57,8 @@ export async function createTask(data: {
   planning_fields?: Record<string, unknown>
   assignments: { user_id: string; role: AssignmentRole }[]
   recurrence?: {
-    pattern: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'custom'
-    custom_interval_days?: number
-    ends_on?: string
+    rule: RecurrenceRule
+    end: RecurrenceEnd
     starts_on?: string
   }
 }) {
@@ -60,6 +77,8 @@ export async function createTask(data: {
   let templateId: string | null = null
 
   if (data.recurrence) {
+    const { rule, end } = data.recurrence
+    const anchor = data.due_date || new Date().toISOString().split('T')[0]
     const { data: template, error: tempError } = await supabase
       .from('recurring_templates')
       .insert({
@@ -68,21 +87,12 @@ export async function createTask(data: {
         description: data.description || null,
         default_priority: data.priority,
         default_planning_fields: data.planning_fields || {},
-        pattern: data.recurrence.pattern,
-        custom_interval_days: data.recurrence.custom_interval_days || null,
-        starts_on: data.recurrence.starts_on || data.due_date || new Date().toISOString().split('T')[0],
-        ends_on: data.recurrence.ends_on || null,
+        ...recurrenceInsertFields(rule, end),
+        starts_on: data.recurrence.starts_on || anchor,
         // The first instance is created now with due_date = data.due_date; the
         // template's next_due_date must be ONE interval later so the next spawned
         // instance does not land on the same date as the first.
-        next_due_date: format(
-          advanceByPattern(
-            new Date(data.due_date || new Date().toISOString().split('T')[0]),
-            data.recurrence.pattern,
-            data.recurrence.custom_interval_days
-          ),
-          'yyyy-MM-dd'
-        ),
+        next_due_date: format(advanceRecurrence(new Date(anchor), rule), 'yyyy-MM-dd'),
         default_assignees: data.assignments.map(a => a.user_id),
         created_by: user.id,
       })
@@ -276,9 +286,13 @@ export async function updateTask(
 
     if (template && template.is_active) {
       const nextDue = new Date(template.next_due_date)
-      const endsOn = template.ends_on ? new Date(template.ends_on) : null
-      
-      if (!endsOn || nextDue <= endsOn) {
+      const endsOn = template.end_type === 'on_date' && template.ends_on ? new Date(template.ends_on) : null
+      const withinDate = !endsOn || nextDue <= endsOn
+      const withinCount = template.end_type !== 'after_count'
+        || !template.occurrences_total
+        || template.occurrences_done < template.occurrences_total
+
+      if (withinDate && withinCount) {
         const { data: nextTask, error: spawnErr } = await supabase
           .from('tasks')
           .insert({
@@ -307,19 +321,25 @@ export async function updateTask(
             )
           }
 
-          const advancedDate = advanceByPattern(
-            new Date(template.next_due_date),
-            template.pattern,
-            template.custom_interval_days
-          )
+          const rule: RecurrenceRule = {
+            interval_count: template.interval_count,
+            interval_unit: template.interval_unit,
+            by_weekdays: template.by_weekdays,
+          }
+          const advancedDate = advanceRecurrence(new Date(template.next_due_date), rule)
           const nextDueStr = format(advancedDate, 'yyyy-MM-dd')
-          const isExpired = endsOn && advancedDate > endsOn
+          const occurrencesDone = (template.occurrences_done || 1) + 1
+          const isExpiredByDate = endsOn && advancedDate > endsOn
+          const isExpiredByCount = template.end_type === 'after_count'
+            && template.occurrences_total
+            && occurrencesDone >= template.occurrences_total
 
           await supabase
             .from('recurring_templates')
             .update({
               next_due_date: nextDueStr,
-              is_active: !isExpired,
+              occurrences_done: occurrencesDone,
+              is_active: !isExpiredByDate && !isExpiredByCount,
             })
             .eq('id', template.id)
         }
@@ -1647,9 +1667,8 @@ export async function removeTaskOwner(taskId: string, ref: { userId?: string; em
 // ============ RECURRENCE ON EXISTING TASKS ============
 
 export async function makeTaskRecurring(taskId: string, opts: {
-  pattern: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'custom'
-  custom_interval_days?: number
-  ends_on?: string
+  rule: RecurrenceRule
+  end: RecurrenceEnd
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -1672,15 +1691,10 @@ export async function makeTaskRecurring(taskId: string, opts: {
       description: task.description,
       default_priority: task.priority,
       default_planning_fields: task.planning_fields || {},
-      pattern: opts.pattern,
-      custom_interval_days: opts.pattern === 'custom' ? (opts.custom_interval_days || 7) : null,
+      ...recurrenceInsertFields(opts.rule, opts.end),
       starts_on: anchor,
-      ends_on: opts.ends_on || null,
       // Next instance lands ONE interval after this task's due date
-      next_due_date: format(
-        advanceByPattern(new Date(anchor), opts.pattern, opts.custom_interval_days),
-        'yyyy-MM-dd'
-      ),
+      next_due_date: format(advanceRecurrence(new Date(anchor), opts.rule), 'yyyy-MM-dd'),
       default_assignees: (task.assignments || []).map((a: { user_id: string }) => a.user_id),
       created_by: user.id,
     })
