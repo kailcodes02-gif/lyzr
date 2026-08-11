@@ -14,6 +14,7 @@ import {
 import { useWeeklySnapshot, useRecentWeeklySnapshots, type WeeklySnapshot } from '@/lib/hooks/use-weekly'
 import { useTasks, useBudgetPeriods, useCategories, useUsers } from '@/lib/hooks/use-data'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
+import { ReportBuilder } from '@/components/weekly/report-builder'
 import type { Task } from '@/lib/types/database'
 
 const WEEK_COUNT = 12
@@ -408,6 +409,14 @@ export default function WeeklyReviewPage() {
       {/* Content */}
       {!isLoading && hasSnapshot && totals && (
         <>
+          <ReportBuilder
+            weekKey={selectedWeek.key}
+            weekStart={selectedWeek.start}
+            weekEnd={selectedWeek.end}
+            weekLabel={selectedWeek.label}
+            trackerDone={completedTasksDisplay.map(t => ({ title: t.title, channel: t.channel ?? null }))}
+          />
+
           {/* KPI tiles */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiTile label="Total tasks" value={totals.total} icon={<Layers className="w-5 h-5" />} accent="blue" />
