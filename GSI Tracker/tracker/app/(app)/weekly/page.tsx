@@ -406,17 +406,13 @@ export default function WeeklyReviewPage() {
         </Card>
       )}
 
+      {/* Weekly Report — its own date range, independent of the ISO-week
+          picker above (which drives the task/budget review further down) */}
+      <ReportBuilder />
+
       {/* Content */}
       {!isLoading && hasSnapshot && totals && (
         <>
-          <ReportBuilder
-            weekKey={selectedWeek.key}
-            weekStart={selectedWeek.start}
-            weekEnd={selectedWeek.end}
-            weekLabel={selectedWeek.label}
-            trackerDone={completedTasksDisplay.map(t => ({ title: t.title, channel: t.channel ?? null }))}
-          />
-
           {/* KPI tiles */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiTile label="Total tasks" value={totals.total} icon={<Layers className="w-5 h-5" />} accent="blue" />

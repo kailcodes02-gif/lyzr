@@ -1532,16 +1532,19 @@ CREATE TABLE IF NOT EXISTS report_done_items (
 CREATE INDEX IF NOT EXISTS report_done_items_week_idx ON report_done_items(week_starting);
 
 -- The generated report itself. "Create Weekly Report" upserts this row for
--- the selected week; `summary` keeps the structured inputs so the report can
--- be regenerated/edited later without re-deriving everything from scratch.
+-- the selected date range; `summary` keeps the structured inputs so the
+-- report can be regenerated/edited later without re-deriving everything.
+-- Reports can now cover a custom (non-week-aligned) range, so the natural
+-- key is the (start, end) pair rather than start alone.
 CREATE TABLE IF NOT EXISTS weekly_reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  week_starting DATE NOT NULL UNIQUE,
+  week_starting DATE NOT NULL,
   week_ending DATE NOT NULL,
   html TEXT NOT NULL,
   summary JSONB NOT NULL DEFAULT '{}'::jsonb,
   generated_by UUID REFERENCES users(id) ON DELETE SET NULL,
-  generated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  generated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (week_starting, week_ending)
 );
 
 ALTER TABLE report_ad_spend   ENABLE ROW LEVEL SECURITY;

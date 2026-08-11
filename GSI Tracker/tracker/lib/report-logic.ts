@@ -9,8 +9,9 @@
 // family of document; only the embedded data changes.
 
 export type DealRow = {
-  p: string; o: string; s: 'In-conversation' | 'Demo' | 'Win' | 'Lost'
+  id: string; p: string; o: string; s: 'In-conversation' | 'Demo' | 'Win' | 'Lost'
   ss: string; fc: string | null; m: string; q: string | null; a: number
+  via?: string[]
 }
 export type DoneItem = { title: string; subtitle?: string | null; source: 'tracker' | 'custom' }
 export type LeadsSummary = {
@@ -19,7 +20,12 @@ export type LeadsSummary = {
   rows: { name: string; email: string; company: string; via: string[] }[]
 }
 export type AdSpendRow = { platform: string; campaign: string | null; spend: number; leads: number | null; notes: string | null }
-export type EmailCampaignRow = { name: string; sent: number; opens: number; replies: number }
+export type EmailCampaignRow = { name: string; sent: number; uniqueSent: number; opens: number; replies: number }
+export type EmailsSummary = {
+  totalSent: number; totalOpens: number; totalReplies: number
+  totalCampaigns: number; totalUniqueSends: number
+  rows: EmailCampaignRow[]
+}
 
 export type ReportData = {
   weekLabel: string
@@ -29,7 +35,7 @@ export type ReportData = {
   doneItems: DoneItem[]
   leads: LeadsSummary
   adSpend: { total: number; rows: AdSpendRow[] }
-  emails: { total: number; rows: EmailCampaignRow[] }
+  emails: EmailsSummary
   pipeline: DealRow[]
 }
 
@@ -101,6 +107,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .metrics-grid.col2{grid-template-columns:repeat(2,1fr);}
 .metrics-grid.col3{grid-template-columns:repeat(3,1fr);}
 .metrics-grid.col4{grid-template-columns:repeat(4,1fr);}
+.metrics-grid.col5{grid-template-columns:repeat(5,1fr);}
 .metric-cell{background:var(--card);padding:14px 16px;}
 .metric-val{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;color:var(--text);letter-spacing:-0.02em;line-height:1.1;}
 .metric-val.green{color:var(--green);}
@@ -366,23 +373,25 @@ function renderAdSpend(ad: { total: number; rows: AdSpendRow[] }): string {
 </div>`
 }
 
-function renderEmails(em: { total: number; rows: EmailCampaignRow[] }): string {
+function renderEmails(em: EmailsSummary): string {
   const rows = em.rows.slice(0, 20).map(r => `
-    <tr><td>${esc(r.name)}</td><td class="val-hi">${r.sent}</td><td>${r.opens}</td><td>${r.replies}</td></tr>`).join('')
+    <tr><td>${esc(r.name)}</td><td class="val-hi">${r.sent}</td><td>${r.uniqueSent}</td><td>${r.opens}</td><td>${r.replies}</td></tr>`).join('')
   return `
 <div class="channel-block">
   <div class="channel-head">
     <div class="channel-icon ch-email">✉</div>
-    <span class="channel-name">Emails Sent — Instantly</span>
-    <div class="channel-status-row"><span class="badge done">${em.total.toLocaleString()} sent</span></div>
+    <span class="channel-name">Emails Sent — Instantly (GSI-tagged campaigns)</span>
+    <div class="channel-status-row"><span class="badge done">${em.totalSent.toLocaleString()} sent</span></div>
   </div>
   <div class="channel-body">
-    <div class="metrics-grid col3" style="margin-bottom:14px;">
-      <div class="metric-cell"><div class="metric-val green">${em.total.toLocaleString()}</div><div class="metric-label">Total emails sent</div></div>
-      <div class="metric-cell"><div class="metric-val">${em.rows.reduce((s, r) => s + r.opens, 0).toLocaleString()}</div><div class="metric-label">Unique opens</div></div>
-      <div class="metric-cell"><div class="metric-val">${em.rows.reduce((s, r) => s + r.replies, 0).toLocaleString()}</div><div class="metric-label">Unique replies</div></div>
+    <div class="metrics-grid col5" style="margin-bottom:14px;">
+      <div class="metric-cell"><div class="metric-val green">${em.totalSent.toLocaleString()}</div><div class="metric-label">Total sent</div></div>
+      <div class="metric-cell"><div class="metric-val">${em.totalUniqueSends.toLocaleString()}</div><div class="metric-label">Unique sends</div></div>
+      <div class="metric-cell"><div class="metric-val">${em.totalOpens.toLocaleString()}</div><div class="metric-label">Total opens</div></div>
+      <div class="metric-cell"><div class="metric-val">${em.totalReplies.toLocaleString()}</div><div class="metric-label">Total replies</div></div>
+      <div class="metric-cell"><div class="metric-val amber">${em.totalCampaigns}</div><div class="metric-label">Total campaigns</div></div>
     </div>
-    ${em.rows.length ? `<div class="ad-table-wrap"><table class="mini-table"><thead><tr><th>Campaign</th><th>Sent</th><th>Opens</th><th>Replies</th></tr></thead><tbody>${rows}</tbody></table></div>${em.rows.length > 20 ? `<p class="empty-note">+ ${em.rows.length - 20} more campaigns</p>` : ''}` : '<p class="empty-note">No campaign activity for this week.</p>'}
+    ${em.rows.length ? `<div class="ad-table-wrap"><table class="mini-table"><thead><tr><th>Campaign</th><th>Sent</th><th>Unique sent</th><th>Opens</th><th>Replies</th></tr></thead><tbody>${rows}</tbody></table></div>${em.rows.length > 20 ? `<p class="empty-note">+ ${em.rows.length - 20} more campaigns</p>` : ''}` : '<p class="empty-note">No GSI-tagged campaign activity for this week.</p>'}
   </div>
 </div>`
 }
