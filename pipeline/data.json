@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-14T07:30:46.645Z",
+  "generated_at": "2026-08-14T07:47:04.505Z",
   "source_file": "tracker.xlsx",
   "rows": [
     {
@@ -8036,7 +8036,7 @@
       "segment": "Accenture",
       "sn": 187,
       "company": "UAE DGE",
-      "industry": "Goverment",
+      "industry": "Human Resource",
       "project": "HR Workbench",
       "use_case": "Your autonomous recruitment intelligence platform",
       "category": "RPT Prototype",
@@ -8057,7 +8057,18 @@
       "close_quarter": null,
       "created_by": "Aravind D",
       "created_at": "2026-08-14T07:30:46.645Z",
-      "edit_history": []
+      "edit_history": [
+        {
+          "edited_by": "Aravind D",
+          "edited_at": "2026-08-14T07:47:04.505Z",
+          "changes": {
+            "industry": {
+              "old": "Goverment",
+              "new": "Human Resource"
+            }
+          }
+        }
+      ]
     }
   ],
   "aggregates": {
@@ -9307,9 +9318,9 @@
       "Event Management",
       "FMCG",
       "Finance",
-      "Goverment",
       "HR",
       "Healthcare",
+      "Human Resource",
       "Image generation",
       "Insurance",
       "Legal",
