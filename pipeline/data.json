@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-29T12:30:32.304Z",
+  "generated_at": "2026-08-14T07:30:46.645Z",
   "source_file": "tracker.xlsx",
   "rows": [
     {
@@ -8030,17 +8030,45 @@
       "created_by": "Aravind D",
       "created_at": "2026-07-29T12:30:32.304Z",
       "edit_history": []
+    },
+    {
+      "id": "ACC-0360",
+      "segment": "Accenture",
+      "sn": 187,
+      "company": "UAE DGE",
+      "industry": "Goverment",
+      "project": "HR Workbench",
+      "use_case": "Your autonomous recruitment intelligence platform",
+      "category": "RPT Prototype",
+      "stage": "Demo",
+      "prototype_owners": [
+        "Monisha",
+        "Aravind"
+      ],
+      "opportunity_owners": [
+        "Praveen"
+      ],
+      "prototype_link": "https://hr-workbench.rapid.studio.lyzr.ai/",
+      "prototype_link_text": "https://hr-workbench.rapid.studio.lyzr.ai/",
+      "acv": 120000,
+      "acv_raw": "120000",
+      "time_period": null,
+      "close_date_raw": null,
+      "close_quarter": null,
+      "created_by": "Aravind D",
+      "created_at": "2026-08-14T07:30:46.645Z",
+      "edit_history": []
     }
   ],
   "aggregates": {
-    "total_rows": 359,
-    "total_acv": 38264000,
-    "acv_open": 31276000,
+    "total_rows": 360,
+    "total_acv": 38384000,
+    "acv_open": 31396000,
     "acv_won": 3630000,
     "acv_lost": 3358000,
-    "unique_companies": 206,
+    "unique_companies": 207,
     "by_stage": {
-      "Demo": 65,
+      "Demo": 66,
       "in-conversation": 214,
       "win": 13,
       "customer": 29,
@@ -8055,10 +8083,10 @@
         }
       },
       "Accenture": {
-        "count": 97,
-        "acv": 9895000,
+        "count": 98,
+        "acv": 10015000,
         "stages": {
-          "Demo": 9,
+          "Demo": 10,
           "in-conversation": 76,
           "win": 4,
           "customer": 3,
@@ -8135,6 +8163,11 @@
         "acv": 700000
       },
       {
+        "name": "Praveen",
+        "deals": 2,
+        "acv": 370000
+      },
+      {
         "name": "Ravi",
         "deals": 3,
         "acv": 320000
@@ -8143,11 +8176,6 @@
         "name": "Arkojit Kolay",
         "deals": 7,
         "acv": 270000
-      },
-      {
-        "name": "Praveen",
-        "deals": 1,
-        "acv": 250000
       },
       {
         "name": "Naveedh S",
@@ -8578,6 +8606,11 @@
       },
       {
         "company": "Hunt Military Company",
+        "deals": 1,
+        "acv": 120000
+      },
+      {
+        "company": "UAE DGE",
         "deals": 1,
         "acv": 120000
       },
@@ -9274,6 +9307,7 @@
       "Event Management",
       "FMCG",
       "Finance",
+      "Goverment",
       "HR",
       "Healthcare",
       "Image generation",
