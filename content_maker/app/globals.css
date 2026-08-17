@@ -1,0 +1,156 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-dm), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-playfair), Georgia, serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  /* Lyzr brand accents — verified against Agentic-roadmap-gsi/app/globals.css
+     and the weekly GSI report theme, both independently using the same
+     terracotta + DM Sans/Playfair Display pairing. Not part of the standard
+     shadcn semantic set — use for deliberate brand pops (selected states,
+     icons), not as a drop-in replacement for --accent (which stays a subtle
+     neutral hover tone). */
+  --color-brand-terracotta: var(--brand-terracotta);
+  --color-brand-terracotta-deep: var(--brand-terracotta-deep);
+  --color-brand-violet: var(--brand-violet);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  /* Lyzr brand — warm, editorial light theme (matches Agentic-roadmap-gsi
+     and the weekly GSI reports: cream canvas, terracotta/violet accents,
+     DM Sans + Playfair Display). */
+  --background: #f6f1ea;
+  --foreground: #27272a;
+  --card: #ffffff;
+  --card-foreground: #27272a;
+  --popover: #ffffff;
+  --popover-foreground: #27272a;
+  --primary: #26211c;
+  --primary-foreground: #f6f1ea;
+  --secondary: #f1e9e0;
+  --secondary-foreground: #26211c;
+  --muted: #f1e9e0;
+  --muted-foreground: #6b5853;
+  --accent: #f1e9e0;
+  --accent-foreground: #26211c;
+  --destructive: #c0473b;
+  --border: #e7dccf;
+  --input: #e7dccf;
+  --ring: #c96a5a;
+  --chart-1: #c96a5a;
+  --chart-2: #6e51e4;
+  --chart-3: #3e9c72;
+  --chart-4: #d9a84c;
+  --chart-5: #8c7b70;
+  --radius: 0.625rem;
+  --sidebar: #fbf7f2;
+  --sidebar-foreground: #27272a;
+  --sidebar-primary: #26211c;
+  --sidebar-primary-foreground: #f6f1ea;
+  --sidebar-accent: #f1e9e0;
+  --sidebar-accent-foreground: #26211c;
+  --sidebar-border: #e7dccf;
+  --sidebar-ring: #c96a5a;
+
+  --brand-terracotta: #c96a5a;
+  --brand-terracotta-deep: #b5564a;
+  --brand-violet: #6e51e4;
+}
+
+.dark {
+  /* From the weekly GSI report dark theme — same terracotta accent,
+     consistent DM Sans/Playfair Display pairing. */
+  --background: #0c0a08;
+  --foreground: #f0ebe4;
+  --card: #1c1814;
+  --card-foreground: #f0ebe4;
+  --popover: #1c1814;
+  --popover-foreground: #f0ebe4;
+  --primary: #f0ebe4;
+  --primary-foreground: #0c0a08;
+  --secondary: #141210;
+  --secondary-foreground: #f0ebe4;
+  --muted: #141210;
+  --muted-foreground: #9e9188;
+  --accent: #2e2822;
+  --accent-foreground: #f0ebe4;
+  --destructive: #c0473b;
+  --border: #2e2822;
+  --input: #2e2822;
+  --ring: #c96a5a;
+  --chart-1: #c96a5a;
+  --chart-2: #5a8bc9;
+  --chart-3: #5aab8a;
+  --chart-4: #d9a84c;
+  --chart-5: #9e9188;
+  --sidebar: #141210;
+  --sidebar-foreground: #f0ebe4;
+  --sidebar-primary: #f0ebe4;
+  --sidebar-primary-foreground: #0c0a08;
+  --sidebar-accent: #2e2822;
+  --sidebar-accent-foreground: #f0ebe4;
+  --sidebar-border: #2e2822;
+  --sidebar-ring: #c96a5a;
+
+  --brand-terracotta: #c96a5a;
+  --brand-terracotta-deep: #b5564a;
+  --brand-violet: #6e51e4;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(1100px 540px at 88% -12%, rgba(201, 106, 90, 0.07), transparent 60%),
+      radial-gradient(820px 460px at -6% -4%, rgba(110, 81, 228, 0.04), transparent 55%);
+    background-attachment: fixed;
+  }
+  html {
+    @apply font-sans;
+  }
+}

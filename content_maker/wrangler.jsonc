@@ -1,0 +1,30 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "content-maker",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS",
+    // Auth lives in Next middleware (kept on the deprecated middleware.ts
+    // convention on purpose — Next 16's newer "proxy" primitive can't run
+    // on the Edge runtime, and OpenNext's Cloudflare adapter requires Edge)
+    // — the Worker must see every request before static assets are served,
+    // or a prerendered page bypasses the login redirect entirely.
+    "run_worker_first": true
+  },
+  // Path-mount on the existing static site's domain: everything under
+  // /content_maker hits this Worker; all other paths keep hitting the
+  // Pages project (same pattern as GSI Tracker's route on this zone).
+  "routes": [
+    { "pattern": "lyzr.kailash-gm.com/content_maker*", "zone_name": "kailash-gm.com" }
+  ],
+  "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://lyzr.kailash-gm.com/content_maker",
+    "NEXT_PUBLIC_BASE_PATH": "/content_maker"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
