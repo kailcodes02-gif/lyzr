@@ -17,17 +17,31 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   let accessToken: string;
   try {
     accessToken = await getValidAccessToken(user.id);
-  } catch {
-    return NextResponse.json({ suggestions: [], gmailConnected: false });
+  } catch (err) {
+    console.error("gmail/contacts: failed to get access token:", err);
+    return NextResponse.json({
+      suggestions: [],
+      gmailConnected: false,
+      error: err instanceof Error ? err.message : "Gmail isn't connected.",
+    });
   }
 
-  const frequent = request.nextUrl.searchParams.get("frequent");
-  if (frequent) {
-    const suggestions = await listFrequentContacts(accessToken);
+  try {
+    const frequent = request.nextUrl.searchParams.get("frequent");
+    if (frequent) {
+      const suggestions = await listFrequentContacts(accessToken);
+      return NextResponse.json({ suggestions });
+    }
+
+    const query = request.nextUrl.searchParams.get("q") ?? "";
+    const suggestions = await searchContactSuggestions(accessToken, query);
     return NextResponse.json({ suggestions });
+  } catch (err) {
+    console.error("gmail/contacts: search failed:", err);
+    return NextResponse.json({
+      suggestions: [],
+      gmailConnected: true,
+      error: err instanceof Error ? err.message : "Gmail search failed.",
+    });
   }
-
-  const query = request.nextUrl.searchParams.get("q") ?? "";
-  const suggestions = await searchContactSuggestions(accessToken, query);
-  return NextResponse.json({ suggestions });
 });

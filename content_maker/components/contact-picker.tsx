@@ -54,17 +54,23 @@ export function ContactPicker({
 
   const [frequent, setFrequent] = useState<Suggestion[] | null>(null);
   const [loadingFrequent, setLoadingFrequent] = useState(false);
+  const [frequentError, setFrequentError] = useState<string | null>(null);
 
   const [searchResults, setSearchResults] = useState<Suggestion[]>([]);
   const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const suggestFromInbox = () => {
     setLoadingFrequent(true);
     setFrequent(null);
+    setFrequentError(null);
     fetch(apiPath("/api/gmail/contacts?frequent=1"))
       .then((res) => res.json())
-      .then((data) => setFrequent(data.suggestions ?? []))
-      .catch(() => setFrequent([]))
+      .then((data) => {
+        setFrequent(data.suggestions ?? []);
+        if (data.error) setFrequentError(data.error);
+      })
+      .catch(() => setFrequentError("Something went wrong reaching Gmail."))
       .finally(() => setLoadingFrequent(false));
   };
 
@@ -85,10 +91,15 @@ export function ContactPicker({
 
     const search = setTimeout(() => {
       if (cancelled || isTooShort) return;
+      setSearchError(null);
       fetch(apiPath(`/api/gmail/contacts?q=${encodeURIComponent(query)}`))
         .then((res) => res.json())
-        .then((data) => !cancelled && setSearchResults(data.suggestions ?? []))
-        .catch(() => !cancelled && setSearchResults([]))
+        .then((data) => {
+          if (cancelled) return;
+          setSearchResults(data.suggestions ?? []);
+          if (data.error) setSearchError(data.error);
+        })
+        .catch(() => !cancelled && setSearchError("Something went wrong reaching Gmail."))
         .finally(() => !cancelled && setSearching(false));
     }, 300);
 
@@ -140,6 +151,7 @@ export function ContactPicker({
   const showingSearch = query.trim().length >= 2;
   const bubbles = showingSearch ? searchResults : frequent;
   const loading = showingSearch ? searching : loadingFrequent;
+  const error = showingSearch ? searchError : frequentError;
 
   return (
     <div className="space-y-3">
@@ -170,7 +182,11 @@ export function ContactPicker({
         </div>
       )}
 
-      {!loading && bubbles && bubbles.length === 0 && (
+      {!loading && error && (
+        <p className="text-sm text-destructive">{error}</p>
+      )}
+
+      {!loading && !error && bubbles && bubbles.length === 0 && (
         <p className="text-sm text-muted-foreground">
           {showingSearch ? `No matches in your inbox for "${query.trim()}".` : "No contacts found."}
         </p>

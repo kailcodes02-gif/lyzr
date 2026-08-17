@@ -3,14 +3,17 @@ export type GenerationMode = "thread" | "general";
 
 // Verbatim from the funnel spec: emails from meeting-notetaker bots/services,
 // or subjects that look like meeting notes/summaries/transcripts.
-const MEETING_TRANSCRIPT_QUERY =
+// Exported (not just used internally) so /api/email/sources can pull this
+// category on its own, separately from product updates and thread messages —
+// letting the rep pick individual candidates instead of an opaque merged pull.
+export const MEETING_TRANSCRIPT_QUERY =
   'from:(gemini-notes@google.com OR meet-notes-noreply@google.com OR otter.ai OR fireflies.ai OR granola.so OR fathom.video OR read.ai OR tactiq.io OR supernormal.com OR meetgeek.ai OR gong.io OR avoma.com OR tldv.io OR shadow.do OR sybil.ai OR claude.ai) OR subject:("Meeting notes" OR "Notes from" OR "Meeting summary" OR "Call transcript" OR "Meeting recording")';
 
 // siva@/humans@ land in every rep's own inbox (no shared mailbox needed) —
 // this searches the logged-in user's own Gmail.
-const TOFU_QUERY = "from:siva@lyzr.ai OR to:humans@lyzr.ai";
+export const TOFU_QUERY = "from:siva@lyzr.ai OR to:humans@lyzr.ai";
 
-function threadQuery(contactEmail: string): string {
+export function threadQuery(contactEmail: string): string {
   return `to:(${contactEmail}) OR from:(${contactEmail})`;
 }
 

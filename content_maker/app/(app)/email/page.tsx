@@ -7,11 +7,45 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ContactPicker } from "@/components/contact-picker";
-import { Loader2, Sparkles, Send, Megaphone, MessagesSquare, Flame, Globe, UserRound } from "lucide-react";
+import {
+  Loader2,
+  Sparkles,
+  Send,
+  Megaphone,
+  MessagesSquare,
+  Flame,
+  Globe,
+  UserRound,
+  Inbox,
+} from "lucide-react";
 import { apiPath } from "@/lib/api-path";
 
 type Tier = "tofu" | "mofu" | "bofu";
 type Mode = "thread" | "general";
+
+interface GmailMessageSummary {
+  id: string;
+  threadId: string;
+  from: string;
+  subject: string;
+  date: string;
+  snippet: string;
+  bodyText: string;
+}
+
+interface KbEntrySummary {
+  id: string;
+  title: string;
+  preview: string;
+}
+
+interface Sources {
+  productUpdates: GmailMessageSummary[];
+  meetingTranscripts: GmailMessageSummary[];
+  thread: GmailMessageSummary[];
+  hubspot: { found: boolean; error?: string } | null;
+  kbEntries: KbEntrySummary[];
+}
 
 interface EmailContext {
   productUpdates: string[];
@@ -52,12 +86,82 @@ function StepLabel({ n, children }: { n: number; children: React.ReactNode }) {
   );
 }
 
+function formatDate(dateHeader: string): string {
+  const d = new Date(dateHeader);
+  return Number.isNaN(d.getTime())
+    ? dateHeader
+    : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function MessageChecklist({
+  title,
+  messages,
+  selected,
+  onToggle,
+  onToggleAll,
+}: {
+  title: string;
+  messages: GmailMessageSummary[];
+  selected: Set<string>;
+  onToggle: (id: string) => void;
+  onToggleAll: (checked: boolean) => void;
+}) {
+  if (messages.length === 0) return null;
+  const allChecked = messages.every((m) => selected.has(m.id));
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-medium uppercase text-muted-foreground">
+          {title} ({messages.length})
+        </div>
+        <button
+          type="button"
+          onClick={() => onToggleAll(!allChecked)}
+          className="text-xs text-brand-terracotta hover:underline cursor-pointer"
+        >
+          {allChecked ? "Deselect all" : "Select all"}
+        </button>
+      </div>
+      <div className="space-y-1 max-h-64 overflow-y-auto rounded-lg border border-border">
+        {messages.map((m) => (
+          <label
+            key={m.id}
+            className="flex items-start gap-3 px-3 py-2 text-sm hover:bg-muted/50 cursor-pointer border-b border-border last:border-b-0"
+          >
+            <input
+              type="checkbox"
+              checked={selected.has(m.id)}
+              onChange={() => onToggle(m.id)}
+              className="mt-1"
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-medium truncate">{m.subject || "(no subject)"}</span>
+                <span className="text-xs text-muted-foreground shrink-0">{formatDate(m.date)}</span>
+              </div>
+              <div className="text-xs text-muted-foreground truncate">{m.from}</div>
+              <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{m.snippet}</p>
+            </div>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function EmailPage() {
   const [tier, setTier] = useState<Tier>("tofu");
   const [mode, setMode] = useState<Mode>("general");
   const [contactEmail, setContactEmail] = useState("");
   const [extraContext, setExtraContext] = useState("");
   const [toneOverride, setToneOverride] = useState("");
+
+  const [findingSources, setFindingSources] = useState(false);
+  const [sources, setSources] = useState<Sources | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedKbIds, setSelectedKbIds] = useState<Set<string>>(new Set());
+  const [includeHubspot, setIncludeHubspot] = useState(true);
 
   const [assembling, setAssembling] = useState(false);
   const [context, setContext] = useState<EmailContext | null>(null);
@@ -74,22 +178,100 @@ export default function EmailPage() {
   const effectiveMode: Mode = tier === "bofu" ? "thread" : mode;
   const needsContact = effectiveMode === "thread";
 
-  const assembleContext = async () => {
+  const resetDownstream = () => {
+    setSources(null);
+    setSelectedIds(new Set());
+    setSelectedKbIds(new Set());
+    setContext(null);
+    setDraft(null);
+  };
+
+  const findSources = async () => {
     if (needsContact && !contactEmail.trim()) {
       toast.error("Choose a contact first");
       return;
     }
-    setAssembling(true);
-    setContext(null);
-    setDraft(null);
+    setFindingSources(true);
+    resetDownstream();
     try {
-      const res = await fetch(apiPath("/api/email/context"), {
+      const res = await fetch(apiPath("/api/email/sources"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tier,
           mode: effectiveMode,
           contactEmail: contactEmail.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to find sources");
+      setSources(data);
+      // Default to everything selected — the rep can deselect what they
+      // don't want, rather than starting from nothing and having to hunt.
+      setSelectedIds(
+        new Set([
+          ...data.productUpdates.map((m: GmailMessageSummary) => m.id),
+          ...data.meetingTranscripts.map((m: GmailMessageSummary) => m.id),
+          ...data.thread.map((m: GmailMessageSummary) => m.id),
+        ])
+      );
+      setSelectedKbIds(new Set(data.kbEntries.map((e: KbEntrySummary) => e.id)));
+      setIncludeHubspot(Boolean(data.hubspot?.found));
+      if (data.hubspot?.error) toast.message(data.hubspot.error);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setFindingSources(false);
+    }
+  };
+
+  const toggleMessage = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllIn = (messages: GmailMessageSummary[], checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const m of messages) {
+        if (checked) next.add(m.id);
+        else next.delete(m.id);
+      }
+      return next;
+    });
+  };
+
+  const toggleKbEntry = (id: string) => {
+    setSelectedKbIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const assembleContext = async () => {
+    if (!sources) return;
+    setAssembling(true);
+    setContext(null);
+    setDraft(null);
+    try {
+      const allMessages = [...sources.productUpdates, ...sources.meetingTranscripts, ...sources.thread];
+      const selectedMessages = allMessages.filter((m) => selectedIds.has(m.id));
+
+      const res = await fetch(apiPath("/api/email/context"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tier,
+          selectedMessages,
+          includeHubspot: includeHubspot && Boolean(sources.hubspot?.found),
+          hubspotContactEmail: contactEmail.trim() || undefined,
+          selectedKbEntryIds: Array.from(selectedKbIds),
           extraContext: extraContext.trim() || undefined,
         }),
       });
@@ -151,6 +333,8 @@ export default function EmailPage() {
     }
   };
 
+  const selectedCount = selectedIds.size + selectedKbIds.size + (includeHubspot && sources?.hubspot?.found ? 1 : 0);
+
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">Generate an email</h1>
@@ -161,7 +345,10 @@ export default function EmailPage() {
           {TIERS.map((t) => (
             <Card
               key={t.value}
-              onClick={() => setTier(t.value)}
+              onClick={() => {
+                setTier(t.value);
+                resetDownstream();
+              }}
               className={`cursor-pointer transition-all ${
                 tier === t.value ? "ring-2 ring-ring" : "hover:ring-2 hover:ring-ring/40"
               }`}
@@ -192,7 +379,10 @@ export default function EmailPage() {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setMode("general")}
+                  onClick={() => {
+                    setMode("general");
+                    resetDownstream();
+                  }}
                   className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors cursor-pointer ${
                     mode === "general"
                       ? "border-transparent bg-primary text-primary-foreground"
@@ -204,7 +394,10 @@ export default function EmailPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setMode("thread")}
+                  onClick={() => {
+                    setMode("thread");
+                    resetDownstream();
+                  }}
                   className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors cursor-pointer ${
                     mode === "thread"
                       ? "border-transparent bg-primary text-primary-foreground"
@@ -217,48 +410,173 @@ export default function EmailPage() {
               </div>
             )}
 
-            {needsContact && <ContactPicker value={contactEmail} onChange={setContactEmail} />}
+            {needsContact && (
+              <ContactPicker
+                value={contactEmail}
+                onChange={(v) => {
+                  setContactEmail(v);
+                  resetDownstream();
+                }}
+              />
+            )}
           </CardContent>
         </Card>
       </div>
 
       <div className="space-y-3">
-        <StepLabel n={3}>Context &amp; tone</StepLabel>
+        <StepLabel n={3}>Choose your sources</StepLabel>
         <Card>
           <CardContent className="space-y-4 pt-4">
-            <Textarea
-              value={extraContext}
-              onChange={(e) => setExtraContext(e.target.value)}
-              placeholder="Anything specific to include... (optional)"
-              rows={3}
-            />
-
-            <div className="flex flex-wrap gap-2">
-              {TONE_PRESETS.map((preset) => (
-                <Badge
-                  key={preset}
-                  variant={toneOverride === preset ? "default" : "outline"}
-                  className="cursor-pointer"
-                  onClick={() => setToneOverride(toneOverride === preset ? "" : preset)}
-                >
-                  {preset}
-                </Badge>
-              ))}
-            </div>
-            <Textarea
-              value={toneOverride}
-              onChange={(e) => setToneOverride(e.target.value)}
-              placeholder="Or describe the tone yourself... (optional)"
-              rows={2}
-            />
-
-            <Button onClick={assembleContext} disabled={assembling}>
-              {assembling ? <Loader2 className="animate-spin" /> : <Sparkles />}
-              {assembling ? "Gathering sources..." : "Gather context"}
+            <p className="text-xs text-muted-foreground">
+              Pull everything that could be relevant, then pick exactly what goes into the
+              email — nothing is used unless it&apos;s checked below.
+            </p>
+            <Button onClick={findSources} disabled={findingSources || (needsContact && !contactEmail.trim())}>
+              {findingSources ? <Loader2 className="animate-spin" /> : <Inbox />}
+              {findingSources ? "Finding sources..." : sources ? "Refresh sources" : "Find sources"}
             </Button>
+
+            {sources && (
+              <div className="space-y-4 pt-2">
+                <MessageChecklist
+                  title="Product updates (Siva / humans@)"
+                  messages={sources.productUpdates}
+                  selected={selectedIds}
+                  onToggle={toggleMessage}
+                  onToggleAll={(checked) => toggleAllIn(sources.productUpdates, checked)}
+                />
+                <MessageChecklist
+                  title="Meeting transcripts"
+                  messages={sources.meetingTranscripts}
+                  selected={selectedIds}
+                  onToggle={toggleMessage}
+                  onToggleAll={(checked) => toggleAllIn(sources.meetingTranscripts, checked)}
+                />
+                <MessageChecklist
+                  title={`Thread with ${contactEmail}`}
+                  messages={sources.thread}
+                  selected={selectedIds}
+                  onToggle={toggleMessage}
+                  onToggleAll={(checked) => toggleAllIn(sources.thread, checked)}
+                />
+
+                {sources.hubspot && (
+                  <div>
+                    <div className="text-xs font-medium uppercase text-muted-foreground mb-2">
+                      HubSpot
+                    </div>
+                    {sources.hubspot.found ? (
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={includeHubspot}
+                          onChange={(e) => setIncludeHubspot(e.target.checked)}
+                        />
+                        Include this contact&apos;s deal activity
+                      </label>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">{sources.hubspot.error}</p>
+                    )}
+                  </div>
+                )}
+
+                {sources.kbEntries.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs font-medium uppercase text-muted-foreground">
+                        Knowledge base ({sources.kbEntries.length})
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedKbIds(
+                            selectedKbIds.size === sources.kbEntries.length
+                              ? new Set()
+                              : new Set(sources.kbEntries.map((e) => e.id))
+                          )
+                        }
+                        className="text-xs text-brand-terracotta hover:underline cursor-pointer"
+                      >
+                        {selectedKbIds.size === sources.kbEntries.length ? "Deselect all" : "Select all"}
+                      </button>
+                    </div>
+                    <div className="space-y-1 max-h-48 overflow-y-auto rounded-lg border border-border">
+                      {sources.kbEntries.map((e) => (
+                        <label
+                          key={e.id}
+                          className="flex items-start gap-3 px-3 py-2 text-sm hover:bg-muted/50 cursor-pointer border-b border-border last:border-b-0"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedKbIds.has(e.id)}
+                            onChange={() => toggleKbEntry(e.id)}
+                            className="mt-1"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium truncate">{e.title}</div>
+                            <p className="text-xs text-muted-foreground line-clamp-1">{e.preview}</p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {sources.productUpdates.length === 0 &&
+                  sources.meetingTranscripts.length === 0 &&
+                  sources.thread.length === 0 &&
+                  sources.kbEntries.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      Nothing found — you can still generate using just the notes you add below.
+                    </p>
+                  )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {sources && (
+        <div className="space-y-3">
+          <StepLabel n={4}>Context &amp; tone</StepLabel>
+          <Card>
+            <CardContent className="space-y-4 pt-4">
+              <Textarea
+                value={extraContext}
+                onChange={(e) => setExtraContext(e.target.value)}
+                placeholder="Anything specific to include... (optional)"
+                rows={3}
+              />
+
+              <div className="flex flex-wrap gap-2">
+                {TONE_PRESETS.map((preset) => (
+                  <Badge
+                    key={preset}
+                    variant={toneOverride === preset ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => setToneOverride(toneOverride === preset ? "" : preset)}
+                  >
+                    {preset}
+                  </Badge>
+                ))}
+              </div>
+              <Textarea
+                value={toneOverride}
+                onChange={(e) => setToneOverride(e.target.value)}
+                placeholder="Or describe the tone yourself... (optional)"
+                rows={2}
+              />
+
+              <Button onClick={assembleContext} disabled={assembling}>
+                {assembling ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                {assembling
+                  ? "Gathering sources..."
+                  : `Gather context (${selectedCount} source${selectedCount === 1 ? "" : "s"} selected)`}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {context && sourcesUsed && (
         <Card>

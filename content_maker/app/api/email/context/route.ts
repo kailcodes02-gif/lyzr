@@ -1,19 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getValidAccessToken } from "@/lib/google/oauth";
-import { searchMessages } from "@/lib/google/gmail";
-import { buildGmailQuery, type FunnelTier, type GenerationMode } from "@/lib/gmail/queries";
 import { getHubSpotActivity } from "@/lib/hubspot/activity";
 import { summarizeEmailContext } from "@/lib/ai/claude";
+import type { FunnelTier } from "@/lib/gmail/queries";
+import type { GmailMessageSummary } from "@/lib/google/gmail";
 import { withErrorHandling } from "@/lib/api/with-error-handling";
 
 interface RequestBody {
   tier: FunnelTier;
-  mode: GenerationMode;
-  contactEmail?: string;
+  selectedMessages: GmailMessageSummary[];
+  includeHubspot?: boolean;
+  hubspotContactEmail?: string;
+  selectedKbEntryIds: string[];
   extraContext?: string;
 }
 
+// Summarizes exactly the sources the rep picked in /api/email/sources —
+// never re-searches Gmail itself, so what gets summarized is exactly what
+// was shown and checked, nothing silently pulled in behind the scenes.
 export const POST = withErrorHandling(async (request: NextRequest) => {
   const supabase = await createClient();
   const {
@@ -22,36 +26,23 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = (await request.json()) as RequestBody;
-  const { tier, mode, contactEmail, extraContext } = body;
-
-  if (mode === "thread" && !contactEmail) {
-    return NextResponse.json(
-      { error: "contactEmail is required for thread mode" },
-      { status: 400 }
-    );
-  }
-
-  let accessToken: string;
-  try {
-    accessToken = await getValidAccessToken(user.id);
-  } catch {
-    return NextResponse.json(
-      { error: "Gmail isn't connected for this account — please sign out and sign back in." },
-      { status: 409 }
-    );
-  }
-
-  const query = buildGmailQuery(tier, mode, contactEmail);
-  const messages = await searchMessages(accessToken, query);
+  const {
+    tier,
+    selectedMessages,
+    includeHubspot,
+    hubspotContactEmail,
+    selectedKbEntryIds,
+    extraContext,
+  } = body;
 
   // BOFU degrades gracefully to MOFU-level context if HubSpot isn't
   // configured yet, or the contact simply isn't in HubSpot — never a hard
   // error, since the email is still generatable without it.
   let hubspotActivity: unknown | undefined;
   let hubspotError: string | undefined;
-  if (tier === "bofu" && contactEmail) {
+  if (includeHubspot && hubspotContactEmail) {
     try {
-      const result = await getHubSpotActivity(contactEmail);
+      const result = await getHubSpotActivity(hubspotContactEmail);
       if (result.found) hubspotActivity = result.raw;
       else hubspotError = "No HubSpot record found for this contact.";
     } catch (err) {
@@ -60,16 +51,18 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     }
   }
 
-  const { data: kbEntries } = await supabase
-    .from("kb_entries")
-    .select("title, content_md")
-    .order("created_at", { ascending: false })
-    .limit(20);
-  const kbSnippets = (kbEntries ?? []).map((e) => `${e.title}\n${e.content_md}`);
+  let kbSnippets: string[] = [];
+  if (selectedKbEntryIds.length) {
+    const { data: kbEntries } = await supabase
+      .from("kb_entries")
+      .select("title, content_md")
+      .in("id", selectedKbEntryIds);
+    kbSnippets = (kbEntries ?? []).map((e) => `${e.title}\n${e.content_md}`);
+  }
 
   const context = await summarizeEmailContext({
     tier,
-    messages,
+    messages: selectedMessages,
     hubspotActivity,
     kbSnippets,
     extraContext,
@@ -78,7 +71,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   return NextResponse.json({
     context,
     sourcesUsed: {
-      gmailMessageCount: messages.length,
+      gmailMessageCount: selectedMessages.length,
       hubspotActivityFound: hubspotActivity !== undefined,
       hubspotError,
       kbEntryCount: kbSnippets.length,
