@@ -6,6 +6,8 @@ import type { NextConfig } from "next";
 const BASE_PATH = "/content_maker";
 
 const nextConfig: NextConfig = {
+  // trigger a fresh Cloudflare build to pick up NEXT_PUBLIC_* build vars
+
   // Dynamic server (Cloudflare Workers via OpenNext), NOT a static export —
   // this app needs server-side secrets (Claude/HubSpot keys, Google token
   // refresh) and API routes, unlike GSI Tracker's static-export setup.
