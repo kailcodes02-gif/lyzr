@@ -1,6 +1,10 @@
 .DS_Store
 antigravity-prompt.md
 
+# local-only dir that has repeatedly been committed as a broken submodule
+# gitlink (no .gitmodules entry), breaking Cloudflare Workers Builds clones
+/Work OS
+
 # wrangler files
 .wrangler
 .dev.vars*
