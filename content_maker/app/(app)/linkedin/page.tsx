@@ -8,8 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Sparkles, Wand2, X } from "lucide-react";
+import { Loader2, Sparkles, Wand2, X, Inbox, Megaphone, Video, BookOpen } from "lucide-react";
 import { apiPath } from "@/lib/api-path";
+import {
+  MessageChecklist,
+  KbChecklist,
+  type GmailMessageSummary,
+  type KbEntrySummary,
+} from "@/components/source-checklist";
 
 interface VoiceSample {
   id: string;
@@ -23,6 +29,12 @@ interface GeneratedPost {
   content: string;
 }
 
+interface Sources {
+  productUpdates: GmailMessageSummary[];
+  meetingTranscripts: GmailMessageSummary[];
+  kbEntries: KbEntrySummary[];
+}
+
 const TONE_PRESETS = ["More casual", "More formal", "Punchier hook", "More technical", "Story-led"];
 
 export default function LinkedInPage() {
@@ -34,10 +46,14 @@ export default function LinkedInPage() {
   const [topic, setTopic] = useState("");
   const [inspirationPost, setInspirationPost] = useState("");
   const [toneOverride, setToneOverride] = useState("");
-  const [useEmailSources, setUseEmailSources] = useState(false);
   const [suggestingTopic, setSuggestingTopic] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [post, setPost] = useState<GeneratedPost | null>(null);
+
+  const [findingSources, setFindingSources] = useState(false);
+  const [sources, setSources] = useState<Sources | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedKbIds, setSelectedKbIds] = useState<Set<string>>(new Set());
 
   const loadSamples = async () => {
     setLoadingSamples(true);
@@ -98,6 +114,57 @@ export default function LinkedInPage() {
     }
   };
 
+  const findSources = async () => {
+    setFindingSources(true);
+    try {
+      const res = await fetch(apiPath("/api/email/sources"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tier: "mofu", mode: "general" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to find sources");
+      setSources(data);
+      // Nothing pre-selected here — sourcing content for a LinkedIn post is
+      // more deliberate than email context, so the rep opts in per item.
+      setSelectedIds(new Set());
+      setSelectedKbIds(new Set());
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setFindingSources(false);
+    }
+  };
+
+  const toggleMessage = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllIn = (messages: GmailMessageSummary[], checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const m of messages) {
+        if (checked) next.add(m.id);
+        else next.delete(m.id);
+      }
+      return next;
+    });
+  };
+
+  const toggleKbEntry = (id: string) => {
+    setSelectedKbIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const generate = async () => {
     if (!topic.trim()) {
       toast.error("Enter or suggest a topic first");
@@ -106,6 +173,9 @@ export default function LinkedInPage() {
     setGenerating(true);
     setPost(null);
     try {
+      const allMessages = [...(sources?.productUpdates ?? []), ...(sources?.meetingTranscripts ?? [])];
+      const selectedMessages = allMessages.filter((m) => selectedIds.has(m.id));
+
       const res = await fetch(apiPath("/api/linkedin/generate"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,7 +183,8 @@ export default function LinkedInPage() {
           topic,
           inspirationPost: inspirationPost.trim() || undefined,
           toneOverride: toneOverride.trim() || undefined,
-          useEmailSources,
+          selectedMessages,
+          selectedKbEntryIds: Array.from(selectedKbIds),
         }),
       });
       const data = await res.json();
@@ -202,15 +273,63 @@ export default function LinkedInPage() {
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input type="checkbox" checked={useEmailSources} onChange={(e) => setUseEmailSources(e.target.checked)} />
-            Draw on my recent emails (Siva&apos;s updates, meeting notes)
-          </label>
-
           <Button onClick={generate} disabled={generating}>
             {generating ? <Loader2 className="animate-spin" /> : <Sparkles />}
             {generating ? "Writing..." : "Generate post"}
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="space-y-4 pt-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <Label>Ground it in real sources (optional)</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Pull your recent product-update emails, meeting transcripts, and knowledge base —
+                pick exactly which ones inform the post.
+              </p>
+            </div>
+            <Button variant="outline" onClick={findSources} disabled={findingSources} className="shrink-0">
+              {findingSources ? <Loader2 className="animate-spin" /> : <Inbox />}
+              {findingSources ? "Finding..." : sources ? "Refresh sources" : "Find sources"}
+            </Button>
+          </div>
+
+          {sources && (
+            <div className="space-y-5">
+              <MessageChecklist
+                icon={Megaphone}
+                title="Product updates (Siva / humans@)"
+                messages={sources.productUpdates}
+                selected={selectedIds}
+                onToggle={toggleMessage}
+                onToggleAll={(checked) => toggleAllIn(sources.productUpdates, checked)}
+              />
+              <MessageChecklist
+                icon={Video}
+                title="Meeting transcripts"
+                messages={sources.meetingTranscripts}
+                selected={selectedIds}
+                onToggle={toggleMessage}
+                onToggleAll={(checked) => toggleAllIn(sources.meetingTranscripts, checked)}
+              />
+              <KbChecklist
+                icon={BookOpen}
+                entries={sources.kbEntries}
+                selected={selectedKbIds}
+                onToggle={toggleKbEntry}
+                onToggleAll={(checked) =>
+                  setSelectedKbIds(checked ? new Set(sources.kbEntries.map((e) => e.id)) : new Set())
+                }
+              />
+              {sources.productUpdates.length === 0 &&
+                sources.meetingTranscripts.length === 0 &&
+                sources.kbEntries.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Nothing found.</p>
+                )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

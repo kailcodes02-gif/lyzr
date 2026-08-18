@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generateLinkedInPost } from "@/lib/ai/claude";
-import { getValidAccessToken } from "@/lib/google/oauth";
-import { searchMessages } from "@/lib/google/gmail";
-import { buildGmailQuery } from "@/lib/gmail/queries";
 import { withErrorHandling } from "@/lib/api/with-error-handling";
+import type { GmailMessageSummary } from "@/lib/google/gmail";
 
 interface RequestBody {
   topic: string;
   inspirationPost?: string;
   toneOverride?: string;
-  useEmailSources?: boolean;
+  selectedMessages?: GmailMessageSummary[];
+  selectedKbEntryIds?: string[];
 }
 
+// Takes the exact sources the rep checked in the "Choose your sources" step
+// (found via /api/email/sources with tier=mofu, mode=general) — never
+// re-searches Gmail itself, same discipline as email generation.
 export const POST = withErrorHandling(async (request: NextRequest) => {
   const supabase = await createClient();
   const {
@@ -20,7 +22,8 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { topic, inspirationPost, toneOverride, useEmailSources } = (await request.json()) as RequestBody;
+  const { topic, inspirationPost, toneOverride, selectedMessages, selectedKbEntryIds } =
+    (await request.json()) as RequestBody;
   if (!topic?.trim()) {
     return NextResponse.json({ error: "topic is required" }, { status: 400 });
   }
@@ -32,19 +35,20 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     .order("position", { ascending: true });
   const voiceSamples = (sampleRows ?? []).map((s) => s.content);
 
-  let sourceText: string | undefined;
-  if (useEmailSources) {
-    try {
-      const accessToken = await getValidAccessToken(user.id);
-      const query = buildGmailQuery("mofu", "general");
-      const messages = await searchMessages(accessToken, query, 8);
-      sourceText = messages
-        .map((m) => `From: ${m.from} | ${m.subject}\n${m.bodyText.slice(0, 600)}`)
-        .join("\n---\n");
-    } catch (err) {
-      console.warn("Skipping email sources for LinkedIn generation:", err);
-    }
+  const sourceParts: string[] = [];
+  if (selectedMessages?.length) {
+    sourceParts.push(
+      ...selectedMessages.map((m) => `From: ${m.from} | ${m.subject}\n${m.bodyText.slice(0, 600)}`)
+    );
   }
+  if (selectedKbEntryIds?.length) {
+    const { data: kbEntries } = await supabase
+      .from("kb_entries")
+      .select("title, content_md")
+      .in("id", selectedKbEntryIds);
+    sourceParts.push(...(kbEntries ?? []).map((e) => `${e.title}\n${e.content_md}`));
+  }
+  const sourceText = sourceParts.length ? sourceParts.join("\n---\n") : undefined;
 
   const post = await generateLinkedInPost({
     topic,

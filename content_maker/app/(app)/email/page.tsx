@@ -17,27 +17,21 @@ import {
   Globe,
   UserRound,
   Inbox,
+  Video,
+  BookOpen,
+  Building2,
 } from "lucide-react";
 import { apiPath } from "@/lib/api-path";
+import {
+  MessageChecklist,
+  KbChecklist,
+  SourceRow,
+  type GmailMessageSummary,
+  type KbEntrySummary,
+} from "@/components/source-checklist";
 
 type Tier = "tofu" | "mofu" | "bofu";
 type Mode = "thread" | "general";
-
-interface GmailMessageSummary {
-  id: string;
-  threadId: string;
-  from: string;
-  subject: string;
-  date: string;
-  snippet: string;
-  bodyText: string;
-}
-
-interface KbEntrySummary {
-  id: string;
-  title: string;
-  preview: string;
-}
 
 interface Sources {
   productUpdates: GmailMessageSummary[];
@@ -82,70 +76,6 @@ function StepLabel({ n, children }: { n: number; children: React.ReactNode }) {
         {n}
       </span>
       <span className="text-sm font-medium">{children}</span>
-    </div>
-  );
-}
-
-function formatDate(dateHeader: string): string {
-  const d = new Date(dateHeader);
-  return Number.isNaN(d.getTime())
-    ? dateHeader
-    : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-}
-
-function MessageChecklist({
-  title,
-  messages,
-  selected,
-  onToggle,
-  onToggleAll,
-}: {
-  title: string;
-  messages: GmailMessageSummary[];
-  selected: Set<string>;
-  onToggle: (id: string) => void;
-  onToggleAll: (checked: boolean) => void;
-}) {
-  if (messages.length === 0) return null;
-  const allChecked = messages.every((m) => selected.has(m.id));
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="text-xs font-medium uppercase text-muted-foreground">
-          {title} ({messages.length})
-        </div>
-        <button
-          type="button"
-          onClick={() => onToggleAll(!allChecked)}
-          className="text-xs text-brand-terracotta hover:underline cursor-pointer"
-        >
-          {allChecked ? "Deselect all" : "Select all"}
-        </button>
-      </div>
-      <div className="space-y-1 max-h-64 overflow-y-auto rounded-lg border border-border">
-        {messages.map((m) => (
-          <label
-            key={m.id}
-            className="flex items-start gap-3 px-3 py-2 text-sm hover:bg-muted/50 cursor-pointer border-b border-border last:border-b-0"
-          >
-            <input
-              type="checkbox"
-              checked={selected.has(m.id)}
-              onChange={() => onToggle(m.id)}
-              className="mt-1"
-            />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="font-medium truncate">{m.subject || "(no subject)"}</span>
-                <span className="text-xs text-muted-foreground shrink-0">{formatDate(m.date)}</span>
-              </div>
-              <div className="text-xs text-muted-foreground truncate">{m.from}</div>
-              <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{m.snippet}</p>
-            </div>
-          </label>
-        ))}
-      </div>
     </div>
   );
 }
@@ -426,19 +356,26 @@ export default function EmailPage() {
       <div className="space-y-3">
         <StepLabel n={3}>Choose your sources</StepLabel>
         <Card>
-          <CardContent className="space-y-4 pt-4">
-            <p className="text-xs text-muted-foreground">
-              Pull everything that could be relevant, then pick exactly what goes into the
-              email — nothing is used unless it&apos;s checked below.
-            </p>
-            <Button onClick={findSources} disabled={findingSources || (needsContact && !contactEmail.trim())}>
-              {findingSources ? <Loader2 className="animate-spin" /> : <Inbox />}
-              {findingSources ? "Finding sources..." : sources ? "Refresh sources" : "Find sources"}
-            </Button>
+          <CardContent className="space-y-5 pt-4">
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-xs text-muted-foreground">
+                Pull everything that could be relevant, then pick exactly what goes into the
+                email — nothing is used unless it&apos;s checked below.
+              </p>
+              <Button
+                onClick={findSources}
+                disabled={findingSources || (needsContact && !contactEmail.trim())}
+                className="shrink-0"
+              >
+                {findingSources ? <Loader2 className="animate-spin" /> : <Inbox />}
+                {findingSources ? "Finding..." : sources ? "Refresh sources" : "Find sources"}
+              </Button>
+            </div>
 
             {sources && (
-              <div className="space-y-4 pt-2">
+              <div className="space-y-5">
                 <MessageChecklist
+                  icon={Megaphone}
                   title="Product updates (Siva / humans@)"
                   messages={sources.productUpdates}
                   selected={selectedIds}
@@ -446,6 +383,7 @@ export default function EmailPage() {
                   onToggleAll={(checked) => toggleAllIn(sources.productUpdates, checked)}
                 />
                 <MessageChecklist
+                  icon={Video}
                   title="Meeting transcripts"
                   messages={sources.meetingTranscripts}
                   selected={selectedIds}
@@ -453,6 +391,7 @@ export default function EmailPage() {
                   onToggleAll={(checked) => toggleAllIn(sources.meetingTranscripts, checked)}
                 />
                 <MessageChecklist
+                  icon={UserRound}
                   title={`Thread with ${contactEmail}`}
                   messages={sources.thread}
                   selected={selectedIds}
@@ -461,66 +400,32 @@ export default function EmailPage() {
                 />
 
                 {sources.hubspot && (
-                  <div>
-                    <div className="text-xs font-medium uppercase text-muted-foreground mb-2">
+                  <div className="space-y-2.5 rounded-xl border border-border/70 bg-muted/20 p-4">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Building2 className="size-4 text-brand-terracotta" strokeWidth={1.75} />
                       HubSpot
                     </div>
                     {sources.hubspot.found ? (
-                      <label className="flex items-center gap-2 text-sm cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={includeHubspot}
-                          onChange={(e) => setIncludeHubspot(e.target.checked)}
-                        />
-                        Include this contact&apos;s deal activity
-                      </label>
+                      <SourceRow
+                        checked={includeHubspot}
+                        onChange={() => setIncludeHubspot((v) => !v)}
+                        title="Include this contact's deal activity"
+                      />
                     ) : (
-                      <p className="text-xs text-muted-foreground">{sources.hubspot.error}</p>
+                      <p className="text-xs text-muted-foreground pl-0.5">{sources.hubspot.error}</p>
                     )}
                   </div>
                 )}
 
-                {sources.kbEntries.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs font-medium uppercase text-muted-foreground">
-                        Knowledge base ({sources.kbEntries.length})
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSelectedKbIds(
-                            selectedKbIds.size === sources.kbEntries.length
-                              ? new Set()
-                              : new Set(sources.kbEntries.map((e) => e.id))
-                          )
-                        }
-                        className="text-xs text-brand-terracotta hover:underline cursor-pointer"
-                      >
-                        {selectedKbIds.size === sources.kbEntries.length ? "Deselect all" : "Select all"}
-                      </button>
-                    </div>
-                    <div className="space-y-1 max-h-48 overflow-y-auto rounded-lg border border-border">
-                      {sources.kbEntries.map((e) => (
-                        <label
-                          key={e.id}
-                          className="flex items-start gap-3 px-3 py-2 text-sm hover:bg-muted/50 cursor-pointer border-b border-border last:border-b-0"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedKbIds.has(e.id)}
-                            onChange={() => toggleKbEntry(e.id)}
-                            className="mt-1"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="font-medium truncate">{e.title}</div>
-                            <p className="text-xs text-muted-foreground line-clamp-1">{e.preview}</p>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <KbChecklist
+                  icon={BookOpen}
+                  entries={sources.kbEntries}
+                  selected={selectedKbIds}
+                  onToggle={toggleKbEntry}
+                  onToggleAll={(checked) =>
+                    setSelectedKbIds(checked ? new Set(sources.kbEntries.map((e) => e.id)) : new Set())
+                  }
+                />
 
                 {sources.productUpdates.length === 0 &&
                   sources.meetingTranscripts.length === 0 &&
