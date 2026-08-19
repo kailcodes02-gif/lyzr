@@ -769,6 +769,21 @@ committed yet (commit deferred per user). Summary of changes now in the working 
 - Files touched: [GSI Communities/index.html](file:///Users/Shared/FromOldMac/Documents/Work/Lyzr/Antigravity/GSI%20Communities/index.html), [_redirects](file:///Users/Shared/FromOldMac/Documents/Work/Lyzr/Antigravity/_redirects), [KNOWLEDGE_BASE.md](file:///Users/Shared/FromOldMac/Documents/Work/Lyzr/Antigravity/KNOWLEDGE_BASE.md).
 - Commit(s): to be pushed to remote repository.
 
+### 2026-08-19, Hosted the Aug 1-19 GSI weekly report
+- Added `reports/gsi-report-aug1-19/index.html` (copied verbatim from the source file
+  drafted in `~/Downloads/gsi-report-aug01-19.html`), matching the existing per-week
+  folder pattern (e.g. `gsi-report-jul14-19/`) so it's served at
+  `/reports/gsi-report-aug1-19/` on the Cloudflare Pages static site.
+- Wired it into `data/weeks.json` as week 14 (`current_week` bumped 13 → 14) and into
+  `reports/index.html`'s noscript fallback + hidden AI-readable listing, matching the
+  entries the client-side fetch of `weeks.json` renders for JS-enabled visitors.
+- Local `main` had diverged from `origin/main` by 8 commits pushed from a separate
+  clone (`lyzr-repo/`, content-maker feature work); rebased cleanly, no conflicts.
+- Files touched: `reports/gsi-report-aug1-19/index.html`, `data/weeks.json`,
+  `reports/index.html`.
+- Commit(s): `9bedfa4` feat(reports): add Aug 1-19 GSI weekly report and list it on
+  the index — pushed to `main`, Cloudflare Pages redeploys the static site.
+
 <!-- Template for new entries:
 ### YYYY-MM-DD, <short title>
 - What changed and why
