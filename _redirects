@@ -17,3 +17,9 @@
 /collegeevents_GSI    /college%20Events/index.html  200
 /collegeevents_GSI/   /college%20Events/index.html  200
 /collegeevents_GSI/*  /college%20Events/:splat      200
+
+# Rewrite /prototype-infosys -> serve from "demo landing page Kaushik" folder
+/prototype-infosys    /demo%20landing%20page%20Kaushik/index.html  200
+/prototype-infosys/   /demo%20landing%20page%20Kaushik/index.html  200
+/prototype-infosys/*  /demo%20landing%20page%20Kaushik/:splat      200
+
