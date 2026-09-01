@@ -411,6 +411,18 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-09-01, reports (lyzr): Aug 23-30 report — full-month Ads rollup + video updates
+- **Ads · Month of August block** added to `reports/gsi-report-aug23-30/index.html` (Month section):
+  aggregated the 6 GSI & SI ad campaign tabs from the Rida ads dashboard (Playbook Lead Gen, Awareness,
+  ME Awareness, Conversation Ads, Bing, Meta) into headline metrics ($4,921.41 spend, 1,222,451
+  impressions, 65,623 reach, 962 clicks, 26 leads), a per-campaign breakdown table, and reads.
+- Flipped the "Ads · Month" status card from "Not ready" → "Live · month data"; updated the weekly
+  Ads insight bullet to note Meta is now covered in the month rollup (was previously "pending from Rida").
+- Added a **Video Content · Month of August** block: Accenture long-form video (edit in progress,
+  Faraz &amp; Ayush) and Arnav's 2 AI videos for GSI (already live in ads).
+- Commit(s): pushed to `main` → Cloudflare Pages redeploys the static site (`reports/` is live at
+  `/reports/`).
+
 ### 2026-06-26, ai-roadmap (Agentic-roadmap-gsi): trim landing header + first-party usage tracking
 - **Landing header trimmed** (`app/page.tsx`): removed the "Agentic Roadmap" label + "Talk to Lyzr"
   link; header is now logo-only.
