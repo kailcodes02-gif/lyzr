@@ -1,0 +1,54 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "abm-tracker",
+  // The app is a pure static export (no Next SSR/middleware/route handlers
+  // at all — auth is client-side, per components/layout/auth-guard.tsx), so
+  // there's no need for the OpenNext Cloudflare wrapper the sibling app
+  // uses. `next build` already produces `out/`; this Worker serves it via
+  // Cloudflare's native Static Assets binding and only intercepts `/api/*`.
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "out",
+    "binding": "ASSETS",
+    // The worker must see every request before static assets are served —
+    // `/api/sync/*` and `/api/send/*` are handled here, not by Next.
+    "run_worker_first": true
+  },
+  // Path-mount on the sibling GSI_Tracker's existing domain: everything
+  // under /abm-tracker hits this Worker; all other paths keep hitting
+  // whatever's already serving lyzr.kailash-gm.com.
+  "routes": [
+    { "pattern": "lyzr.kailash-gm.com/abm-tracker*", "zone_name": "kailash-gm.com" }
+  ],
+  // Non-secret runtime vars (real secrets are set via `wrangler secret put`
+  // below, not here — Supabase's anon/publishable key and URL are safe here
+  // since they're already inlined into the public browser bundle anyway;
+  // the Worker's own server-side code (worker/index.ts) needs its own copy
+  // at runtime, separate from Next's build-time env inlining).
+  "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://lyzr.kailash-gm.com/abm-tracker",
+    "NEXT_PUBLIC_BASE_PATH": "/abm-tracker",
+    "NEXT_PUBLIC_SUPABASE_URL": "https://datdjabcrxveubsvvxvm.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_yGlNcMEveF5eRfsso-2mCA_oRJvQlJy",
+    "CORTEX_BASE_URL": "https://applied-ai.lyzr.app",
+    "INSTANTLY_PRODUCT_UPDATE_TAG": "ABM"
+  },
+  "observability": {
+    "enabled": true
+  },
+  // Weekly knowledge-base refresh + the same Cortex/HubSpot/Instantly sync
+  // the "Refresh all" button triggers manually — both run through
+  // worker/index.ts's scheduled() export, one code path shared with the
+  // manual routes. Sundays 03:00 UTC — arbitrary, off business hours.
+  "triggers": {
+    "crons": ["0 3 * * 0"]
+  }
+  // Additional secrets this build introduces (set via `wrangler secret put`,
+  // same as the existing ones — never added here):
+  //   ANTHROPIC_API_KEY            — required for suggestions/drafts/knowledge summarization
+  //   SLACK_BOT_TOKEN              — optional; Slack ingestion no-ops until set
+  //   GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON — optional; Drive/internal-email ingestion no-ops until set
+  //   MS_GRAPH_CLIENT_SECRET       — optional; internal-email ingestion no-ops until set
+}

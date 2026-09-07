@@ -13,7 +13,7 @@
 >
 > | | |
 > |---|---|
-> | **Last updated** | 2026-06-16 |
+> | **Last updated** | 2026-09-07 |
 > | **Maintained by** | subs@lyzr.ai (with Claude Code) |
 > | **Git repo** | `github.com/kailcodes02-gif/lyzr` (branch `main`) |
 > | **Live domain** | `https://lyzr.kailash-gm.com` |
@@ -51,13 +51,18 @@ under one Cloudflare Pages site at `lyzr.kailash-gm.com`. The pieces:
 | Weekly GSI Reports | `reports/` | `/reports/` | Live, active |
 | Pipeline dashboard | `pipeline/` + root `functions/api/` | `/pipeline/` | Live, actively edited |
 | Prototypes (public demos) | `prototypes/` | `/demo_pipeline/` | Live |
-| GSI/SI Marketing Tracker | `GSI Tracker/tracker/` | (none, local only) | In development |
+| GSI/SI Marketing Tracker | `GSI Tracker/tracker/` (source) + root `GSI_Tracker/` (built export) | `/GSI_Tracker/` | Live, active |
+| Comms Tracker (ABM) | `comms-tracker/` (separate Worker `abm-tracker`) | `/abm-tracker/` | Live but stale (Aug 19 build); untracked in git |
+| Sales Copilot | `sales-copilot/` (separate Worker `content-maker`) | `/content_maker/` | Live; untracked in git |
 | GSI Communities | `GSI Communities/` | `/GSI_Communities` | Live |
 
 Two of these are the day-to-day active work: the **weekly GSI reports** (new HTML
 report per week) and the **pipeline dashboard** (live edits committed back to git).
-The **GSI Tracker** is a separate, larger Next.js app still in development and is
-**not** part of the Cloudflare deploy.
+The **GSI Tracker** is a static Next.js export: its built `out/` is committed at the
+repo root as `GSI_Tracker/`, so the normal Pages deploy serves it at `/GSI_Tracker/`.
+**Comms Tracker** and **Sales Copilot** are separate Cloudflare Workers path-mounted on
+the same domain (see section 2), deployed with `wrangler deploy` from their own folders,
+not by the Pages workflow.
 
 ---
 
@@ -106,6 +111,33 @@ The **deployed** API lives at the **repo root** under `functions/api/` (Cloudfla
 
 `cloudflare/wrangler.toml` defines a Worker named `wos-auth` (`worker.js`, compat date 2024-04-17) with USERNAME/PASSWORD vars set in the dashboard. `cloudflare copy/worker.js` is a backup. This is the basic-auth gate layer and is distinct from the Pages deploy.
 
+### Path-mounted Worker apps (comms-tracker, sales-copilot)
+
+Two Next.js apps live in this workspace but deploy as **separate Cloudflare Workers**
+routed onto sub-paths of `lyzr.kailash-gm.com`, so the Pages site keeps serving
+everything else. Both are still **untracked in git** as of 2026-09-07 (never committed).
+
+| App | Folder | Worker name | Route | Supabase project | Deploy command |
+|---|---|---|---|---|---|
+| Comms Tracker | `comms-tracker/` | `abm-tracker` | `/abm-tracker*` | `datdjabcrxveubsvvxvm` | `npm run cf:deploy` (`next build` static export + `wrangler deploy`) |
+| Sales Copilot | `sales-copilot/` | `content-maker` | `/content_maker*` | `zprmplleurbhsqlgvaof` | `npm run cf:deploy` (OpenNext build + deploy) |
+
+**Comms Tracker** reconciles Cortex (engagement), HubSpot (customers) and Instantly
+(sent email) into one dashboard so product-update cadence stops slipping. Account to
+Projects to Stakeholders hierarchy, admin-configurable owner roles, 4-shade going-dark
+grading, a Sonnet-only knowledge base (lyzr.ai blog/case studies, Slack, Google Drive
+per-user consent) that suggests topics and drafts, and a Gmail/Outlook compose handoff
+(the app never sends mail itself). `worker/index.ts` serves the static `out/` plus the
+`/api/sync/*`, `/api/knowledge/sync/*`, `/api/ai/*`, `/api/send/log` and
+`/api/oauth/google-drive/connect` routes, and a weekly cron. Secrets go in via
+`wrangler secret put`, never in `wrangler.jsonc`. Docs: `comms-tracker/README.md`,
+`comms-tracker/SETUP_INTEGRATIONS.md`. Schema: `comms-tracker/supabase/migrations/`
+(001 to 008, applied by hand in the Supabase SQL Editor).
+
+**Sales Copilot** (`content-maker` Worker) is a Next.js server app (OpenNext on
+Cloudflare) with email drafting, FAQ, knowledge upload and LinkedIn post generation
+routes under `app/api/`, Google sign-in, and its own Supabase project.
+
 ---
 
 ## 3. Top-level directory map
@@ -130,7 +162,10 @@ Antigravity/                      (git repo root, deploys to Cloudflare Pages)
 ├── scripts/                      drive-watcher.gs, cognis-api/, github-commit/, sheet-sync/
 ├── report/                       Legacy/prototype report (day3/)
 ├── Work OS/                      Separate worker project files (sibling)
-├── GSI Tracker/                  Next.js tracker app + spec/docs (NOT deployed)
+├── GSI Tracker/                  Next.js tracker app source + spec/docs
+├── GSI_Tracker/                  Built static export of the tracker (served at /GSI_Tracker/)
+├── comms-tracker/                Comms Tracker Worker app (untracked; see section 2)
+├── sales-copilot/                Sales Copilot Worker app (untracked; see section 2)
 └── KNOWLEDGE_BASE.md             This file
 ```
 
@@ -253,8 +288,12 @@ Per `pipeline/README.md`: drop a new `tracker.xlsx` into the pipeline folder and
 ## 8. Component: GSI Tracker (Next.js app)
 
 The largest in-progress piece. Internal task/tracker/budget tool for Lyzr's GSI/SI
-marketing team (~10-50 `@lyzr.ai` users). **Local dev only, not in the deployed
-repo, no hosted deployment yet.** Lives at `GSI Tracker/tracker/`.
+marketing team (~10-50 `@lyzr.ai` users). Source lives at `GSI Tracker/tracker/`;
+it is a static export (`output: "export"`, basePath `/GSI_Tracker`) whose built `out/`
+is committed at the repo root as `GSI_Tracker/` and served by the Pages deploy at
+`/GSI_Tracker/`. To ship a change: `npm run build` in the tracker, replace the root
+`GSI_Tracker/` folder with the new `out/`, commit, push. (Earlier versions of this doc
+said "local only"; corrected 2026-09-07.)
 
 ### Canonical docs (read before building on the tracker)
 
@@ -386,15 +425,17 @@ Access if the data ever becomes confidential.
 - **Do not hand-edit `pipeline/styles.css`** (precompiled Tailwind) or hardcode `data.json` aggregates (recomputed on write).
 - **Every push to `main` auto-deploys the whole repo.** Be deliberate about what you commit; secrets live in Cloudflare/GitHub, never in the repo (`.env*` is gitignored).
 - **Pipeline edits commit themselves** with `data: add`/`data: edit` messages from the API; expect these in the log.
-- The GSI Tracker is **not** deployed by this repo and is local-only; do not assume `wrangler`/`vercel`/workflow config at the repo root applies to it.
+- The GSI Tracker deploys as the committed static folder `GSI_Tracker/` at the repo root, through the normal Pages push; the root `wrangler`/workflow config is not tracker-specific. Comms Tracker and Sales Copilot deploy separately via `wrangler deploy` in their own folders.
 - IST (Asia/Kolkata) everywhere; UTC in storage, IST on display.
 
 ---
 
 ## 13. Known drift, discrepancies & open items
 
-- **Tracker stack vs spec:** spec says Next.js 14 + React 18 + Vercel; actual is Next.js 16.2.6 + React 19.2.4 with **no deployment** (local only). Intentional (DECISIONS D1). Do not "fix" back to spec.
-- **Tracker deploy target:** `DECISIONS.md` D5 says "Vercel for deployment," but the tracker is not actually deployed anywhere yet. The Cloudflare config at the repo root deploys the **sibling** Work OS site, not the tracker.
+- **Tracker stack vs spec:** spec says Next.js 14 + React 18 + Vercel; actual is Next.js 16.2 + React 19.2.4, static export on Cloudflare Pages at `/GSI_Tracker/`. Intentional (DECISIONS D1). Do not "fix" back to spec.
+- **Tracker deploy target:** `DECISIONS.md` D5 says "Vercel for deployment," but the tracker actually ships as a static export committed at root `GSI_Tracker/` and served by the Pages site.
+- **Comms Tracker live build is stale (2026-09-07):** the Worker at `/abm-tracker/` was last deployed 2026-08-19, before the projects/roles/knowledge/AI/send work landed in code. Redeploy needs `wrangler login` plus `wrangler secret put` for `ANTHROPIC_API_KEY`, `SLACK_BOT_TOKEN`, `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`. Migration `008_user_oauth_tokens.sql` still has to be run in the Supabase SQL Editor.
+- **GSI Tracker lint debt:** `eslint` now runs (`.open-next/**` was crashing it) but reports ~116 pre-existing errors (mostly `no-explicit-any` in `lib/hubspot/` and set-state-in-effect); build and tests are clean.
 - **`CRON_SECRET`:** RESOLVED (2026-06-02) — added to `tracker/.env.local`. Cron routes also still accept `?bypass=true` (flagged as a design choice, not changed).
 - **Slack integration:** queue table exists (`pending_slack_notifications`, migration 003) but the dispatcher is parked / not built.
 - **Calendar lib:** spec called for `react-big-calendar`; actual uses `react-day-picker`.
@@ -410,6 +451,30 @@ Access if the data ever becomes confidential.
 
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
+
+### 2026-09-07, workspace audit + Comms Tracker fixes (comms-tracker, GSI Tracker, KB)
+- **Audit of every app** (`comms-tracker`, `sales-copilot`, `GSI Tracker/tracker`): `tsc` and `next build`
+  clean on all three; tracker `vitest` 22/22. Local `wrangler dev` smoke of the Comms Tracker Worker:
+  all pages 200 under `/abm-tracker/`, every `/api/*` route 401 without a session, 405/400 on bad input.
+- **Corrections to this doc:** GSI Tracker is live at `/GSI_Tracker/` (committed static export), not
+  "local only". Comms Tracker (`/abm-tracker/`) and Sales Copilot (`/content_maker/`) are live separate
+  Workers that this doc never mentioned; added to sections 1, 2, 3, 8, 12, 13.
+- **Comms Tracker code:** fixed `lib/knowledge/lyzr-scrape.ts` to follow lyzr.ai's sitemap *index*
+  into child sitemaps (it had ingested `case-studies-sitemap.xml` itself as the only "case study");
+  removed the junk row and re-ran ingestion. Fixed the 3 lint errors (setState-in-effect in
+  `components/compose/generate-send-modal.tsx` and `components/tasks/create-task-modal.tsx`, anonymous
+  default export in `worker/index.ts`). Built the admin **Reassign / Assign owner role** picker on the
+  project page (`components/projects/reassign-role-modal.tsx`, uses the existing
+  `useReassignProjectRole` mutation and the Lyzr-internal people list).
+- **Knowledge sources:** Slack ingestion now succeeds (5 channels; the earlier Slack rate limit cleared).
+  Google Drive server-side creds set locally (same Google OAuth client as Supabase SSO). Drive still
+  needs the `drive.readonly` scope on the consent screen and one "Connect Google Drive" click.
+- **GSI Tracker:** `eslint.config.mjs` now ignores `.open-next/**` and `.wrangler/**` (linter was
+  crashing Node on minified bundles).
+- **Still open:** run migration 008; `wrangler login` + secrets + `npm run cf:deploy` for Comms Tracker;
+  Microsoft Graph mail reading and the weekly mailbox reconciliation (need an Azure app registration
+  and a design decision, see `comms-tracker/SETUP_INTEGRATIONS.md`); commit `comms-tracker/` and
+  `sales-copilot/` to git.
 
 ### 2026-09-01, reports (lyzr): Aug 23-30 report — full-month Ads rollup + video updates
 - **Ads · Month of August block** added to `reports/gsi-report-aug23-30/index.html` (Month section):

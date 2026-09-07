@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // OpenNext/Cloudflare build output (minified bundles crash the linter).
+    ".open-next/**",
+    ".wrangler/**",
   ]),
 ]);
 
