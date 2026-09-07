@@ -41,9 +41,10 @@
   // Weekly knowledge-base refresh + the same Cortex/HubSpot/Instantly sync
   // the "Refresh all" button triggers manually — both run through
   // worker/index.ts's scheduled() export, one code path shared with the
-  // manual routes. Sundays 03:00 UTC — arbitrary, off business hours.
+  // manual routes. Sundays 03:00 UTC — arbitrary, off business hours. Cloudflare's cron
+  // syntax takes SUN-SAT or 1-7 for day-of-week (0 is rejected as invalid).
   "triggers": {
-    "crons": ["0 3 * * 0"]
+    "crons": ["0 3 * * SUN"]
   }
   // Additional secrets this build introduces (set via `wrangler secret put`,
   // same as the existing ones — never added here):

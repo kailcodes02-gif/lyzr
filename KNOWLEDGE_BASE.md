@@ -13,7 +13,7 @@
 >
 > | | |
 > |---|---|
-> | **Last updated** | 2026-09-07 |
+> | **Last updated** | 2026-09-08 |
 > | **Maintained by** | subs@lyzr.ai (with Claude Code) |
 > | **Git repo** | `github.com/kailcodes02-gif/lyzr` (branch `main`) |
 > | **Live domain** | `https://lyzr.kailash-gm.com` |
@@ -52,8 +52,8 @@ under one Cloudflare Pages site at `lyzr.kailash-gm.com`. The pieces:
 | Pipeline dashboard | `pipeline/` + root `functions/api/` | `/pipeline/` | Live, actively edited |
 | Prototypes (public demos) | `prototypes/` | `/demo_pipeline/` | Live |
 | GSI/SI Marketing Tracker | `GSI Tracker/tracker/` (source) + root `GSI_Tracker/` (built export) | `/GSI_Tracker/` | Live, active |
-| Comms Tracker (ABM) | `comms-tracker/` (separate Worker `abm-tracker`) | `/abm-tracker/` | Live but stale (Aug 19 build); untracked in git |
-| Sales Copilot | `sales-copilot/` (separate Worker `content-maker`) | `/content_maker/` | Live; untracked in git |
+| Comms Tracker (ABM) | `comms-tracker/` (separate Worker `abm-tracker`) | `/abm-tracker/` | Live (deployed 2026-09-08) |
+| Sales Copilot | `sales-copilot/` (separate Worker `content-maker`) | `/content_maker/` | Live |
 | GSI Communities | `GSI Communities/` | `/GSI_Communities` | Live |
 
 Two of these are the day-to-day active work: the **weekly GSI reports** (new HTML
@@ -115,7 +115,7 @@ The **deployed** API lives at the **repo root** under `functions/api/` (Cloudfla
 
 Two Next.js apps live in this workspace but deploy as **separate Cloudflare Workers**
 routed onto sub-paths of `lyzr.kailash-gm.com`, so the Pages site keeps serving
-everything else. Both are still **untracked in git** as of 2026-09-07 (never committed).
+everything else. Both were first committed to git on 2026-09-07.
 
 | App | Folder | Worker name | Route | Supabase project | Deploy command |
 |---|---|---|---|---|---|
@@ -434,7 +434,7 @@ Access if the data ever becomes confidential.
 
 - **Tracker stack vs spec:** spec says Next.js 14 + React 18 + Vercel; actual is Next.js 16.2 + React 19.2.4, static export on Cloudflare Pages at `/GSI_Tracker/`. Intentional (DECISIONS D1). Do not "fix" back to spec.
 - **Tracker deploy target:** `DECISIONS.md` D5 says "Vercel for deployment," but the tracker actually ships as a static export committed at root `GSI_Tracker/` and served by the Pages site.
-- **Comms Tracker live build is stale (2026-09-07):** the Worker at `/abm-tracker/` was last deployed 2026-08-19, before the projects/roles/knowledge/AI/send work landed in code. Redeploy needs `wrangler login` plus `wrangler secret put` for `ANTHROPIC_API_KEY`, `SLACK_BOT_TOKEN`, `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`. Migration `008_user_oauth_tokens.sql` still has to be run in the Supabase SQL Editor.
+- **Comms Tracker deploy:** RESOLVED (2026-09-08). Live Worker matches the code; migration 008 applied; all secrets set. Remaining gaps are Google Drive consent-screen setup and Microsoft mail (see `comms-tracker/README.md`).
 - **GSI Tracker lint debt:** `eslint` now runs (`.open-next/**` was crashing it) but reports ~116 pre-existing errors (mostly `no-explicit-any` in `lib/hubspot/` and set-state-in-effect); build and tests are clean.
 - **`CRON_SECRET`:** RESOLVED (2026-06-02) — added to `tracker/.env.local`. Cron routes also still accept `?bypass=true` (flagged as a design choice, not changed).
 - **Slack integration:** queue table exists (`pending_slack_notifications`, migration 003) but the dispatcher is parked / not built.
@@ -451,6 +451,17 @@ Access if the data ever becomes confidential.
 
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
+
+### 2026-09-08, Comms Tracker deployed to Cloudflare (comms-tracker)
+- Migration `008_user_oauth_tokens.sql` applied to the live Supabase project (by the user, SQL Editor).
+- `wrangler login` renewed; added Worker secrets `ANTHROPIC_API_KEY`, `SLACK_BOT_TOKEN`,
+  `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` (the four original ones were already set).
+- `npm run cf:deploy` shipped the redesign to `/abm-tracker/` (version `82ece2a9`): projects page,
+  admin roles, knowledge/AI/send/Drive-connect routes all live and verified (pages 200, API 401 unauth).
+- **Correction:** `wrangler.jsonc` cron `0 3 * * 0` was rejected by Cloudflare (day-of-week must be
+  `SUN`-`SAT` or 1-7); changed to `0 3 * * SUN`. The weekly sync + knowledge refresh cron is now armed.
+- Still open: Google Cloud Console Drive API + `drive.readonly` scope, then one "Connect Google Drive"
+  click; Microsoft Graph mail; push `main`.
 
 ### 2026-09-07, workspace audit + Comms Tracker fixes (comms-tracker, GSI Tracker, KB)
 - **Audit of every app** (`comms-tracker`, `sales-copilot`, `GSI Tracker/tracker`): `tsc` and `next build`
