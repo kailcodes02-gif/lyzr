@@ -3,6 +3,10 @@ import { runSync, type SyncSource } from "../lib/sync/run";
 import { runKnowledgeIngestion, type KnowledgeSource } from "../lib/knowledge/run";
 import { suggestTopics } from "../lib/ai/suggest";
 import { draftEmail } from "../lib/ai/draft";
+import { runMailboxSync, type MailProvider } from "../lib/mail/run";
+import { buildMicrosoftAuthorizeUrl, exchangeMicrosoftCode, fetchGraphMeEmail, isMicrosoftConfigured, MICROSOFT_SCOPES } from "../lib/mail/microsoft";
+import { fetchGmailProfileEmail, GMAIL_SCOPE } from "../lib/mail/google";
+import { refreshGoogleAccessToken } from "../lib/knowledge/drive";
 
 export interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
@@ -23,7 +27,13 @@ export interface Env {
   // token endpoint requires client_id+client_secret, it's never anonymous).
   GOOGLE_OAUTH_CLIENT_ID?: string;
   GOOGLE_OAUTH_CLIENT_SECRET?: string;
+  // Azure app registration for the per-user Outlook mailbox connection
+  // (delegated Mail.Read via Microsoft Graph). ID + tenant are plain vars;
+  // the secret is a `wrangler secret`. See SETUP_INTEGRATIONS.md.
+  MS_GRAPH_CLIENT_ID?: string;
+  MS_GRAPH_TENANT_ID?: string;
   MS_GRAPH_CLIENT_SECRET?: string;
+  NEXT_PUBLIC_SITE_URL: string;
 }
 
 // Must match next.config.ts's basePath — the site is path-mounted at
@@ -39,6 +49,11 @@ const BASE_PATH = "/abm-tracker";
 
 const SOURCES: SyncSource[] = ["cortex", "hubspot", "instantly"];
 const KNOWLEDGE_SOURCES: KnowledgeSource[] = ["lyzr_blog", "slack", "drive", "internal_email"];
+const MAIL_PROVIDERS: MailProvider[] = ["gmail", "outlook"];
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+}
 
 // Validates the caller's Supabase session bearer token against Supabase
 // Auth directly (same pattern the sibling app's Pages Functions use for
@@ -221,35 +236,141 @@ async function handleSendLog(request: Request, env: Env): Promise<Response> {
   return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
 }
 
-// Stores the Drive-scoped refresh token a user's browser just got back from
-// Google (via Supabase's incremental-authorization OAuth redirect) — see
-// app/auth/callback/page.tsx's `?connect=drive` handling. The refresh token
-// itself never round-trips again after this; only this Worker's
-// service-role client ever reads it back out, to mint short-lived access
-// tokens for lib/knowledge/drive.ts's ingestion runs.
-async function handleGoogleDriveConnect(request: Request, env: Env): Promise<Response> {
-  if (request.method !== "POST") return new Response(JSON.stringify({ error: "POST only" }), { status: 405 });
+// Stores the Google refresh token a user's browser just got back from
+// Google (via Supabase's incremental-authorization redirect) — see
+// app/auth/callback/page.tsx's `?connect=google` handling. One consent
+// covers Drive (knowledge base) and Gmail (mailbox reading); the refresh
+// token never round-trips again after this — only this Worker's
+// service-role client reads it back, to mint short-lived access tokens.
+async function handleGoogleConnect(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "POST") return json({ error: "POST only" }, 405);
   const user = await requireUser(request, env);
-  if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+  if (!user) return json({ error: "Unauthorized" }, 401);
 
   const body = (await request.json()) as { refreshToken?: string; scopes?: string[] };
-  if (!body.refreshToken) {
-    return new Response(JSON.stringify({ error: "refreshToken is required" }), { status: 400 });
+  if (!body.refreshToken) return json({ error: "refreshToken is required" }, 400);
+
+  // Record which mailbox this token belongs to (needed to tell "sent by me"
+  // from "sent to me" when reading mail) — best effort, the connection is
+  // still stored if the profile call fails.
+  let accountEmail: string | null = user.email?.toLowerCase() ?? null;
+  if ((body.scopes ?? []).includes(GMAIL_SCOPE)) {
+    try {
+      const token = await refreshGoogleAccessToken(env, body.refreshToken);
+      accountEmail = (await fetchGmailProfileEmail(token)) ?? accountEmail;
+    } catch {
+      // keep the sign-in email
+    }
   }
 
   const db = createSyncDbClient(env);
   const { error } = await db.from("user_oauth_tokens").upsert(
     {
       user_id: user.id,
-      provider: "google_drive",
+      provider: "google",
       refresh_token: body.refreshToken,
       granted_scopes: body.scopes ?? [],
+      account_email: accountEmail,
+      // A fresh grant restarts both incremental cursors.
+      drive_start_page_token: null,
+      mail_cursor: null,
     },
     { onConflict: "user_id,provider" }
   );
-  if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  if (error) return json({ error: error.message }, 500);
+  return json({ ok: true, accountEmail });
+}
 
-  return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
+// ---- Microsoft (Outlook) connect: plain OAuth authorization-code flow ----
+// Not routed through Supabase Auth (sign-in stays Google-only); the Worker
+// is the OAuth client. `state` carries the signed-in user's id, HMAC-signed
+// with the app secret so the callback can't be replayed for someone else.
+async function hmacHex(secret: string, data: string): Promise<string> {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data));
+  return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function microsoftRedirectUri(env: Env): string {
+  return `${env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "")}/api/oauth/microsoft/callback`;
+}
+
+async function handleMicrosoftStart(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "POST") return json({ error: "POST only" }, 405);
+  const user = await requireUser(request, env);
+  if (!user) return json({ error: "Unauthorized" }, 401);
+  if (!isMicrosoftConfigured(env)) {
+    return json({ error: "Outlook is not configured yet — the Azure app registration (MS_GRAPH_CLIENT_ID/SECRET) is missing. See SETUP_INTEGRATIONS.md." }, 503);
+  }
+
+  const payload = `${user.id}.${Date.now()}`;
+  const state = `${payload}.${await hmacHex(env.MS_GRAPH_CLIENT_SECRET!, payload)}`;
+  // Same person, other tenant: subs@lyzr.ai signs in with Google, their
+  // Microsoft mailbox is subs@lyzr.com.
+  const loginHint = user.email ? user.email.replace(/@lyzr\.ai$/i, "@lyzr.com") : null;
+  const url = buildMicrosoftAuthorizeUrl(env, { redirectUri: microsoftRedirectUri(env), state, loginHint });
+  return json({ url });
+}
+
+async function handleMicrosoftCallback(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const site = env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+  const back = (q: string) => Response.redirect(`${site}/admin/sync/?${q}`, 302);
+
+  const err = url.searchParams.get("error");
+  if (err) return back(`connect_error=${encodeURIComponent(url.searchParams.get("error_description") ?? err)}`);
+  const code = url.searchParams.get("code");
+  const state = url.searchParams.get("state");
+  if (!code || !state || !isMicrosoftConfigured(env)) return back("connect_error=missing_code_or_state");
+
+  const [userId, ts, sig] = state.split(".");
+  if (!userId || !ts || !sig) return back("connect_error=bad_state");
+  const expected = await hmacHex(env.MS_GRAPH_CLIENT_SECRET!, `${userId}.${ts}`);
+  if (expected !== sig || Date.now() - Number(ts) > 15 * 60 * 1000) return back("connect_error=state_expired");
+
+  try {
+    const { accessToken, refreshToken } = await exchangeMicrosoftCode(env, code, microsoftRedirectUri(env));
+    if (!refreshToken) return back("connect_error=no_refresh_token");
+    const accountEmail = await fetchGraphMeEmail(accessToken).catch(() => null);
+
+    const db = createSyncDbClient(env);
+    const { error } = await db.from("user_oauth_tokens").upsert(
+      {
+        user_id: userId,
+        provider: "microsoft",
+        refresh_token: refreshToken,
+        granted_scopes: MICROSOFT_SCOPES,
+        account_email: accountEmail,
+        mail_cursor: null,
+      },
+      { onConflict: "user_id,provider" }
+    );
+    if (error) return back(`connect_error=${encodeURIComponent(error.message)}`);
+    return back(`connected=outlook&email=${encodeURIComponent(accountEmail ?? "")}`);
+  } catch (e) {
+    return back(`connect_error=${encodeURIComponent(e instanceof Error ? e.message : String(e))}`);
+  }
+}
+
+async function handleMailSync(request: Request, env: Env, provider: string): Promise<Response> {
+  if (request.method !== "POST") return json({ error: "POST only" }, 405);
+  if (!MAIL_PROVIDERS.includes(provider as MailProvider) && provider !== "all") {
+    return json({ error: `Unknown mail provider "${provider}"` }, 400);
+  }
+  const user = await requireUser(request, env);
+  if (!user) return json({ error: "Unauthorized" }, 401);
+
+  const db = createSyncDbClient(env);
+  const providers = provider === "all" ? MAIL_PROVIDERS : [provider as MailProvider];
+  const results: Record<string, unknown> = {};
+  for (const p of providers) {
+    try {
+      results[p] = await runMailboxSync(db, p, env, { runType: "manual", triggeredBy: user.id });
+    } catch (err) {
+      results[p] = { status: "failed", error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+  return json(results);
 }
 
 function stripBasePath(pathname: string): string {
@@ -274,8 +395,13 @@ const worker = {
 
     if (path === "/api/ai/draft" || path === "/api/ai/draft/") return handleAiDraft(request, env);
     if (path === "/api/send/log" || path === "/api/send/log/") return handleSendLog(request, env);
-    if (path === "/api/oauth/google-drive/connect" || path === "/api/oauth/google-drive/connect/")
-      return handleGoogleDriveConnect(request, env);
+    // `google-drive/connect` kept as an alias for the pre-Gmail callback page.
+    if (/^\/api\/oauth\/google(-drive)?\/connect\/?$/.test(path)) return handleGoogleConnect(request, env);
+    if (path === "/api/oauth/microsoft/start" || path === "/api/oauth/microsoft/start/") return handleMicrosoftStart(request, env);
+    if (path === "/api/oauth/microsoft/callback" || path === "/api/oauth/microsoft/callback/") return handleMicrosoftCallback(request, env);
+
+    const mailMatch = path.match(/^\/api\/mail\/sync\/([a-z]+)\/?$/);
+    if (mailMatch) return handleMailSync(request, env, mailMatch[1]);
 
     const assetUrl = new URL(request.url);
     assetUrl.pathname = path;
@@ -298,6 +424,15 @@ const worker = {
       } catch {
         // Logged into sync_runs by runSync itself; one source failing
         // shouldn't stop the others from running.
+      }
+    }
+    // Mailboxes before the knowledge sources so this week's siva@ emails are
+    // in the internal_email store before its MD file is rebuilt.
+    for (const provider of MAIL_PROVIDERS) {
+      try {
+        await runMailboxSync(db, provider, env, { runType: "scheduled" });
+      } catch {
+        // Logged into sync_runs by runMailboxSync itself.
       }
     }
     for (const source of KNOWLEDGE_SOURCES) {

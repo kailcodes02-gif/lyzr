@@ -33,7 +33,11 @@
     "NEXT_PUBLIC_SUPABASE_URL": "https://datdjabcrxveubsvvxvm.supabase.co",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_yGlNcMEveF5eRfsso-2mCA_oRJvQlJy",
     "CORTEX_BASE_URL": "https://applied-ai.lyzr.app",
-    "INSTANTLY_PRODUCT_UPDATE_TAG": "ABM"
+    "INSTANTLY_PRODUCT_UPDATE_TAG": "ABM",
+    // Azure app registration (Outlook mailbox connect) — fill in once created;
+    // empty means the "Connect Outlook" button reports "not configured".
+    "MS_GRAPH_CLIENT_ID": "",
+    "MS_GRAPH_TENANT_ID": ""
   },
   "observability": {
     "enabled": true
@@ -51,5 +55,7 @@
   //   ANTHROPIC_API_KEY            — required for suggestions/drafts/knowledge summarization
   //   SLACK_BOT_TOKEN              — optional; Slack ingestion no-ops until set
   //   GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON — optional; Drive/internal-email ingestion no-ops until set
-  //   MS_GRAPH_CLIENT_SECRET       — optional; internal-email ingestion no-ops until set
+  //   MS_GRAPH_CLIENT_SECRET       — optional; Outlook mailbox connect/read no-ops until set
+  //   (MS_GRAPH_CLIENT_ID and MS_GRAPH_TENANT_ID are not secret and go in `vars` above
+  //   once the Azure app registration exists — see SETUP_INTEGRATIONS.md)
 }

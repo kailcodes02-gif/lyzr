@@ -1,11 +1,16 @@
-# Integration setup — Slack, Google Drive, Microsoft mail
+# Integration setup — Slack, Google (Drive + Gmail), Microsoft (Outlook)
 
-Two of the three (`lib/knowledge/slack.ts`, `drive.ts`) are fully implemented
-in code now — they no-op with a clear "skipping" log in `/admin/sync` until
-the accounts/apps below exist, but no further code changes are needed once
-they do, just the secrets/OAuth setup this doc walks through.
-`lib/knowledge/mail.ts` is still a plumbing-only scaffold (sync-run
-bookkeeping is real, the actual Microsoft Graph calls are a `TODO`).
+All four sources are fully implemented in code. Each one no-ops with a
+clear "skipping" log in `/admin/sync` until the account/app below exists;
+no further code changes are needed once it does, just the secrets and
+consent-screen setup this doc walks through.
+
+| Source | Code | Needs |
+|---|---|---|
+| Slack channels | `lib/knowledge/slack.ts` | `SLACK_BOT_TOKEN` (done) |
+| Google Drive + Gmail | `lib/knowledge/drive.ts`, `lib/mail/google.ts` | Google OAuth client ID/secret (done) + Drive API, `drive.readonly` and `gmail.readonly` scopes on the consent screen + each user clicking **Connect Gmail** |
+| Outlook | `lib/mail/microsoft.ts` | Azure app registration (`MS_GRAPH_CLIENT_ID`, `MS_GRAPH_TENANT_ID`, `MS_GRAPH_CLIENT_SECRET`) + each user clicking **Connect Outlook** |
+| Internal email (siva@) | `lib/mail/run.ts` | Nothing extra: filled from whichever mailboxes are connected |
 
 ## Slack
 
@@ -20,7 +25,7 @@ bookkeeping is real, the actual Microsoft Graph calls are a `TODO`).
 4. Copy the **Bot User OAuth Token** (`xoxb-...`).
 5. `wrangler secret put SLACK_BOT_TOKEN` and paste it.
 
-## Google Drive (read-only, per-user consent)
+## Google Drive + Gmail (read-only, per-user consent)
 
 > Status 2026-09-07: `GOOGLE_OAUTH_CLIENT_ID`/`GOOGLE_OAUTH_CLIENT_SECRET` are
 > set in `.env.local` (verified to be the same client Supabase's Google SSO
@@ -45,58 +50,84 @@ client needed, just one additional scope added to it:
    → Providers → Google, where they were originally entered).
 2. **APIs & Services → Library** → enable the **Google Drive API** for that
    project, if it isn't already.
-3. **APIs & Services → OAuth consent screen → Data Access** → add the scope
-   `.../auth/drive.readonly`. If the consent screen's **User Type** is
+3. **APIs & Services → Library** → also enable the **Gmail API**.
+4. **APIs & Services → OAuth consent screen → Data Access** → add both scopes
+   `.../auth/drive.readonly` and `.../auth/gmail.readonly` (one consent
+   screen grants both; Gmail reading and Drive ingestion share the token). If the consent screen's **User Type** is
    **Internal** (tied to the `lyzr.ai` Google Workspace), this needs no
    Google verification regardless of the scope's sensitivity. If it's
    **External**, Google may require verification before this scope works for
    anyone outside a short test-user list — Internal is the expected setup
    here since sign-in is already restricted to `@lyzr.ai`.
-4. Copy that OAuth client's **Client ID** (not secret) and **Client Secret**
+5. Copy that OAuth client's **Client ID** (not secret) and **Client Secret**
    from Google Cloud Console.
-5. `wrangler secret put GOOGLE_OAUTH_CLIENT_ID` and
+6. `wrangler secret put GOOGLE_OAUTH_CLIENT_ID` and
    `wrangler secret put GOOGLE_OAUTH_CLIENT_SECRET` (for local dev, put both
    in `.env.local` instead — see `.env.local.example`).
 
-Once those two are set, any signed-in user can click **Connect Google
-Drive** on `/admin/sync` — this redirects through Google's consent screen
+Once those two are set, any signed-in user can click **Connect Gmail** on
+`/admin/sync` (the same click grants Drive) — this redirects through Google's consent screen
 for just the added scope (`prompt=consent` forces a reissued refresh token
 without disturbing anyone's existing login) and back to
-`/auth/callback/?connect=drive`, which hands the refresh token to the
-Worker's `/api/oauth/google-drive/connect` route for storage
+`/auth/callback/?connect=google`, which hands the refresh token to the
+Worker's `/api/oauth/google/connect` route for storage
 (`user_oauth_tokens`, migration `008_user_oauth_tokens.sql`). No further
 manual step is needed per user beyond that one click.
 
-## Microsoft mail (Outlook/Graph — for the mailbox-read detection feature)
+## Microsoft Outlook (read-only, per-user consent via Microsoft Graph)
 
-1. https://portal.azure.com → **Azure Active Directory → App registrations →
+Same shape as Google: each user connects their own `@lyzr.com` mailbox
+from `/admin/sync` ("Connect Outlook"). Sign-in to the app stays Google
+only; the Worker runs a standard OAuth authorization-code flow against
+Microsoft Entra with **delegated** `Mail.Read`, stores the refresh token in
+`user_oauth_tokens` (provider `microsoft`), and reads Sent Items + Inbox
+through Graph on each run. Nothing here needs admin consent for the whole
+tenant, and no application-level (tenant-wide) mail permission is used.
+
+1. https://portal.azure.com → **Microsoft Entra ID → App registrations →
    New registration**.
-2. API permissions → Microsoft Graph → Application permissions → add
-   `Mail.Read` (and `Files.Read.All` if Drive-equivalent OneDrive/SharePoint
-   reads are wanted later) → grant admin consent.
-3. Certificates & secrets → new client secret → copy the value immediately
-   (it's only shown once).
-4. `wrangler secret put MS_GRAPH_CLIENT_SECRET` and paste it (the tenant ID
-   and application/client ID aren't secret — those can go in `wrangler.jsonc`'s
-   `vars` once the mail adapter is actually implemented).
+   - Name: `Lyzr Comms Tracker` (anything).
+   - Supported account types: **Accounts in this organizational directory
+     only (lyzr.com, single tenant)**.
+   - Redirect URI: platform **Web**,
+     `https://lyzr.kailash-gm.com/abm-tracker/api/oauth/microsoft/callback`
+     (for local dev add `http://localhost:8799/abm-tracker/api/oauth/microsoft/callback`
+     too, that's what `wrangler dev` serves).
+2. **API permissions → Add a permission → Microsoft Graph → Delegated
+   permissions**: `Mail.Read`, `User.Read`, `offline_access`. No admin
+   consent button needed for these; each user consents on connect.
+3. **Certificates & secrets → New client secret** → copy the **Value**
+   immediately (only shown once).
+4. From the **Overview** page copy the **Application (client) ID** and the
+   **Directory (tenant) ID**.
+5. Put the two IDs in `wrangler.jsonc` `vars` (`MS_GRAPH_CLIENT_ID`,
+   `MS_GRAPH_TENANT_ID`) and in `.env.local`, then
+   `wrangler secret put MS_GRAPH_CLIENT_SECRET` (and `.env.local` for local
+   runs). Deploy.
 
-## What's already wired vs. what's still a stub
+After that, **Connect Outlook** on `/admin/sync` opens Microsoft's consent
+page pre-filled with your lyzr.com address (the app derives it from your
+lyzr.ai sign-in), and the callback lands you back on `/admin/sync` with
+"Outlook connected". Run **Read mailboxes** or wait for the Sunday cron.
 
-- `lib/knowledge/lyzr-scrape.ts` — fully working today, no external app
-  needed. Runs on the weekly cron and via `/admin/sync`'s "Refresh" for
-  `lyzr_blog`.
-- `lib/knowledge/slack.ts` — fully implemented (channel history via
-  `conversations.list`/`conversations.history`, incremental per-channel
-  cursor in `source_sync_state.last_cursor`). Needs `SLACK_BOT_TOKEN` set and
-  the bot invited into channels (`/invite @<bot-name>` in Slack) before it
-  finds anything.
-- `lib/knowledge/drive.ts` — fully implemented (per-user OAuth via
-  `user_oauth_tokens`, incremental sync via Drive's `changes.list` +
-  `startPageToken`, text export of native Google Docs/Sheets/Slides only —
-  PDFs/uploaded files aren't handled in v1). Needs `GOOGLE_OAUTH_CLIENT_ID`/
-  `GOOGLE_OAUTH_CLIENT_SECRET` set and at least one user to click "Connect
-  Google Drive" on `/admin/sync` before it finds anything.
-- `lib/knowledge/mail.ts` — still plumbing-only; the actual Microsoft Graph
-  calls are a `TODO` to fill in once `MS_GRAPH_CLIENT_SECRET` and the mail
-  adapter's design (OAuth flow, similar to Drive's, still needs deciding)
-  exist.
+## What each mailbox read does
+
+`lib/mail/run.ts`, for every connected mailbox (first run looks back 90
+days, then only since the last run):
+
+- Reads **Sent Items** and **Inbox** (capped per run; Gmail skips
+  promotions/social). Any message to or from an address that belongs to a
+  tracked account (by domain) or a known contact (by email) becomes a
+  `communication_events` row (`source_system` `gmail` / `outlook`), tied to
+  the contact's project, so going-dark and the project timeline include
+  emails sent from personal inboxes. Mail that touches no tracked customer
+  is not stored.
+- **Confirms "sent via app" rows**: when the real sent message (same
+  recipient + subject) appears in the sender's mailbox, `confirmed_at` is
+  stamped on the optimistic row the compose handoff logged.
+- Collects emails **from siva@lyzr.ai / siva@lyzr.com** into the
+  `internal_email` knowledge store (full text) and rebuilds
+  `internal-emails-siva.md`.
+- Runs weekly from the Worker cron, or on demand from `/admin/sync`
+  ("Read mailboxes"), or locally with
+  `npx tsx scripts/run-mail-sync.ts gmail|outlook|all`.

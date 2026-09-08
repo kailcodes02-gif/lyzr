@@ -434,7 +434,7 @@ Access if the data ever becomes confidential.
 
 - **Tracker stack vs spec:** spec says Next.js 14 + React 18 + Vercel; actual is Next.js 16.2 + React 19.2.4, static export on Cloudflare Pages at `/GSI_Tracker/`. Intentional (DECISIONS D1). Do not "fix" back to spec.
 - **Tracker deploy target:** `DECISIONS.md` D5 says "Vercel for deployment," but the tracker actually ships as a static export committed at root `GSI_Tracker/` and served by the Pages site.
-- **Comms Tracker deploy:** RESOLVED (2026-09-08). Live Worker matches the code; migration 008 applied; all secrets set. Remaining gaps are Google Drive consent-screen setup and Microsoft mail (see `comms-tracker/README.md`).
+- **Comms Tracker deploy:** RESOLVED (2026-09-08). Live Worker matches the code. Remaining user-side steps: run migration 009; Google Cloud Console Drive + Gmail APIs and scopes on the consent screen; Azure app registration for Outlook (see `comms-tracker/SETUP_INTEGRATIONS.md`).
 - **GSI Tracker lint debt:** `eslint` now runs (`.open-next/**` was crashing it) but reports ~116 pre-existing errors (mostly `no-explicit-any` in `lib/hubspot/` and set-state-in-effect); build and tests are clean.
 - **`CRON_SECRET`:** RESOLVED (2026-06-02) — added to `tracker/.env.local`. Cron routes also still accept `?bypass=true` (flagged as a design choice, not changed).
 - **Slack integration:** queue table exists (`pending_slack_notifications`, migration 003) but the dispatcher is parked / not built.
@@ -456,6 +456,22 @@ Access if the data ever becomes confidential.
 - New `reports/gsi-report-aug31-sep8/index.html` (pipeline widget, ads, Instantly, events, programs-by-status).
 - Added Week 16 to `data/weeks.json` and the noscript/scraper fallbacks in `reports/index.html`.
 - Prior-report link points at `../gsi-report-aug23-30/`.
+
+### 2026-09-08, Comms Tracker: Gmail + Outlook mailbox reading (comms-tracker)
+- New `lib/mail/` (types, google, microsoft, run): per-user mailbox reads for Gmail (same Google OAuth
+  consent as Drive, now also `gmail.readonly`) and Outlook (Microsoft Graph delegated `Mail.Read`, plain
+  OAuth code flow owned by the Worker at `/api/oauth/microsoft/start` + `/callback`, HMAC-signed state).
+  Sent + Inbox messages touching a tracked account/contact become `communication_events`
+  (`source_system` gmail/outlook) on the contact's project; "sent via app" rows get `confirmed_at`;
+  emails from siva@lyzr.ai / siva@lyzr.com fill the `internal_email` knowledge store.
+- Migration `009_mailbox_sync.sql`: enum values gmail/outlook, `user_oauth_tokens.account_email /
+  mail_cursor / mail_synced_at`, provider `google_drive` renamed to `google`, `communication_events.
+  mailbox_user_id / confirmed_at`. **Must be run in the Supabase SQL Editor** before connecting a mailbox.
+- `/admin/sync` has a Mailboxes section (Connect Gmail / Connect Outlook / Read mailboxes); Worker cron
+  runs both mailbox reads before the knowledge refresh; `/api/mail/sync/:provider` manual route.
+- `wrangler.jsonc` vars `MS_GRAPH_CLIENT_ID` / `MS_GRAPH_TENANT_ID` (empty until the Azure app
+  registration exists; steps in `comms-tracker/SETUP_INTEGRATIONS.md`); secret `MS_GRAPH_CLIENT_SECRET`.
+- Deployed to `/abm-tracker/`; `tsc`, `eslint`, `next build` clean.
 
 ### 2026-09-08, Comms Tracker deployed to Cloudflare (comms-tracker)
 - Migration `008_user_oauth_tokens.sql` applied to the live Supabase project (by the user, SQL Editor).

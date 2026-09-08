@@ -27,7 +27,7 @@ const MAX_FILES_PER_USER_PER_RUN = 200;
 
 type DriveFile = { id: string; name: string; mimeType: string; modifiedTime: string; trashed?: boolean };
 
-async function refreshAccessToken(
+export async function refreshGoogleAccessToken(
   env: { GOOGLE_OAUTH_CLIENT_ID?: string; GOOGLE_OAUTH_CLIENT_SECRET?: string },
   refreshToken: string
 ): Promise<string> {
@@ -131,11 +131,11 @@ export async function ingestDrive(
   const { data: connectedUsers, error: usersErr } = await db
     .from("user_oauth_tokens")
     .select("user_id, refresh_token, drive_start_page_token")
-    .eq("provider", "google_drive");
+    .eq("provider", "google");
   if (usersErr) throw usersErr;
 
   if (!connectedUsers || connectedUsers.length === 0) {
-    log("drive: no one has connected Google Drive yet — use the \"Connect Google Drive\" button on /admin/sync");
+    log("drive: no one has connected Google yet — use the \"Connect Google\" button on /admin/sync");
     return { fetched: 0, upserted: 0, flaggedForReview: 0 };
   }
 
@@ -144,7 +144,7 @@ export async function ingestDrive(
 
   for (const connection of connectedUsers as ConnectedUser[]) {
     try {
-      const accessToken = await refreshAccessToken(env, connection.refresh_token);
+      const accessToken = await refreshGoogleAccessToken(env, connection.refresh_token);
 
       let files: DriveFile[];
       let nextStartPageToken: string;
@@ -203,7 +203,7 @@ export async function ingestDrive(
         .from("user_oauth_tokens")
         .update({ drive_start_page_token: nextStartPageToken })
         .eq("user_id", connection.user_id)
-        .eq("provider", "google_drive");
+        .eq("provider", "google");
       if (cursorErr) throw cursorErr;
     } catch (err) {
       // One user's revoked/expired grant shouldn't stop the others' Drive

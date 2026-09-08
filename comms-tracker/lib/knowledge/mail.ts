@@ -1,32 +1,23 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { rebuildInternalEmailMarkdown } from "../mail/run";
 
-const INTERNAL_EMAIL_SENDERS = ["siva@lyzr.ai", "siva@lyzr.com"];
-
-// Scaffold only -- needs read access to siva@lyzr.ai's actual mailbox, which
-// means either Google Workspace domain-wide delegation (a service account
-// impersonating that one mailbox) or Siva personally granting Gmail/Outlook
-// read scope at sign-in. Same missing-app problem as drive.ts/slack.ts.
-// See SETUP_INTEGRATIONS.md.
-export function isMailConfigured(env: { GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON?: string; MS_GRAPH_CLIENT_SECRET?: string }): boolean {
-  return Boolean(env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON || env.MS_GRAPH_CLIENT_SECRET);
-}
-
+// The internal-email knowledge store (emails from siva@lyzr.ai /
+// siva@lyzr.com) is populated by the per-user mailbox reads in
+// lib/mail/run.ts -- every connected Gmail/Outlook mailbox contributes the
+// messages it received from those senders. This knowledge-source entry
+// point therefore has nothing to fetch on its own; it rebuilds the MD file
+// from what the mailbox syncs have stored and reports the count, so the
+// /admin/sync card and the weekly cron still have a meaningful result.
 export async function ingestInternalEmail(
-  _db: SupabaseClient,
-  env: { GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON?: string; MS_GRAPH_CLIENT_SECRET?: string },
+  db: SupabaseClient,
+  _env: unknown,
   log: (msg: string) => void = () => {}
 ): Promise<{ fetched: number; upserted: number; flaggedForReview: number }> {
-  if (!isMailConfigured(env)) {
-    log(`internal_email: no mail credentials configured for ${INTERNAL_EMAIL_SENDERS.join("/")} — skipping (see SETUP_INTEGRATIONS.md)`);
-    return { fetched: 0, upserted: 0, flaggedForReview: 0 };
+  const count = await rebuildInternalEmailMarkdown(db);
+  if (count === 0) {
+    log("internal_email: no emails from siva@lyzr.ai / siva@lyzr.com stored yet — connect a Gmail or Outlook mailbox on /admin/sync and run the mailbox sync (skipping)");
+  } else {
+    log(`internal_email: ${count} email(s) in the store (populated by the Gmail/Outlook mailbox syncs)`);
   }
-
-  // TODO once mail-read credentials exist: Gmail messages.list (query
-  // `from:siva@lyzr.ai OR from:siva@lyzr.com`) or Microsoft Graph
-  // /me/messages with a $filter on sender, incremental via a stored
-  // historyId/deltaLink -> knowledge_documents upsert
-  // (source_type='internal_email', source_ref=messageId) ->
-  // writeKnowledgeMarkdown to `internal-emails-siva.md`.
-  log("internal_email: adapter not yet implemented against real credentials");
-  return { fetched: 0, upserted: 0, flaggedForReview: 0 };
+  return { fetched: count, upserted: count, flaggedForReview: 0 };
 }

@@ -38,13 +38,16 @@ mirroring the conventions of the sibling `GSI Tracker/tracker` app.
 - [ ] Live Worker is the 2026-08-19 build: `/projects`, `/admin/roles` and
       every route except `/api/sync/*` are missing there. Redeploy needs
       `wrangler login`, the secrets below, then `npm run cf:deploy`
-- [ ] Google Drive: server-side client ID/secret are set locally (same Google
-      OAuth client as Supabase SSO). Still needs the `drive.readonly` scope on
-      that client's consent screen, the Drive API enabled, and one "Connect
-      Google Drive" click on `/admin/sync`
-- [ ] Microsoft mail (Outlook/Graph mailbox-read detection) still scaffolded
-      (needs the app registration in `SETUP_INTEGRATIONS.md`) and the weekly
-      mailbox reconciliation against app-logged sends that depends on it
+- [x] Mailbox reading for Gmail and Outlook (`lib/mail/*`, migration
+      `009_mailbox_sync.sql`): per-user connect on `/admin/sync`, emails with
+      tracked contacts logged as communication events, "sent via app" rows
+      confirmed against real sent mail, siva@ emails feed the internal-email
+      knowledge store, weekly via cron
+- [ ] Google: enable the Drive + Gmail APIs and add `drive.readonly` +
+      `gmail.readonly` to the OAuth consent screen, then click "Connect Gmail"
+- [ ] Outlook: needs the Azure app registration (`SETUP_INTEGRATIONS.md`),
+      then `MS_GRAPH_CLIENT_ID`/`TENANT_ID` in `wrangler.jsonc` and
+      `wrangler secret put MS_GRAPH_CLIENT_SECRET`, then "Connect Outlook"
 
 ## Setup
 
@@ -53,7 +56,7 @@ mirroring the conventions of the sibling `GSI Tracker/tracker` app.
    `SUPABASE_SERVICE_ROLE_KEY` from the Supabase dashboard (Project Settings → API).
 3. Paste each `supabase/migrations/*.sql` file into the Supabase Dashboard's
    SQL Editor (Dashboard → SQL Editor → New Query) and run them **in order**
-   (001 through 008) — Supabase has no separate migration runner, so this is
+   (001 through 009) — Supabase has no separate migration runner, so this is
    still a manual, one-file-at-a-time step.
 4. In Supabase Auth settings, enable the Google provider and add
    `<your-deployed-url>/auth/callback/` (and `http://localhost:3000/auth/callback/`

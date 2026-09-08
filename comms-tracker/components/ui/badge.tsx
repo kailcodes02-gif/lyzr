@@ -59,6 +59,8 @@ const SOURCE_COLOR: Record<string, BadgeColor> = {
   instantly: "cyan",
   hubspot_engagement: "orange",
   app: "blue",
+  gmail: "red",
+  outlook: "blue",
 };
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -67,6 +69,8 @@ const SOURCE_LABEL: Record<string, string> = {
   instantly: "Instantly",
   hubspot_engagement: "HubSpot",
   app: "Email (sent via app)",
+  gmail: "Gmail",
+  outlook: "Outlook",
 };
 
 export function SourceBadge({ source }: { source: string }) {

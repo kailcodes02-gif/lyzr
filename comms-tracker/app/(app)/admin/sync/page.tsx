@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { RefreshCw } from "lucide-react";
+import { Mail, RefreshCw } from "lucide-react";
 import { useSyncState } from "@/lib/hooks/use-sync";
-import { connectGoogleDrive, useDriveConnection } from "@/lib/hooks/use-drive-connect";
+import { connectGoogle, connectMicrosoft, GMAIL_SCOPE, useMailboxConnections } from "@/lib/hooks/use-drive-connect";
 import { createClient } from "@/lib/supabase/client";
 import { Badge, SourceBadge, type BadgeColor } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,22 +21,41 @@ const STATUS_COLOR: Record<string, BadgeColor> = {
 
 const SOURCES = ["cortex", "hubspot", "instantly"] as const;
 const KNOWLEDGE_SOURCES = ["lyzr_blog", "slack", "drive", "internal_email"] as const;
+const MAIL_PROVIDERS = [
+  { key: "gmail", label: "Gmail", provider: "google" as const },
+  { key: "outlook", label: "Outlook", provider: "microsoft" as const },
+] as const;
 
-export default function SyncAdminPage() {
+function SyncAdminContent() {
   const { data, isLoading } = useSyncState();
-  const { data: driveConnection } = useDriveConnection();
+  const { data: mailboxes } = useMailboxConnections();
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
   const [refreshing, setRefreshing] = useState<string | null>(null);
 
-  async function handleConnectDrive() {
+  // The Outlook connect round-trip lands back here via the Worker's
+  // callback redirect with ?connected=outlook or ?connect_error=...
+  useEffect(() => {
+    const connected = searchParams.get("connected");
+    const connectError = searchParams.get("connect_error");
+    if (connected === "outlook") {
+      toast.success(`Outlook connected${searchParams.get("email") ? ` as ${searchParams.get("email")}` : ""}`);
+      queryClient.invalidateQueries({ queryKey: ["mailbox-connections"] });
+    } else if (connectError) {
+      toast.error(`Outlook connection failed: ${connectError}`);
+    }
+  }, [searchParams, queryClient]);
+
+  async function handleConnect(provider: "google" | "microsoft") {
     try {
-      await connectGoogleDrive();
+      if (provider === "google") await connectGoogle();
+      else await connectMicrosoft();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
     }
   }
 
-  async function refresh(source: string, base: "sync" | "knowledge/sync" = "sync") {
+  async function refresh(source: string, base: "sync" | "knowledge/sync" | "mail/sync" = "sync") {
     setRefreshing(source);
     try {
       const supabase = createClient();
@@ -55,6 +75,7 @@ export default function SyncAdminPage() {
       toast.success(`${source} sync triggered`);
       queryClient.invalidateQueries({ queryKey: ["sync-state"] });
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["mailbox-connections"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
     } finally {
@@ -74,8 +95,8 @@ export default function SyncAdminPage() {
             </InfoTip>
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Nothing syncs on a schedule yet — every refresh here is a manual trigger of the Worker&apos;s{" "}
-            <code>/api/sync/*</code> routes.
+            Everything below also runs automatically every Sunday 03:00 UTC (Worker cron); a refresh here triggers the
+            same code path on demand.
           </p>
         </div>
         <Button variant="primary" onClick={() => refresh("all")} disabled={refreshing !== null} className="rounded-full">
@@ -113,37 +134,84 @@ export default function SyncAdminPage() {
 
           <div className="mt-8 flex items-center justify-between">
             <h2 className="text-sm font-medium text-zinc-900 flex items-center gap-1.5">
-              Knowledge base
+              Mailboxes
               <InfoTip>
-                Weekly-refreshed sources feeding the topic-suggestion + draft engine. lyzr_blog runs for real; Slack,
-                Drive, and internal_email no-op until their credentials are configured — see SETUP_INTEGRATIONS.md.
+                Connect your own Gmail (lyzr.ai) and Outlook (lyzr.com) so the tracker can see emails you exchange
+                with client contacts from your personal inbox, confirm the &quot;sent via app&quot; rows, and collect
+                emails from siva@lyzr.ai / siva@lyzr.com for the knowledge base. Read-only. Only mail touching a
+                tracked account or contact is stored.
               </InfoTip>
             </h2>
-            <div className="flex items-center gap-2">
-              <Button
-                variant={driveConnection?.connected ? "secondary" : "primary"}
-                size="sm"
-                onClick={handleConnectDrive}
-                disabled={driveConnection?.connected}
-              >
-                {driveConnection?.connected ? "Drive connected ✓" : "Connect Google Drive"}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => refresh("all", "knowledge/sync")}
-                disabled={refreshing !== null}
-              >
-                <RefreshCw className={refreshing === "all" ? "w-4 h-4 animate-spin" : "w-4 h-4"} />
-                Refresh knowledge
-              </Button>
-            </div>
+            <Button variant="secondary" onClick={() => refresh("all", "mail/sync")} disabled={refreshing !== null}>
+              <RefreshCw className={refreshing === "all" ? "w-4 h-4 animate-spin" : "w-4 h-4"} />
+              Read mailboxes
+            </Button>
           </div>
-          {driveConnection?.connected && (
-            <p className="mt-1 text-xs text-zinc-400">
-              Drive connected as you since {new Date(driveConnection.updatedAt!).toLocaleString()} — the knowledge
-              base only sees what your own Google account can see, not the whole workspace&apos;s Drive.
-            </p>
-          )}
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {MAIL_PROVIDERS.map(({ key, label, provider }) => {
+              const conn = mailboxes?.[provider];
+              const hasMailScope = provider === "microsoft" ? Boolean(conn?.connected) : Boolean(conn?.scopes.includes(GMAIL_SCOPE));
+              const s = data.state.find((r) => r.source_key === key);
+              return (
+                <div key={key} className="rounded-lg border border-zinc-200 bg-white p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-zinc-700 flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5 text-zinc-400" /> {label}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={hasMailScope ? "secondary" : "primary"}
+                        size="sm"
+                        onClick={() => handleConnect(provider)}
+                      >
+                        {hasMailScope ? "Reconnect" : conn?.connected ? `Grant ${label} access` : `Connect ${label}`}
+                      </Button>
+                      <button
+                        onClick={() => refresh(key, "mail/sync")}
+                        disabled={refreshing !== null || !hasMailScope}
+                        className="text-xs text-zinc-500 hover:text-zinc-900 disabled:opacity-50"
+                      >
+                        {refreshing === key ? "…" : "Refresh"}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="text-xs text-zinc-500 mt-2">
+                    {hasMailScope
+                      ? `Connected as ${conn?.accountEmail ?? "you"}`
+                      : conn?.connected
+                        ? "Connected for Drive only — reconnect to add Gmail"
+                        : "Not connected"}
+                    {" · "}
+                    {s?.last_synced_at ? `last read ${new Date(s.last_synced_at).toLocaleString()}` : "never read"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-8 flex items-center justify-between">
+            <h2 className="text-sm font-medium text-zinc-900 flex items-center gap-1.5">
+              Knowledge base
+              <InfoTip>
+                Weekly-refreshed sources feeding the topic-suggestion + draft engine: lyzr.ai blog/case studies,
+                Slack channels, connected Google Drives, and internal emails from siva@ collected via the mailboxes above.
+              </InfoTip>
+            </h2>
+            <Button
+              variant="secondary"
+              onClick={() => refresh("all", "knowledge/sync")}
+              disabled={refreshing !== null}
+            >
+              <RefreshCw className={refreshing === "all" ? "w-4 h-4 animate-spin" : "w-4 h-4"} />
+              Refresh knowledge
+            </Button>
+          </div>
+          <p className="mt-1 text-xs text-zinc-400">
+            {mailboxes?.google.connected
+              ? `Drive connected as ${mailboxes.google.accountEmail ?? "you"} — the knowledge base only sees what your own Google account can see.`
+              : "Drive uses the same Google connection as Gmail above — click Connect Gmail to enable both."}
+            {" "}internal_email is filled by the mailbox reads (emails from siva@lyzr.ai / siva@lyzr.com).
+          </p>
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-4 gap-3">
             {KNOWLEDGE_SOURCES.map((source) => {
               const s = data.state.find((r) => r.source_key === source);
@@ -191,5 +259,13 @@ export default function SyncAdminPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function SyncAdminPage() {
+  return (
+    <Suspense fallback={<div className="text-sm text-zinc-400">Loading…</div>}>
+      <SyncAdminContent />
+    </Suspense>
   );
 }
