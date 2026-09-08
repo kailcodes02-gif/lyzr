@@ -4,6 +4,8 @@ import {
   fetchInstantlyEmailsForCampaign,
   resolveCampaignIdsForTagLabel,
 } from "../adapters/instantly";
+import { htmlToText } from "../knowledge/util";
+import { hasColumn, stripColumn } from "./db";
 import { emailDomain, htmlToSnippet, normalizeEmail } from "./util";
 import { chunk, fetchAllRows } from "./batch";
 import { resolveUnambiguousProjectIdByPersonId } from "./projects";
@@ -122,6 +124,7 @@ export async function syncInstantly(
         recipient_email_domain: domain,
         subject: email.subject,
         snippet: htmlToSnippet(email.bodyHtml),
+        body_text: email.bodyHtml ? htmlToText(email.bodyHtml, 20000) : null,
         sent_at: email.sentAt,
         email_type: emailType,
         match_status: matchStatus,
@@ -130,7 +133,8 @@ export async function syncInstantly(
       });
     }
 
-    for (const batch of chunk(rows, 500)) {
+    const writable = (await hasColumn(db, "communication_events", "body_text")) ? rows : stripColumn(rows, "body_text");
+    for (const batch of chunk(writable, 500)) {
       const { error } = await db
         .from("communication_events")
         .upsert(batch, { onConflict: "source_system,source_event_id" });

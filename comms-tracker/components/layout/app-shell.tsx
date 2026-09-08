@@ -6,6 +6,7 @@ import { LayoutDashboard, ListChecks, ListTodo, RefreshCw, LogOut, Users, Shield
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentUser } from "@/lib/hooks/use-current-user";
+import { useReviewCount } from "@/lib/hooks/use-review";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -17,7 +18,7 @@ const NAV_GROUPS = [
     items: [
       { href: "/", label: "Tracker", icon: LayoutDashboard, hint: "Accounts and who is going dark" },
       { href: "/tasks", label: "Tasks", icon: ListTodo, hint: "Send-update checklists" },
-      { href: "/review", label: "Needs Review", icon: ListChecks, hint: "Records that could not be matched" },
+      { href: "/review", label: "Needs Review", icon: ListChecks, hint: "Records that could not be matched", hideWhenEmpty: true },
     ],
   },
   {
@@ -52,6 +53,7 @@ export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: me } = useCurrentUser();
+  const { data: reviewCount } = useReviewCount();
 
   const signOut = async () => {
     await createClient().auth.signOut();
@@ -75,8 +77,12 @@ export function AppSidebar() {
           <div key={group.label}>
             <div className="text-muted-foreground px-2 pb-1 text-[11px] font-medium uppercase tracking-wide">{group.label}</div>
             <div className="space-y-0.5">
-              {group.items.map(({ href, label, icon: Icon, hint }) => {
+              {group.items.map(({ href, label, icon: Icon, hint, ...item }) => {
                 const isActive = pathname === href || (href !== "/" && pathname.startsWith(href));
+                const hideWhenEmpty = "hideWhenEmpty" in item && item.hideWhenEmpty;
+                // Needs Review is a safety net; keep it out of the way until
+                // a sync actually parks something there (or you're on it).
+                if (hideWhenEmpty && !isActive && !(reviewCount && reviewCount > 0)) return null;
                 return (
                   <Link
                     key={href}
@@ -90,7 +96,8 @@ export function AppSidebar() {
                     )}
                   >
                     <Icon className="size-4" />
-                    {label}
+                    <span className="flex-1">{label}</span>
+                    {hideWhenEmpty && reviewCount ? <Badge color="amber">{reviewCount}</Badge> : null}
                   </Link>
                 );
               })}

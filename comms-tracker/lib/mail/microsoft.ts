@@ -131,7 +131,7 @@ function toMessage(m: GraphMessage, direction: MailMessage["direction"], withBod
     cc: (m.ccRecipients ?? []).map(addr).filter((a): a is string => Boolean(a)),
     subject: m.subject ?? null,
     snippet: m.bodyPreview ?? null,
-    body: withBody ? (m.body?.content?.slice(0, 6000) ?? null) : null,
+    body: withBody ? (m.body?.content?.slice(0, 20000) ?? null) : null,
     sentAt: new Date(sentAt).toISOString(),
   };
 }
@@ -160,14 +160,16 @@ export async function readOutlook(env: MicrosoftEnv, refreshToken: string, curso
   const { accessToken, refreshToken: rotated } = await refreshMicrosoftAccessToken(env, refreshToken);
   const since = lookbackStart(cursor).toISOString();
 
-  const sentUrl = `${GRAPH}/me/mailFolders/SentItems/messages?$select=${SELECT}&$filter=sentDateTime ge ${since}&$top=100`;
-  const inboxUrl = `${GRAPH}/me/mailFolders/Inbox/messages?$select=${SELECT}&$filter=receivedDateTime ge ${since}&$top=100`;
+  // Bodies come back as text (Prefer header) so the tracker can show the
+  // whole email on double-click; Graph pages of 100 with bodies are fine.
+  const sentUrl = `${GRAPH}/me/mailFolders/SentItems/messages?$select=${SELECT},body&$filter=sentDateTime ge ${since}&$top=100`;
+  const inboxUrl = `${GRAPH}/me/mailFolders/Inbox/messages?$select=${SELECT},body&$filter=receivedDateTime ge ${since}&$top=100`;
   const senderFilter = INTERNAL_KNOWLEDGE_SENDERS.map((s) => `from/emailAddress/address eq '${s}'`).join(" or ");
   const internalUrl = `${GRAPH}/me/messages?$select=${SELECT},body&$filter=receivedDateTime ge ${since} and (${senderFilter})&$top=50`;
 
   const [sent, inbox, internal] = await Promise.all([
-    listMessages(accessToken, sentUrl, MAX_SENT_PER_RUN, "outbound", false),
-    listMessages(accessToken, inboxUrl, MAX_INBOX_PER_RUN, "inbound", false),
+    listMessages(accessToken, sentUrl, MAX_SENT_PER_RUN, "outbound", true),
+    listMessages(accessToken, inboxUrl, MAX_INBOX_PER_RUN, "inbound", true),
     listMessages(accessToken, internalUrl, MAX_INTERNAL_PER_RUN, "inbound", true),
   ]);
   return { sent, inbox, internal, accessToken, rotatedRefreshToken: rotated };

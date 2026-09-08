@@ -1,10 +1,11 @@
 import { errorMessage } from "../sync/util";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { chunk, fetchAllRows } from "../sync/batch";
+import { hasColumn, stripColumn } from "../sync/db";
 import { resolveUnambiguousProjectIdByPersonId } from "../sync/projects";
 import { emailDomain } from "../sync/util";
 import { ensureKnowledgeBucket, sha256Hex, writeKnowledgeMarkdown } from "../knowledge/util";
-import { GMAIL_SCOPE, readGmail } from "./google";
+import { fetchGmailBodies, GMAIL_SCOPE, readGmail } from "./google";
 import { isMicrosoftConfigured, readOutlook, type MicrosoftEnv } from "./microsoft";
 import { INTERNAL_KNOWLEDGE_SENDERS, isInternalAddress, type MailboxRead, type MailMessage } from "./types";
 
@@ -83,6 +84,7 @@ function toEventRows(
         recipient_email_domain: m.direction === "outbound" ? domain : emailDomain(mailboxEmail ?? m.to[0] ?? null),
         subject: m.subject,
         snippet: m.snippet,
+        body_text: m.body ?? null,
         sent_at: m.sentAt,
         email_type: "manual_sales",
         match_status: personId && accountId ? "matched" : personId ? "account_unmatched" : "person_unmatched",
@@ -211,7 +213,20 @@ async function ingestMailbox(
       let read: MailboxRead;
       let rotatedRefreshToken: string | null = null;
       if (provider === "gmail") {
-        read = await readGmail(env, conn.refresh_token, conn.mail_cursor);
+        const g = await readGmail(env, conn.refresh_token, conn.mail_cursor);
+        read = g;
+        // Gmail's first pass is metadata-only; pull full bodies just for the
+        // messages that touch a tracked account/contact so they can be read
+        // in full from the tracker.
+        const matched = toEventRows(provider, conn.user_id, conn.account_email, [...g.sent, ...g.inbox], ctx);
+        const wantedIds = Array.from(new Set(matched.map((r) => (r.raw as { providerId: string }).providerId)));
+        if (wantedIds.length > 0) {
+          const bodies = await fetchGmailBodies(g.accessToken, wantedIds);
+          for (const m of [...g.sent, ...g.inbox]) {
+            const body = bodies.get(m.providerId);
+            if (body) m.body = body;
+          }
+        }
       } else {
         const r = await readOutlook(env, conn.refresh_token, conn.mail_cursor);
         read = r;
@@ -219,8 +234,12 @@ async function ingestMailbox(
       }
       fetched += read.sent.length + read.inbox.length + read.internal.length;
 
-      const rows = toEventRows(provider, conn.user_id, conn.account_email, [...read.sent, ...read.inbox], ctx);
+      let rows = toEventRows(provider, conn.user_id, conn.account_email, [...read.sent, ...read.inbox], ctx);
       flagged += rows.filter((r) => r.match_status !== "matched").length;
+      if (!(await hasColumn(db, "communication_events", "body_text"))) {
+        log(`${provider}: communication_events.body_text missing (run migration 011) — storing snippets only this run`);
+        rows = stripColumn(rows, "body_text");
+      }
       for (const batch of chunk(rows, 500)) {
         const { error } = await db.from("communication_events").upsert(batch, { onConflict: "source_system,source_event_id" });
         if (error) throw error;

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { useReviewQueue } from "@/lib/hooks/use-review";
+import { EmailDialog } from "@/components/email/email-dialog";
 import { Badge, SourceBadge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,6 +21,7 @@ export default function ReviewPage() {
   const { data, isLoading, error } = useReviewQueue();
   const [tab, setTab] = useState<"accounts" | "communications">("accounts");
   const [search, setSearch] = useState("");
+  const [openEmailId, setOpenEmailId] = useState<string | null>(null);
 
   const filteredLinks = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -86,7 +88,7 @@ export default function ReviewPage() {
         ) : (
           <div className="bg-card max-h-[600px] divide-y overflow-y-auto rounded-xl border shadow-xs">
             {filteredEvents.map((e) => (
-              <div key={e.id} className="p-4 text-sm">
+              <div key={e.id} className="hover:bg-muted/50 p-4 text-sm" onDoubleClick={() => setOpenEmailId(e.id)} title="Double-click to read the full email">
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate font-medium">{e.subject ?? "(no subject)"}</span>
                   <Badge color="amber" title={MATCH_STATUS_TIP[e.match_status]}>{e.match_status}</Badge>
@@ -102,6 +104,7 @@ export default function ReviewPage() {
           </div>
         )
       )}
+      <EmailDialog id={openEmailId} onClose={() => setOpenEmailId(null)} />
     </div>
   );
 }

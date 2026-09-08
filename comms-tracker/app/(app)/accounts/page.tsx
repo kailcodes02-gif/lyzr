@@ -5,11 +5,13 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ListPlus, ExternalLink, ChevronDown, ChevronRight, FolderKanban } from "lucide-react";
 import { useAccountDetail, useAccountProjects } from "@/lib/hooks/use-data";
-import { Badge, SourceBadge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorNote, LoadingRows, PageHeader, SectionHeading } from "@/components/ui/page";
 import { CreateTaskModal } from "@/components/tasks/create-task-modal";
 import { PocGroup } from "@/components/accounts/poc-group";
+import { EmailRow } from "@/components/email/email-row";
+import { EmailDialog } from "@/components/email/email-dialog";
 import { daysSince } from "@/lib/going-dark";
 import { GoingDarkPill } from "@/components/ui/going-dark-pill";
 
@@ -45,6 +47,7 @@ function AccountDetailContent() {
   const { data, isLoading, error } = useAccountDetail(id);
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
+  const [openEmailId, setOpenEmailId] = useState<string | null>(null);
 
   if (!id) return <EmptyState title="No account selected" action={<Link href="/"><Button variant="outline">Back to tracker</Button></Link>} />;
   if (isLoading) return <LoadingRows rows={6} />;
@@ -94,12 +97,14 @@ function AccountDetailContent() {
         tip="Who at Lyzr is responsible for this account. Product Owner comes from Cortex (project manager), Deal Owner from HubSpot (assigned sales rep)."
         people={lyzrPocs}
         lastTwoByPersonId={lastTwoByPersonId}
+        onOpenEmail={setOpenEmailId}
       />
       <PocGroup
         title="Client POCs"
         tip="The client's own contacts, from Cortex project sponsors and HubSpot contacts on this company's deals. Click a row to see their two most recent emails."
         people={clientPocs}
         lastTwoByPersonId={lastTwoByPersonId}
+        onOpenEmail={setOpenEmailId}
       />
 
       <section className="space-y-2">
@@ -109,28 +114,17 @@ function AccountDetailContent() {
         </button>
         {timelineOpen && (
           <div className="bg-card max-h-[500px] divide-y overflow-y-auto rounded-xl border shadow-xs">
+            <p className="text-muted-foreground px-4 pt-3 text-xs">Double-click any email to read it in full.</p>
             {events.length === 0 && <div className="text-muted-foreground p-4 text-sm">No emails synced yet.</div>}
             {events.map((e) => (
-              <div key={e.id} className="p-4 text-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate font-medium">{e.subject ?? "(no subject)"}</span>
-                  <span className="text-muted-foreground shrink-0 text-xs">{new Date(e.sent_at).toLocaleDateString()}</span>
-                </div>
-                <div className="mt-1 flex items-center gap-1.5">
-                  <SourceBadge source={e.source_system} />
-                  <span className="text-muted-foreground text-xs">
-                    {e.sender_email ? `from ${e.sender_email} ` : ""}to {e.recipient_email}
-                  </span>
-                  {e.match_status !== "matched" && <Badge color="amber">{e.match_status}</Badge>}
-                </div>
-                {(e.ai_summary || e.snippet) && <p className="text-muted-foreground mt-1.5 line-clamp-2 text-xs">{e.ai_summary ?? e.snippet}</p>}
-              </div>
+              <EmailRow key={e.id} e={e} onOpen={setOpenEmailId} />
             ))}
           </div>
         )}
       </section>
 
       <CreateTaskModal open={taskModalOpen} onClose={() => setTaskModalOpen(false)} defaultAccountId={account.id} />
+      <EmailDialog id={openEmailId} onClose={() => setOpenEmailId(null)} />
     </div>
   );
 }

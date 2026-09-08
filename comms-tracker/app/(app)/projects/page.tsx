@@ -7,9 +7,11 @@ import { ArrowLeft, ChevronDown, ChevronRight, Sparkles, UserCog } from "lucide-
 import { useProjectDetail } from "@/lib/hooks/use-project-detail";
 import { useCurrentUser } from "@/lib/hooks/use-current-user";
 import { useRoles } from "@/lib/hooks/use-roles";
-import { Badge, SourceBadge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PocGroup } from "@/components/accounts/poc-group";
+import { EmailRow } from "@/components/email/email-row";
+import { EmailDialog } from "@/components/email/email-dialog";
 import { GenerateSendModal } from "@/components/compose/generate-send-modal";
 import { ReassignRoleModal } from "@/components/projects/reassign-role-modal";
 import { daysSince } from "@/lib/going-dark";
@@ -23,6 +25,7 @@ function ProjectDetailContent() {
   const { data: roles } = useRoles();
   const [sendOpen, setSendOpen] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
+  const [openEmailId, setOpenEmailId] = useState<string | null>(null);
   // Which owner role the admin is (re)assigning right now, if any.
   const [reassign, setReassign] = useState<{
     roleKey: string;
@@ -78,6 +81,7 @@ function ProjectDetailContent() {
           tip="Who at Lyzr owns this project — Product Owner and Deal Owner auto-sync from Cortex/HubSpot, Project Owner is admin-assigned. Manage the role list at Admin → Roles."
           people={lyzrPocs}
           lastTwoByPersonId={lastTwoByPersonId}
+          onOpenEmail={setOpenEmailId}
           renderAction={
             isAdmin
               ? (p) => (
@@ -120,6 +124,7 @@ function ProjectDetailContent() {
           tip="This project's own client contacts, from Cortex sponsors/contacts. Click a row to see their 2 most recent emails."
           people={clientPocs}
           lastTwoByPersonId={lastTwoByPersonId}
+          onOpenEmail={setOpenEmailId}
         />
 
         <div>
@@ -130,23 +135,9 @@ function ProjectDetailContent() {
           {timelineOpen && (
             <div className="mt-2 rounded-xl border bg-card shadow-xs divide-y divide-border max-h-[500px] overflow-y-auto">
               {events.length === 0 && <div className="p-3 text-sm text-muted-foreground">No emails synced yet.</div>}
+              {events.length > 0 && <p className="text-muted-foreground px-4 pt-3 text-xs">Double-click any email to read it in full.</p>}
               {events.map((e) => (
-                <div key={e.id} className="p-3 text-sm">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-foreground truncate">{e.subject ?? "(no subject)"}</span>
-                    <span className="text-xs text-muted-foreground shrink-0">{new Date(e.sent_at).toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <SourceBadge source={e.source_system} />
-                    <span className="text-xs text-muted-foreground">
-                      {e.sender_email ? `from ${e.sender_email} ` : ""}to {e.recipient_email}
-                    </span>
-                    {e.match_status !== "matched" && <Badge color="amber">{e.match_status}</Badge>}
-                  </div>
-                  {(e.ai_summary || e.snippet) && (
-                    <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{e.ai_summary ?? e.snippet}</p>
-                  )}
-                </div>
+                <EmailRow key={e.id} e={e} onOpen={setOpenEmailId} />
               ))}
             </div>
           )}
@@ -162,6 +153,7 @@ function ProjectDetailContent() {
         accountName={account.canonical_name}
         clientPocs={clientPocs}
       />
+      <EmailDialog id={openEmailId} onClose={() => setOpenEmailId(null)} />
       {reassign && (
         <ReassignRoleModal
           open

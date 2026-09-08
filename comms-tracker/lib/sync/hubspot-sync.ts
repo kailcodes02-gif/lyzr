@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { htmlToText } from "../knowledge/util";
+import { hasColumn, stripColumn } from "./db";
 import { fetchHubSpotDataForDomains } from "../adapters/hubspot";
 import { htmlToSnippet, normalizeDomain } from "./util";
 import { upsertAccountPeopleBatch, upsertPeopleByEmailBatch } from "./people";
@@ -204,12 +206,17 @@ export async function syncHubSpot(
       recipient_email_domain: normalizeDomain(contactEmail.split("@")[1]),
       subject: email.subject,
       snippet: htmlToSnippet(email.bodyHtml),
+      body_text: email.bodyHtml ? htmlToText(email.bodyHtml, 20000) : null,
       sent_at: email.sentAt,
       match_status: matchStatus,
       origin: "synced",
     });
   }
-  const emailRows = Array.from(emailRowByEventId.values());
+  let emailRows = Array.from(emailRowByEventId.values());
+  if (!(await hasColumn(db, "communication_events", "body_text"))) {
+    console.warn("HubSpot: communication_events.body_text missing (run migration 011) — storing snippets only this run");
+    emailRows = stripColumn(emailRows, "body_text");
+  }
   let emailsUpserted = 0;
   for (const batch of chunk(emailRows, 500)) {
     const { error } = await db

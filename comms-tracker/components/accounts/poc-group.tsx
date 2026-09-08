@@ -29,7 +29,7 @@ export const ROLE_COLOR: Record<string, BadgeColor> = {
   client_poc_other: "zinc",
 };
 
-function PocRow({ p, recent }: { p: AccountPersonRow; recent: CommunicationEventRow[] }) {
+function PocRow({ p, recent, onOpenEmail }: { p: AccountPersonRow; recent: CommunicationEventRow[]; onOpenEmail?: (id: string) => void }) {
   const [open, setOpen] = useState(false);
   return (
     <div>
@@ -61,12 +61,20 @@ function PocRow({ p, recent }: { p: AccountPersonRow; recent: CommunicationEvent
       {open && recent.length > 0 && (
         <div className="pl-9 pr-3 pb-2.5 space-y-1.5">
           {recent.map((e) => (
-            <div key={e.id} className="text-xs border-l-2 border-border pl-2.5">
+            <div
+              key={e.id}
+              role="button"
+              tabIndex={0}
+              title="Double-click to read the full email"
+              onDoubleClick={() => onOpenEmail?.(e.id)}
+              onKeyDown={(ev) => ev.key === "Enter" && onOpenEmail?.(e.id)}
+              className="hover:bg-muted/60 rounded-md border-l-2 border-border pl-2.5 pr-2 py-1 text-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            >
               <div className="flex items-center gap-1.5">
                 <SourceBadge source={e.source_system} />
                 <span className="text-muted-foreground">{new Date(e.sent_at).toLocaleString()}</span>
               </div>
-              <div className="font-medium text-foreground mt-0.5">{e.subject ?? "(no subject)"}</div>
+              <div className="mt-0.5 font-medium">{e.subject ?? "(no subject)"}</div>
               {e.sender_email && <div className="text-muted-foreground mt-0.5">from {e.sender_email}</div>}
               {(e.ai_summary || e.snippet) && <p className="text-muted-foreground mt-0.5 line-clamp-2">{e.ai_summary ?? e.snippet}</p>}
             </div>
@@ -83,6 +91,7 @@ export function PocGroup({
   people,
   lastTwoByPersonId,
   renderAction,
+  onOpenEmail,
 }: {
   title: string;
   tip: string;
@@ -93,6 +102,7 @@ export function PocGroup({
   // project, not an ambiguous rollup) -- optional so both callers share
   // this component without one dictating the other's UI.
   renderAction?: (p: AccountPersonRow) => React.ReactNode;
+  onOpenEmail?: (id: string) => void;
 }) {
   // Contacted people float to the top (most-recently-emailed first);
   // never-contacted people sort to the bottom, alphabetically — so it
@@ -143,7 +153,7 @@ export function PocGroup({
               )}
               <div className="flex items-center">
                 <div className="flex-1 min-w-0">
-                  <PocRow p={p} recent={recent} />
+                  <PocRow p={p} recent={recent} onOpenEmail={onOpenEmail} />
                 </div>
                 {renderAction && <div className="pr-3 shrink-0">{renderAction(p)}</div>}
               </div>

@@ -52,3 +52,22 @@ export function useReviewQueue() {
     },
   });
 }
+
+// Cheap count used by the sidebar: Needs Review only appears when there is
+// actually something to review.
+export function useReviewCount() {
+  return useQuery({
+    queryKey: ["review-count"],
+    staleTime: 60_000,
+    queryFn: async (): Promise<number> => {
+      const supabase = createClient();
+      const [links, events] = await Promise.all([
+        supabase.from("account_source_links").select("id", { count: "exact", head: true }).neq("match_status", "matched"),
+        supabase.from("communication_events").select("id", { count: "exact", head: true }).neq("match_status", "matched"),
+      ]);
+      if (links.error) throw links.error;
+      if (events.error) throw events.error;
+      return (links.count ?? 0) + (events.count ?? 0);
+    },
+  });
+}

@@ -98,7 +98,7 @@ async function getMessage(token: string, id: string, direction: MailMessage["dir
     cc: extractEmails(headers.get("cc")),
     subject: headers.get("subject") ?? null,
     snippet: msg.snippet ?? null,
-    body: full ? (findTextPart(msg.payload)?.slice(0, 6000) ?? null) : null,
+    body: full ? (findTextPart(msg.payload)?.slice(0, 20000) ?? null) : null,
     sentAt,
   };
 }
@@ -135,4 +135,16 @@ export async function readGmail(env: GoogleEnv, refreshToken: string, cursor: st
     getMany(accessToken, internalIds, "inbound", true),
   ]);
   return { sent, inbox, internal, accessToken };
+}
+
+// Full bodies for a chosen subset (the messages that matched a tracked
+// contact) -- the first pass is metadata-only to keep the read cheap.
+export async function fetchGmailBodies(accessToken: string, providerIds: string[], cap = 150): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const ids = providerIds.slice(0, cap);
+  for (let i = 0; i < ids.length; i += 10) {
+    const batch = await Promise.all(ids.slice(i, i + 10).map((id) => getMessage(accessToken, id, "outbound", true).catch(() => null)));
+    for (const m of batch) if (m?.body) out.set(m.providerId, m.body);
+  }
+  return out;
 }
