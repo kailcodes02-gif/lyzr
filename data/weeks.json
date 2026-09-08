@@ -107,7 +107,14 @@
       "path": "gsi-report-aug23-30",
       "status": "complete",
       "meetings_processed": 0
+    },
+    {
+      "number": 16,
+      "date_range": "August 31 to September 8",
+      "path": "gsi-report-aug31-sep8",
+      "status": "complete",
+      "meetings_processed": 0
     }
   ],
-  "last_updated": "2026-08-31"
+  "last_updated": "2026-09-08"
 }

@@ -452,6 +452,11 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-09-08, Week 16 GSI report (31 Aug – 8 Sep) published to `/reports`
+- New `reports/gsi-report-aug31-sep8/index.html` (pipeline widget, ads, Instantly, events, programs-by-status).
+- Added Week 16 to `data/weeks.json` and the noscript/scraper fallbacks in `reports/index.html`.
+- Prior-report link points at `../gsi-report-aug23-30/`.
+
 ### 2026-09-08, Comms Tracker deployed to Cloudflare (comms-tracker)
 - Migration `008_user_oauth_tokens.sql` applied to the live Supabase project (by the user, SQL Editor).
 - `wrangler login` renewed; added Worker secrets `ANTHROPIC_API_KEY`, `SLACK_BOT_TOKEN`,
