@@ -42,19 +42,18 @@
   "observability": {
     "enabled": true
   },
-  // Weekly knowledge-base refresh + the same Cortex/HubSpot/Instantly sync
-  // the "Refresh all" button triggers manually — both run through
-  // worker/index.ts's scheduled() export, one code path shared with the
-  // manual routes. Sundays 03:00 UTC — arbitrary, off business hours. Cloudflare's cron
-  // syntax takes SUN-SAT or 1-7 for day-of-week (0 is rejected as invalid).
-  "triggers": {
-    "crons": ["0 3 * * SUN"]
-  }
+  // No Worker cron: a Worker request/cron invocation is capped at a small
+  // number of outbound API calls ("Too many subrequests"), which every sync
+  // exceeds. All refreshes -- the daily 12:00 AM IST schedule and the
+  // Refresh buttons -- execute on GitHub Actions
+  // (.github/workflows/comms-tracker-refresh.yml); the Worker just
+  // dispatches them (needs the GH_DISPATCH_TOKEN secret).
   // Additional secrets this build introduces (set via `wrangler secret put`,
   // same as the existing ones — never added here):
   //   ANTHROPIC_API_KEY            — required for suggestions/drafts/knowledge summarization
   //   SLACK_BOT_TOKEN              — optional; Slack ingestion no-ops until set
   //   GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON — optional; Drive/internal-email ingestion no-ops until set
+  //   GH_DISPATCH_TOKEN            — GitHub token with actions:write on the repo (Refresh buttons)
   //   MS_GRAPH_CLIENT_SECRET       — optional; Outlook mailbox connect/read no-ops until set
   //   (MS_GRAPH_CLIENT_ID and MS_GRAPH_TENANT_ID are not secret and go in `vars` above
   //   once the Azure app registration exists — see SETUP_INTEGRATIONS.md)

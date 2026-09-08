@@ -57,8 +57,11 @@ function SyncAdminContent() {
     }
   }
 
-  async function refresh(source: string, base: "sync" | "knowledge/sync" | "mail/sync" = "sync") {
-    setRefreshing(source);
+  // Every refresh is dispatched to the GitHub Actions workflow (the Worker
+  // itself can't run a sync -- Cloudflare caps outbound calls per request).
+  // Targets: all | sources | mail | knowledge | <one source key>.
+  async function refresh(target: string) {
+    setRefreshing(target);
     try {
       const supabase = createClient();
       const {
@@ -66,7 +69,7 @@ function SyncAdminContent() {
       } = await supabase.auth.getSession();
       if (!session) throw new Error("Not signed in");
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/${base}/${source}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/refresh/${target}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
@@ -74,7 +77,12 @@ function SyncAdminContent() {
         const body = await res.text();
         throw new Error(`${res.status}: ${body}`);
       }
-      toast.success(`${source} sync triggered`);
+      const body = (await res.json().catch(() => ({}))) as { queued?: boolean };
+      toast.success(
+        body.queued
+          ? `${target === "all" ? "Full" : target} refresh queued — runs appear below within a minute and take a few minutes to finish`
+          : `${target} refresh finished`
+      );
       queryClient.invalidateQueries({ queryKey: ["sync-state"] });
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["mailbox-connections"] });
@@ -97,8 +105,8 @@ function SyncAdminContent() {
             </InfoTip>
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Everything below also runs automatically every Sunday 03:00 UTC (Worker cron); a refresh here triggers the
-            same code path on demand.
+            Everything below refreshes automatically every day at 12:00 AM IST. &quot;Refresh all&quot; runs every
+            source, mailbox, and knowledge feed on demand through the same job (GitHub Actions); expect a few minutes.
           </p>
         </div>
         <Button variant="primary" onClick={() => refresh("all")} disabled={refreshing !== null} className="rounded-full">
@@ -144,7 +152,7 @@ function SyncAdminContent() {
                 tracked account or contact is stored.
               </InfoTip>
             </h2>
-            <Button variant="secondary" onClick={() => refresh("all", "mail/sync")} disabled={refreshing !== null}>
+            <Button variant="secondary" onClick={() => refresh("mail")} disabled={refreshing !== null}>
               <RefreshCw className={refreshing === "all" ? "w-4 h-4 animate-spin" : "w-4 h-4"} />
               Read mailboxes
             </Button>
@@ -169,7 +177,7 @@ function SyncAdminContent() {
                         {hasMailScope ? "Reconnect" : conn?.connected ? `Grant ${label} access` : `Connect ${label}`}
                       </Button>
                       <button
-                        onClick={() => refresh(key, "mail/sync")}
+                        onClick={() => refresh(key)}
                         disabled={refreshing !== null || !hasMailScope}
                         className="text-xs text-zinc-500 hover:text-zinc-900 disabled:opacity-50"
                       >
@@ -201,7 +209,7 @@ function SyncAdminContent() {
             </h2>
             <Button
               variant="secondary"
-              onClick={() => refresh("all", "knowledge/sync")}
+              onClick={() => refresh("knowledge")}
               disabled={refreshing !== null}
             >
               <RefreshCw className={refreshing === "all" ? "w-4 h-4 animate-spin" : "w-4 h-4"} />
@@ -222,7 +230,7 @@ function SyncAdminContent() {
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-zinc-700">{source}</span>
                     <button
-                      onClick={() => refresh(source, "knowledge/sync")}
+                      onClick={() => refresh(source)}
                       disabled={refreshing !== null}
                       className="text-xs text-zinc-500 hover:text-zinc-900 disabled:opacity-50"
                     >

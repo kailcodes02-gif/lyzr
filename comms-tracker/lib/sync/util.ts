@@ -52,3 +52,17 @@ export function htmlToSnippet(html: string | null | undefined, maxLen = 400): st
   }
   return text || null;
 }
+
+// PostgREST/Supabase errors are plain objects with a .message, not Error
+// instances -- String(err) on those yields "[object Object]", which is
+// exactly what the Sep 2 and Sep 8 failed sync_runs rows recorded.
+export function errorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === "object") {
+    const o = err as Record<string, unknown>;
+    const parts = [o.message, o.details, o.hint, o.code].filter((x) => typeof x === "string" && x) as string[];
+    if (parts.length) return parts.join(" | ");
+    try { return JSON.stringify(err).slice(0, 500); } catch { /* fall through */ }
+  }
+  return String(err);
+}

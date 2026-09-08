@@ -1,3 +1,4 @@
+import { errorMessage } from "../sync/util";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { chunk, fetchAllRows } from "../sync/batch";
 import { resolveUnambiguousProjectIdByPersonId } from "../sync/projects";
@@ -243,7 +244,7 @@ async function ingestMailbox(
       );
     } catch (err) {
       // One user's revoked grant must not stop the other mailboxes.
-      log(`${provider}: failed for ${conn.account_email ?? conn.user_id}: ${err instanceof Error ? err.message : String(err)}`);
+      log(`${provider}: failed for ${conn.account_email ?? conn.user_id}: ${errorMessage(err)}`);
     }
   }
 
@@ -287,7 +288,7 @@ export async function runMailboxSync(
       .upsert({ source_key: provider, last_synced_at: new Date().toISOString(), last_run_id: run.id }, { onConflict: "source_key" });
     return { status, ...result };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = errorMessage(err);
     await db
       .from("sync_runs")
       .update({ status: "failed", finished_at: new Date().toISOString(), error_message: message.slice(0, 2000) })

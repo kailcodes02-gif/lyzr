@@ -1,3 +1,4 @@
+import { errorMessage } from "./util";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { syncCortex } from "./cortex-sync";
 import { syncHubSpot } from "./hubspot-sync";
@@ -60,7 +61,7 @@ export async function runSync(
 
     return { status, ...result };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = errorMessage(err);
     await db
       .from("sync_runs")
       .update({ status: "failed", finished_at: new Date().toISOString(), error_message: message.slice(0, 2000) })

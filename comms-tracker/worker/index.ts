@@ -1,3 +1,4 @@
+import { errorMessage } from "../lib/sync/util";
 import { createSyncDbClient } from "../lib/sync/db";
 import { runSync, type SyncSource } from "../lib/sync/run";
 import { runKnowledgeIngestion, type KnowledgeSource } from "../lib/knowledge/run";
@@ -34,6 +35,53 @@ export interface Env {
   MS_GRAPH_TENANT_ID?: string;
   MS_GRAPH_CLIENT_SECRET?: string;
   NEXT_PUBLIC_SITE_URL: string;
+  // GitHub token (repo/actions scope) used to dispatch the
+  // comms-tracker-refresh workflow. A Worker request is capped at a small
+  // number of outbound API calls ("Too many subrequests"), which even the
+  // smallest sync exceeds, so every refresh actually executes on GitHub
+  // Actions; the Worker only queues it. Without this secret the routes fall
+  // back to running in-process (only useful for local `wrangler dev`).
+  GH_DISPATCH_TOKEN?: string;
+  GH_REPO?: string;
+}
+
+const REFRESH_TARGETS = [
+  "all", "sources", "mail", "knowledge",
+  "cortex", "hubspot", "instantly", "gmail", "outlook",
+  "lyzr_blog", "slack", "drive", "onedrive", "internal_email",
+] as const;
+type RefreshTarget = (typeof REFRESH_TARGETS)[number];
+
+async function dispatchRefresh(env: Env, target: RefreshTarget, user: { id: string; email: string }): Promise<Response> {
+  const repo = env.GH_REPO ?? "kailcodes02-gif/lyzr";
+  const res = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/comms-tracker-refresh.yml/dispatches`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env.GH_DISPATCH_TOKEN}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+      "User-Agent": "comms-tracker-worker",
+    },
+    body: JSON.stringify({ ref: "main", inputs: { target } }),
+  });
+  if (res.status !== 204) {
+    const text = await res.text().catch(() => "");
+    return json({ error: `GitHub dispatch failed: ${res.status} ${text.slice(0, 300)}` }, 502);
+  }
+  // A placeholder run row so the UI shows something immediately; the
+  // workflow's scripts write their own running/success rows within ~1 min.
+  const db = createSyncDbClient(env);
+  await db.from("sync_runs").insert({
+    source_system: target === "all" || target === "sources" ? "cortex" : target === "mail" ? "gmail" : target === "knowledge" ? "lyzr_blog" : target,
+    run_type: "manual",
+    status: "success",
+    finished_at: new Date().toISOString(),
+    records_fetched: 0,
+    records_upserted: 0,
+    triggered_by: user.id,
+    error_message: `queued: "${target}" refresh dispatched to GitHub Actions by ${user.email}; its own run rows follow within a minute`,
+  });
+  return json({ queued: true, target, executor: "github-actions" });
 }
 
 // Must match next.config.ts's basePath — the site is path-mounted at
@@ -92,7 +140,7 @@ async function handleSync(request: Request, env: Env, source: string): Promise<R
     try {
       results[s] = await runSync(db, s, env, { runType: "manual", triggeredBy: user.id });
     } catch (err) {
-      results[s] = { status: "failed", error: err instanceof Error ? err.message : String(err) };
+      results[s] = { status: "failed", error: errorMessage(err) };
     }
   }
 
@@ -120,7 +168,7 @@ async function handleKnowledgeSync(request: Request, env: Env, source: string): 
     try {
       results[s] = await runKnowledgeIngestion(db, s, env, { runType: "manual", triggeredBy: user.id });
     } catch (err) {
-      results[s] = { status: "failed", error: err instanceof Error ? err.message : String(err) };
+      results[s] = { status: "failed", error: errorMessage(err) };
     }
   }
 
@@ -371,7 +419,7 @@ async function handleMailSync(request: Request, env: Env, provider: string): Pro
     try {
       results[p] = await runMailboxSync(db, p, env, { runType: "manual", triggeredBy: user.id });
     } catch (err) {
-      results[p] = { status: "failed", error: err instanceof Error ? err.message : String(err) };
+      results[p] = { status: "failed", error: errorMessage(err) };
     }
   }
   return json(results);
@@ -387,6 +435,22 @@ const worker = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const path = stripBasePath(url.pathname);
+
+    const refreshMatch = path.match(/^\/api\/refresh\/([a-z_]+)\/?$/);
+    if (refreshMatch) {
+      if (request.method !== "POST") return json({ error: "POST only" }, 405);
+      const target = refreshMatch[1] as RefreshTarget;
+      if (!REFRESH_TARGETS.includes(target)) return json({ error: `Unknown refresh target "${target}"` }, 400);
+      const user = await requireUser(request, env);
+      if (!user) return json({ error: "Unauthorized" }, 401);
+      if (env.GH_DISPATCH_TOKEN) return dispatchRefresh(env, target, user);
+      // Fallback: run in-process (local dev only -- production hits the
+      // subrequest cap, see GH_DISPATCH_TOKEN above).
+      if (["cortex", "hubspot", "instantly", "sources"].includes(target)) return handleSync(request, env, target === "sources" ? "all" : target);
+      if (["gmail", "outlook", "mail"].includes(target)) return handleMailSync(request, env, target === "mail" ? "all" : target);
+      if (target === "all") return handleSync(request, env, "all");
+      return handleKnowledgeSync(request, env, target === "knowledge" ? "all" : target);
+    }
 
     const syncMatch = path.match(/^\/api\/sync\/([a-z]+)\/?$/);
     if (syncMatch) return handleSync(request, env, syncMatch[1]);

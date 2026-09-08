@@ -79,9 +79,14 @@ Secrets (`SUPABASE_SERVICE_ROLE_KEY`, `HUBSPOT_ACCESS_TOKEN`,
 `wrangler secret put <NAME>` before deploying — never committed, never in
 `wrangler.jsonc`'s `vars`.
 
-`wrangler.jsonc` now includes a weekly Cron Trigger (`triggers.crons`) that
-runs the same Cortex/HubSpot/Instantly sync and knowledge-base ingestion the
-manual "Refresh" buttons trigger — one code path, scheduled or manual.
+Refreshes do **not** run inside the Worker: Cloudflare caps the outbound
+API calls per Worker request ("Too many subrequests") and every sync
+exceeds it. All refreshes run on GitHub Actions
+(`.github/workflows/comms-tracker-refresh.yml`): a daily schedule at
+12:00 AM IST plus `workflow_dispatch`, which the `/admin/sync` Refresh
+buttons trigger through the Worker's `/api/refresh/:target` route (needs the
+`GH_DISPATCH_TOKEN` Worker secret and the `CT_*` repo secrets). Same scripts
+as local: `scripts/run-sync.ts`, `run-mail-sync.ts`, `run-knowledge-sync.ts`.
 
 The Worker is path-mounted at `lyzr.kailash-gm.com/abm-tracker` (see
 `wrangler.jsonc`'s `routes`) rather than a default `*.workers.dev` subdomain —

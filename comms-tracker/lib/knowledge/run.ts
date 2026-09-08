@@ -1,3 +1,4 @@
+import { errorMessage } from "../sync/util";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ingestLyzrSite } from "./lyzr-scrape";
 import { ingestSlack } from "./slack";
@@ -68,7 +69,7 @@ export async function runKnowledgeIngestion(
 
     return { status, ...result };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = errorMessage(err);
     await db
       .from("sync_runs")
       .update({ status: "failed", finished_at: new Date().toISOString(), error_message: message.slice(0, 2000) })
