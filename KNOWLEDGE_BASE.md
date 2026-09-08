@@ -457,6 +457,16 @@ Access if the data ever becomes confidential.
 - Added Week 16 to `data/weeks.json` and the noscript/scraper fallbacks in `reports/index.html`.
 - Prior-report link points at `../gsi-report-aug23-30/`.
 
+### 2026-09-09, Comms Tracker: full email view on double-click, Needs Review auto-hidden (comms-tracker)
+- Migration `011_email_body_text.sql` adds `communication_events.body_text`; HubSpot/Instantly store the
+  full plain-text body, Outlook reads bodies as text, Gmail fetches full bodies for matched messages.
+  Writers and the dialog tolerate the column being absent until the migration is run.
+- `components/email/email-dialog.tsx` + `email-row.tsx`: double-click (or Enter) on any email in account
+  and project timelines, POC recent emails, or the review list opens the whole message with context.
+- Sidebar hides Needs Review until something is parked there (count badge when it is).
+- Runners continue past a failing source; Slack client retries rate limits and falls back to known
+  channels. Drive verified: 199 docs from the first GitHub run.
+
 ### 2026-09-09, Comms Tracker: audit, GitHub Actions refresh verified, shadcn redesign (comms-tracker)
 - Verified live: "Refresh" dispatches the GitHub workflow (cortex run green in 2m53s); Gmail read works
   (kailash.gm@lyzr.ai, 276 messages, 26 siva@ emails into knowledge); every page's Supabase queries
