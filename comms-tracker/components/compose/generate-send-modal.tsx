@@ -295,15 +295,18 @@ export function GenerateSendModal({
           </Button>
         </div>
 
-        {(draft.data || editedSubject) && (
-          <div className="grid gap-4 border-t pt-4">
+        <div className="grid gap-4 border-t pt-4">
+          <div className="flex items-center justify-between">
+            <Label>Email</Label>
+            <span className="text-muted-foreground text-xs">Write it yourself, or tick topics above and Generate draft to fill it in. Either way you can edit before opening.</span>
+          </div>
             <div className="grid gap-2">
               <Label htmlFor="gs-subject">Subject</Label>
-              <Input id="gs-subject" value={editedSubject} onChange={(e) => setEditedSubject(e.target.value)} />
+              <Input id="gs-subject" value={editedSubject} onChange={(e) => setEditedSubject(e.target.value)} placeholder="Subject" />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="gs-body">Body <span className="text-muted-foreground font-normal">(review and edit before sending)</span></Label>
-              <Textarea id="gs-body" value={editedBody} onChange={(e) => setEditedBody(e.target.value)} rows={9} />
+              <Label htmlFor="gs-body">Body</Label>
+              <Textarea id="gs-body" value={editedBody} onChange={(e) => setEditedBody(e.target.value)} rows={9} placeholder="Write your update here, or generate a draft from the topics above." />
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
@@ -313,7 +316,7 @@ export function GenerateSendModal({
                   <TabsTrigger active={provider === "outlook"} onClick={() => setProvider("outlook")} className="px-2.5 text-xs">Outlook</TabsTrigger>
                 </TabsList>
               </div>
-              <Button onClick={handleSendToDraft} disabled={!recipientPersonId || !editedSubject}>
+              <Button onClick={handleSendToDraft} disabled={!recipientPersonId || !editedSubject.trim() || !editedBody.trim()}>
                 <Send /> Open in {provider === "gmail" ? "Gmail" : "Outlook"}
               </Button>
             </div>
@@ -321,7 +324,6 @@ export function GenerateSendModal({
               Opens a pre-filled compose window in a new tab. You still click Send there; this app never sends on your behalf, it only logs that you opened the draft.
             </p>
           </div>
-        )}
       </div>
     </Modal>
   );
