@@ -13,7 +13,7 @@
 >
 > | | |
 > |---|---|
-> | **Last updated** | 2026-09-08 |
+> | **Last updated** | 2026-09-09 |
 > | **Maintained by** | subs@lyzr.ai (with Claude Code) |
 > | **Git repo** | `github.com/kailcodes02-gif/lyzr` (branch `main`) |
 > | **Live domain** | `https://lyzr.kailash-gm.com` |
@@ -456,6 +456,22 @@ Access if the data ever becomes confidential.
 - New `reports/gsi-report-aug31-sep8/index.html` (pipeline widget, ads, Instantly, events, programs-by-status).
 - Added Week 16 to `data/weeks.json` and the noscript/scraper fallbacks in `reports/index.html`.
 - Prior-report link points at `../gsi-report-aug23-30/`.
+
+### 2026-09-09, Comms Tracker: refreshes moved to GitHub Actions, daily 12:00 AM IST (comms-tracker)
+- **Root cause found for stuck "running" syncs:** Cloudflare's "Too many subrequests by single Worker
+  invocation" cap. Even the Cortex sync exceeds it, so no refresh can execute inside the Worker (the
+  earlier `[object Object]` errors hid this; `errorMessage()` in `lib/sync/util.ts` now records real
+  messages).
+- New `.github/workflows/comms-tracker-refresh.yml`: schedule `30 18 * * *` UTC (= 00:00 IST) runs
+  sources + mailboxes + knowledge via the same `scripts/run-*.ts`; `workflow_dispatch` takes a `target`
+  (all | sources | mail | knowledge | any single source). Repo secrets `CT_*` (10) set via `gh secret set`.
+- Worker: `/api/refresh/:target` dispatches that workflow (needs Worker secret `GH_DISPATCH_TOKEN`);
+  `/admin/sync` buttons now call it, "Refresh all" covers everything. Worker cron removed.
+- Verified this session: Gmail read works end to end (kailash.gm@lyzr.ai, 276 messages, 26 siva@ emails
+  into the knowledge base); Drive blocked only by the Drive API not being enabled on Google project
+  156143725737; Outlook blocked on tenant admin consent (admin-consent link handled by the callback).
+- Pending user steps: push `main` (workflow must be on main to dispatch/schedule); set `GH_DISPATCH_TOKEN`
+  on the Worker; enable the Drive API; get a Lyzr Entra admin to open the admin-consent link.
 
 ### 2026-09-08, Comms Tracker: OneDrive + SharePoint knowledge source (comms-tracker)
 - `lib/knowledge/onedrive.ts` reads the connected user's OneDrive and every SharePoint document library
