@@ -28,10 +28,22 @@ async function main() {
   const sources: KnowledgeSource[] =
     arg === "all" ? ["lyzr_blog", "slack", "drive", "onedrive", "internal_email"] : [arg as KnowledgeSource];
 
+  // One source failing (Slack rate limit, expired Drive grant, ...) must not
+  // stop the rest -- each is logged to sync_runs by runKnowledgeIngestion;
+  // the process exits non-zero at the end so CI still shows the failure.
+  let failed = 0;
   for (const source of sources) {
     console.log(`\n=== Ingesting ${source} ===`);
-    const result = await runKnowledgeIngestion(db, source, env, { runType: "manual" });
-    console.log(result);
+    try {
+      console.log(await runKnowledgeIngestion(db, source, env, { runType: "manual" }));
+    } catch (err) {
+      failed++;
+      console.error(`${source} failed:`, err instanceof Error ? err.message : err);
+    }
+  }
+  if (failed > 0) {
+    console.error(`\n${failed} source(s) failed`);
+    process.exit(1);
   }
 }
 

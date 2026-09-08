@@ -17,10 +17,19 @@ async function main() {
     NEXT_PUBLIC_SUPABASE_URL: env.NEXT_PUBLIC_SUPABASE_URL,
     SUPABASE_SERVICE_ROLE_KEY: env.SUPABASE_SERVICE_ROLE_KEY,
   });
+  let failed = 0;
   for (const p of providers) {
     console.log(`\n=== Mailbox sync: ${p} ===`);
-    const result = await runMailboxSync(db, p, env, { runType: "manual" });
-    console.log(result);
+    try {
+      console.log(await runMailboxSync(db, p, env, { runType: "manual" }));
+    } catch (err) {
+      failed++;
+      console.error(`${p} failed:`, err instanceof Error ? err.message : err);
+    }
+  }
+  if (failed > 0) {
+    console.error(`\n${failed} provider(s) failed`);
+    process.exit(1);
   }
 }
 

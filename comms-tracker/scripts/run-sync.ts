@@ -25,10 +25,20 @@ async function main() {
   const db = createSyncDbClient(env);
   const sources: SyncSource[] = arg === "all" ? ["cortex", "hubspot", "instantly"] : [arg as SyncSource];
 
+  let failed = 0;
   for (const source of sources) {
     console.log(`\n=== Syncing ${source} ===`);
-    const result = await runSync(db, source, env, { runType: "manual", log: (m) => console.log(m) });
-    console.log(result);
+    try {
+      const result = await runSync(db, source, env, { runType: "manual", log: (m) => console.log(m) });
+      console.log(result);
+    } catch (err) {
+      failed++;
+      console.error(`${source} failed:`, err instanceof Error ? err.message : err);
+    }
+  }
+  if (failed > 0) {
+    console.error(`\n${failed} source(s) failed`);
+    process.exit(1);
   }
 }
 

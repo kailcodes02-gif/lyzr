@@ -21,16 +21,27 @@ const MAX_MESSAGES_PER_CHANNEL_PER_RUN = 500;
 type SlackChannel = { id: string; name: string };
 type SlackMessage = { ts: string; text?: string; subtype?: string; bot_id?: string };
 
+// Slack throttles brand-new / undistributed apps hard on conversations.list
+// (a flat `ratelimited` with retry-after: 30s that can repeat several times
+// in a row). Honour retry-after and try a few times before giving up, so a
+// single throttled call doesn't fail the whole weekly run.
+const MAX_SLACK_ATTEMPTS = 4;
+
 async function slackGet<T extends object>(token: string, method: string, params: Record<string, string>): Promise<T> {
   const url = new URL(`${SLACK_API}/${method}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  const body = (await res.json()) as T & { ok: boolean; error?: string };
-  if (!res.ok || !body.ok) {
-    const retryAfter = res.headers.get("retry-after");
-    throw new Error(`Slack ${method} failed: ${body.error ?? res.status}${retryAfter ? ` (retry-after: ${retryAfter}s)` : ""}`);
+  let lastError = "";
+  for (let attempt = 1; attempt <= MAX_SLACK_ATTEMPTS; attempt++) {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const body = (await res.json()) as T & { ok: boolean; error?: string };
+    if (res.ok && body.ok) return body;
+    const retryAfter = Number(res.headers.get("retry-after") ?? "0");
+    lastError = `Slack ${method} failed: ${body.error ?? res.status}${retryAfter ? ` (retry-after: ${retryAfter}s)` : ""}`;
+    const throttled = res.status === 429 || body.error === "ratelimited";
+    if (!throttled || attempt === MAX_SLACK_ATTEMPTS) break;
+    await new Promise((r) => setTimeout(r, Math.max(retryAfter, 5) * 1000 + attempt * 1000));
   }
-  return body;
+  throw new Error(lastError);
 }
 
 // Only channels the bot has actually been invited into -- it can list every
@@ -108,7 +119,29 @@ export async function ingestSlack(
   if (stateErr) throw stateErr;
   const cursor = (stateRow?.last_cursor as SlackCursorState | null) ?? {};
 
-  const channels = await listMemberChannels(token);
+  // conversations.list is the call Slack throttles for this app; once a run
+  // has succeeded the channel ids are already in the cursor, so a throttled
+  // listing falls back to those (names via conversations.info, best effort)
+  // instead of failing the whole source. New channels get picked up on the
+  // next run where the listing succeeds.
+  let channels: SlackChannel[];
+  try {
+    channels = await listMemberChannels(token);
+  } catch (err) {
+    const knownIds = Object.keys(cursor);
+    if (knownIds.length === 0) throw err;
+    log(`slack: channel listing throttled (${err instanceof Error ? err.message : String(err)}); using the ${knownIds.length} channel(s) from the last successful run`);
+    channels = await Promise.all(
+      knownIds.map(async (id) => {
+        try {
+          const info = await slackGet<{ channel: { id: string; name: string } }>(token, "conversations.info", { channel: id });
+          return { id, name: info.channel.name };
+        } catch {
+          return { id, name: id };
+        }
+      })
+    );
+  }
   if (channels.length === 0) {
     log("slack: bot isn't a member of any channel yet — invite it with /invite in Slack");
     return { fetched: 0, upserted: 0, flaggedForReview: 0 };
