@@ -434,7 +434,7 @@ Access if the data ever becomes confidential.
 
 - **Tracker stack vs spec:** spec says Next.js 14 + React 18 + Vercel; actual is Next.js 16.2 + React 19.2.4, static export on Cloudflare Pages at `/GSI_Tracker/`. Intentional (DECISIONS D1). Do not "fix" back to spec.
 - **Tracker deploy target:** `DECISIONS.md` D5 says "Vercel for deployment," but the tracker actually ships as a static export committed at root `GSI_Tracker/` and served by the Pages site.
-- **Comms Tracker deploy:** RESOLVED (2026-09-08). Live Worker matches the code. Remaining user-side steps: run migration 009; Google Cloud Console Drive + Gmail APIs and scopes on the consent screen; Azure app registration for Outlook (see `comms-tracker/SETUP_INTEGRATIONS.md`).
+- **Comms Tracker deploy:** RESOLVED (2026-09-08). Live Worker matches the code. Remaining user-side steps: run migration 010 (009 applied); Google Cloud Console Drive + Gmail APIs and scopes on the consent screen; Azure app registration for Outlook (see `comms-tracker/SETUP_INTEGRATIONS.md`).
 - **GSI Tracker lint debt:** `eslint` now runs (`.open-next/**` was crashing it) but reports ~116 pre-existing errors (mostly `no-explicit-any` in `lib/hubspot/` and set-state-in-effect); build and tests are clean.
 - **`CRON_SECRET`:** RESOLVED (2026-06-02) — added to `tracker/.env.local`. Cron routes also still accept `?bypass=true` (flagged as a design choice, not changed).
 - **Slack integration:** queue table exists (`pending_slack_notifications`, migration 003) but the dispatcher is parked / not built.
@@ -456,6 +456,16 @@ Access if the data ever becomes confidential.
 - New `reports/gsi-report-aug31-sep8/index.html` (pipeline widget, ads, Instantly, events, programs-by-status).
 - Added Week 16 to `data/weeks.json` and the noscript/scraper fallbacks in `reports/index.html`.
 - Prior-report link points at `../gsi-report-aug23-30/`.
+
+### 2026-09-08, Comms Tracker: OneDrive + SharePoint knowledge source (comms-tracker)
+- `lib/knowledge/onedrive.ts` reads the connected user's OneDrive and every SharePoint document library
+  they can open, through the same Microsoft connection as Outlook (scopes now `Mail.Read`,
+  `Files.Read.All`, `Sites.Read.All`), incrementally via Graph delta links stored per drive in
+  `user_oauth_tokens.onedrive_delta`. `lib/knowledge/office-text.ts` (new dep `fflate`) extracts text
+  from .docx/.pptx/.xlsx/.txt/.md/.csv/.json/.html; PDFs and images skipped like Google Drive v1.
+- Migration `010_onedrive_sharepoint.sql` (enum value `onedrive` + delta column) must be run in the
+  Supabase SQL Editor. Knowledge source `onedrive` added to the Worker cron, `/admin/sync`, and the
+  local script. Deployed.
 
 ### 2026-09-08, Comms Tracker: Gmail + Outlook mailbox reading (comms-tracker)
 - New `lib/mail/` (types, google, microsoft, run): per-user mailbox reads for Gmail (same Google OAuth
