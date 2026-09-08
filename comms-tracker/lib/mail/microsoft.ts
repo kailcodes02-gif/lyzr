@@ -21,8 +21,12 @@ export type MicrosoftEnv = {
   MS_GRAPH_TENANT_ID?: string;
 };
 
-export const MICROSOFT_SCOPES = ["offline_access", "User.Read", "Mail.Read"];
-const GRAPH = "https://graph.microsoft.com/v1.0";
+// Mail.Read = Outlook reading; Files.Read.All + Sites.Read.All = OneDrive and
+// SharePoint document libraries the user can open (knowledge source, see
+// lib/knowledge/onedrive.ts). All delegated -- consented per user, never
+// tenant-wide.
+export const MICROSOFT_SCOPES = ["offline_access", "User.Read", "Mail.Read", "Files.Read.All", "Sites.Read.All"];
+export const GRAPH = "https://graph.microsoft.com/v1.0";
 
 export function isMicrosoftConfigured(env: MicrosoftEnv): boolean {
   return Boolean(env.MS_GRAPH_CLIENT_ID && env.MS_GRAPH_CLIENT_SECRET);
@@ -83,7 +87,7 @@ export function refreshMicrosoftAccessToken(env: MicrosoftEnv, refreshToken: str
   return tokenRequest(env, { grant_type: "refresh_token", refresh_token: refreshToken });
 }
 
-async function graphGet<T>(token: string, url: string, extraHeaders: Record<string, string> = {}): Promise<T> {
+export async function graphGet<T>(token: string, url: string, extraHeaders: Record<string, string> = {}): Promise<T> {
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, ...extraHeaders } });
   if (!res.ok) {
     const text = await res.text().catch(() => "");

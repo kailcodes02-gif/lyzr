@@ -9,7 +9,7 @@ consent-screen setup this doc walks through.
 |---|---|---|
 | Slack channels | `lib/knowledge/slack.ts` | `SLACK_BOT_TOKEN` (done) |
 | Google Drive + Gmail | `lib/knowledge/drive.ts`, `lib/mail/google.ts` | Google OAuth client ID/secret (done) + Drive API, `drive.readonly` and `gmail.readonly` scopes on the consent screen + each user clicking **Connect Gmail** |
-| Outlook | `lib/mail/microsoft.ts` | Azure app registration (`MS_GRAPH_CLIENT_ID`, `MS_GRAPH_TENANT_ID`, `MS_GRAPH_CLIENT_SECRET`) + each user clicking **Connect Outlook** |
+| Outlook + OneDrive/SharePoint | `lib/mail/microsoft.ts`, `lib/knowledge/onedrive.ts` | Azure app registration (`MS_GRAPH_CLIENT_ID`, `MS_GRAPH_TENANT_ID`, `MS_GRAPH_CLIENT_SECRET`) + each user clicking **Connect Outlook** (one consent covers mail and files) |
 | Internal email (siva@) | `lib/mail/run.ts` | Nothing extra: filled from whichever mailboxes are connected |
 
 ## Slack
@@ -94,8 +94,12 @@ tenant, and no application-level (tenant-wide) mail permission is used.
      (for local dev add `http://localhost:8799/abm-tracker/api/oauth/microsoft/callback`
      too, that's what `wrangler dev` serves).
 2. **API permissions → Add a permission → Microsoft Graph → Delegated
-   permissions**: `Mail.Read`, `User.Read`, `offline_access`. No admin
-   consent button needed for these; each user consents on connect.
+   permissions**: `Mail.Read`, `Files.Read.All`, `Sites.Read.All`,
+   `User.Read`, `offline_access`. `Files.Read.All` covers the user's
+   OneDrive plus files shared with them; `Sites.Read.All` covers the
+   SharePoint sites they can open. Each user consents on connect; if your
+   tenant policy requires admin consent for `Sites.Read.All`, click **Grant
+   admin consent for lyzr.com** on this page once.
 3. **Certificates & secrets → New client secret** → copy the **Value**
    immediately (only shown once).
 4. From the **Overview** page copy the **Application (client) ID** and the
@@ -109,6 +113,14 @@ After that, **Connect Outlook** on `/admin/sync` opens Microsoft's consent
 page pre-filled with your lyzr.com address (the app derives it from your
 lyzr.ai sign-in), and the callback lands you back on `/admin/sync` with
 "Outlook connected". Run **Read mailboxes** or wait for the Sunday cron.
+
+The same connection feeds the **onedrive** knowledge source
+(`lib/knowledge/onedrive.ts`): personal OneDrive plus every SharePoint
+document library the user can reach, walked incrementally with Graph delta
+links, text extracted from .docx/.pptx/.xlsx/.txt/.md/.csv/.json/.html (PDFs
+and images are skipped, same as Google Drive v1). Migration
+`010_onedrive_sharepoint.sql` adds the enum value and the per-drive delta
+cursor column.
 
 ## What each mailbox read does
 

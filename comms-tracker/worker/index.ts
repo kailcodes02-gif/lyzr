@@ -48,7 +48,7 @@ export interface Env {
 const BASE_PATH = "/abm-tracker";
 
 const SOURCES: SyncSource[] = ["cortex", "hubspot", "instantly"];
-const KNOWLEDGE_SOURCES: KnowledgeSource[] = ["lyzr_blog", "slack", "drive", "internal_email"];
+const KNOWLEDGE_SOURCES: KnowledgeSource[] = ["lyzr_blog", "slack", "drive", "onedrive", "internal_email"];
 const MAIL_PROVIDERS: MailProvider[] = ["gmail", "outlook"];
 
 function json(body: unknown, status = 200): Response {

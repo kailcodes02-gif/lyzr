@@ -45,7 +45,9 @@ mirroring the conventions of the sibling `GSI Tracker/tracker` app.
       knowledge store, weekly via cron
 - [ ] Google: enable the Drive + Gmail APIs and add `drive.readonly` +
       `gmail.readonly` to the OAuth consent screen, then click "Connect Gmail"
-- [ ] Outlook: needs the Azure app registration (`SETUP_INTEGRATIONS.md`),
+- [x] OneDrive + SharePoint knowledge source through the same Microsoft
+      connection (`lib/knowledge/onedrive.ts`, migration `010_onedrive_sharepoint.sql`)
+- [ ] Outlook + OneDrive/SharePoint: needs the Azure app registration (`SETUP_INTEGRATIONS.md`),
       then `MS_GRAPH_CLIENT_ID`/`TENANT_ID` in `wrangler.jsonc` and
       `wrangler secret put MS_GRAPH_CLIENT_SECRET`, then "Connect Outlook"
 
@@ -56,7 +58,7 @@ mirroring the conventions of the sibling `GSI Tracker/tracker` app.
    `SUPABASE_SERVICE_ROLE_KEY` from the Supabase dashboard (Project Settings → API).
 3. Paste each `supabase/migrations/*.sql` file into the Supabase Dashboard's
    SQL Editor (Dashboard → SQL Editor → New Query) and run them **in order**
-   (001 through 009) — Supabase has no separate migration runner, so this is
+   (001 through 010) — Supabase has no separate migration runner, so this is
    still a manual, one-file-at-a-time step.
 4. In Supabase Auth settings, enable the Google provider and add
    `<your-deployed-url>/auth/callback/` (and `http://localhost:3000/auth/callback/`

@@ -3,16 +3,19 @@ import { ingestLyzrSite } from "./lyzr-scrape";
 import { ingestSlack } from "./slack";
 import { ingestDrive } from "./drive";
 import { ingestInternalEmail } from "./mail";
+import { ingestOneDrive } from "./onedrive";
 
 export type KnowledgeEnv = {
   ANTHROPIC_API_KEY: string;
   SLACK_BOT_TOKEN?: string;
   GOOGLE_OAUTH_CLIENT_ID?: string;
   GOOGLE_OAUTH_CLIENT_SECRET?: string;
+  MS_GRAPH_CLIENT_ID?: string;
+  MS_GRAPH_TENANT_ID?: string;
   MS_GRAPH_CLIENT_SECRET?: string;
 };
 
-export type KnowledgeSource = "lyzr_blog" | "slack" | "drive" | "internal_email";
+export type KnowledgeSource = "lyzr_blog" | "slack" | "drive" | "onedrive" | "internal_email";
 
 // Same one-code-path pattern as lib/sync/run.ts: the manual "Refresh"
 // button and the weekly Cron Trigger both call this, so there's exactly one
@@ -40,6 +43,7 @@ export async function runKnowledgeIngestion(
     if (source === "lyzr_blog") result = await ingestLyzrSite(db, env, log);
     else if (source === "slack") result = await ingestSlack(db, env, log);
     else if (source === "drive") result = await ingestDrive(db, env, log);
+    else if (source === "onedrive") result = await ingestOneDrive(db, env, log);
     else result = await ingestInternalEmail(db, env, log);
 
     const status = result.upserted === 0 && logs.some((l) => l.includes("not configured") || l.includes("skipping"))

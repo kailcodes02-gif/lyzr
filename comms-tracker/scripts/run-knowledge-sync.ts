@@ -6,7 +6,7 @@ import { runKnowledgeIngestion, type KnowledgeSource } from "../lib/knowledge/ru
 
 async function main() {
   const arg = process.argv[2];
-  const valid = ["lyzr_blog", "slack", "drive", "internal_email", "all"];
+  const valid = ["lyzr_blog", "slack", "drive", "onedrive", "internal_email", "all"];
   if (!arg || !valid.includes(arg)) {
     console.error(`Usage: npx tsx scripts/run-knowledge-sync.ts <${valid.join("|")}>`);
     process.exit(1);
@@ -19,12 +19,14 @@ async function main() {
     SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
     GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID,
     GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+    MS_GRAPH_CLIENT_ID: process.env.MS_GRAPH_CLIENT_ID,
+    MS_GRAPH_TENANT_ID: process.env.MS_GRAPH_TENANT_ID,
     MS_GRAPH_CLIENT_SECRET: process.env.MS_GRAPH_CLIENT_SECRET,
   };
 
   const db = createSyncDbClient(env);
   const sources: KnowledgeSource[] =
-    arg === "all" ? ["lyzr_blog", "slack", "drive", "internal_email"] : [arg as KnowledgeSource];
+    arg === "all" ? ["lyzr_blog", "slack", "drive", "onedrive", "internal_email"] : [arg as KnowledgeSource];
 
   for (const source of sources) {
     console.log(`\n=== Ingesting ${source} ===`);

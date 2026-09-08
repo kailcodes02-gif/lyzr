@@ -20,7 +20,7 @@ const STATUS_COLOR: Record<string, BadgeColor> = {
 };
 
 const SOURCES = ["cortex", "hubspot", "instantly"] as const;
-const KNOWLEDGE_SOURCES = ["lyzr_blog", "slack", "drive", "internal_email"] as const;
+const KNOWLEDGE_SOURCES = ["lyzr_blog", "slack", "drive", "onedrive", "internal_email"] as const;
 const MAIL_PROVIDERS = [
   { key: "gmail", label: "Gmail", provider: "google" as const },
   { key: "outlook", label: "Outlook", provider: "microsoft" as const },
@@ -194,7 +194,7 @@ function SyncAdminContent() {
               Knowledge base
               <InfoTip>
                 Weekly-refreshed sources feeding the topic-suggestion + draft engine: lyzr.ai blog/case studies,
-                Slack channels, connected Google Drives, and internal emails from siva@ collected via the mailboxes above.
+                Slack channels, connected Google Drives, OneDrive/SharePoint files (via the Outlook connection), and internal emails from siva@ collected via the mailboxes above.
               </InfoTip>
             </h2>
             <Button
@@ -210,9 +210,9 @@ function SyncAdminContent() {
             {mailboxes?.google.connected
               ? `Drive connected as ${mailboxes.google.accountEmail ?? "you"} — the knowledge base only sees what your own Google account can see.`
               : "Drive uses the same Google connection as Gmail above — click Connect Gmail to enable both."}
-            {" "}internal_email is filled by the mailbox reads (emails from siva@lyzr.ai / siva@lyzr.com).
+            {" "}onedrive reads OneDrive + SharePoint through your Outlook connection; internal_email is filled by the mailbox reads (emails from siva@lyzr.ai / siva@lyzr.com).
           </p>
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-5 gap-3">
             {KNOWLEDGE_SOURCES.map((source) => {
               const s = data.state.find((r) => r.source_key === source);
               return (
