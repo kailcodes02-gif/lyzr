@@ -457,6 +457,17 @@ Access if the data ever becomes confidential.
 - Added Week 16 to `data/weeks.json` and the noscript/scraper fallbacks in `reports/index.html`.
 - Prior-report link points at `../gsi-report-aug23-30/`.
 
+### 2026-09-09, Comms Tracker: audit, GitHub Actions refresh verified, shadcn redesign (comms-tracker)
+- Verified live: "Refresh" dispatches the GitHub workflow (cortex run green in 2m53s); Gmail read works
+  (kailash.gm@lyzr.ai, 276 messages, 26 siva@ emails into knowledge); every page's Supabase queries
+  succeed under RLS as a signed-in member. Drive API now enabled (first full run in progress).
+- **Redesign:** shadcn/ui neutral tokens in `globals.css`, `class-variance-authority` added, new
+  primitives under `components/ui/` (button, badge, card, table, tabs, input/textarea/select/label,
+  modal, info-tip, page helpers, going-dark-pill). Sidebar grouped into Workspace / Admin with per-tab
+  hints; "Sync Admin" renamed "Data & Sync". All nine screens rebuilt on the primitives.
+- Product gaps recorded (not built): `meeting_notes` knowledge store has no source; Needs Review is
+  read-only (no manual linking); Outlook waits on Entra admin consent.
+
 ### 2026-09-09, Comms Tracker: refreshes moved to GitHub Actions, daily 12:00 AM IST (comms-tracker)
 - **Root cause found for stuck "running" syncs:** Cloudflare's "Too many subrequests by single Worker
   invocation" cap. Even the Cortex sync exceeds it, so no refresh can execute inside the Worker (the
