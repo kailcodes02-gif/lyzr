@@ -457,6 +457,16 @@ Access if the data ever becomes confidential.
 - Added Week 16 to `data/weeks.json` and the noscript/scraper fallbacks in `reports/index.html`.
 - Prior-report link points at `../gsi-report-aug23-30/`.
 
+### 2026-09-09, Comms Tracker: typed topics + source search in Generate & Send; meeting notes store (comms-tracker)
+- Generate & Send has a "Your topic" box: the typed line becomes a topic and the knowledge base is
+  searched (`lib/ai/search.ts`, Worker `/api/ai/search`); matched documents show with excerpts and
+  ticked ones are passed to the draft as reference material (`draftEmail` `references`), so drafts are
+  grounded in real Lyzr content rather than the model's general knowledge.
+- Migration `012_knowledge_search.sql` (tsvector + GIN + `search_knowledge()` RPC) gives ranked search;
+  code falls back to PostgREST full-text with client-side ranking until it is applied.
+- Meeting notes: Google Meet "Notes by Gemini" docs in Drive are filed as `meeting_notes` (116 existing
+  docs re-filed), which closes the last missing knowledge store from the spec.
+
 ### 2026-09-09, Comms Tracker: full email view on double-click, Needs Review auto-hidden (comms-tracker)
 - Migration `011_email_body_text.sql` adds `communication_events.body_text`; HubSpot/Instantly store the
   full plain-text body, Outlook reads bodies as text, Gmail fetches full bodies for matched messages.
