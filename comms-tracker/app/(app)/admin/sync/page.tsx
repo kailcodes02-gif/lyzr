@@ -38,7 +38,9 @@ function SyncAdminContent() {
   useEffect(() => {
     const connected = searchParams.get("connected");
     const connectError = searchParams.get("connect_error");
-    if (connected === "outlook") {
+    if (searchParams.get("admin_consent") === "granted") {
+      toast.success("Microsoft admin consent granted for the whole tenant — everyone can now click Connect Outlook");
+    } else if (connected === "outlook") {
       toast.success(`Outlook connected${searchParams.get("email") ? ` as ${searchParams.get("email")}` : ""}`);
       queryClient.invalidateQueries({ queryKey: ["mailbox-connections"] });
     } else if (connectError) {

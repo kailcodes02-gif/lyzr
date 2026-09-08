@@ -319,6 +319,10 @@ async function handleMicrosoftCallback(request: Request, env: Env): Promise<Resp
 
   const err = url.searchParams.get("error");
   if (err) return back(`connect_error=${encodeURIComponent(url.searchParams.get("error_description") ?? err)}`);
+  // Tenant-wide admin consent (the /adminconsent endpoint) also redirects
+  // here, with admin_consent=True and no code -- nothing to store, just
+  // confirm so the admin sees it worked and users can now connect.
+  if (url.searchParams.get("admin_consent") === "True") return back("admin_consent=granted");
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   if (!code || !state || !isMicrosoftConfigured(env)) return back("connect_error=missing_code_or_state");
