@@ -25,7 +25,7 @@ const SOURCES = [
 const KNOWLEDGE_SOURCES = [
   { key: "lyzr_blog", label: "lyzr.ai blog & case studies", desc: "Scraped weekly, summarized" },
   { key: "slack", label: "Slack", desc: "Channels the ABM bot is in" },
-  { key: "drive", label: "Google Drive", desc: "Docs, Sheets, Slides you can open" },
+  { key: "drive", label: "Google Drive", desc: "Docs, Sheets, Slides you can open; Gemini meeting notes are filed as Meeting notes" },
   { key: "onedrive", label: "OneDrive & SharePoint", desc: "Office files you can open" },
   { key: "internal_email", label: "Internal email", desc: "Emails from siva@lyzr.ai / .com" },
 ] as const;

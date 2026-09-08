@@ -58,6 +58,8 @@ const SOURCE_COLOR: Record<string, BadgeColor> = {
   drive: "emerald",
   onedrive: "blue",
   internal_email: "amber",
+  meeting_notes: "cyan",
+  yours: "emerald",
 };
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -73,6 +75,8 @@ const SOURCE_LABEL: Record<string, string> = {
   drive: "Google Drive",
   onedrive: "OneDrive / SharePoint",
   internal_email: "Internal email",
+  meeting_notes: "Meeting notes",
+  yours: "Your topic",
 };
 
 export function sourceLabel(source: string): string {

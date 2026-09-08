@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import type { TopicSuggestion } from "@/lib/ai/suggest";
 import type { DraftEmail } from "@/lib/ai/draft";
+import type { KnowledgeMatch } from "@/lib/ai/search";
 
 // Same bearer-token-against-the-Worker pattern as /admin/sync's manual
 // refresh -- these routes run in worker/index.ts, not as Supabase queries,
@@ -48,10 +49,23 @@ export function useDraftEmail() {
       accountName: string;
       recipientName: string | null;
       selectedTopics: string[];
+      referenceIds?: string[];
+      referenceSourceRefs?: string[];
+      query?: string | null;
     }): Promise<DraftEmail> => {
       const res = await authedFetch("/api/ai/draft", input);
       const body = (await res.json()) as { draft: DraftEmail };
       return body.draft;
+    },
+  });
+}
+
+export function useSearchKnowledge() {
+  return useMutation({
+    mutationFn: async (query: string): Promise<KnowledgeMatch[]> => {
+      const res = await authedFetch("/api/ai/search", { query });
+      const body = (await res.json()) as { matches: KnowledgeMatch[] };
+      return body.matches;
     },
   });
 }

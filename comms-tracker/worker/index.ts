@@ -4,6 +4,7 @@ import { runSync, type SyncSource } from "../lib/sync/run";
 import { runKnowledgeIngestion, type KnowledgeSource } from "../lib/knowledge/run";
 import { suggestTopics } from "../lib/ai/suggest";
 import { draftEmail } from "../lib/ai/draft";
+import { fetchReferenceDocs, searchKnowledge } from "../lib/ai/search";
 import { runMailboxSync, type MailProvider } from "../lib/mail/run";
 import { buildMicrosoftAuthorizeUrl, exchangeMicrosoftCode, fetchGraphMeEmail, isMicrosoftConfigured, MICROSOFT_SCOPES } from "../lib/mail/microsoft";
 import { fetchGmailProfileEmail, GMAIL_SCOPE } from "../lib/mail/google";
@@ -209,10 +210,24 @@ async function handleAiSuggest(request: Request, env: Env, projectId: string): P
   return new Response(JSON.stringify({ suggestions }), { headers: { "Content-Type": "application/json" } });
 }
 
-async function handleAiDraft(request: Request, env: Env): Promise<Response> {
-  if (request.method !== "POST") return new Response(JSON.stringify({ error: "POST only" }), { status: 405 });
+// Free-text search across every knowledge store -- what the user typed in
+// the Generate & Send box. No model call; results come back as selectable
+// source items whose passages then ground the draft.
+async function handleAiSearch(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "POST") return json({ error: "POST only" }, 405);
   const user = await requireUser(request, env);
-  if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+  if (!user) return json({ error: "Unauthorized" }, 401);
+  const body = (await request.json()) as { query?: string };
+  if (!body.query?.trim()) return json({ error: "query is required" }, 400);
+  const db = createSyncDbClient(env);
+  const matches = await searchKnowledge(db, body.query, 8);
+  return json({ matches });
+}
+
+async function handleAiDraft(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "POST") return json({ error: "POST only" }, 405);
+  const user = await requireUser(request, env);
+  if (!user) return json({ error: "Unauthorized" }, 401);
 
   const body = (await request.json()) as {
     projectId?: string;
@@ -220,19 +235,30 @@ async function handleAiDraft(request: Request, env: Env): Promise<Response> {
     accountName: string;
     recipientName?: string | null;
     selectedTopics: string[];
+    // Knowledge documents to build on: ids of searched items the user
+    // ticked, source_refs of suggested topics they ticked, plus the raw
+    // typed query (used to pick the relevant passage of each doc).
+    referenceIds?: string[];
+    referenceSourceRefs?: string[];
+    query?: string | null;
   };
-  if (!body.selectedTopics?.length) {
-    return new Response(JSON.stringify({ error: "selectedTopics is required" }), { status: 400 });
-  }
+  if (!body.selectedTopics?.length) return json({ error: "selectedTopics is required" }, 400);
+
+  const db = createSyncDbClient(env);
+  const references = await fetchReferenceDocs(
+    db,
+    { ids: body.referenceIds ?? [], sourceRefs: body.referenceSourceRefs ?? [] },
+    body.query ?? body.selectedTopics.join(" ")
+  );
 
   const { draft, usage } = await draftEmail(env, {
     projectName: body.projectName,
     accountName: body.accountName,
     recipientName: body.recipientName ?? null,
     selectedTopics: body.selectedTopics,
+    references,
   });
 
-  const db = createSyncDbClient(env);
   await db.from("ai_generations").insert({
     project_id: body.projectId ?? null,
     generation_type: "draft",
@@ -462,6 +488,7 @@ const worker = {
     if (suggestMatch) return handleAiSuggest(request, env, suggestMatch[1]);
 
     if (path === "/api/ai/draft" || path === "/api/ai/draft/") return handleAiDraft(request, env);
+    if (path === "/api/ai/search" || path === "/api/ai/search/") return handleAiSearch(request, env);
     if (path === "/api/send/log" || path === "/api/send/log/") return handleSendLog(request, env);
     // `google-drive/connect` kept as an alias for the pre-Gmail callback page.
     if (/^\/api\/oauth\/google(-drive)?\/connect\/?$/.test(path)) return handleGoogleConnect(request, env);

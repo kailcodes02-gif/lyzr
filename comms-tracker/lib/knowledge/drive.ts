@@ -162,7 +162,7 @@ export async function ingestDrive(
       const existing = await db
         .from("knowledge_documents")
         .select("source_ref, content_hash")
-        .eq("source_type", "drive")
+        .in("source_type", ["drive", "meeting_notes"])
         .in(
           "source_ref",
           files.map((f) => f.id)
@@ -182,8 +182,11 @@ export async function ingestDrive(
         const hash = await sha256Hex(text);
         if (hashByRef.get(file.id) === hash) continue; // unchanged since last run
 
+        // Google Meet's Gemini notes are Docs titled "... - Notes by Gemini":
+        // they ARE the meeting-notes knowledge store the spec asks for, so
+        // they get their own source type instead of blending into "drive".
         rows.push({
-          source_type: "drive",
+          source_type: /notes by gemini|meeting notes/i.test(file.name) ? "meeting_notes" : "drive",
           source_ref: file.id,
           title: file.name,
           content_md: text,
