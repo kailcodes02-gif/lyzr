@@ -37,38 +37,38 @@ function PocRow({ p, recent }: { p: AccountPersonRow; recent: CommunicationEvent
         onClick={() => recent.length > 0 && setOpen((o) => !o)}
         className={cn(
           "w-full flex items-center gap-3 px-3 py-2 text-left text-sm",
-          recent.length > 0 && "hover:bg-zinc-50 cursor-pointer"
+          recent.length > 0 && "hover:bg-muted/40 cursor-pointer"
         )}
       >
         {recent.length > 0 ? (
           open ? (
-            <ChevronDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
           ) : (
-            <ChevronRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
           )
         ) : (
           <span className="w-3.5 shrink-0" />
         )}
-        <span className="font-medium text-zinc-900 truncate">{p.people?.full_name ?? p.people?.email}</span>
-        <span className="text-xs text-zinc-400 truncate flex-1">{p.people?.role_title ?? p.people?.email}</span>
+        <span className="font-medium text-foreground truncate">{p.people?.full_name ?? p.people?.email}</span>
+        <span className="text-xs text-muted-foreground truncate flex-1">{p.people?.role_title ?? p.people?.email}</span>
         <Badge color={ROLE_COLOR[p.relationship_role] ?? "zinc"}>
           {p.role_label ?? ROLE_LABEL[p.relationship_role] ?? p.relationship_role}
         </Badge>
-        <span className="text-xs text-zinc-400 shrink-0 w-16 text-right">
+        <span className="text-xs text-muted-foreground shrink-0 w-16 text-right">
           {recent.length === 0 ? "no emails" : `${recent.length} recent`}
         </span>
       </button>
       {open && recent.length > 0 && (
         <div className="pl-9 pr-3 pb-2.5 space-y-1.5">
           {recent.map((e) => (
-            <div key={e.id} className="text-xs border-l-2 border-zinc-100 pl-2.5">
+            <div key={e.id} className="text-xs border-l-2 border-border pl-2.5">
               <div className="flex items-center gap-1.5">
                 <SourceBadge source={e.source_system} />
-                <span className="text-zinc-400">{new Date(e.sent_at).toLocaleString()}</span>
+                <span className="text-muted-foreground">{new Date(e.sent_at).toLocaleString()}</span>
               </div>
-              <div className="font-medium text-zinc-700 mt-0.5">{e.subject ?? "(no subject)"}</div>
-              {e.sender_email && <div className="text-zinc-400 mt-0.5">from {e.sender_email}</div>}
-              {(e.ai_summary || e.snippet) && <p className="text-zinc-500 mt-0.5 line-clamp-2">{e.ai_summary ?? e.snippet}</p>}
+              <div className="font-medium text-foreground mt-0.5">{e.subject ?? "(no subject)"}</div>
+              {e.sender_email && <div className="text-muted-foreground mt-0.5">from {e.sender_email}</div>}
+              {(e.ai_summary || e.snippet) && <p className="text-muted-foreground mt-0.5 line-clamp-2">{e.ai_summary ?? e.snippet}</p>}
             </div>
           ))}
         </div>
@@ -123,12 +123,12 @@ export function PocGroup({
 
   return (
     <div>
-      <h2 className="text-sm font-medium text-zinc-900 mb-2 flex items-center gap-1.5">
-        {title} <span className="text-xs text-zinc-400 font-normal">({people.length})</span>
+      <h2 className="text-sm font-medium text-foreground mb-2 flex items-center gap-1.5">
+        {title} <span className="text-xs text-muted-foreground font-normal">({people.length})</span>
         <InfoTip>{tip}</InfoTip>
       </h2>
-      <div className="rounded-lg border border-zinc-200 bg-white divide-y divide-zinc-100">
-        {people.length === 0 && <div className="p-3 text-sm text-zinc-400">None linked yet.</div>}
+      <div className="rounded-xl border bg-card shadow-xs divide-y divide-border">
+        {people.length === 0 && <div className="p-3 text-sm text-muted-foreground">None linked yet.</div>}
         {sorted.map(({ p, recent }, i) => {
           // First transition from "has email" to "no email" gets a divider,
           // so the split reads at a glance instead of just fading off.
@@ -137,7 +137,7 @@ export function PocGroup({
           return (
             <div key={i}>
               {showDivider && (
-                <div className="px-3 py-1 bg-zinc-50 text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+                <div className="px-3 py-1 bg-muted/40 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                   Not yet contacted
                 </div>
               )}

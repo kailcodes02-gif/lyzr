@@ -2,15 +2,22 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, ShieldAlert } from "lucide-react";
+import { Pencil, Plus, ShieldAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { InfoTip } from "@/components/ui/info-tip";
+import { LoadingRows, PageHeader } from "@/components/ui/page";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCurrentUser } from "@/lib/hooks/use-current-user";
 import { useCreateRole, useRoles, useToggleRoleActive, useUpdateRoleLabel } from "@/lib/hooks/use-roles";
 
-function RoleRow({ role }: { role: { key: string; label: string; is_active: boolean } }) {
+const ROLE_SOURCE: Record<string, string> = {
+  product_owner: "Auto from Cortex project manager",
+  deal_owner: "Auto from HubSpot deal owner",
+  project_owner: "Assigned by an admin on the project page",
+};
+
+function RoleRow({ role, canEdit }: { role: { key: string; label: string; is_active: boolean }; canEdit: boolean }) {
   const [label, setLabel] = useState(role.label);
   const [editing, setEditing] = useState(false);
   const updateLabel = useUpdateRoleLabel();
@@ -20,7 +27,7 @@ function RoleRow({ role }: { role: { key: string; label: string; is_active: bool
     if (label.trim() && label !== role.label) {
       try {
         await updateLabel.mutateAsync({ key: role.key, label: label.trim() });
-        toast.success("Role updated");
+        toast.success("Role renamed");
       } catch (err) {
         toast.error(err instanceof Error ? err.message : String(err));
         setLabel(role.label);
@@ -30,34 +37,34 @@ function RoleRow({ role }: { role: { key: string; label: string; is_active: bool
   }
 
   return (
-    <div className="p-3 flex items-center justify-between gap-3 text-sm">
-      {editing ? (
-        <Input
-          autoFocus
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          onBlur={save}
-          onKeyDown={(e) => e.key === "Enter" && save()}
-          className="max-w-xs"
-        />
-      ) : (
-        <button onClick={() => setEditing(true)} className="font-medium text-zinc-900 hover:underline text-left">
-          {role.label}
-        </button>
-      )}
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="text-xs text-zinc-400">{role.key}</span>
+    <TableRow>
+      <TableCell className="pl-4">
+        {editing ? (
+          <Input autoFocus value={label} onChange={(e) => setLabel(e.target.value)} onBlur={save} onKeyDown={(e) => e.key === "Enter" && save()} className="h-8 max-w-xs" />
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{role.label}</span>
+            {canEdit && (
+              <Button variant="ghost" size="icon-sm" onClick={() => setEditing(true)} aria-label="Rename role" title="Rename">
+                <Pencil />
+              </Button>
+            )}
+          </div>
+        )}
+        <div className="text-muted-foreground text-xs">{ROLE_SOURCE[role.key] ?? "Assigned by an admin on the project page"}</div>
+      </TableCell>
+      <TableCell className="text-muted-foreground font-mono text-xs">{role.key}</TableCell>
+      <TableCell>
         <Badge color={role.is_active ? "emerald" : "zinc"}>{role.is_active ? "Active" : "Inactive"}</Badge>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => toggleActive.mutate({ key: role.key, isActive: !role.is_active })}
-          disabled={toggleActive.isPending}
-        >
-          {role.is_active ? "Deactivate" : "Activate"}
-        </Button>
-      </div>
-    </div>
+      </TableCell>
+      <TableCell className="pr-4 text-right">
+        {canEdit && (
+          <Button variant="outline" size="sm" onClick={() => toggleActive.mutate({ key: role.key, isActive: !role.is_active })} disabled={toggleActive.isPending}>
+            {role.is_active ? "Deactivate" : "Activate"}
+          </Button>
+        )}
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -71,10 +78,7 @@ export default function AdminRolesPage() {
   async function handleCreate() {
     const label = newLabel.trim();
     if (!label) return;
-    const key = label
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "");
+    const key = label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
     if (!key) return;
     try {
       await createRole.mutateAsync({ key, label, sortOrder: (roles?.length ?? 0) + 1 });
@@ -86,48 +90,46 @@ export default function AdminRolesPage() {
   }
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="text-xl font-semibold text-zinc-900 flex items-center gap-1.5">
-        Project Roles
-        <InfoTip>
-          The internal owner roles assignable per project (Product Owner, Deal Owner, Project Owner by default).
-          Product Owner auto-populates from Cortex&apos;s project manager and Deal Owner from HubSpot&apos;s deal
-          owner on every sync — reassigning either from a project&apos;s page overrides that permanently, until
-          cleared. Project Owner has no automatic source; it&apos;s admin-assigned only.
-        </InfoTip>
-      </h1>
-      <p className="mt-1 text-sm text-zinc-500">
-        {isAdmin ? "Rename or deactivate a role, or add a new one." : "Only admins can edit roles."}
-      </p>
+    <div className="space-y-6">
+      <PageHeader
+        title="Project Roles"
+        tip="The internal owner roles that can be assigned per project. Product Owner and Deal Owner auto-populate on every sync; reassigning either from a project page overrides that permanently. Project Owner is admin-assigned only."
+        description="Rename, deactivate, or add the owner roles shown on every project."
+      />
 
       {!isAdmin && (
-        <div className="mt-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          <ShieldAlert className="w-4 h-4 shrink-0" />
-          You&apos;re viewing this read-only — ask an admin to make changes.
+        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <ShieldAlert className="size-4 shrink-0" /> You are viewing this read-only. Ask an admin to make changes.
         </div>
       )}
 
-      {isLoading && <div className="mt-6 text-sm text-zinc-400">Loading…</div>}
+      {isLoading && <LoadingRows />}
 
       {roles && (
-        <div className="mt-4 rounded-lg border border-zinc-200 bg-white divide-y divide-zinc-100">
-          {roles.map((role) => (
-            <RoleRow key={role.key} role={role} />
-          ))}
+        <div className="bg-card max-w-3xl rounded-xl border shadow-xs">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="pl-4">Role</TableHead>
+                <TableHead>Key</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="pr-4" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {roles.map((role) => (
+                <RoleRow key={role.key} role={role} canEdit={isAdmin} />
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
 
       {isAdmin && (
-        <div className="mt-4 flex items-center gap-2">
-          <Input
-            value={newLabel}
-            onChange={(e) => setNewLabel(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-            placeholder="New role label, e.g. Technical Lead"
-            className="max-w-xs"
-          />
-          <Button variant="secondary" size="sm" onClick={handleCreate} disabled={createRole.isPending || !newLabel.trim()}>
-            <Plus className="w-3.5 h-3.5" /> Add role
+        <div className="flex max-w-3xl items-center gap-2">
+          <Input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleCreate()} placeholder="New role label, e.g. Technical Lead" className="max-w-xs" />
+          <Button variant="outline" onClick={handleCreate} disabled={createRole.isPending || !newLabel.trim()}>
+            <Plus /> Add role
           </Button>
         </div>
       )}

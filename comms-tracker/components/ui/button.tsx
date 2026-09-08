@@ -1,35 +1,39 @@
-import { cn } from "@/lib/utils";
 import { forwardRef } from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
-type Size = "sm" | "md";
-
-const VARIANT_CLASSES: Record<Variant, string> = {
-  primary: "bg-zinc-900 text-white hover:bg-zinc-800",
-  secondary: "bg-white border border-zinc-300 text-zinc-700 hover:bg-zinc-50",
-  ghost: "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100",
-  danger: "bg-red-600 text-white hover:bg-red-700",
-};
-
-const SIZE_CLASSES: Record<Size, string> = {
-  sm: "text-xs px-2.5 py-1.5",
-  md: "text-sm px-3.5 py-2",
-};
+// shadcn/ui Button. `primary` is kept as an alias of `default` so older
+// call sites keep working.
+export const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 cursor-pointer",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
+        primary: "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
+        destructive: "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20",
+        danger: "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20",
+        outline: "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground",
+        secondary: "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 border border-transparent",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-9 px-4 py-2 has-[>svg]:px-3",
+        md: "h-9 px-4 py-2 has-[>svg]:px-3",
+        sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5 text-xs",
+        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
+        icon: "size-9",
+        "icon-sm": "size-8",
+      },
+    },
+    defaultVariants: { variant: "default", size: "default" },
+  }
+);
 
 export const Button = forwardRef<
   HTMLButtonElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size }
->(function Button({ variant = "secondary", size = "md", className, ...props }, ref) {
-  return (
-    <button
-      ref={ref}
-      className={cn(
-        "inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none cursor-pointer",
-        VARIANT_CLASSES[variant],
-        SIZE_CLASSES[size],
-        className
-      )}
-      {...props}
-    />
-  );
+  React.ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonVariants>
+>(function Button({ className, variant, size, type = "button", ...props }, ref) {
+  return <button ref={ref} type={type} className={cn(buttonVariants({ variant, size }), className)} {...props} />;
 });

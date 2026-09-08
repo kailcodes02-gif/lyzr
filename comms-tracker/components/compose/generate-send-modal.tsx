@@ -6,6 +6,8 @@ import { Sparkles, Send } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input, Label, NativeSelect, Textarea } from "@/components/ui/input";
+import { TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDraftEmail, useLogSend, useSuggestTopics } from "@/lib/hooks/use-ai";
 import { buildGmailComposeUrl, buildOutlookComposeUrl } from "@/lib/compose";
 import type { AccountPersonRow } from "@/lib/hooks/use-data";
@@ -134,27 +136,21 @@ export function GenerateSendModal({
   return (
     <Modal open={open} onClose={onClose} title={`Generate & Send — ${projectName}`} wide>
       <div className="space-y-4">
-        <div>
-          <label className="text-xs font-medium text-zinc-600">Recipient</label>
-          <select
-            value={recipientPersonId}
-            onChange={(e) => setRecipientPersonId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
-          >
+        <div className="grid gap-2">
+          <Label htmlFor="gs-recipient">Recipient</Label>
+          <NativeSelect id="gs-recipient" value={recipientPersonId} onChange={(e) => setRecipientPersonId(e.target.value)}>
             <option value="">Select a client contact…</option>
             {recipients.map((r) => (
               <option key={r.personId} value={r.personId}>
                 {r.name} ({r.email})
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </div>
 
-        <div>
-          <label className="text-xs font-medium text-zinc-600 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5" /> Topic suggestions, ranked by recency
-          </label>
-          {suggest.isPending && <div className="mt-2 text-sm text-zinc-400">Generating suggestions…</div>}
+        <div className="grid gap-2">
+          <Label className="text-muted-foreground"><Sparkles className="size-3.5" /> Topic suggestions, ranked by recency</Label>
+          {suggest.isPending && <div className="mt-2 text-sm text-muted-foreground">Generating suggestions…</div>}
           {suggest.isError && (
             <div className="mt-2 text-sm text-red-600">
               {suggest.error instanceof Error ? suggest.error.message : String(suggest.error)}
@@ -163,74 +159,49 @@ export function GenerateSendModal({
           {suggest.data && (
             <div className="mt-1.5 space-y-1.5">
               {suggest.data.map((s, i) => (
-                <label
-                  key={i}
-                  className="flex items-start gap-2 rounded-md border border-zinc-200 p-2 text-sm hover:bg-zinc-50 cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected.has(i)}
-                    onChange={() => toggleSuggestion(i)}
-                    className="mt-0.5"
-                  />
-                  <span className="flex-1">{s.text}</span>
-                  <Badge color="zinc">{s.sourceType}</Badge>
+                <label key={i} className="has-[:checked]:border-primary has-[:checked]:bg-accent flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/40">
+                  <input type="checkbox" checked={selected.has(i)} onChange={() => toggleSuggestion(i)} className="accent-primary mt-0.5 size-4" />
+                  <span className="flex-1 leading-snug">{s.text}</span>
+                  <Badge>{s.sourceType}</Badge>
                 </label>
               ))}
               {suggest.data.length === 0 && (
-                <div className="text-sm text-zinc-400">No knowledge base content yet — write a topic manually below.</div>
+                <div className="text-sm text-muted-foreground">No knowledge base content yet — write a topic manually below.</div>
               )}
             </div>
           )}
         </div>
 
         <div className="flex justify-end">
-          <Button variant="secondary" size="sm" onClick={handleGenerate} disabled={draft.isPending || selected.size === 0}>
-            {draft.isPending ? "Drafting…" : "Generate draft"}
+          <Button variant={editedSubject ? "outline" : "default"} onClick={handleGenerate} disabled={draft.isPending || selected.size === 0}>
+            <Sparkles /> {draft.isPending ? "Drafting…" : editedSubject ? "Regenerate draft" : "Generate draft"}
           </Button>
         </div>
 
         {(draft.data || editedSubject) && (
-          <div className="space-y-2 border-t border-zinc-100 pt-4">
-            <div>
-              <label className="text-xs font-medium text-zinc-600">Subject</label>
-              <input
-                value={editedSubject}
-                onChange={(e) => setEditedSubject(e.target.value)}
-                className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
-              />
+          <div className="grid gap-4 border-t pt-4">
+            <div className="grid gap-2">
+              <Label htmlFor="gs-subject">Subject</Label>
+              <Input id="gs-subject" value={editedSubject} onChange={(e) => setEditedSubject(e.target.value)} />
             </div>
-            <div>
-              <label className="text-xs font-medium text-zinc-600">Body — review and edit before sending</label>
-              <textarea
-                value={editedBody}
-                onChange={(e) => setEditedBody(e.target.value)}
-                rows={8}
-                className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
-              />
+            <div className="grid gap-2">
+              <Label htmlFor="gs-body">Body <span className="text-muted-foreground font-normal">(review and edit before sending)</span></Label>
+              <Textarea id="gs-body" value={editedBody} onChange={(e) => setEditedBody(e.target.value)} rows={9} />
             </div>
-
-            <div className="flex items-center justify-between pt-2">
-              <div className="flex items-center gap-1 text-xs">
-                {(["gmail", "outlook"] as const).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setProvider(p)}
-                    className={`px-2.5 py-1 rounded-md capitalize ${
-                      provider === p ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-600"
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground text-xs">Open in</span>
+                <TabsList className="h-8">
+                  <TabsTrigger active={provider === "gmail"} onClick={() => setProvider("gmail")} className="px-2.5 text-xs">Gmail</TabsTrigger>
+                  <TabsTrigger active={provider === "outlook"} onClick={() => setProvider("outlook")} className="px-2.5 text-xs">Outlook</TabsTrigger>
+                </TabsList>
               </div>
-              <Button variant="primary" onClick={handleSendToDraft} disabled={!recipientPersonId || !editedSubject}>
-                <Send className="w-3.5 h-3.5" /> Send to draft
+              <Button onClick={handleSendToDraft} disabled={!recipientPersonId || !editedSubject}>
+                <Send /> Open in {provider === "gmail" ? "Gmail" : "Outlook"}
               </Button>
             </div>
-            <p className="text-xs text-zinc-400">
-              Opens a pre-filled {provider === "gmail" ? "Gmail" : "Outlook"} compose window in a new tab — you still
-              have to click Send yourself there. This app never sends on your behalf.
+            <p className="text-muted-foreground text-xs">
+              Opens a pre-filled compose window in a new tab. You still click Send there; this app never sends on your behalf, it only logs that you opened the draft.
             </p>
           </div>
         )}

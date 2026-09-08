@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Info } from "lucide-react";
 
+// shadcn Tooltip look, hover/click driven, no positioning library.
 export function InfoTip({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
@@ -12,12 +13,13 @@ export function InfoTip({ children }: { children: React.ReactNode }) {
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
         onClick={() => setOpen((o) => !o)}
-        className="text-zinc-400 hover:text-zinc-600"
+        aria-label="More info"
+        className="text-muted-foreground hover:text-foreground cursor-help"
       >
-        <Info className="w-3.5 h-3.5" />
+        <Info className="size-3.5" />
       </button>
       {open && (
-        <span className="absolute z-20 left-1/2 -translate-x-1/2 top-full mt-1.5 w-64 rounded-lg bg-zinc-900 text-white text-xs leading-relaxed p-2.5 shadow-xl">
+        <span className="bg-primary text-primary-foreground animate-in fade-in-0 zoom-in-95 absolute left-1/2 top-full z-30 mt-1.5 w-64 -translate-x-1/2 rounded-md px-3 py-1.5 text-xs leading-relaxed shadow-md font-normal normal-case tracking-normal">
           {children}
         </span>
       )}

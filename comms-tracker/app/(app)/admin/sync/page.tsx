@@ -4,27 +4,48 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Mail, RefreshCw } from "lucide-react";
+import { Mail, RefreshCw, Plug, BookOpen, Database } from "lucide-react";
 import { useSyncState } from "@/lib/hooks/use-sync";
 import { connectGoogle, connectMicrosoft, GMAIL_SCOPE, useMailboxConnections } from "@/lib/hooks/use-drive-connect";
 import { createClient } from "@/lib/supabase/client";
-import { Badge, SourceBadge, type BadgeColor } from "@/components/ui/badge";
+import { Badge, SourceBadge, sourceLabel, type BadgeColor } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { InfoTip } from "@/components/ui/info-tip";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState, LoadingRows, PageHeader, SectionHeading } from "@/components/ui/page";
+import { cn } from "@/lib/utils";
 
-const STATUS_COLOR: Record<string, BadgeColor> = {
-  success: "emerald",
-  partial: "amber",
-  failed: "red",
-  running: "blue",
-};
+const STATUS_COLOR: Record<string, BadgeColor> = { success: "emerald", partial: "amber", failed: "red", running: "blue" };
 
-const SOURCES = ["cortex", "hubspot", "instantly"] as const;
-const KNOWLEDGE_SOURCES = ["lyzr_blog", "slack", "drive", "onedrive", "internal_email"] as const;
-const MAIL_PROVIDERS = [
-  { key: "gmail", label: "Gmail", provider: "google" as const },
-  { key: "outlook", label: "Outlook", provider: "microsoft" as const },
+const SOURCES = [
+  { key: "cortex", label: "Cortex", desc: "Accounts, projects, Lyzr owners, client contacts" },
+  { key: "hubspot", label: "HubSpot", desc: "Customer status, deal owners, contacts, email activity" },
+  { key: "instantly", label: "Instantly", desc: "Emails sent from ABM campaigns (read-only)" },
 ] as const;
+
+const KNOWLEDGE_SOURCES = [
+  { key: "lyzr_blog", label: "lyzr.ai blog & case studies", desc: "Scraped weekly, summarized" },
+  { key: "slack", label: "Slack", desc: "Channels the ABM bot is in" },
+  { key: "drive", label: "Google Drive", desc: "Docs, Sheets, Slides you can open" },
+  { key: "onedrive", label: "OneDrive & SharePoint", desc: "Office files you can open" },
+  { key: "internal_email", label: "Internal email", desc: "Emails from siva@lyzr.ai / .com" },
+] as const;
+
+const MAIL_PROVIDERS = [
+  { key: "gmail", label: "Gmail", provider: "google" as const, hint: "your @lyzr.ai inbox" },
+  { key: "outlook", label: "Outlook", provider: "microsoft" as const, hint: "your @lyzr.com inbox" },
+] as const;
+
+function LastRun({ at, verb = "Last synced" }: { at: string | null | undefined; verb?: string }) {
+  return <span className="text-muted-foreground text-xs">{at ? `${verb} ${new Date(at).toLocaleString()}` : "Never run"}</span>;
+}
+
+function RefreshButton({ onClick, busy, disabled, label = "Refresh" }: { onClick: () => void; busy: boolean; disabled?: boolean; label?: string }) {
+  return (
+    <Button variant="outline" size="sm" onClick={onClick} disabled={disabled || busy}>
+      <RefreshCw className={cn(busy && "animate-spin")} /> {busy ? "Queued…" : label}
+    </Button>
+  );
+}
 
 function SyncAdminContent() {
   const { data, isLoading } = useSyncState();
@@ -33,13 +54,11 @@ function SyncAdminContent() {
   const searchParams = useSearchParams();
   const [refreshing, setRefreshing] = useState<string | null>(null);
 
-  // The Outlook connect round-trip lands back here via the Worker's
-  // callback redirect with ?connected=outlook or ?connect_error=...
   useEffect(() => {
     const connected = searchParams.get("connected");
     const connectError = searchParams.get("connect_error");
     if (searchParams.get("admin_consent") === "granted") {
-      toast.success("Microsoft admin consent granted for the whole tenant — everyone can now click Connect Outlook");
+      toast.success("Microsoft admin consent granted for the whole tenant. Everyone can now click Connect Outlook.");
     } else if (connected === "outlook") {
       toast.success(`Outlook connected${searchParams.get("email") ? ` as ${searchParams.get("email")}` : ""}`);
       queryClient.invalidateQueries({ queryKey: ["mailbox-connections"] });
@@ -57,9 +76,6 @@ function SyncAdminContent() {
     }
   }
 
-  // Every refresh is dispatched to the GitHub Actions workflow (the Worker
-  // itself can't run a sync -- Cloudflare caps outbound calls per request).
-  // Targets: all | sources | mail | knowledge | <one source key>.
   async function refresh(target: string) {
     setRefreshing(target);
     try {
@@ -68,21 +84,13 @@ function SyncAdminContent() {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) throw new Error("Not signed in");
-
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/refresh/${target}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`${res.status}: ${body}`);
-      }
+      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
       const body = (await res.json().catch(() => ({}))) as { queued?: boolean };
-      toast.success(
-        body.queued
-          ? `${target === "all" ? "Full" : target} refresh queued — runs appear below within a minute and take a few minutes to finish`
-          : `${target} refresh finished`
-      );
+      toast.success(body.queued ? `${target === "all" ? "Full" : sourceLabel(target)} refresh queued. Runs appear below within a minute.` : `${target} refresh finished`);
       queryClient.invalidateQueries({ queryKey: ["sync-state"] });
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["mailbox-connections"] });
@@ -93,179 +101,138 @@ function SyncAdminContent() {
     }
   }
 
-  return (
-    <div className="max-w-4xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-900 flex items-center gap-1.5">
-            Sync Admin
-            <InfoTip>
-              Cortex pulls accounts + Lyzr owners + client contacts. HubSpot pulls customer/deal status + deal owners
-              for those accounts. Instantly pulls emails from ABM-tagged campaigns, matched to known accounts/people.
-            </InfoTip>
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            Everything below refreshes automatically every day at 12:00 AM IST. &quot;Refresh all&quot; runs every
-            source, mailbox, and knowledge feed on demand through the same job (GitHub Actions); expect a few minutes.
-          </p>
-        </div>
-        <Button variant="primary" onClick={() => refresh("all")} disabled={refreshing !== null} className="rounded-full">
-          <RefreshCw className={refreshing === "all" ? "w-4 h-4 animate-spin" : "w-4 h-4"} />
-          {refreshing === "all" ? "Refreshing…" : "Refresh all"}
-        </Button>
-      </div>
+  const stateFor = (key: string) => data?.state.find((r) => r.source_key === key);
 
-      {isLoading && <div className="mt-6 text-sm text-zinc-400">Loading…</div>}
+  return (
+    <div className="space-y-8">
+      <PageHeader
+        title="Data & Sync"
+        tip="Cortex pulls accounts, projects, owners and client contacts. HubSpot adds customer and deal status plus email activity. Instantly adds campaign sends. Mailboxes add what you send from your own inbox. Knowledge feeds the email suggestions."
+        description="Everything refreshes automatically every day at 12:00 AM IST. Refresh all runs every source, mailbox, and knowledge feed on demand; expect a few minutes."
+        actions={
+          <Button onClick={() => refresh("all")} disabled={refreshing !== null}>
+            <RefreshCw className={cn(refreshing === "all" && "animate-spin")} /> {refreshing === "all" ? "Queued…" : "Refresh all"}
+          </Button>
+        }
+      />
+
+      {isLoading && <LoadingRows />}
 
       {data && (
         <>
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {SOURCES.map((source) => {
-              const s = data.state.find((r) => r.source_key === source);
-              return (
-                <div key={source} className="rounded-lg border border-zinc-200 bg-white p-3">
-                  <div className="flex items-center justify-between">
-                    <SourceBadge source={source} />
-                    <button
-                      onClick={() => refresh(source)}
-                      disabled={refreshing !== null}
-                      className="text-xs text-zinc-500 hover:text-zinc-900 disabled:opacity-50"
-                    >
-                      {refreshing === source ? "…" : "Refresh"}
-                    </button>
-                  </div>
-                  <div className="text-xs text-zinc-500 mt-2">
-                    {s?.last_synced_at ? `Last synced ${new Date(s.last_synced_at).toLocaleString()}` : "Never synced"}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <section className="space-y-3">
+            <SectionHeading title={<span className="inline-flex items-center gap-1.5"><Database className="size-4" /> Sources</span>} actions={<RefreshButton onClick={() => refresh("sources")} busy={refreshing === "sources"} disabled={refreshing !== null} label="Refresh sources" />} />
+            <div className="grid gap-3 sm:grid-cols-3">
+              {SOURCES.map((s) => (
+                <Card key={s.key} className="gap-3 py-4">
+                  <CardHeader className="px-4">
+                    <CardTitle className="flex items-center justify-between text-sm">
+                      <SourceBadge source={s.key} />
+                      <RefreshButton onClick={() => refresh(s.key)} busy={refreshing === s.key} disabled={refreshing !== null} />
+                    </CardTitle>
+                    <CardDescription className="text-xs">{s.desc}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="px-4">
+                    <LastRun at={stateFor(s.key)?.last_synced_at} />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
 
-          <div className="mt-8 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-zinc-900 flex items-center gap-1.5">
-              Mailboxes
-              <InfoTip>
-                Connect your own Gmail (lyzr.ai) and Outlook (lyzr.com) so the tracker can see emails you exchange
-                with client contacts from your personal inbox, confirm the &quot;sent via app&quot; rows, and collect
-                emails from siva@lyzr.ai / siva@lyzr.com for the knowledge base. Read-only. Only mail touching a
-                tracked account or contact is stored.
-              </InfoTip>
-            </h2>
-            <Button variant="secondary" onClick={() => refresh("mail")} disabled={refreshing !== null}>
-              <RefreshCw className={refreshing === "all" ? "w-4 h-4 animate-spin" : "w-4 h-4"} />
-              Read mailboxes
-            </Button>
-          </div>
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {MAIL_PROVIDERS.map(({ key, label, provider }) => {
-              const conn = mailboxes?.[provider];
-              const hasMailScope = provider === "microsoft" ? Boolean(conn?.connected) : Boolean(conn?.scopes.includes(GMAIL_SCOPE));
-              const s = data.state.find((r) => r.source_key === key);
-              return (
-                <div key={key} className="rounded-lg border border-zinc-200 bg-white p-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-zinc-700 flex items-center gap-1.5">
-                      <Mail className="w-3.5 h-3.5 text-zinc-400" /> {label}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant={hasMailScope ? "secondary" : "primary"}
-                        size="sm"
-                        onClick={() => handleConnect(provider)}
-                      >
-                        {hasMailScope ? "Reconnect" : conn?.connected ? `Grant ${label} access` : `Connect ${label}`}
-                      </Button>
-                      <button
-                        onClick={() => refresh(key)}
-                        disabled={refreshing !== null || !hasMailScope}
-                        className="text-xs text-zinc-500 hover:text-zinc-900 disabled:opacity-50"
-                      >
-                        {refreshing === key ? "…" : "Refresh"}
-                      </button>
+          <section className="space-y-3">
+            <SectionHeading
+              title={<span className="inline-flex items-center gap-1.5"><Mail className="size-4" /> Mailboxes</span>}
+              tip="Connect your own Gmail (lyzr.ai) and Outlook (lyzr.com). Read-only. Only mail touching a tracked account or contact is stored; it also confirms your sent-via-app emails and collects siva@ emails for the knowledge base."
+              actions={<RefreshButton onClick={() => refresh("mail")} busy={refreshing === "mail"} disabled={refreshing !== null} label="Read mailboxes" />}
+            />
+            <div className="grid gap-3 sm:grid-cols-2">
+              {MAIL_PROVIDERS.map(({ key, label, provider, hint }) => {
+                const conn = mailboxes?.[provider];
+                const hasMailScope = provider === "microsoft" ? Boolean(conn?.connected) : Boolean(conn?.scopes.includes(GMAIL_SCOPE));
+                return (
+                  <Card key={key} className="gap-3 py-4">
+                    <CardHeader className="px-4">
+                      <CardTitle className="flex items-center justify-between text-sm">
+                        <span className="inline-flex items-center gap-2">
+                          <SourceBadge source={key} />
+                          {hasMailScope ? <Badge color="emerald">Connected</Badge> : conn?.connected ? <Badge color="amber">Drive only</Badge> : <Badge>Not connected</Badge>}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <Button variant={hasMailScope ? "outline" : "default"} size="sm" onClick={() => handleConnect(provider)}>
+                            <Plug /> {hasMailScope ? "Reconnect" : `Connect ${label}`}
+                          </Button>
+                          <RefreshButton onClick={() => refresh(key)} busy={refreshing === key} disabled={refreshing !== null || !hasMailScope} label="Read" />
+                        </span>
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        {hasMailScope ? `Reading ${conn?.accountEmail ?? hint}` : conn?.connected ? "Connected for Drive only. Reconnect to add Gmail." : `Not connected (${hint})`}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="px-4">
+                      <LastRun at={stateFor(key)?.last_synced_at} verb="Last read" />
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <SectionHeading
+              title={<span className="inline-flex items-center gap-1.5"><BookOpen className="size-4" /> Knowledge base</span>}
+              tip="Daily-refreshed sources the topic-suggestion and draft engine ranks by recency. Drive uses your Gmail connection; OneDrive and SharePoint use your Outlook connection; internal email is filled by the mailbox reads."
+              actions={<RefreshButton onClick={() => refresh("knowledge")} busy={refreshing === "knowledge"} disabled={refreshing !== null} label="Refresh knowledge" />}
+            />
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {KNOWLEDGE_SOURCES.map((s) => (
+                <Card key={s.key} className="gap-3 py-4">
+                  <CardHeader className="px-4">
+                    <CardTitle className="flex items-center justify-between text-sm">
+                      <span>{s.label}</span>
+                      <RefreshButton onClick={() => refresh(s.key)} busy={refreshing === s.key} disabled={refreshing !== null} />
+                    </CardTitle>
+                    <CardDescription className="text-xs">{s.desc}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="px-4">
+                    <LastRun at={stateFor(s.key)?.last_synced_at} />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <SectionHeading title="Recent runs" tip="Every sync, mailbox read, and knowledge refresh, newest first, with what it fetched and any messages." />
+            {data.runs.length === 0 ? (
+              <EmptyState title="No runs yet" />
+            ) : (
+              <div className="bg-card max-h-[520px] divide-y overflow-y-auto rounded-xl border shadow-xs">
+                {data.runs.map((run) => (
+                  <div key={run.id} className="flex items-start justify-between gap-3 p-4 text-sm">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <SourceBadge source={run.source_system} />
+                        <span className="text-muted-foreground text-xs">{run.run_type}</span>
+                        <span className="text-muted-foreground text-xs">{new Date(run.started_at).toLocaleString()}</span>
+                      </div>
+                      {run.records_fetched != null && (
+                        <div className="text-muted-foreground mt-1 text-xs tabular-nums">
+                          fetched {run.records_fetched} · stored {run.records_upserted} · flagged {run.records_flagged_for_review}
+                        </div>
+                      )}
+                      {run.error_message && (
+                        <pre className={cn("mt-1.5 max-h-24 overflow-y-auto whitespace-pre-wrap rounded-md px-2.5 py-1.5 font-sans text-xs", run.status === "failed" ? "bg-red-50 text-red-700" : "bg-muted text-muted-foreground")}>
+                          {run.error_message}
+                        </pre>
+                      )}
                     </div>
+                    <Badge color={STATUS_COLOR[run.status] ?? "zinc"}>{run.status}</Badge>
                   </div>
-                  <div className="text-xs text-zinc-500 mt-2">
-                    {hasMailScope
-                      ? `Connected as ${conn?.accountEmail ?? "you"}`
-                      : conn?.connected
-                        ? "Connected for Drive only — reconnect to add Gmail"
-                        : "Not connected"}
-                    {" · "}
-                    {s?.last_synced_at ? `last read ${new Date(s.last_synced_at).toLocaleString()}` : "never read"}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-8 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-zinc-900 flex items-center gap-1.5">
-              Knowledge base
-              <InfoTip>
-                Weekly-refreshed sources feeding the topic-suggestion + draft engine: lyzr.ai blog/case studies,
-                Slack channels, connected Google Drives, OneDrive/SharePoint files (via the Outlook connection), and internal emails from siva@ collected via the mailboxes above.
-              </InfoTip>
-            </h2>
-            <Button
-              variant="secondary"
-              onClick={() => refresh("knowledge")}
-              disabled={refreshing !== null}
-            >
-              <RefreshCw className={refreshing === "all" ? "w-4 h-4 animate-spin" : "w-4 h-4"} />
-              Refresh knowledge
-            </Button>
-          </div>
-          <p className="mt-1 text-xs text-zinc-400">
-            {mailboxes?.google.connected
-              ? `Drive connected as ${mailboxes.google.accountEmail ?? "you"} — the knowledge base only sees what your own Google account can see.`
-              : "Drive uses the same Google connection as Gmail above — click Connect Gmail to enable both."}
-            {" "}onedrive reads OneDrive + SharePoint through your Outlook connection; internal_email is filled by the mailbox reads (emails from siva@lyzr.ai / siva@lyzr.com).
-          </p>
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-5 gap-3">
-            {KNOWLEDGE_SOURCES.map((source) => {
-              const s = data.state.find((r) => r.source_key === source);
-              return (
-                <div key={source} className="rounded-lg border border-zinc-200 bg-white p-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-zinc-700">{source}</span>
-                    <button
-                      onClick={() => refresh(source)}
-                      disabled={refreshing !== null}
-                      className="text-xs text-zinc-500 hover:text-zinc-900 disabled:opacity-50"
-                    >
-                      {refreshing === source ? "…" : "Refresh"}
-                    </button>
-                  </div>
-                  <div className="text-xs text-zinc-500 mt-2">
-                    {s?.last_synced_at ? `Last synced ${new Date(s.last_synced_at).toLocaleString()}` : "Never synced"}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <h2 className="mt-8 text-sm font-medium text-zinc-900">Recent runs</h2>
-          <div className="mt-2 rounded-lg border border-zinc-200 bg-white divide-y divide-zinc-100 max-h-[500px] overflow-y-auto">
-            {data.runs.length === 0 && <div className="p-3 text-sm text-zinc-400">No sync runs yet.</div>}
-            {data.runs.map((run) => (
-              <div key={run.id} className="p-3 text-sm flex items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <SourceBadge source={run.source_system} />
-                    <span className="text-zinc-400 text-xs">{run.run_type}</span>
-                  </div>
-                  <div className="text-xs text-zinc-500 mt-1">
-                    {new Date(run.started_at).toLocaleString()}
-                    {run.records_fetched != null &&
-                      ` · fetched ${run.records_fetched}, upserted ${run.records_upserted}, flagged ${run.records_flagged_for_review}`}
-                  </div>
-                  {run.error_message && <div className="text-xs text-red-600 mt-1">{run.error_message}</div>}
-                </div>
-                <Badge color={STATUS_COLOR[run.status] ?? "zinc"}>{run.status}</Badge>
+                ))}
               </div>
-            ))}
-          </div>
+            )}
+          </section>
         </>
       )}
     </div>
@@ -274,7 +241,7 @@ function SyncAdminContent() {
 
 export default function SyncAdminPage() {
   return (
-    <Suspense fallback={<div className="text-sm text-zinc-400">Loading…</div>}>
+    <Suspense fallback={<LoadingRows />}>
       <SyncAdminContent />
     </Suspense>
   );

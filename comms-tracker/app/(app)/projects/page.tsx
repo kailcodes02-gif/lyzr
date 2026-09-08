@@ -12,8 +12,9 @@ import { Button } from "@/components/ui/button";
 import { PocGroup } from "@/components/accounts/poc-group";
 import { GenerateSendModal } from "@/components/compose/generate-send-modal";
 import { ReassignRoleModal } from "@/components/projects/reassign-role-modal";
-import { goingDarkClassName, goingDarkLabel, daysSince } from "@/lib/going-dark";
-import { cn } from "@/lib/utils";
+import { daysSince } from "@/lib/going-dark";
+import { GoingDarkPill } from "@/components/ui/going-dark-pill";
+import { EmptyState, ErrorNote, LoadingRows, PageHeader } from "@/components/ui/page";
 
 function ProjectDetailContent() {
   const id = useSearchParams().get("id");
@@ -30,9 +31,9 @@ function ProjectDetailContent() {
     personName: string | null;
   } | null>(null);
 
-  if (!id) return <div className="text-sm text-zinc-500">No project selected.</div>;
-  if (isLoading) return <div className="text-sm text-zinc-400">Loading…</div>;
-  if (error) return <div className="text-sm text-red-600">{(error as Error).message}</div>;
+  if (!id) return <EmptyState title="No project selected" action={<Link href="/"><Button variant="outline">Back to tracker</Button></Link>} />;
+  if (isLoading) return <LoadingRows rows={6} />;
+  if (error) return <ErrorNote error={error} />;
   if (!data) return null;
 
   const { project, account, lyzrPocs, clientPocs, events, lastTwoByPersonId, lastContactAt, goingDarkBucket } = data;
@@ -45,53 +46,33 @@ function ProjectDetailContent() {
   const unfilledRoles = (roles ?? []).filter((r) => r.is_active && !heldRoleKeys.has(r.key));
 
   return (
-    <div className="max-w-4xl">
-      <Link
-        href={`/accounts?id=${project.account_id}`}
-        className="inline-flex items-center gap-1 text-xs text-zinc-500 hover:underline"
-      >
-        <ArrowLeft className="w-3 h-3" /> Back to {account.canonical_name}
+    <div className="space-y-6">
+      <Link href={`/accounts?id=${project.account_id}`} className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm">
+        <ArrowLeft className="size-3.5" /> Back to {account.canonical_name}
       </Link>
 
-      <div className="mt-2 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-900">{project.name}</h1>
-          <p className="text-sm text-zinc-500">
-            {account.canonical_name} · {project.status}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span
-            className={cn(
-              "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap",
-              goingDarkClassName(goingDarkBucket)
-            )}
-          >
-            {goingDarkLabel(d)}
-          </span>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setSendOpen(true)}
-            className="rounded-full"
-            disabled={clientPocs.length === 0}
-          >
-            <Sparkles className="w-3.5 h-3.5" /> Generate &amp; Send
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={project.name}
+        description={`${account.canonical_name} · ${project.status}`}
+        actions={
+          <>
+            <GoingDarkPill bucket={goingDarkBucket} days={d} />
+            <Button size="sm" onClick={() => setSendOpen(true)} disabled={clientPocs.length === 0} title={clientPocs.length === 0 ? "No client contact on this project yet" : "Suggest topics, draft, and open your mail client"}>
+              <Sparkles /> Generate &amp; Send
+            </Button>
+          </>
+        }
+      />
 
       {account.product_engaged.length > 0 && (
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           {account.product_engaged.map((p) => (
-            <Badge key={p} color="zinc">
-              {p}
-            </Badge>
+            <Badge key={p}>{p}</Badge>
           ))}
         </div>
       )}
 
-      <div className="mt-6 space-y-6">
+      <div className="space-y-6">
         <PocGroup
           title="Lyzr POCs"
           tip="Who at Lyzr owns this project — Product Owner and Deal Owner auto-sync from Cortex/HubSpot, Project Owner is admin-assigned. Manage the role list at Admin → Roles."
@@ -120,12 +101,12 @@ function ProjectDetailContent() {
           }
         />
         {isAdmin && unfilledRoles.length > 0 && (
-          <div className="-mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+          <div className="-mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span>Unassigned:</span>
             {unfilledRoles.map((r) => (
               <Button
                 key={r.key}
-                variant="secondary"
+                variant="outline"
                 size="sm"
                 onClick={() => setReassign({ roleKey: r.key, roleLabel: r.label, personId: null, personName: null })}
               >
@@ -142,31 +123,28 @@ function ProjectDetailContent() {
         />
 
         <div>
-          <button
-            onClick={() => setTimelineOpen((o) => !o)}
-            className="flex items-center gap-1.5 text-sm font-medium text-zinc-900"
-          >
-            {timelineOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-            Project email timeline ({events.length})
+          <button onClick={() => setTimelineOpen((o) => !o)} className="flex items-center gap-1.5 text-sm font-semibold cursor-pointer">
+            {timelineOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+            Project email timeline <span className="text-muted-foreground font-normal">({events.length})</span>
           </button>
           {timelineOpen && (
-            <div className="mt-2 rounded-lg border border-zinc-200 bg-white divide-y divide-zinc-100 max-h-[500px] overflow-y-auto">
-              {events.length === 0 && <div className="p-3 text-sm text-zinc-400">No emails synced yet.</div>}
+            <div className="mt-2 rounded-xl border bg-card shadow-xs divide-y divide-border max-h-[500px] overflow-y-auto">
+              {events.length === 0 && <div className="p-3 text-sm text-muted-foreground">No emails synced yet.</div>}
               {events.map((e) => (
                 <div key={e.id} className="p-3 text-sm">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-zinc-900 truncate">{e.subject ?? "(no subject)"}</span>
-                    <span className="text-xs text-zinc-400 shrink-0">{new Date(e.sent_at).toLocaleDateString()}</span>
+                    <span className="font-medium text-foreground truncate">{e.subject ?? "(no subject)"}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">{new Date(e.sent_at).toLocaleDateString()}</span>
                   </div>
                   <div className="flex items-center gap-1.5 mt-1">
                     <SourceBadge source={e.source_system} />
-                    <span className="text-xs text-zinc-500">
+                    <span className="text-xs text-muted-foreground">
                       {e.sender_email ? `from ${e.sender_email} ` : ""}to {e.recipient_email}
                     </span>
                     {e.match_status !== "matched" && <Badge color="amber">{e.match_status}</Badge>}
                   </div>
                   {(e.ai_summary || e.snippet) && (
-                    <p className="text-xs text-zinc-600 mt-1.5 line-clamp-2">{e.ai_summary ?? e.snippet}</p>
+                    <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{e.ai_summary ?? e.snippet}</p>
                   )}
                 </div>
               ))}
@@ -201,7 +179,7 @@ function ProjectDetailContent() {
 
 export default function ProjectDetailPage() {
   return (
-    <Suspense fallback={<div className="text-sm text-zinc-400">Loading…</div>}>
+    <Suspense fallback={<div className="text-sm text-muted-foreground">Loading…</div>}>
       <ProjectDetailContent />
     </Suspense>
   );

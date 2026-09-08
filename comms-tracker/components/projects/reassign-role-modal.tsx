@@ -78,8 +78,8 @@ export function ReassignRoleModal({
     <Modal open={open} onClose={onClose} title={`${currentPersonId ? "Reassign" : "Assign"} ${roleLabel}`}>
       <div className="space-y-3">
         {currentPersonName && (
-          <p className="text-xs text-zinc-500">
-            Currently <span className="font-medium text-zinc-700">{currentPersonName}</span>. The new holder is
+          <p className="text-xs text-muted-foreground">
+            Currently <span className="font-medium text-foreground">{currentPersonName}</span>. The new holder is
             locked as a manual override, so the weekly Cortex/HubSpot sync will not change it back.
           </p>
         )}
@@ -89,10 +89,10 @@ export function ReassignRoleModal({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <div className="rounded-md border border-zinc-200 max-h-64 overflow-y-auto divide-y divide-zinc-100">
-          {isLoading && <div className="p-3 text-sm text-zinc-400">Loading people…</div>}
+        <div className="rounded-md border max-h-64 overflow-y-auto divide-y divide-border">
+          {isLoading && <div className="p-3 text-sm text-muted-foreground">Loading people…</div>}
           {!isLoading && matches.length === 0 && (
-            <div className="p-3 text-sm text-zinc-400">No internal people match.</div>
+            <div className="p-3 text-sm text-muted-foreground">No internal people match.</div>
           )}
           {matches.map((p) => (
             <button
@@ -100,12 +100,12 @@ export function ReassignRoleModal({
               type="button"
               onClick={() => setSelectedId(p.id)}
               className={cn(
-                "w-full flex items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-zinc-50",
-                selectedId === p.id && "bg-violet-50 hover:bg-violet-50"
+                "w-full flex items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-muted/40",
+                selectedId === p.id && "bg-accent"
               )}
             >
-              <span className="font-medium text-zinc-900 truncate">{p.full_name ?? p.email}</span>
-              <span className="text-xs text-zinc-400 truncate">{p.email}</span>
+              <span className="font-medium text-foreground truncate">{p.full_name ?? p.email}</span>
+              <span className="text-xs text-muted-foreground truncate">{p.email}</span>
             </button>
           ))}
         </div>
@@ -113,7 +113,7 @@ export function ReassignRoleModal({
           <Button variant="ghost" size="sm" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="primary" size="sm" onClick={confirm} disabled={!selected || reassign.isPending}>
+          <Button variant="default" size="sm" onClick={confirm} disabled={!selected || reassign.isPending}>
             {reassign.isPending ? "Saving…" : "Confirm"}
           </Button>
         </div>

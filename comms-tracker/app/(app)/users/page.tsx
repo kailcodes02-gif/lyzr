@@ -4,7 +4,8 @@ import { toast } from "sonner";
 import { ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { InfoTip } from "@/components/ui/info-tip";
+import { LoadingRows, PageHeader } from "@/components/ui/page";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCurrentUser } from "@/lib/hooks/use-current-user";
 import { useSetUserRole, useUsers } from "@/lib/hooks/use-users";
 
@@ -25,42 +26,51 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="text-xl font-semibold text-zinc-900 flex items-center gap-1.5">
-        Users
-        <InfoTip>
-          Everyone who has signed in with an @lyzr.ai account. Admins can delete any task and manage roles; regular
-          users can create tasks and check off items assigned to them, but can&apos;t delete tasks they didn&apos;t
-          create.
-        </InfoTip>
-      </h1>
-      <p className="mt-1 text-sm text-zinc-500">
-        {isAdmin ? "You're an admin — you can promote/demote other users." : "Only admins can change roles."}
-      </p>
+    <div className="space-y-6">
+      <PageHeader
+        title="Users"
+        tip="Everyone who has signed in with an @lyzr.ai account. Admins can manage roles, delete any task, and reassign project owner roles."
+        description={isAdmin ? "You are an admin. You can promote or demote other users." : "Only admins can change roles."}
+      />
 
-      {isLoading && <div className="mt-6 text-sm text-zinc-400">Loading…</div>}
+      {isLoading && <LoadingRows />}
 
       {users && (
-        <div className="mt-4 rounded-lg border border-zinc-200 bg-white divide-y divide-zinc-100">
-          {users.map((u) => (
-            <div key={u.id} className="p-3 flex items-center justify-between gap-3 text-sm">
-              <div>
-                <div className="font-medium text-zinc-900">{u.display_name ?? u.email}</div>
-                <div className="text-xs text-zinc-500">{u.email}</div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Badge color={u.role === "admin" ? "violet" : "zinc"}>
-                  {u.role === "admin" && <ShieldCheck className="w-3 h-3" />}
-                  {u.role}
-                </Badge>
-                {isAdmin && u.id !== me?.id && (
-                  <Button variant="ghost" size="sm" onClick={() => toggleAdmin(u.id, u.role)} disabled={setRole.isPending}>
-                    {u.role === "admin" ? "Remove admin" : "Make admin"}
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
+        <div className="bg-card max-w-3xl rounded-xl border shadow-xs">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="pl-4">User</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Joined</TableHead>
+                <TableHead className="pr-4 text-right" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.map((u) => (
+                <TableRow key={u.id}>
+                  <TableCell className="pl-4">
+                    <div className="font-medium">{u.display_name ?? u.email}</div>
+                    <div className="text-muted-foreground text-xs">{u.email}</div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge color={u.role === "admin" ? "violet" : "zinc"}>
+                      {u.role === "admin" && <ShieldCheck />} {u.role}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs">{new Date(u.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell className="pr-4 text-right">
+                    {isAdmin && u.id !== me?.id && (
+                      <Button variant="outline" size="sm" onClick={() => toggleAdmin(u.id, u.role)} disabled={setRole.isPending}>
+                        {u.role === "admin" ? "Remove admin" : "Make admin"}
+                      </Button>
+                    )}
+                    {u.id === me?.id && <span className="text-muted-foreground text-xs">you</span>}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>
