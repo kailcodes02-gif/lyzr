@@ -30,16 +30,17 @@ export function useEmailDetail(id: string | null) {
     enabled: Boolean(id),
     queryFn: async (): Promise<EmailDetail> => {
       const supabase = createClient();
-      const { data, error } = await supabase
-        .from("communication_events")
-        .select(
-          "id, subject, sent_at, direction, sender_email, recipient_email, source_system, origin, match_status, confirmed_at, snippet, ai_summary, body_text, account:accounts(id, canonical_name), project:projects(id, name), person:people(id, full_name, email)"
-        )
-        .eq("id", id!)
-        .single();
+      const base = "id, subject, sent_at, direction, sender_email, recipient_email, source_system, origin, match_status, confirmed_at, snippet, ai_summary";
+      const embeds = "account:accounts(id, canonical_name), project:projects(id, name), person:people(id, full_name, email)";
+      let { data, error } = await supabase.from("communication_events").select(`${base}, body_text, ${embeds}`).eq("id", id!).single();
+      // body_text arrives with migration 011; until it's applied, read
+      // everything else and show the snippet.
+      if (error && error.code === "42703") {
+        ({ data, error } = await supabase.from("communication_events").select(`${base}, ${embeds}`).eq("id", id!).single());
+      }
       if (error) throw error;
       const row = data as unknown as EmailDetail;
-      return { ...row, account: row.account ?? null, project: row.project ?? null, person: row.person ?? null };
+      return { ...row, body_text: row.body_text ?? null, account: row.account ?? null, project: row.project ?? null, person: row.person ?? null };
     },
   });
 }
