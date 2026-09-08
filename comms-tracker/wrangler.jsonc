@@ -36,8 +36,8 @@
     "INSTANTLY_PRODUCT_UPDATE_TAG": "ABM",
     // Azure app registration (Outlook mailbox connect) — fill in once created;
     // empty means the "Connect Outlook" button reports "not configured".
-    "MS_GRAPH_CLIENT_ID": "",
-    "MS_GRAPH_TENANT_ID": ""
+    "MS_GRAPH_CLIENT_ID": "eb37cade-21f4-492e-b3f2-a5656911704a",
+    "MS_GRAPH_TENANT_ID": "4b1018eb-9480-4542-89d0-4e6233aba226"
   },
   "observability": {
     "enabled": true
