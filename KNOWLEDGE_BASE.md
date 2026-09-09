@@ -457,6 +457,28 @@ Access if the data ever becomes confidential.
 - Added Week 16 to `data/weeks.json` and the noscript/scraper fallbacks in `reports/index.html`.
 - Prior-report link points at `../gsi-report-aug23-30/`.
 
+### 2026-09-09, Comms Tracker: mislabeling fix, project-scoped visibility, 3 new admins, full handover docs (comms-tracker)
+- **HubSpot contact mislabeling fixed**: a Lyzr teammate on a HubSpot deal could previously be inserted
+  as an external client_poc if HubSpot's sync ran before Cortex recorded that person. Fixed at both the
+  app level (`lib/sync/util.ts` shared `isInternalEmail`, used by `hubspot-sync.ts` and `people.ts`) and
+  the DB level (migration `013`, a trigger forcing `person_type='lyzr_internal'` for any lyzr.ai/lyzr.com
+  email regardless of write path). Live check found zero already-mislabeled rows.
+- **Project-scoped visibility** (migration `014`): non-admins now only see accounts/projects where
+  they're a current internal stakeholder, enforced via RLS (`is_admin()`/`visible_project_ids()`/
+  `visible_account_ids()` helper functions) plus `security_invoker = on` on the 5 dashboard views (which
+  otherwise silently bypass RLS, running as the owning superuser). No page code changes needed -- every
+  page already queries through the user's own session.
+- Migration `015`: adds admin for kailash.gm@lyzr.com, deepankar.dimri@lyzr.com, shekar@lyzr.com (noted
+  in the migration that sign-in is Google/lyzr.ai-only, so these .com rows only take effect if that
+  domain can actually sign in).
+- **Full handover package** for transferring the project to a new owner: `comms-tracker/readme/` (8
+  docs -- PRD with built/to-build features, architecture, secrets, new-Supabase/git/Cloudflare setup
+  guide, migration list, operations runbook, known issues), a self-contained copy of the refresh
+  GitHub Actions workflow at `comms-tracker/.github/workflows/` (the original lives at this monorepo's
+  root, outside the folder being handed off), and `wrangler.new-deployment.example.jsonc`.
+- Migrations 011-015 written this session are NOT yet applied on the live Supabase project -- pending
+  user action in the SQL Editor.
+
 ### 2026-09-09, Comms Tracker: typed topics + source search in Generate & Send; meeting notes store (comms-tracker)
 - Generate & Send has a "Your topic" box: the typed line becomes a topic and the knowledge base is
   searched (`lib/ai/search.ts`, Worker `/api/ai/search`); matched documents show with excerpts and
