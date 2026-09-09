@@ -50,6 +50,11 @@ OAuth apps. Everything needed to do that is in this folder.
 7. **[07-KNOWN-ISSUES-AND-ROADMAP.md](07-KNOWN-ISSUES-AND-ROADMAP.md)** —
    open bugs, deliberate gaps, and the two features explicitly queued next
    (finishing Microsoft/Outlook access, and Outlook as a sign-in option).
+8. **[08-PROMPT-0.md](08-PROMPT-0.md)** — a ready-to-paste prompt for
+   Claude or any coding agent that reads all of the above, confirms its
+   understanding with you, and then works through setup and the roadmap
+   in order. If you'd rather have an AI walk you through this whole
+   folder than read it yourself first, start there instead of at step 1.
 
 ## The one-sentence status
 

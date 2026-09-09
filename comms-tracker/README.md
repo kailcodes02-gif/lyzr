@@ -1,5 +1,11 @@
 # Comms Tracker
 
+> **Taking this project over?** Start at [readme/00-START-HERE.md](readme/00-START-HERE.md) —
+> it has the full handover: product requirements, architecture, every secret's purpose,
+> a new-hosting setup guide, the migration list, an operations runbook, known issues, and
+> a ready-to-paste kickoff prompt for an AI coding agent ([readme/08-PROMPT-0.md](readme/08-PROMPT-0.md)).
+> This file below is the original developer README and may lag behind that folder.
+
 Internal Lyzr tool reconciling **Cortex** (who's engaged, on what product),
 **HubSpot** (who's a customer), and **Instantly** (what's actually been sent)
 into one dashboard — so customer product-update cadence stops falling through
