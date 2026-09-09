@@ -1,3 +1,4 @@
+import { isInternalEmail } from "../sync/util";
 import type {
   CortexData,
   NormalizedClientAccount,
@@ -21,7 +22,7 @@ import type {
 // Internal-only projects and PM-hidden projects are already excluded
 // server-side — nothing extra to filter on our side.
 
-const INTERNAL_EMAIL_DOMAIN = "lyzr.ai";
+// lyzr.com covers staff Outlook addresses; see lib/sync/util.ts isInternalEmail.
 
 type CortexProject = {
   id: string;
@@ -105,10 +106,7 @@ async function fetchAllPages<TItem>(
   return all;
 }
 
-function isInternalEmail(email: string | null | undefined): boolean {
-  if (!email) return false;
-  return email.toLowerCase().endsWith(`@${INTERNAL_EMAIL_DOMAIN}`);
-}
+
 
 export async function fetchCortexData(opts: {
   baseUrl: string;

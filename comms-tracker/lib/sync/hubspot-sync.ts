@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { htmlToText } from "../knowledge/util";
 import { hasColumn, stripColumn } from "./db";
 import { fetchHubSpotDataForDomains } from "../adapters/hubspot";
-import { htmlToSnippet, normalizeDomain } from "./util";
+import { htmlToSnippet, isInternalEmail, normalizeDomain } from "./util";
 import { upsertAccountPeopleBatch, upsertPeopleByEmailBatch } from "./people";
 import {
   fetchCurrentProjectIdsByAccountId,
@@ -122,9 +122,21 @@ export async function syncHubSpot(
     if (error) throw error;
   }
 
+  // A HubSpot "contact" on a deal/company is sometimes a Lyzr person (a
+  // teammate CC'd on the deal, an internal test contact, etc.), not a real
+  // external POC -- filed as client_poc here it would show up on the
+  // account page as if they were the client. Same filter Cortex's own
+  // contact ingestion applies, so client_poc means the same thing from
+  // both sources: an address outside lyzr.ai/lyzr.com.
+  const externalContacts = data.contacts.filter((c) => !isInternalEmail(c.email));
+  const internalContactCount = data.contacts.length - externalContacts.length;
+  if (internalContactCount > 0) {
+    console.log(`HubSpot: ${internalContactCount} contact(s) on tracked deals are Lyzr addresses -- kept as lyzr_internal, not filed as client POCs`);
+  }
+
   const personIdByEmail = await upsertPeopleByEmailBatch(
     db,
-    data.contacts.map((c) => ({
+    externalContacts.map((c) => ({
       email: c.email,
       fullName: c.fullName,
       personType: "client_poc" as const,
@@ -146,16 +158,30 @@ export async function syncHubSpot(
   }> = [];
   // Reused below for email-engagement matching — each HubSpot contact
   // already tells us exactly which person/account it is, no guessing.
+  // Internal contacts are matched by email directly (not through
+  // personIdByEmail, which only covers externalContacts) so their email
+  // activity still reconciles even though they never get a client_poc link.
   const personIdByContactId = new Map<string, string>();
   const accountIdByContactId = new Map<string, string>();
   for (const contact of data.contacts) {
     const email = contact.email?.trim().toLowerCase();
-    const personId = email ? personIdByEmail.get(email) : undefined;
-    if (!personId || personId === "__pending__") continue;
-    personIdByContactId.set(contact.sourceId, personId);
+    if (!email) continue;
     const accountId = contact.associatedCompanyIds
       .map((id) => accountIdByHubspotCompanyId.get(id))
       .find((id): id is string => Boolean(id));
+
+    if (isInternalEmail(email)) {
+      const { data: internalPerson } = await db.from("people").select("id").eq("email", email).maybeSingle();
+      if (internalPerson) {
+        personIdByContactId.set(contact.sourceId, internalPerson.id as string);
+        if (accountId) accountIdByContactId.set(contact.sourceId, accountId);
+      }
+      continue;
+    }
+
+    const personId = personIdByEmail.get(email);
+    if (!personId || personId === "__pending__") continue;
+    personIdByContactId.set(contact.sourceId, personId);
     if (!accountId) continue;
     accountIdByContactId.set(contact.sourceId, accountId);
     accountPeopleRows.push({ accountId, personId, relationshipRole: "client_poc_other", sourceSystem: "hubspot" });

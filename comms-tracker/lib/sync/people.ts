@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { normalizeEmail } from "./util";
+import { isInternalEmail, normalizeEmail } from "./util";
 import { chunk, fetchAllRows, mapWithConcurrency } from "./batch";
 
 type PersonInput = {
@@ -49,9 +49,15 @@ export async function upsertPeopleByEmailBatch(
   const toUpdate: Array<{ id: string; patch: Record<string, unknown> }> = [];
   const patchedIds = new Set<string>();
 
-  for (const input of inputs) {
-    const email = normalizeEmail(input.email);
+  for (const rawInput of inputs) {
+    const email = normalizeEmail(rawInput.email);
     if (!email || resultByEmail.has(email)) continue;
+    // A Lyzr address can never be filed as an external contact -- whatever
+    // personType a source (HubSpot's contact list, in particular) passed
+    // in, an internal-domain email is always lyzr_internal. This is the
+    // single point every sync's person upsert goes through, so it closes
+    // the mislabeling risk regardless of which source runs first.
+    const input = isInternalEmail(email) ? { ...rawInput, personType: "lyzr_internal" as const } : rawInput;
 
     const existing =
       byEmail.get(email) ??
@@ -108,7 +114,7 @@ export async function upsertPeopleByEmailBatch(
 // email first: look the person up, then fill in whichever source id is new.
 export async function upsertPersonByEmail(
   db: SupabaseClient,
-  input: {
+  rawInput: {
     email: string | null;
     fullName?: string | null;
     personType: "lyzr_internal" | "client_poc";
@@ -118,8 +124,11 @@ export async function upsertPersonByEmail(
     hubspotContactId?: string | null;
   }
 ): Promise<string | null> {
-  const email = normalizeEmail(input.email);
+  const email = normalizeEmail(rawInput.email);
   if (!email) return null;
+  // Same hard safeguard as upsertPeopleByEmailBatch: an internal-domain
+  // email can never be filed as an external contact.
+  const input = isInternalEmail(email) ? { ...rawInput, personType: "lyzr_internal" as const } : rawInput;
 
   const { data: existing, error: selErr } = await db
     .from("people")

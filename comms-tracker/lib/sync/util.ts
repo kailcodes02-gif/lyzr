@@ -19,6 +19,19 @@ export function normalizeEmail(email: string | null | undefined): string | null 
   return trimmed || null;
 }
 
+// The one place that decides "is this a Lyzr employee's own address" --
+// used to keep every sync from ever filing a Lyzr person as an external
+// client contact (client_poc), regardless of which source (Cortex, HubSpot,
+// a mailbox read) sees them first. lyzr.com covers staff Outlook addresses
+// (the mirror of their @lyzr.ai Google account) alongside the original
+// lyzr.ai domain.
+export const INTERNAL_EMAIL_DOMAINS = ["lyzr.ai", "lyzr.com"];
+
+export function isInternalEmail(email: string | null | undefined): boolean {
+  const domain = emailDomain(email);
+  return domain ? INTERNAL_EMAIL_DOMAINS.includes(domain) : false;
+}
+
 const HTML_ENTITIES: Record<string, string> = {
   "&amp;": "&",
   "&lt;": "<",
