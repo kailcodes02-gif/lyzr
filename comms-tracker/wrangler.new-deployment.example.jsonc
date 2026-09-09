@@ -1,0 +1,51 @@
+// Example wrangler.jsonc for a FRESH deployment (new Cloudflare account,
+// own domain) — NOT the file currently deployed. See
+// readme/04-HANDOVER-SETUP-GUIDE.md for how to adapt this.
+//
+// The live version of this app is path-mounted at
+// lyzr.kailash-gm.com/abm-tracker (a personal domain belonging to the
+// original team) with NEXT_PUBLIC_BASE_PATH=/abm-tracker baked into
+// next.config.ts. A standalone deployment almost certainly wants the app
+// at the ROOT of its own domain (or a workers.dev subdomain), which means:
+//   1. Change next.config.ts's BASE_PATH to "" (empty string).
+//   2. Remove NEXT_PUBLIC_BASE_PATH from `vars` below (or set it to "").
+//   3. Replace `routes` with either nothing (Cloudflare gives you a free
+//      <name>.<subdomain>.workers.dev URL automatically) or your own
+//      domain's route pattern.
+//   4. Set NEXT_PUBLIC_SITE_URL to whatever URL you land on — it's used to
+//      build the Microsoft OAuth redirect_uri and the "queued" log message,
+//      so it must exactly match where the Worker is actually reachable.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "comms-tracker",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "out",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  // Omit `routes` entirely to get a free <name>.<your-subdomain>.workers.dev
+  // URL, or replace with your own domain, e.g.:
+  // "routes": [{ "pattern": "comms.yourdomain.com/*", "zone_name": "yourdomain.com" }],
+  "vars": {
+    // Set this AFTER your first `wrangler deploy` tells you the actual URL
+    // (or your custom domain), then redeploy once more.
+    "NEXT_PUBLIC_SITE_URL": "https://comms-tracker.<your-subdomain>.workers.dev",
+    "NEXT_PUBLIC_SUPABASE_URL": "https://<your-new-project-ref>.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "<your-new-project-anon-key>",
+    "CORTEX_BASE_URL": "https://applied-ai.lyzr.app",
+    "INSTANTLY_PRODUCT_UPDATE_TAG": "ABM",
+    "MS_GRAPH_CLIENT_ID": "eb37cade-21f4-492e-b3f2-a5656911704a",
+    "MS_GRAPH_TENANT_ID": "4b1018eb-9480-4542-89d0-4e6233aba226"
+  },
+  "observability": { "enabled": true }
+  // Secrets (never in this file) — set each with `wrangler secret put <NAME>`:
+  //   SUPABASE_SERVICE_ROLE_KEY, HUBSPOT_ACCESS_TOKEN, INSTANTLY_API_KEY,
+  //   CORTEX_API_KEY, ANTHROPIC_API_KEY, SLACK_BOT_TOKEN,
+  //   GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET,
+  //   MS_GRAPH_CLIENT_SECRET, GH_DISPATCH_TOKEN
+  // See readme/03-SECRETS-AND-CREDENTIALS.md for what each one is and
+  // where its value currently lives.
+}

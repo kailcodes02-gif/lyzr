@@ -1,0 +1,93 @@
+name: Comms Tracker refresh
+
+# The executor for every Comms Tracker data refresh: Cortex, HubSpot,
+# Instantly, the Gmail / Outlook mailbox reads, and the knowledge base
+# (lyzr.ai, Slack, Drive, OneDrive/SharePoint, internal email, meeting notes).
+#
+# GitHub Actions rather than the Cloudflare Worker because a Worker request
+# is capped at a small number of outbound API calls ("Too many subrequests")
+# and even the smallest sync exceeds it; HubSpot alone is ~80k records.
+# The Worker's Refresh buttons dispatch this workflow with a `target`, so
+# manual and scheduled refreshes share one code path (the same scripts you
+# can run locally with `npx tsx scripts/run-*.ts`).
+#
+# This copy assumes the repo ROOT is the comms-tracker app itself (i.e. this
+# file lives at .github/workflows/ of a repo whose root has package.json,
+# lib/, scripts/, etc.) -- the sibling copy this was adapted from lived in a
+# larger monorepo with the app under a comms-tracker/ subfolder and used a
+# `working-directory` accordingly; that's not needed once this app is its
+# own repo.
+on:
+  schedule:
+    # 12:00 AM IST every day (= 18:30 UTC the previous evening).
+    - cron: "30 18 * * *"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "all | sources | mail | knowledge | cortex | hubspot | instantly | gmail | outlook | lyzr_blog | slack | drive | onedrive | internal_email"
+        default: "all"
+        required: false
+
+concurrency:
+  group: comms-tracker-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      TARGET: ${{ inputs.target || 'all' }}
+      # CHANGE THIS to the new Supabase project's URL when you migrate
+      # (Supabase Dashboard -> Project Settings -> API -> Project URL).
+      # Everything else below is a repo secret -- see readme/03-SECRETS-AND-CREDENTIALS.md.
+      NEXT_PUBLIC_SUPABASE_URL: "https://datdjabcrxveubsvvxvm.supabase.co"
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.CT_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.CT_SUPABASE_SERVICE_ROLE_KEY }}
+      HUBSPOT_ACCESS_TOKEN: ${{ secrets.CT_HUBSPOT_ACCESS_TOKEN }}
+      INSTANTLY_API_KEY: ${{ secrets.CT_INSTANTLY_API_KEY }}
+      INSTANTLY_PRODUCT_UPDATE_TAG: "ABM"
+      CORTEX_API_KEY: ${{ secrets.CT_CORTEX_API_KEY }}
+      CORTEX_BASE_URL: "https://applied-ai.lyzr.app"
+      ANTHROPIC_API_KEY: ${{ secrets.CT_ANTHROPIC_API_KEY }}
+      SLACK_BOT_TOKEN: ${{ secrets.CT_SLACK_BOT_TOKEN }}
+      GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.CT_GOOGLE_OAUTH_CLIENT_ID }}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.CT_GOOGLE_OAUTH_CLIENT_SECRET }}
+      MS_GRAPH_CLIENT_ID: "eb37cade-21f4-492e-b3f2-a5656911704a"
+      MS_GRAPH_TENANT_ID: "4b1018eb-9480-4542-89d0-4e6233aba226"
+      MS_GRAPH_CLIENT_SECRET: ${{ secrets.CT_MS_GRAPH_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The scripts load .env.local via dotenv; write the job env into it so
+      # local and CI runs are the same code path.
+      - name: Write env file
+        run: |
+          for k in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY HUBSPOT_ACCESS_TOKEN INSTANTLY_API_KEY INSTANTLY_PRODUCT_UPDATE_TAG CORTEX_API_KEY CORTEX_BASE_URL ANTHROPIC_API_KEY SLACK_BOT_TOKEN GOOGLE_OAUTH_CLIENT_ID GOOGLE_OAUTH_CLIENT_SECRET MS_GRAPH_CLIENT_ID MS_GRAPH_TENANT_ID MS_GRAPH_CLIENT_SECRET; do
+            printf '%s=%s\n' "$k" "${!k}" >> .env.local
+          done
+      - name: Sources (Cortex, HubSpot, Instantly)
+        if: ${{ contains(fromJSON('["all","sources","cortex","hubspot","instantly"]'), env.TARGET) }}
+        run: |
+          case "$TARGET" in
+            all|sources) npx tsx scripts/run-sync.ts all ;;
+            *) npx tsx scripts/run-sync.ts "$TARGET" ;;
+          esac
+      - name: Mailboxes (Gmail, Outlook)
+        if: ${{ always() && contains(fromJSON('["all","mail","gmail","outlook"]'), env.TARGET) }}
+        run: |
+          case "$TARGET" in
+            all|mail) npx tsx scripts/run-mail-sync.ts all ;;
+            *) npx tsx scripts/run-mail-sync.ts "$TARGET" ;;
+          esac
+      - name: Knowledge base
+        if: ${{ always() && contains(fromJSON('["all","knowledge","lyzr_blog","slack","drive","onedrive","internal_email"]'), env.TARGET) }}
+        run: |
+          case "$TARGET" in
+            all|knowledge) npx tsx scripts/run-knowledge-sync.ts all ;;
+            *) npx tsx scripts/run-knowledge-sync.ts "$TARGET" ;;
+          esac
