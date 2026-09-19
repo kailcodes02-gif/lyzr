@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "ms-ui",
+  "compatibility_date": "2026-08-01",
+  // Assets-only Worker: no `main`, no server code, no secrets. `next build`
+  // writes the flat export to out/; scripts/stage.mjs copies it under
+  // dist/MS/ so the files line up with the /MS path mount without a worker
+  // rewriting paths (the sibling comms-tracker needs a worker for its API
+  // routes; this app does not).
+  "assets": {
+    "directory": "dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "routes": [
+    { "pattern": "lyzr.kailash-gm.com/MS*", "zone_name": "kailash-gm.com" }
+  ]
+}

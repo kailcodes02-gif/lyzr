@@ -55,7 +55,7 @@ under one Cloudflare Pages site at `lyzr.kailash-gm.com`. The pieces:
 | Comms Tracker (ABM) | `comms-tracker/` (separate Worker `abm-tracker`) | `/abm-tracker/` | Live (deployed 2026-09-08) |
 | Sales Copilot | `sales-copilot/` (separate Worker `content-maker`) | `/content_maker/` | Live |
 | GSI Communities | `GSI Communities/` | `/GSI_Communities` | Live |
-| MS UI (Outlook + OneDrive + Calendar web UI) | `MS UI/` | `/MS/outlook`, `/MS/onedrive`, `/MS/calendar` (planned) | Plan only, no code yet (2026-09-20) |
+| MS UI (Outlook + OneDrive + Calendar web UI) | `MS UI/` | `/MS/outlook`, `/MS/onedrive`, `/MS/calendar` | Built 2026-09-20, deploy pending, Graph consent pending |
 
 Two of these are the day-to-day active work: the **weekly GSI reports** (new HTML
 report per week) and the **pipeline dashboard** (live edits committed back to git).
@@ -453,6 +453,26 @@ Access if the data ever becomes confidential.
 
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
+
+### 2026-09-20, MS UI: first full build of Outlook, OneDrive and Calendar screens, demo mode, tests (MS UI)
+- `MS UI/` is now a working Next.js 16 static-export app (basePath `/MS`): Microsoft sign-in (MSAL v5 with the
+  redirect bridge page), 72px app rail, and three screens built by parallel agents: `outlook/` (Gmail layout:
+  folders, labels, threaded reading pane with sanitised iframe, compose drawer with draft-first send and undo,
+  shortcuts, delta polling), `onedrive/` (Drive layout: local delta index in IndexedDB, type views Docs/Sheets/
+  Slides/PDFs/Images/Videos, grid/list, breadcrumb, drag-move, upload with sessions, preview, share dialog),
+  `calendar/` (Google Calendar layout on FullCalendar 7: week/day/month/4-day/agenda, mini month, quick create,
+  detail popover with RSVP, recurrence editor, find-a-time, reminders).
+- Demo mode (`?mock=1`, "Try the demo" on the sign-in page): real UI on realistic sample data via `lib/mock/*`,
+  so everything can be used before the admin approves the Graph permissions.
+- Review fixes from the 13-agent audit of the auth/hosting layer: bridge page keeps navigation inside `/MS`
+  (sign-out no longer lands on the domain root), `_headers` hoisted to the assets root by `scripts/stage.mjs`
+  with sha256 hashes for Next's inline scripts (no `'unsafe-inline'` for scripts), consent_required never
+  triggers a redirect, redirect loop guard, "sign in again" state.
+- Two real bugs found by browser tests and fixed: Drive tiles defined as a nested component broke double-click
+  (remounted between clicks); calendar create used an empty calendar id when clicked before calendars loaded.
+- Tests: 80 vitest unit tests (18 files), 11 Playwright browser tests in demo mode against the staged static
+  build (`scripts/serve-static.mjs`; Playwright drives the installed Google Chrome because the Chromium download
+  is blocked on this network). Not deployed yet; consent still pending with the Lyzr M365 admin.
 
 ### 2026-09-20, MS UI: app registration created, consent-test links, requirements check, one more scope (MS UI)
 - User created the Entra app registration "Lyzr MS UI" (client ID `cd569c2f-9121-4a99-8ba0-691c6df81cbd`, tenant

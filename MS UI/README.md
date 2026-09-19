@@ -10,7 +10,7 @@ A web app for your Microsoft 365 mailbox, OneDrive and calendar, built on the Mi
 
 Locally the same three pages run at `http://localhost:3000/MS/outlook`, `/MS/onedrive`, `/MS/calendar`.
 
-**Status (2026-09-20): app registration created, plan only, no code yet.** The full feasibility study and phased build plan is in [PLAN.md](PLAN.md).
+**Status (2026-09-20): milestone M0 built.** Microsoft sign-in, the app shell with the three pages, and a live "Microsoft permissions" panel that shows which permissions are approved. Mail, files and calendar data come in the next milestones. The full feasibility study and phased build plan is in [PLAN.md](PLAN.md).
 
 | App registration (not secret) | |
 |---|---|
@@ -20,7 +20,7 @@ Locally the same three pages run at `http://localhost:3000/MS/outlook`, `/MS/one
 | Account types | Lyzr only (single tenant) |
 | Microsoft account that signs in | kailash.gm@lyzr.com |
 
-Still to do by hand: add the `MailboxSettings.ReadWrite` permission (step 1.8), confirm the production redirect URI (step 1.7), run the consent test (step 2).
+Consent test result (2026-09-20): `User.Read` approved by the user; all six other permissions say "Need admin approval". Still to do by hand: add the `MailboxSettings.ReadWrite` permission (step 1.8), confirm the production redirect URI (step 1.7), forward [ADMIN-REQUEST.md](ADMIN-REQUEST.md) to a Lyzr Microsoft 365 admin.
 
 ## What you have to do by hand
 
@@ -69,17 +69,43 @@ Local or deployed, the app shows a Microsoft sign-in button and you sign in with
 
 That is all. Step 4 (the production address) is already covered in step 1.7.
 
-## Planned layout of this folder
+## Run it locally
+
+```
+cd "MS UI"
+npm install
+npm run dev
+```
+
+Then open http://localhost:3000/MS/login/ and click **Sign in with Microsoft** (kailash.gm@lyzr.com). After sign-in you land on Outlook, with OneDrive and Calendar in the left rail. Each page shows the "Microsoft permissions" panel: green means approved, red means the admin still has to click. Sign out is in the bottom-left card.
+
+**Demo mode.** On the sign-in page click **Try the demo with sample data** (or add `?mock=1` to any URL). Every page then runs on realistic sample mail, files and events with no Microsoft account, so the whole UI can be tried before the admin approval. Sign out leaves demo mode.
+
+**Tests.** `npm test` runs the unit tests (vitest). `npm run test:e2e` runs browser tests in demo mode (Playwright, uses the installed Google Chrome). `npx tsc --noEmit` and `npm run lint` must both be clean before a deploy.
+
+**Build and deploy.** `npm run build` produces the static site in `out/` and stages it under `dist/MS/` with the security headers file at the root (`scripts/stage.mjs` also hashes the inline scripts for the Content Security Policy). `npm run cf:preview` serves that locally on port 8787 through the Cloudflare Worker; `npm run cf:deploy` publishes to `lyzr.kailash-gm.com/MS`.
+
+## Layout of this folder
 
 ```
 MS UI/
-├── README.md          this file
-├── PLAN.md            feasibility study + phased plan (M0 to M6)
-├── package.json       Next.js 16 static-export app with basePath /MS (created in M0)
-├── app/               routes: /outlook, /onedrive, /calendar, /redirect, /login
-├── components/        Gmail-style, Drive-style and Calendar-style UI
-├── lib/               MSAL auth + Graph fetch wrapper
-└── wrangler.jsonc     Cloudflare Worker serving the static build at lyzr.kailash-gm.com/MS
+├── README.md              this file
+├── PLAN.md                feasibility study + phased plan (M0 to M6)
+├── CONSENT-TEST.md        one sign-in link per permission, to see what the tenant allows
+├── ADMIN-REQUEST.md       ready-to-forward request for the admin consent click
+├── package.json           Next.js 16 static export, basePath /MS
+├── next.config.ts         output: export, basePath /MS, trailingSlash
+├── app/
+│   ├── layout.tsx         root layout, deliberately without auth providers
+│   ├── redirect/          MSAL v5 redirect bridge page (the registered redirect URI)
+│   └── (msal)/            everything behind the auth providers
+│       ├── login/         sign-in page
+│       └── (shell)/       auth guard + left rail; outlook/, onedrive/, calendar/
+├── components/            providers, auth guard, sidebar, consent status panel
+├── lib/                   config (client id, tenant, scopes), msal, graph fetch, hooks
+├── public/_headers        Cloudflare security headers (CSP), bridge page exception
+├── scripts/stage.mjs      copies out/ to dist/MS/ after next build
+└── wrangler.jsonc         Cloudflare assets-only Worker at lyzr.kailash-gm.com/MS
 ```
 
 Hosting follows the `comms-tracker` pattern: a static build served by a small Cloudflare Worker, path-mounted on the existing domain. No backend, no server-side secrets.

@@ -1,0 +1,68 @@
+/* FullCalendar v7 overrides for a Google Calendar look. Loaded by grid.tsx. */
+.msui-cal {
+  --fc-breezy-primary: var(--primary);
+  --fc-breezy-background: var(--background);
+  --fc-breezy-foreground: var(--foreground);
+  --fc-breezy-strong-foreground: var(--foreground);
+  --fc-breezy-muted-foreground: var(--muted-foreground);
+  --fc-breezy-faint-foreground: var(--muted-foreground);
+  --fc-breezy-border: var(--border);
+  --fc-breezy-muted-border: var(--border);
+  --fc-breezy-strong-border: var(--border);
+  --fc-breezy-highlight: color-mix(in oklab, var(--primary) 14%, transparent);
+  --fc-breezy-now: #ea4335;
+  --fc-breezy-popover: var(--popover);
+  height: 100%;
+  font-size: 12px;
+}
+.msui-cal .msui-ev {
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.25;
+}
+.msui-cal .msui-ev:hover {
+  filter: brightness(0.92);
+}
+.msui-cal .msui-ev-tentative {
+  background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0 4px, transparent 4px 8px) !important;
+}
+.msui-cal .msui-ev-invite {
+  background-color: color-mix(in oklab, var(--fc-event-color, #1a73e8) 12%, var(--background)) !important;
+  border-color: var(--fc-event-color, #1a73e8) !important;
+  color: var(--fc-event-color, #1a73e8) !important;
+}
+.msui-cal .msui-ev-cancelled {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+.msui-cal .msui-ev-free {
+  opacity: 0.75;
+}
+.msui-cal a {
+  text-decoration: none;
+}
+.msui-ev-inner {
+  display: flex;
+  gap: 4px;
+  align-items: baseline;
+  padding: 1px 4px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.msui-ev-inner .msui-ev-title {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.msui-ev-inner .msui-ev-time {
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+.msui-ev-block .msui-ev-inner {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  white-space: normal;
+}

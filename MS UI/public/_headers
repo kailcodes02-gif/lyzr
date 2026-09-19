@@ -1,0 +1,17 @@
+# Cloudflare static assets control file. scripts/stage.mjs moves it to the
+# assets root and replaces __SCRIPT_HASHES__ with sha256 hashes of Next's
+# inline hydration scripts (no 'unsafe-inline' for scripts). Not applied by
+# `next dev`; check with `npm run cf:preview` (port 8787).
+/MS/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Content-Security-Policy: default-src 'self'; script-src __SCRIPT_HASHES__; style-src 'self' 'unsafe-inline'; connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com https://*.sharepoint.com https://outlook.office.com https://outlook.office365.com; img-src 'self' data: blob: https:; frame-src 'self' blob: https://login.microsoftonline.com https://*.sharepoint.com https://*.svc.ms; media-src https: blob:; font-src 'self' data:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://login.microsoftonline.com; object-src 'none'
+
+# MSAL v5 redirect bridge: no COOP, iframe-able by its own origin for silent
+# token renewal, so the frame-ancestors and X-Frame-Options rules differ.
+/MS/redirect/
+  ! X-Frame-Options
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src __SCRIPT_HASHES__; style-src 'self' 'unsafe-inline'; connect-src 'self' https://login.microsoftonline.com; frame-ancestors 'self'; base-uri 'self'; object-src 'none'

@@ -56,4 +56,6 @@ Why: create/delete categories, inbox rules, time zone, auto-replies.
 
 https://login.microsoftonline.com/4b1018eb-9480-4542-89d0-4e6233aba226/oauth2/v2.0/authorize?client_id=cd569c2f-9121-4a99-8ba0-691c6df81cbd&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2FMS%2Fredirect%2F&response_mode=query&scope=openid%20offline_access%20MailboxSettings.ReadWrite&code_challenge=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&code_challenge_method=plain&prompt=consent&state=t7
 
+Never paste the `code=` value from the address bar anywhere: it is a one-time sign-in token (it expires within minutes, but treat it like a password).
+
 Tell Claude the result per number (for example: 1 to 4 accepted, 5 to 7 need admin).
