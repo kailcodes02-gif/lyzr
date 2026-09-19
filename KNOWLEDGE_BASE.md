@@ -454,6 +454,16 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-09-20, MS UI: calendar section (8) added to PLAN.md after a verified research pass (MS UI)
+- `MS UI/PLAN.md` section 8 "Calendar (Google Calendar look)": verdict (GO, same admin gate as mail via
+  `Calendars.ReadWrite`), Google-Calendar-feature to Graph-mechanism table (calendarView, events CRUD,
+  recurrence this/all, RSVP actions, getSchedule free/busy, Teams `isOnlineMeeting`, reminderView, time
+  zones via `supportedTimeZones`, calendarView delta), UI recommendation (FullCalendar 7.1.0 React, MIT,
+  Temporal-based, plus react-day-picker for the mini month), routes under `/MS/calendar/`, shortcuts,
+  plain-language "what you will not get", a new phase row M6 Calendar (2 to 3 days) and three risks.
+- Consent probe list in section 1 now includes `Calendars.ReadWrite`; effort line updated for M6.
+- Still plan only, no code. Waiting on the user's app registration client ID.
+
 ### 2026-09-20, MS UI: calendar added to scope, URLs fixed to /MS/outlook, /MS/onedrive, /MS/calendar (MS UI)
 - User decisions: Outlook calendar gets a Google-Calendar-style page too; the three pages live under one
   base path `/MS` (`/MS/outlook`, `/MS/onedrive`, `/MS/calendar`), so the app's basePath is `/MS` and the

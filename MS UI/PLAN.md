@@ -19,7 +19,7 @@ Everything on your list is buildable as a pure browser app (MSAL.js + Graph, no 
 1. Authentication > Add a platform > Single-page application > `http://localhost:3000/probe` (distinct path avoids a duplicate-URI rejection).
 2. Signed in as subs@lyzr.ai, open:
    `https://login.microsoftonline.com/4b1018eb-9480-4542-89d0-4e6233aba226/oauth2/v2.0/authorize?client_id=<id>&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fprobe&response_mode=query&scope=openid%20offline_access%20User.Read&code_challenge=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&code_challenge_method=plain&state=t1`
-3. Repeat, swapping the scope tail for `Files.ReadWrite`, `Mail.Send`, `Contacts.Read`, `Mail.ReadWrite`, `Files.ReadWrite.All`. Never include `Sites.Read.All`.
+3. Repeat, swapping the scope tail for `Files.ReadWrite`, `Mail.Send`, `Contacts.Read`, `Mail.ReadWrite`, `Calendars.ReadWrite`, `Files.ReadWrite.All`. Never include `Sites.Read.All`.
 
 | Outcome | Meaning | Next step |
 |---|---|---|
@@ -28,7 +28,7 @@ Everything on your list is buildable as a pure browser app (MSAL.js + Graph, no 
 | "Need admin approval", no button | Blocked, workflow off | Send an admin the §2 consent URL |
 | AADSTS53xxx device/compliance error | Conditional Access blocks unmanaged browsers | Hard blocker; talk to IT |
 
-Expected pattern on the managed default: `User.Read`/`Files.ReadWrite`/`Mail.Send`/`Contacts.Read` pass, `Mail.ReadWrite` fails → one admin grant unblocks everything. If even `User.Read` fails, user consent is disabled outright **or** the app has "Assignment required", or step-up/Conditional Access fired - check the sign-in log's Conditional Access tab before concluding.
+Expected pattern on the managed default: `User.Read`/`Files.ReadWrite`/`Mail.Send`/`Contacts.Read` pass, `Mail.ReadWrite` and `Calendars.ReadWrite` fail → one admin grant unblocks everything. If even `User.Read` fails, user consent is disabled outright **or** the app has "Assignment required", or step-up/Conditional Access fired - check the sign-in log's Conditional Access tab before concluding.
 
 ## 2. App registration
 
@@ -148,7 +148,7 @@ Routes (no dynamic segments): `/outlook/?f=inbox&m=<id>&c=<conversationId>&q=`, 
 | **M4** Drive mutations | New folder, rename, drag-move, delete, dropzone upload with resume | 300 MB upload survives a network blip; move visible in OneDrive web; build log | 1–1.5 d |
 | **M5** Polish | Recently-modified, Shared-with-me if `.All` granted, cmdk, offline/error states, responsive, CSP tuning | No CSP violations after real use; usable at 400 px; build log | 1–2 d |
 
-~6–9 AI-assisted days; only M0 has an external dependency.
+~6–9 AI-assisted days for M0 to M5, plus 2–3 days for M6 Calendar (section 8); only M0 has an external dependency.
 
 ## 6. Risks
 
@@ -173,3 +173,49 @@ Routes (no dynamic segments): `/outlook/?f=inbox&m=<id>&c=<conversationId>&q=`, 
 6. Is "Shared with me" a must-have (forces `Files.Read.All`)? SharePoint libraries (forces `Sites.Read.All`)?
 7. Resolved 2026-09-20: path mount is `lyzr.kailash-gm.com/MS` with pages `/MS/outlook`, `/MS/onedrive`, `/MS/calendar`; folder is `MS UI/`.
 8. Single-user (allowlist) or other Lyzr staff too?
+
+## 8. Calendar (Google Calendar look)
+
+**Verdict: GO, same admin gate as mail.** The calendar route needs one extra delegated scope, `Calendars.ReadWrite` (already in the §2 string), and it sits on the same managed-policy exclusion list as `Mail.ReadWrite`, so it rides the single admin grant, not a second round (Graph's reference says "admin consent required: No"; the block is tenant policy, [policy doc](https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/manage-app-consent-policies#microsoft-recommended-current-settings)). Everything Google-shaped is native on Graph v1.0 with that scope; only mailbox time zone/working hours and the category colour list (`MailboxSettings.Read`), `findMeetingTimes` (`Calendars.Read.Shared`), delegate writes to a colleague's primary calendar (`Calendars.ReadWrite.Shared`) and a tenant-directory guest picker (`User.ReadBasic.All`: self-consentable, but a `.All` scope, your call) sit behind scopes not in the base string. Add `Calendars.ReadWrite` to the §1 probe list (expect "Need admin approval").
+
+| Google Calendar feature | Graph mechanism | Feasibility |
+|---|---|---|
+| Calendar list + colour toggles | `GET /me/calendars?$select=id,name,color,hexColor,isDefaultCalendar,canEdit,owner,allowedOnlineMeetingProviders`; `hexColor` is set only when the user picked one, else map the `color` enum to a local palette; visibility kept in localStorage `ms-ui.cal.visible` (Graph stores no "visible") | Native list; toggle emulated |
+| Month / week / day / 4-day / agenda | `GET /me/calendars/{id}/calendarView?startDateTime&endDateTime&$top=1000&$select=…` (series pre-expanded as `occurrence`/`exception`; range values carry their own offset, UTC if none; `$top` max 1000, loop `@odata.nextLink`); visible calendars in one `$batch` of ≤20 | Native |
+| Drag create / move / resize | `POST /me/calendars/{id}/events` with a client `transactionId`; `PATCH /me/events/{id} {start,end[,isAllDay]}`, optimistic, `revert()` on 4xx | Native |
+| Recurrence: edit this / all / following | `recurrence{pattern,range}` maps 1:1 to Google's Custom dialog; "this" = `PATCH` occurrence id (400 `ErrorOccurrenceCrossingBoundary` if moved past a neighbour), "all" = `PATCH seriesMasterId`; "this and following" = set master `range.endDate` to the day before, then `POST` a new series | Native / emulated |
+| Invites + RSVP | attendees on create are invited automatically (≤500); `POST …/accept\|tentativelyAccept\|decline {comment,sendResponse}` → 202; `proposedNewTime` on decline only when `allowNewTimeProposals`; organizer delete = `POST …/cancel {comment}`, attendee = decline then `DELETE` | Native |
+| Find a time (free/busy) | `POST /me/calendar/getSchedule {schedules[≤20], startTime, endTime (<62 days), availabilityViewInterval:15}` returns `availabilityView` + `workingHours`; suggested slots computed client-side | Native; suggestions emulated |
+| Teams link (Meet button) | `isOnlineMeeting:true, onlineMeetingProvider:'teamsForBusiness'` on POST or PATCH, no extra scope; render `onlineMeeting.joinUrl` (`onlineMeetingUrl` deprecated); one-way once set, preserve the Teams body blob on edits | Native |
+| Reminders | one `reminderMinutesBeforeStart` per event; `GET /me/reminderView(startDateTime,endDateTime)` + `setTimeout` + Notification API while the tab is open; `snoozeReminder` / `dismissReminder` | Emulated |
+| Colours | calendar tint from `color`/`hexColor`; per-event = `categories[]` with a local name→swatch map (master list needs `MailboxSettings.Read`); stripe `showAs=tentative`, lock `sensitivity=private` | Emulated |
+| Time zones | browser IANA via `Intl`, validated with `GET /me/outlook/supportedTimeZones(TimeZoneStandard=microsoft.graph.timeZoneStandard'Iana')` (`User.Read`); reads stay UTC (no `Prefer` header) and convert client-side; writes send wall time + IANA name; all-day = date-only, end exclusive, never through `Date()` | Native |
+| Live updates | `GET /me/calendarView/delta?startDateTime&endDateTime` (documented for the default calendar only; no `$select`/`$filter`; params on the first call only; filter `@removed` against held ids) every 60 s while visible; other calendars re-fetch on a timer | Emulated |
+| Guest autocomplete | `/me/contacts` has no `$search`: page `GET /me/contacts?$top=1000` into a local index plus a recent-people cache; `GET /users?$search="displayName:x"&$count=true` with `ConsistencyLevel: eventual` only if `User.ReadBasic.All` is added | Native, degraded |
+
+**UI / IA.** Grid on FullCalendar v7: `npm i @fullcalendar/react@7.1.0 temporal-polyfill@1.0.5` (MIT, React 17-19, fully React-rendered; daygrid/timegrid/list/interaction are entrypoints of the same package; measured 80.7 kB min+gz; named IANA `timeZone` prop with no luxon/moment; dark mode via `[data-color-scheme=dark]` or the `colorScheme` prop; mount through `next/dynamic(…, {ssr:false})` so the static export never evaluates Temporal). Add `react-day-picker@10.0.1` for the mini month and `date-fns-tz@3.2.0` for IANA math. Rejected: Schedule-X (drag/resize/create are premium), react-big-calendar (moment+luxon+dayjs+globalize deps), Toast UI (last published 2022). Routes: `/calendar/?view=day|week|month|4day|agenda&date=YYYY-MM-DD&cal=<id,id>&e=<eventId>`, `/calendar/event/?id=<id>&scope=this|series` (also `?new=1&start=&end=&allDay=` from "More options"), `/calendar/settings/` (tz override, week start, default duration/reminder, working hours). Layout: left rail (Create pill, mini month, My calendars with colour toggles), toolbar (Today, arrows, view switch, search), grid with now-line and side-by-side overlaps. Quick-create popover anchors to the drag selection: title, time chips, all-day, guest chips, location, Teams switch (enabled only when `allowedOnlineMeetingProviders` contains `teamsForBusiness`), Save. Detail popover on click: time in the active tz, Join Teams, organizer, attendee statuses, Yes/Maybe/No, Open in Outlook, edit/delete with 5 s undo.
+
+| Key | Action | Key | Action |
+|---|---|---|---|
+| t | today | j / n, k / p | next / previous range (k/p not on Google's page, kept for mail parity) |
+| 1/d, 2/w, 3/m, 4/x, 5/a | day, week, month, 4-day, agenda | c | create |
+| e | open / edit | Backspace / Delete | delete |
+| z | undo last PATCH/DELETE | g | go to date |
+| / | search | r / s | refresh / settings |
+| Esc | close popover | ? | shortcut help |
+
+**What you will not get (plain language):** appointment schedules / booking pages (Bookings is a separate API and licence; link out), tasks in the grid, Outlook's own working hours and time zone (a settings field instead), Outlook-matching category colours (local map until `MailboxSettings.Read`), more than one reminder per event or email reminders, pop-ups when the tab is closed (Web Push stays a later option), "guests can invite others" toggles, room picker (`Place.Read.All` is admin-only), holiday/birthday calendars you did not already add in Outlook, starting a calendar share, one-click "this and following" (two writes under the hood), and a full-text event search (client-side over the loaded range).
+
+**Phased plan row (insert after M2, or run beside M3/M4):**
+
+| Phase | Scope | Acceptance | Effort |
+|---|---|---|---|
+| **M6** Calendar | FullCalendar views + dark attribute, left rail (mini month, calendar toggles), URL state, shortcuts, detail popover; quick-create + edit page, guest chips, Teams switch, RSVP, cancel/delete with undo, optimistic drag/resize, this/all prompt; delta polling, adjacent-range prefetch, tz override + `supportedTimeZones` check, getSchedule "Find a time" | `?view=week&date=…&e=<id>` deep-links on localhost and prod; 200+ occurrences of a daily series page without a flash on j/k; forced bad `timeZone` shows a toast and snaps back; Teams quick-create returns `joinUrl` and shows in Outlook web; Accept updates the organizer's tracking; an event made in Outlook web appears within 60 s via delta; IANA `Asia/Kolkata` accepted on create (else Windows-alias fallback logged in `readme/`); `ErrorOccurrenceCrossingBoundary` handled; no CSP violations; build log + consent row | 2–3 d |
+
+**Risks to add:**
+
+| Risk | Severity | Mitigation |
+|---|---|---|
+| Admin grant already issued without `Calendars.ReadWrite` (route (c) needs every scope in one string) | Significant | Ship the §2 string with `Calendars.ReadWrite` before the first grant |
+| All-day / week-boundary off-by-one (UTC midnight, offset-less range params) | UX | Offsets in `startDateTime`/`endDateTime`, all-day as date-only, acceptance check above |
+| Create/update "might not support all" IANA zones; no documented calendarView range ceiling | Minor | `supportedTimeZones` validation + Windows-alias fallback; `$top=1000` + `nextLink`, split ranges by week if 5xx |

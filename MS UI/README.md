@@ -10,7 +10,7 @@ A web app for your Microsoft 365 mailbox, OneDrive and calendar, built on the Mi
 
 Locally the same three pages run at `http://localhost:3000/MS/outlook`, `/MS/onedrive`, `/MS/calendar`.
 
-**Status (2026-09-20): plan only. No code yet.** The full feasibility study and phased build plan is in [PLAN.md](PLAN.md). The calendar section of the plan is being added.
+**Status (2026-09-20): plan only. No code yet.** The full feasibility study and phased build plan is in [PLAN.md](PLAN.md).
 
 ## What you have to do by hand
 
