@@ -55,7 +55,7 @@ under one Cloudflare Pages site at `lyzr.kailash-gm.com`. The pieces:
 | Comms Tracker (ABM) | `comms-tracker/` (separate Worker `abm-tracker`) | `/abm-tracker/` | Live (deployed 2026-09-08) |
 | Sales Copilot | `sales-copilot/` (separate Worker `content-maker`) | `/content_maker/` | Live |
 | GSI Communities | `GSI Communities/` | `/GSI_Communities` | Live |
-| MS UI (Outlook + OneDrive web UI) | `MS UI/` | `/ms-ui/` (planned) | Plan only, no code yet (2026-09-20) |
+| MS UI (Outlook + OneDrive + Calendar web UI) | `MS UI/` | `/MS/outlook`, `/MS/onedrive`, `/MS/calendar` (planned) | Plan only, no code yet (2026-09-20) |
 
 Two of these are the day-to-day active work: the **weekly GSI reports** (new HTML
 report per week) and the **pipeline dashboard** (live edits committed back to git).
@@ -453,6 +453,16 @@ Access if the data ever becomes confidential.
 
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
+
+### 2026-09-20, MS UI: calendar added to scope, URLs fixed to /MS/outlook, /MS/onedrive, /MS/calendar (MS UI)
+- User decisions: Outlook calendar gets a Google-Calendar-style page too; the three pages live under one
+  base path `/MS` (`/MS/outlook`, `/MS/onedrive`, `/MS/calendar`), so the app's basePath is `/MS` and the
+  Entra redirect URIs are `http://localhost:3000/MS/redirect/` and `https://lyzr.kailash-gm.com/MS/redirect/`
+  (case-sensitive, trailing slash). Earlier `/ms-workspace` naming in `MS UI/PLAN.md` replaced.
+- `Calendars.ReadWrite` added to the delegated scope list in `MS UI/README.md` and `PLAN.md`; it sits in the
+  same admin-consent bucket as `Mail.ReadWrite`, so the single admin grant covers mail and calendar.
+- README step 1 now also adds the production redirect URI up front (was a separate "later" step).
+- Calendar section of PLAN.md (section 8) pending a research pass; still plan only, no code.
 
 ### 2026-09-20, MS UI: new folder with the feasibility study and build plan for a Gmail-like Outlook UI and a Drive-like OneDrive UI (plan only)
 - New top-level folder `MS UI/`. Nothing built yet: `README.md` (what it is, the manual Azure steps the

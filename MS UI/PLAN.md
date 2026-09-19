@@ -38,8 +38,8 @@ Use a **fresh single-tenant registration** ("Lyzr Mail & Drive UI"). Don't widen
 |---|---|
 | Supported account types | Single tenant (Lyzr only) |
 | Platform | **Single-page application** only (PKCE + CORS on token endpoint). No Web platform, no secret, "Allow public client flows" = No, "Assignment required" = No unless the admin wants an allowlist |
-| Redirect URIs | `http://localhost:3000/ms-workspace/redirect/` and `https://lyzr.kailash-gm.com/ms-workspace/redirect/` (byte-exact, trailing slash) |
-| Delegated permissions | `openid profile offline_access User.Read Mail.ReadWrite Mail.Send Files.ReadWrite Contacts.Read` (+ `Files.ReadWrite.All` only if "Shared with me" must open items; `People.Read` optional for better autocomplete; `MailboxSettings.Read` only for timezone/category master list) |
+| Redirect URIs | `http://localhost:3000/MS/redirect/` and `https://lyzr.kailash-gm.com/MS/redirect/` (byte-exact, trailing slash) |
+| Delegated permissions | `openid profile offline_access User.Read Mail.ReadWrite Mail.Send Files.ReadWrite Calendars.ReadWrite Contacts.Read` (+ `Files.ReadWrite.All` only if "Shared with me" must open items; `People.Read` optional for better autocomplete; `MailboxSettings.Read` only for timezone/category master list) |
 | Admin consent routes | (a) API permissions > "Grant admin consent for Lyzr"; (b) `https://login.microsoftonline.com/4b1018eb-9480-4542-89d0-4e6233aba226/adminconsent?client_id=<id>&redirect_uri=<registered uri>`; (c) single-user: `POST /v1.0/oauth2PermissionGrants {consentType:"Principal", principalId:<your user id>, clientId:<app SP id>, resourceId:<Graph SP id>, scope:"<all scopes in one string>"}` ([doc](https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/grant-consent-single-user)) |
 
 Route (c) prerequisites: the app's service principal must exist (created by the first consent attempt or `POST /servicePrincipals`); the admin needs `DelegatedPermissionGrant.ReadWrite.All` (+ `Application.ReadWrite.All` in Graph Explorer); list **every** scope in one grant (tenant-wide grants can revoke earlier ones); then assign the app to you via `POST /servicePrincipals/{id}/appRoleAssignedTo` with the default role.
@@ -47,7 +47,7 @@ Route (c) prerequisites: the app's service principal must exist (created by the 
 ## 3. Architecture
 
 ```
-Browser (Next 16 static export SPA at lyzr.kailash-gm.com/ms-workspace)
+Browser (Next 16 static export SPA at lyzr.kailash-gm.com/MS: /outlook, /onedrive, /calendar)
   ├─ MSAL v5 (auth code + PKCE, localStorage cache, /redirect/ bridge page)
   ├─ graphFetch() ── Bearer ──▶ graph.microsoft.com/v1.0  (mail, drive, $batch, delta)
   ├─ <img>/<iframe>/<a> ──▶ @microsoft.graph.downloadUrl / preview getUrl (pre-authed)
@@ -68,25 +68,25 @@ Cloudflare Worker: static assets + _headers only. No `main`, no secrets, no Supa
 
 **Config values**
 
-- `.env.local`: `NEXT_PUBLIC_MS_CLIENT_ID`, `NEXT_PUBLIC_MS_TENANT_ID=4b1018eb-9480-4542-89d0-4e6233aba226`, `NEXT_PUBLIC_BASE_PATH=/ms-workspace`, `NEXT_PUBLIC_SITE_URL=https://lyzr.kailash-gm.com/ms-workspace`.
+- `.env.local`: `NEXT_PUBLIC_MS_CLIENT_ID`, `NEXT_PUBLIC_MS_TENANT_ID=4b1018eb-9480-4542-89d0-4e6233aba226`, `NEXT_PUBLIC_BASE_PATH=/MS`, `NEXT_PUBLIC_SITE_URL=https://lyzr.kailash-gm.com/MS`.
 - MSAL: `authority: https://login.microsoftonline.com/${TENANT_ID}`, `redirectUri: ${origin}${basePath}/redirect/`, `postLogoutRedirectUri: ${origin}${basePath}/`, `cache.cacheLocation: 'localStorage'`.
-- `next.config.ts`: `output:'export'`, `trailingSlash:true`, `images:{unoptimized:true}`, `basePath:'/ms-workspace'`; every `useSearchParams` sits under `<Suspense>`.
-- `wrangler.jsonc`: `name:'ms-workspace'`, `compatibility_date:'2026-08-01'`, `assets:{directory:'out'}`, no `main`, `routes:[{pattern:'lyzr.kailash-gm.com/ms-workspace*', zone_name:'kailash-gm.com'}]`.
+- `next.config.ts`: `output:'export'`, `trailingSlash:true`, `images:{unoptimized:true}`, `basePath:'/MS'`; every `useSearchParams` sits under `<Suspense>`.
+- `wrangler.jsonc`: `name:'ms-ui'`, `compatibility_date:'2026-08-01'`, `assets:{directory:'out'}`, no `main`, `routes:[{pattern:'lyzr.kailash-gm.com/MS*', zone_name:'kailash-gm.com'}]`.
 - `graphFetch`: global `Prefer: IdType="ImmutableId"` **except on `$search` requests** (Microsoft-reproduced bug returns `ErrorInvalidIdMalformed`); normalise search-result ids with `POST /me/translateExchangeIds` (restId → restImmutableEntryId, ≤1,000) before caching.
 - `public/_headers`:
   ```
-  /ms-workspace/*
+  /MS/*
     X-Content-Type-Options: nosniff
     Referrer-Policy: strict-origin-when-cross-origin
     Content-Security-Policy: default-src 'self'; connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com https://*.sharepoint.com https://outlook.office.com; img-src 'self' data: blob: https:; frame-src 'self' blob: https://*.sharepoint.com https://*.svc.ms; media-src https: blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'
     X-Frame-Options: DENY
-  /ms-workspace/redirect/
+  /MS/redirect/
     ! X-Frame-Options
     Content-Security-Policy: default-src 'self'; script-src 'self'; frame-ancestors 'self'
   ```
   No Cross-Origin-Opener-Policy anywhere. The bridge page must be iframe-able by its own origin for `ssoSilent`. Tune hosts after observing real traffic (M5).
 
-Routes (no dynamic segments): `/mail/?f=inbox&m=<id>&c=<conversationId>&q=`, `/mail/compose/`, `/drive/?folder=<id>&view=grid|list&item=<id>`, `/drive/starred/`, `/drive/recent/`, `/drive/shared/`, `/drive/search/?q=`, `/redirect/`, `/login/`.
+Routes (no dynamic segments): `/outlook/?f=inbox&m=<id>&c=<conversationId>&q=`, `/outlook/compose/`, `/onedrive/?folder=<id>&view=grid|list&item=<id>`, `/onedrive/starred/`, `/onedrive/recent/`, `/onedrive/shared/`, `/onedrive/search/?q=`, `/calendar/` (section 8), `/redirect/`, `/login/`.
 
 ## 4. UI / IA
 
@@ -141,7 +141,7 @@ Routes (no dynamic segments): `/mail/?f=inbox&m=<id>&c=<conversationId>&q=`, `/m
 
 | Phase | Scope | Acceptance | Effort |
 |---|---|---|---|
-| **M0** Consent + auth | Probe (§1); new registration; scaffold `ms-workspace/` + `readme/`; MSAL + bridge; `GET /me` | Signed in on localhost and prod; `ssoSilent` renews in Chrome and falls back to redirect in Safari; consent state per scope recorded in `readme/`; KNOWLEDGE_BASE build log | 0.5 d + admin wait |
+| **M0** Consent + auth | Probe (§1); new registration; scaffold the app in `MS UI/`; MSAL + bridge; `GET /me` | Signed in on localhost and prod; `ssoSilent` renews in Chrome and falls back to redirect in Safari; consent state per scope recorded in `readme/`; KNOWLEDGE_BASE build log | 0.5 d + admin wait |
 | **M1** Read-only mail | Rail, virtualised list, thread pane in sandboxed auto-sized iframe, attachments, search | 10+ message thread renders; images blocked; `from:` search 200 without `ErrorInvalidIdMalformed`; build log | 1.5–2 d |
 | **M2** Mail actions + compose | Read/star/archive/delete/move, `$batch` multi-select, shortcuts, draft-first compose with undo, reply/forward, both attachment tiers, contact chips | Optimistic UI rolls back on forced error; 20 MB upload-session PUT succeeds from browser; sent reply threads in Outlook web; build log | 1.5–2 d |
 | **M3** Drive browse | Tree/breadcrumb, grid/list, thumbnails, preview, download, search, Starred | `?folder=<id>` deep link; Office preview inline; 100 MB download; `$orderby` date test recorded; build log | 1 d |
@@ -171,5 +171,5 @@ Routes (no dynamic segments): `/mail/?f=inbox&m=<id>&c=<conversationId>&q=`, `/m
 4. Does the tenant enforce Conditional Access on Office 365 / All resources?
 5. Tenant max message size (compose ceiling) and whether anonymous sharing links are allowed.
 6. Is "Shared with me" a must-have (forces `Files.Read.All`)? SharePoint libraries (forces `Sites.Read.All`)?
-7. Path mount `lyzr.kailash-gm.com/ms-workspace` and folder `ms-workspace/` acceptable?
+7. Resolved 2026-09-20: path mount is `lyzr.kailash-gm.com/MS` with pages `/MS/outlook`, `/MS/onedrive`, `/MS/calendar`; folder is `MS UI/`.
 8. Single-user (allowlist) or other Lyzr staff too?
