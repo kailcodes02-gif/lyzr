@@ -19,7 +19,7 @@ Everything on your list is buildable as a pure browser app (MSAL.js + Graph, no 
 1. Authentication > Add a platform > Single-page application > `http://localhost:3000/probe` (distinct path avoids a duplicate-URI rejection).
 2. Signed in as subs@lyzr.ai, open:
    `https://login.microsoftonline.com/4b1018eb-9480-4542-89d0-4e6233aba226/oauth2/v2.0/authorize?client_id=<id>&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fprobe&response_mode=query&scope=openid%20offline_access%20User.Read&code_challenge=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&code_challenge_method=plain&state=t1`
-3. Repeat, swapping the scope tail for `Files.ReadWrite`, `Mail.Send`, `Contacts.Read`, `Mail.ReadWrite`, `Calendars.ReadWrite`, `Files.ReadWrite.All`. Never include `Sites.Read.All`.
+3. Repeat, swapping the scope tail for `Files.ReadWrite`, `Mail.Send`, `Contacts.Read`, `Mail.ReadWrite`, `Calendars.ReadWrite`, `MailboxSettings.ReadWrite`, `Files.ReadWrite.All`. Never include `Sites.Read.All`. Ready-made links: `CONSENT-TEST.md`.
 
 | Outcome | Meaning | Next step |
 |---|---|---|
@@ -28,7 +28,7 @@ Everything on your list is buildable as a pure browser app (MSAL.js + Graph, no 
 | "Need admin approval", no button | Blocked, workflow off | Send an admin the §2 consent URL |
 | AADSTS53xxx device/compliance error | Conditional Access blocks unmanaged browsers | Hard blocker; talk to IT |
 
-Expected pattern on the managed default: `User.Read`/`Files.ReadWrite`/`Mail.Send`/`Contacts.Read` pass, `Mail.ReadWrite` and `Calendars.ReadWrite` fail → one admin grant unblocks everything. If even `User.Read` fails, user consent is disabled outright **or** the app has "Assignment required", or step-up/Conditional Access fired - check the sign-in log's Conditional Access tab before concluding.
+Expected pattern on the managed default: `User.Read`/`Files.ReadWrite`/`Mail.Send`/`Contacts.Read` pass, `Mail.ReadWrite`, `Calendars.ReadWrite` and `MailboxSettings.ReadWrite` fail → one admin grant unblocks everything. If even `User.Read` fails, user consent is disabled outright **or** the app has "Assignment required", or step-up/Conditional Access fired - check the sign-in log's Conditional Access tab before concluding.
 
 ## 2. App registration
 
@@ -36,10 +36,11 @@ Use a **fresh single-tenant registration** ("Lyzr Mail & Drive UI"). Don't widen
 
 | Setting | Value |
 |---|---|
+| Created 2026-09-20 | "Lyzr MS UI", client ID `cd569c2f-9121-4a99-8ba0-691c6df81cbd`, tenant `4b1018eb-9480-4542-89d0-4e6233aba226`, signs in as kailash.gm@lyzr.com |
 | Supported account types | Single tenant (Lyzr only) |
 | Platform | **Single-page application** only (PKCE + CORS on token endpoint). No Web platform, no secret, "Allow public client flows" = No, "Assignment required" = No unless the admin wants an allowlist |
 | Redirect URIs | `http://localhost:3000/MS/redirect/` and `https://lyzr.kailash-gm.com/MS/redirect/` (byte-exact, trailing slash) |
-| Delegated permissions | `openid profile offline_access User.Read Mail.ReadWrite Mail.Send Files.ReadWrite Calendars.ReadWrite Contacts.Read` (+ `Files.ReadWrite.All` only if "Shared with me" must open items; `People.Read` optional for better autocomplete; `MailboxSettings.Read` only for timezone/category master list) |
+| Delegated permissions | `openid profile offline_access User.Read Mail.ReadWrite Mail.Send Files.ReadWrite Calendars.ReadWrite Contacts.Read MailboxSettings.ReadWrite` (+ `Files.ReadWrite.All` only if "Shared with me" must open items; `People.Read` optional for better autocomplete; `MailboxSettings.Read` only for timezone/category master list) |
 | Admin consent routes | (a) API permissions > "Grant admin consent for Lyzr"; (b) `https://login.microsoftonline.com/4b1018eb-9480-4542-89d0-4e6233aba226/adminconsent?client_id=<id>&redirect_uri=<registered uri>`; (c) single-user: `POST /v1.0/oauth2PermissionGrants {consentType:"Principal", principalId:<your user id>, clientId:<app SP id>, resourceId:<Graph SP id>, scope:"<all scopes in one string>"}` ([doc](https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/grant-consent-single-user)) |
 
 Route (c) prerequisites: the app's service principal must exist (created by the first consent attempt or `POST /servicePrincipals`); the admin needs `DelegatedPermissionGrant.ReadWrite.All` (+ `Application.ReadWrite.All` in Graph Explorer); list **every** scope in one grant (tenant-wide grants can revoke earlier ones); then assign the app to you via `POST /servicePrincipals/{id}/appRoleAssignedTo` with the default role.
@@ -219,3 +220,49 @@ Routes (no dynamic segments): `/outlook/?f=inbox&m=<id>&c=<conversationId>&q=`, 
 | Admin grant already issued without `Calendars.ReadWrite` (route (c) needs every scope in one string) | Significant | Ship the §2 string with `Calendars.ReadWrite` before the first grant |
 | All-day / week-boundary off-by-one (UTC midnight, offset-less range params) | UX | Offsets in `startDateTime`/`endDateTime`, all-day as date-only, acceptance check above |
 | Create/update "might not support all" IANA zones; no documented calendarView range ceiling | Minor | `supportedTimeZones` validation + Windows-alias fallback; `$top=1000` + `nextLink`, split ranges by week if 5xx |
+
+## 9. Requirements check against the scope list (2026-09-20)
+
+Scopes entered in the portal: `User.Read`, `Mail.ReadWrite`, `Mail.Send`, `Files.ReadWrite`, `Calendars.ReadWrite`, `Contacts.Read`, `offline_access`. **Verdict: they cover everything asked except two mail items, creating/deleting categories and automatic sorting rules, which need `MailboxSettings.ReadWrite`.** That scope is on the same managed-policy exclusion list as `Mail.ReadWrite`, so it rides the same admin grant. Added to section 2 and to the README. Facts below were checked against the v1.0 reference pages on 2026-09-20.
+
+**Calendar**
+
+| Ask | Graph mechanism | Scope | Feasibility |
+|---|---|---|---|
+| Schedule events | `POST /me/events` (or `/me/calendars/{id}/events`) | Calendars.ReadWrite | Native |
+| Invite folks | `attendees[]` on the event; Outlook sends the invitations | Calendars.ReadWrite | Native |
+| Accept / reject | `POST /me/events/{id}/accept`, `tentativelyAccept`, `decline` | Calendars.ReadWrite | Native |
+| View calendar | `GET /me/calendarView?startDateTime&endDateTime` | Calendars.ReadWrite | Native |
+| Recurring events | `recurrence.pattern` + `recurrence.range` on create; edit one occurrence or the series master | Calendars.ReadWrite | Native |
+
+**Email**
+
+| Ask | Graph mechanism | Scope | Feasibility |
+|---|---|---|---|
+| Read | `GET /me/mailFolders/{id}/messages`, `GET /me/messages/{id}` | Mail.ReadWrite | Native |
+| Write, cc, bcc, forward | draft first: `POST /me/messages` with `toRecipients`, `ccRecipients`, `bccRecipients`; `createReply` / `createForward`; then `POST …/send` | Mail.ReadWrite + Mail.Send | Native |
+| Star | `PATCH {flag:{flagStatus:'flagged'}}` | Mail.ReadWrite | Native |
+| Label a message | `PATCH {categories:[…]}` (a message can carry many labels) | Mail.ReadWrite | Native |
+| Create / delete labels (the category list) | `POST` / `DELETE /me/outlook/masterCategories` ([doc](https://learn.microsoft.com/en-us/graph/api/outlookuser-post-mastercategories?view=graph-rest-1.0)) | **MailboxSettings.ReadWrite** | Native, scope added |
+| Different inboxes (folders) | `POST /me/mailFolders` and `…/childFolders`, `DELETE`, rename via `PATCH` | Mail.ReadWrite | Native |
+| Mail segregation, automatic | inbox rules: `POST /me/mailFolders/inbox/messageRules` with conditions (sender, subject contains, importance …) and actions (`moveToFolder`, `assignCategories`, `markAsRead`, `forwardTo`, `delete`) ([doc](https://learn.microsoft.com/en-us/graph/api/mailfolder-post-messagerules?view=graph-rest-1.0)) | **MailboxSettings.ReadWrite** | Native, scope added |
+| Mail segregation, manual | drag or multi-select then `POST …/move` in a `$batch` | Mail.ReadWrite | Native |
+| Delete | `POST …/move {destinationId:'deleteditems'}` (Trash) or `DELETE` (permanent) | Mail.ReadWrite | Native |
+| Mark spam | `POST …/move {destinationId:'junkemail'}`; optional "report + block sender" only via beta `reportMessage` (v1.0 has none; `markAsJunk` retired 30 Dec 2025) | Mail.ReadWrite | Native (move); beta (report) |
+| Archive, read/unread, Primary tab, search, attachments | section 4 | Mail.ReadWrite | Native |
+
+**Drive**
+
+| Ask | Graph mechanism | Scope | Feasibility |
+|---|---|---|---|
+| See all folders, any depth | `…/children` per folder, or one `root/delta` walk | Files.ReadWrite | Native |
+| Create folders from the UI, landing in real OneDrive | `POST /me/drive/items/{parent}/children {name, folder:{}}` | Files.ReadWrite | Native |
+| Nested folders | same call with any parent, any depth | Files.ReadWrite | Native |
+| Move files across folders | `PATCH {parentReference:{id}}` | Files.ReadWrite | Native |
+| Rename, delete, copy, upload, download, preview | section 4 | Files.ReadWrite | Native |
+| Share files | `POST …/createLink` (view or edit; scope `organization` or `users`; `anonymous` only if the tenant allows) and `POST …/invite` (named people, read or write, optional email) ([createLink](https://learn.microsoft.com/en-us/graph/api/driveitem-createlink?view=graph-rest-1.0), [invite](https://learn.microsoft.com/en-us/graph/api/driveitem-invite?view=graph-rest-1.0)) | Files.ReadWrite | Native |
+| "Repos" by type: Sheets, Docs, Slides, PDFs, Images, Videos | Virtual views, not real folders. The app walks the drive once with `GET /me/drive/root/delta?$select=id,name,size,file,folder,parentReference,createdBy,lastModifiedBy,lastModifiedDateTime,webUrl`, keeps the list in the browser (IndexedDB), then refreshes with the `deltaLink`. Each "repo" is a filter on extension / `file.mimeType`. Files stay where they are in OneDrive and also appear in their real folder, like Google Drive's type filter | Files.ReadWrite | Emulated, client-side |
+| Search by name | the local index (instant) plus `GET /me/drive/root/search(q='…')` | Files.ReadWrite | Native + emulated |
+| Filter by file type and by owner | local index: type from extension / mimeType, owner from `createdBy.user.displayName` and `lastModifiedBy.user` (Graph has no `$filter` on children) | Files.ReadWrite | Emulated |
+
+Note on the index: a OneDrive with tens of thousands of items takes a minute or two to walk on first load, then only changes are fetched. Excel, Word and PowerPoint files stay Office files; "Sheets / Docs / Slides" are just the names of the type views.

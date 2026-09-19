@@ -454,6 +454,20 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-09-20, MS UI: app registration created, consent-test links, requirements check, one more scope (MS UI)
+- User created the Entra app registration "Lyzr MS UI" (client ID `cd569c2f-9121-4a99-8ba0-691c6df81cbd`, tenant
+  `4b1018eb-…`, single tenant, one SPA redirect URI). Recorded in `MS UI/README.md` and `PLAN.md` section 2. The
+  Microsoft account is kailash.gm@lyzr.com (portal sign-in), not the Google identity subs@lyzr.ai.
+- New `MS UI/CONSENT-TEST.md`: one authorize link per permission (PKCE, `prompt=consent`) plus a table of what each
+  screen means, so the user can find out which scopes the tenant lets them self-approve.
+- `PLAN.md` section 9: the user's full feature list (calendar, email, drive) mapped to Graph endpoints, scope and
+  feasibility, checked against v1.0 reference pages. Result: everything is covered by the seven scopes entered except
+  creating/deleting categories (`/me/outlook/masterCategories`) and automatic inbox rules (`messageRules`), both
+  `MailboxSettings.ReadWrite`. That scope is added to the recommended list (same admin bucket as `Mail.ReadWrite`).
+  "Mark spam" = move to Junk Email in v1.0; `markAsJunk` was retired 2025-12-30 and `reportMessage` is beta only.
+  Drive "repos by type" and owner filters are client-side views over a `root/delta` index, not real folders.
+- Still plan only, no code.
+
 ### 2026-09-20, MS UI: calendar section (8) added to PLAN.md after a verified research pass (MS UI)
 - `MS UI/PLAN.md` section 8 "Calendar (Google Calendar look)": verdict (GO, same admin gate as mail via
   `Calendars.ReadWrite`), Google-Calendar-feature to Graph-mechanism table (calendarView, events CRUD,

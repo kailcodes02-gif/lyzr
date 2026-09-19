@@ -10,7 +10,17 @@ A web app for your Microsoft 365 mailbox, OneDrive and calendar, built on the Mi
 
 Locally the same three pages run at `http://localhost:3000/MS/outlook`, `/MS/onedrive`, `/MS/calendar`.
 
-**Status (2026-09-20): plan only. No code yet.** The full feasibility study and phased build plan is in [PLAN.md](PLAN.md).
+**Status (2026-09-20): app registration created, plan only, no code yet.** The full feasibility study and phased build plan is in [PLAN.md](PLAN.md).
+
+| App registration (not secret) | |
+|---|---|
+| Name | Lyzr MS UI |
+| Application (client) ID | `cd569c2f-9121-4a99-8ba0-691c6df81cbd` |
+| Directory (tenant) ID | `4b1018eb-9480-4542-89d0-4e6233aba226` |
+| Account types | Lyzr only (single tenant) |
+| Microsoft account that signs in | kailash.gm@lyzr.com |
+
+Still to do by hand: add the `MailboxSettings.ReadWrite` permission (step 1.8), confirm the production redirect URI (step 1.7), run the consent test (step 2).
 
 ## What you have to do by hand
 
@@ -38,6 +48,7 @@ This is the "identity" of the app inside Lyzr's Microsoft 365. Without it, no lo
    - `Files.ReadWrite`
    - `Calendars.ReadWrite`
    - `Contacts.Read`
+   - `MailboxSettings.ReadWrite` (added 2026-09-20: creating and deleting categories, inbox rules that sort mail automatically, time zone, automatic replies)
    - `offline_access`
 
 Do not reuse the "Graph Python quick start" app or the "Lyzr Comms Tracker" app. The reasons are in PLAN.md section 2.
@@ -46,15 +57,15 @@ Do not reuse the "Graph Python quick start" app or the "Lyzr Comms Tracker" app.
 
 Lyzr's Microsoft 365 is set so ordinary staff cannot approve some permissions themselves. This test shows which ones.
 
-1. After step 1, Claude gives you a link. Open it in a browser where you are signed in as subs@lyzr.ai.
+1. The links are in [CONSENT-TEST.md](CONSENT-TEST.md), one per permission. Open them in a browser where you are signed in as kailash.gm@lyzr.com.
 2. If you see **"Permissions requested"** with an **Accept** button: click Accept. Done.
-3. If you see **"Need admin approval"**: ask a Lyzr Microsoft 365 admin (Global Administrator or Cloud Application Administrator) to open the app registration from step 1, go to **API permissions**, and click **Grant admin consent for Lyzr**. One click, once, and it covers mail and calendar together.
+3. If you see **"Need admin approval"**: ask a Lyzr Microsoft 365 admin (Global Administrator or Cloud Application Administrator) to open the app registration from step 1, go to **API permissions**, and click **Grant admin consent for Lyzr**. One click, once, and it covers mail, calendar and mailbox settings together.
 
-Expected outcome: OneDrive permissions pass on their own; reading mail and the calendar need the admin click. The app can be built and tested on OneDrive while waiting.
+Expected outcome: OneDrive, sending mail and contacts pass on their own; reading mail, the calendar and mailbox settings need the admin click. The app can be built and tested on OneDrive while waiting.
 
 ### 3. Sign in yourself whenever the app runs
 
-Local or deployed, the app shows a Microsoft sign-in button and you sign in. Claude never sees your password, mailbox or calendar. The login token stays in your browser. Expect one sign-in bounce per day (Microsoft's limit for browser apps).
+Local or deployed, the app shows a Microsoft sign-in button and you sign in with kailash.gm@lyzr.com. Claude never sees your password, mailbox or calendar. The login token stays in your browser. Expect one sign-in bounce per day (Microsoft's limit for browser apps).
 
 That is all. Step 4 (the production address) is already covered in step 1.7.
 
