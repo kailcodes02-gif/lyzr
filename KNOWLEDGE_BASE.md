@@ -13,7 +13,7 @@
 >
 > | | |
 > |---|---|
-> | **Last updated** | 2026-09-09 |
+> | **Last updated** | 2026-09-20 |
 > | **Maintained by** | subs@lyzr.ai (with Claude Code) |
 > | **Git repo** | `github.com/kailcodes02-gif/lyzr` (branch `main`) |
 > | **Live domain** | `https://lyzr.kailash-gm.com` |
@@ -55,6 +55,7 @@ under one Cloudflare Pages site at `lyzr.kailash-gm.com`. The pieces:
 | Comms Tracker (ABM) | `comms-tracker/` (separate Worker `abm-tracker`) | `/abm-tracker/` | Live (deployed 2026-09-08) |
 | Sales Copilot | `sales-copilot/` (separate Worker `content-maker`) | `/content_maker/` | Live |
 | GSI Communities | `GSI Communities/` | `/GSI_Communities` | Live |
+| MS UI (Outlook + OneDrive web UI) | `MS UI/` | `/ms-ui/` (planned) | Plan only, no code yet (2026-09-20) |
 
 Two of these are the day-to-day active work: the **weekly GSI reports** (new HTML
 report per week) and the **pipeline dashboard** (live edits committed back to git).
@@ -166,6 +167,7 @@ Antigravity/                      (git repo root, deploys to Cloudflare Pages)
 ├── GSI_Tracker/                  Built static export of the tracker (served at /GSI_Tracker/)
 ├── comms-tracker/                Comms Tracker Worker app (untracked; see section 2)
 ├── sales-copilot/                Sales Copilot Worker app (untracked; see section 2)
+├── MS UI/                        Outlook/OneDrive UI on Microsoft Graph (plan only so far; see MS UI/README.md)
 └── KNOWLEDGE_BASE.md             This file
 ```
 
@@ -451,6 +453,20 @@ Access if the data ever becomes confidential.
 
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
+
+### 2026-09-20, MS UI: new folder with the feasibility study and build plan for a Gmail-like Outlook UI and a Drive-like OneDrive UI (plan only)
+- New top-level folder `MS UI/`. Nothing built yet: `README.md` (what it is, the manual Azure steps the
+  user must do) and `PLAN.md` (verdict, app registration settings, architecture, feature maps, phases
+  M0 to M5, risks, open questions).
+- Verdict: GO with one condition. All needed Graph scopes are delegated and "admin consent required: No"
+  by definition, so the earlier Comms Tracker block was tenant policy, not the API. Under Microsoft's
+  managed default consent policy the user can self-consent to `User.Read`, `Mail.Send`, `Files.ReadWrite`,
+  `Contacts.Read`; `Mail.ReadWrite` (and every `*.All` / `Sites.*` scope) needs one admin grant.
+- Decisions: fresh single-tenant SPA app registration ("Lyzr MS UI"), not the "Graph Python quick start"
+  app (cf1bccfe...) and not the Comms Tracker app (eb37cade..., holds a client secret + stored refresh
+  tokens). Pure static SPA (Next 16 export + MSAL v5 + thin Graph fetch), no backend, hosted like
+  `abm-tracker` at `/ms-ui`. Microsoft Graph Toolkit is not an option (retired 2026-08-28).
+- Waiting on the user: create the app registration and send the client ID, then run the consent test.
 
 ### 2026-09-08, Week 16 GSI report (31 Aug – 8 Sep) published to `/reports`
 - New `reports/gsi-report-aug31-sep8/index.html` (pipeline widget, ads, Instantly, events, programs-by-status).
