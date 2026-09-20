@@ -12,6 +12,14 @@ import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "lucide-react"
 
+// Merge caller overrides INTO the base classes (per key) instead of replacing
+// them, so a caller can restyle a cell without losing its fixed width.
+function mergeClassNames(base: Record<string, string>, overrides?: Partial<Record<string, string>>) {
+  const out: Record<string, string> = { ...base }
+  for (const [k, v] of Object.entries(overrides ?? {})) if (v) out[k] = cn(out[k], v)
+  return out
+}
+
 function Calendar({
   className,
   classNames,
@@ -43,7 +51,7 @@ function Calendar({
           date.toLocaleString(locale?.code, { month: "short" }),
         ...formatters,
       }}
-      classNames={{
+      classNames={mergeClassNames({
         root: cn("w-fit", defaultClassNames.root),
         months: cn(
           "relative flex flex-col gap-4 md:flex-row",
@@ -87,10 +95,15 @@ function Calendar({
             : "flex items-center gap-1 rounded-(--cell-radius) text-sm [&>svg]:size-3.5 [&>svg]:text-muted-foreground",
           defaultClassNames.caption_label
         ),
-        month_grid: cn("w-full border-collapse", defaultClassNames.month_grid),
-        weekdays: cn("flex", defaultClassNames.weekdays),
+        // The table is laid out as flex rows: thead/tbody become blocks so the
+        // weekday header row and each week row share the same 7 fixed-width cells.
+        month_grid: cn(
+          "block w-full border-collapse [&_tbody]:block [&_thead]:block",
+          defaultClassNames.month_grid
+        ),
+        weekdays: cn("flex w-full", defaultClassNames.weekdays),
         weekday: cn(
-          "flex-1 rounded-(--cell-radius) text-[0.8rem] font-normal text-muted-foreground select-none",
+          "w-(--cell-size) shrink-0 rounded-(--cell-radius) text-center text-[0.8rem] font-normal text-muted-foreground select-none",
           defaultClassNames.weekday
         ),
         week: cn("mt-2 flex w-full", defaultClassNames.week),
@@ -103,7 +116,7 @@ function Calendar({
           defaultClassNames.week_number
         ),
         day: cn(
-          "group/day relative aspect-square h-full w-full rounded-(--cell-radius) p-0 text-center select-none [&:last-child[data-selected=true]_button]:rounded-r-(--cell-radius)",
+          "group/day relative h-(--cell-size) w-(--cell-size) shrink-0 rounded-(--cell-radius) p-0 text-center select-none [&:last-child[data-selected=true]_button]:rounded-r-(--cell-radius)",
           props.showWeekNumber
             ? "[&:nth-child(2)[data-selected=true]_button]:rounded-l-(--cell-radius)"
             : "[&:first-child[data-selected=true]_button]:rounded-l-(--cell-radius)",
@@ -131,8 +144,7 @@ function Calendar({
           defaultClassNames.disabled
         ),
         hidden: cn("invisible", defaultClassNames.hidden),
-        ...classNames,
-      }}
+      }, classNames as Partial<Record<string, string>> | undefined)}
       components={{
         Root: ({ className, rootRef, ...props }) => {
           return (
@@ -209,7 +221,7 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        "relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 border-0 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-[3px] group-data-[focused=true]/day:ring-ring/50 data-[range-end=true]:rounded-(--cell-radius) data-[range-end=true]:rounded-r-(--cell-radius) data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-muted data-[range-middle=true]:text-foreground data-[range-start=true]:rounded-(--cell-radius) data-[range-start=true]:rounded-l-(--cell-radius) data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground dark:hover:text-foreground [&>span]:text-xs [&>span]:opacity-70",
+        "relative isolate z-10 flex size-full flex-col gap-1 border-0 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-[3px] group-data-[focused=true]/day:ring-ring/50 data-[range-end=true]:rounded-(--cell-radius) data-[range-end=true]:rounded-r-(--cell-radius) data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-muted data-[range-middle=true]:text-foreground data-[range-start=true]:rounded-(--cell-radius) data-[range-start=true]:rounded-l-(--cell-radius) data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground dark:hover:text-foreground [&>span]:text-xs [&>span]:opacity-70",
         defaultClassNames.day,
         className
       )}

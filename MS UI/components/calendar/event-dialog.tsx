@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { fromGraphRecurrence, type RecurrenceForm } from "@/lib/calendar/recurrence";
 import type { EventDraft, GraphCalendar } from "@/lib/calendar/types";
 import { EventForm } from "./event-form";
 
@@ -18,6 +16,7 @@ export function EventDialog({
   durationMinutes,
   saving,
   scope,
+  colorOf,
 }: {
   open: boolean;
   draft: EventDraft | null;
@@ -29,6 +28,7 @@ export function EventDialog({
   durationMinutes: number;
   saving: boolean;
   scope?: "this" | "all";
+  colorOf?: (calendarId: string) => string;
 }) {
   return (
     <Dialog open={open && !!draft} onOpenChange={(o) => !o && onClose()}>
@@ -40,7 +40,7 @@ export function EventDialog({
             {scope === "this" && <span className="ml-2 text-xs font-normal text-muted-foreground">(this event only)</span>}
           </DialogTitle>
         </DialogHeader>
-        {draft && <Body key={draft.id ?? "new"} draft={draft} onChange={onChange} onClose={onClose} onSave={onSave} calendars={calendars} tz={tz} durationMinutes={durationMinutes} saving={saving} />}
+        {draft && <Body key={draft.id ?? "new"} draft={draft} onChange={onChange} onClose={onClose} onSave={onSave} calendars={calendars} tz={tz} durationMinutes={durationMinutes} saving={saving} colorOf={colorOf} />}
       </DialogContent>
     </Dialog>
   );
@@ -55,6 +55,7 @@ function Body({
   tz,
   durationMinutes,
   saving,
+  colorOf,
 }: {
   draft: EventDraft;
   onChange: (d: EventDraft) => void;
@@ -64,8 +65,8 @@ function Body({
   tz: string;
   durationMinutes: number;
   saving: boolean;
+  colorOf?: (calendarId: string) => string;
 }) {
-  const [rec, setRec] = useState<RecurrenceForm>(() => fromGraphRecurrence(draft.recurrence, draft.start.slice(0, 10)));
   return (
     <form
       className="flex flex-col gap-4"
@@ -74,7 +75,7 @@ function Body({
         onSave();
       }}
     >
-      <EventForm draft={draft} onChange={onChange} calendars={calendars} full tz={tz} durationMinutes={durationMinutes} recurrenceForm={rec} onRecurrenceForm={setRec} />
+      <EventForm draft={draft} onChange={onChange} calendars={calendars} full tz={tz} durationMinutes={durationMinutes} colorOf={colorOf} />
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={onClose}>
           Cancel

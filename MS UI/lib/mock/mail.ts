@@ -1,5 +1,36 @@
 import type { MockHandler } from "./index";
-import type { Attachment, MailFolder, Message, MessageRule, OutlookCategory, Recipient } from "@/lib/mail/types";
+import { GraphError } from "@/lib/graph";
+import type { Attachment, MailFolder, Message, MessageRule, MessageRulePredicates, OutlookCategory, Recipient } from "@/lib/mail/types";
+
+// Graph rules the real service enforces and the demo must too, so a query
+// that would 400 in production fails here as well.
+const BASE_ATTACHMENT_PROPS = new Set(["id", "name", "contenttype", "size", "isinline", "lastmodifieddatetime"]);
+
+// $orderby properties must lead $filter, in order (InefficientFilter).
+export function assertSortableQuery(url: URL) {
+  const filter = url.searchParams.get("$filter");
+  const orderby = url.searchParams.get("$orderby");
+  if (!filter || !orderby) return;
+  const props = orderby.split(",").map((s) => s.trim().split(/\s+/)[0]);
+  const terms = filter.split(/\s+and\s+/i).map((s) => s.trim().split(/\s+/)[0]);
+  const ok = props.every((p, i) => terms[i]?.toLowerCase() === p.toLowerCase());
+  if (!ok) throw new GraphError(400, "InefficientFilter", "The restriction or sort order is too complex for this operation.", url.pathname + url.search);
+}
+
+// Metadata only: contentBytes is never listed (Graph would, and it is huge).
+const withoutBytes = (a: Attachment): Attachment => {
+  const copy = { ...a };
+  delete copy.contentBytes;
+  return copy;
+};
+
+// $select on the attachments collection is evaluated against the base type.
+function assertBaseAttachmentSelect(url: URL) {
+  const select = url.searchParams.get("$select");
+  if (!select) return;
+  const bad = select.split(",").map((s) => s.trim()).find((s) => !BASE_ATTACHMENT_PROPS.has(s.toLowerCase()));
+  if (bad) throw new GraphError(400, "RequestBroker--ParseUri", `Could not find a property named '${bad}' on type 'Microsoft.OutlookServices.Attachment'.`, url.pathname + url.search);
+}
 
 // In-memory Outlook mailbox for a Lyzr marketer. Mutations persist for the
 // life of the page so moves, flags, drafts and new folders show on re-fetch.
@@ -16,6 +47,17 @@ const P = {
   hubspot: r("HubSpot", "noreply@hubspot.com"),
   linkedin: r("LinkedIn Ads", "ads-noreply@linkedin.com"),
   events: r("Gartner Events", "events@gartner.com"),
+  hubspotDigest: r("HubSpot Marketing", "marketing@hubspot.com"),
+  pulse: r("LinkedIn Pulse", "pulse@linkedin.com"),
+  eventbrite: r("Eventbrite", "noreply@eventbrite.com"),
+  gartnerNews: r("Gartner Newsletter", "newsletter@gartner.com"),
+  linkedinNotify: r("LinkedIn", "notifications-noreply@linkedin.com"),
+  linkedinInvites: r("LinkedIn", "invitations@linkedin.com"),
+  facebook: r("Facebook", "notification@facebookmail.com"),
+  // Preset label senders (Leadership, GSI, Marketing, Meeting scripts, Calendar)
+  pooja: r("Pooja Nair", "pooja@lyzr.ai"),
+  ankita: r("Ankita Sharma", "ankita@lyzr.ai"),
+  fireflies: r("Fireflies.ai", "fred@fireflies.ai"),
   me: r(ME.name, ME.address),
 };
 
@@ -52,7 +94,7 @@ const hoursAgo = (h: number) => new Date(NOW - h * 3600_000).toISOString();
 const html = (paras: string[], sig = "Kailash") =>
   `<div style="font-family:Arial,sans-serif;font-size:14px;color:#202124">${paras.map((p) => `<p>${p}</p>`).join("")}<p>Best,<br>${sig}</p></div>`;
 
-type Seed = { subject: string; folder: string; messages: { from: Recipient; to?: Recipient[]; cc?: Recipient[]; hoursAgo: number; paras: string[]; read?: boolean; flagged?: boolean; categories?: string[]; attachments?: { name: string; contentType: string; size: number; inline?: boolean; cid?: string }[]; other?: boolean; importance?: "high" | "low" }[] };
+type Seed = { subject: string; folder: string; messages: { from: Recipient; to?: Recipient[]; cc?: Recipient[]; hoursAgo: number; paras: string[]; read?: boolean; flagged?: boolean; categories?: string[]; attachments?: { name: string; contentType: string; size: number; inline?: boolean; cid?: string }[]; other?: boolean; importance?: "high" | "low"; headers?: { name: string; value: string }[]; odataType?: string }[] };
 
 const SEEDS: Seed[] = [
   {
@@ -165,6 +207,20 @@ const SEEDS: Seed[] = [
   { subject: "Thank you for attending Agent Studio office hours", folder: "f-inbox", messages: [{ from: r("Lyzr Community", "community@lyzr.ai"), hoursAgo: 200, paras: ["Recording and slides are now available."], read: true, other: true }] },
   { subject: "Monthly partner sync notes", folder: "f-inbox", messages: [{ from: P.siva, hoursAgo: 170, paras: ["Notes from the September partner sync are in Notion. Action items assigned."], read: true }] },
   { subject: "New comment on GSI tracker", folder: "f-inbox", messages: [{ from: r("Notion", "notify@mail.notion.so"), hoursAgo: 28, paras: ["Anirudh commented: can we add the Wipro numbers to the September view?"], read: true, other: true }] },
+  // Newsletters (List-Unsubscribe header) and social notifications, for the Social / Promotions sorting demo
+  { subject: "Your weekly HubSpot digest: 5 marketing plays for Q4", folder: "f-inbox", messages: [{ from: P.hubspotDigest, hoursAgo: 14, paras: ["This week: partner co-marketing playbooks, a new attribution report, and three webinars worth your time."], read: true, other: true, headers: [{ name: "List-Unsubscribe", value: "<mailto:unsubscribe@example.com>" }] }] },
+  { subject: "LinkedIn Pulse: The rise of agentic AI in the enterprise", folder: "f-inbox", messages: [{ from: P.pulse, hoursAgo: 22, paras: ["Top stories this week from people you follow: agent orchestration, GSI partnerships and AI governance."], read: true, other: true, headers: [{ name: "List-Unsubscribe", value: "<mailto:unsubscribe@example.com>" }] }] },
+  { subject: "Events near you: AI meetups in Bengaluru this month", folder: "f-inbox", messages: [{ from: P.eventbrite, hoursAgo: 37, paras: ["Based on your interests: Agentic AI Builders Night, GenAI for BFSI, and the Cloud Partner Summit."], read: true, other: true, headers: [{ name: "List-Unsubscribe", value: "<mailto:unsubscribe@example.com>" }] }] },
+  { subject: "Gartner Newsletter: Top strategic technology trends", folder: "f-inbox", messages: [{ from: P.gartnerNews, hoursAgo: 58, paras: ["The September issue covers agentic AI, AI governance platforms and hybrid computing."], read: true, other: true, headers: [{ name: "List-Unsubscribe", value: "<mailto:unsubscribe@example.com>" }] }] },
+  { subject: "Priya Raman reacted to your post", folder: "f-inbox", messages: [{ from: P.linkedinNotify, hoursAgo: 7, paras: ["Priya Raman and 14 others reacted to your post about the Accenture webinar."], read: false, other: true }] },
+  { subject: "You have 3 new connection requests", folder: "f-inbox", messages: [{ from: P.linkedinInvites, hoursAgo: 31, paras: ["Daniel Okafor, Mei Chen and Arjun Nair want to connect."], read: true, other: true }] },
+  { subject: "Lyzr AI Community: 12 new posts this week", folder: "f-inbox", messages: [{ from: P.facebook, hoursAgo: 48, paras: ["Catch up on what you missed in the Lyzr AI Community group."], read: true, other: true }] },
+  // One mail per preset label (Set up my labels moves these out of Primary)
+  { subject: "Leadership offsite agenda: Oct 3", folder: "f-inbox", messages: [{ from: P.siva, to: [P.me], hoursAgo: 2.5, paras: ["Agenda for the leadership offsite: FY27 plan, partner strategy, hiring. Please add your GSI marketing slot by Friday."], read: false }] },
+  { subject: "GSI pipeline review: Infosys and Wipro updates", folder: "f-inbox", messages: [{ from: P.pooja, to: [P.me], hoursAgo: 3.5, paras: ["Infosys Topaz moved to stage 3, Wipro ai360 is waiting on the security review. Deck for Tuesday attached."], read: false }] },
+  { subject: "Marketing weekly: October campaign calendar", folder: "f-inbox", messages: [{ from: P.ankita, to: [P.me], hoursAgo: 4.5, paras: ["October calendar: Accenture webinar (Oct 8), Agent Studio 2.1 launch post (Oct 14), Gartner Symposium recap (Oct 29)."], read: false }] },
+  { subject: "Meeting transcript: Accenture partner sync", folder: "f-inbox", messages: [{ from: P.fireflies, to: [P.me], hoursAgo: 6.5, paras: ["Your meeting Accenture partner sync was recorded. Summary: webinar date confirmed, co-branding guidelines shared, HubSpot demo requested."], read: true, other: true }] },
+  { subject: "Invitation: Partner pipeline review @ Tue Sep 23 10:00", folder: "f-inbox", messages: [{ from: P.anirudh, to: [P.me], hoursAgo: 7.5, paras: ["When: Tuesday, September 23, 10:00 to 10:45 (IST). Where: Teams."], read: false, odataType: "#microsoft.graph.eventMessageRequest" }] },
   // Other folders
   { subject: "Lyzr speaker bio and abstract", folder: "f-sent", messages: [{ from: P.me, to: [P.priya], hoursAgo: 45, paras: ["Attached are the bio and abstract for the Oct 8 webinar."], read: true, attachments: [{ name: "Siva-bio.docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", size: 22_000 }] }] },
   { subject: "Badge list for AI Summit Bengaluru", folder: "f-sent", messages: [{ from: P.me, to: [P.anirudh], hoursAgo: 70, paras: ["Badge names attached, including partner guests."], read: true }] },
@@ -213,6 +269,8 @@ for (const seed of SEEDS) {
       parentFolderId: isMe && seed.folder === "f-inbox" ? "f-sent" : seed.folder,
       body: { contentType: "html", content: bodyHtml + quoted },
       uniqueBody: { contentType: "html", content: bodyHtml },
+      ...(m.headers ? { internetMessageHeaders: m.headers } : {}),
+      ...(m.odataType ? { "@odata.type": m.odataType } : {}),
     };
     mockMessages.push(msg);
     if (m.attachments) {
@@ -254,6 +312,18 @@ recount();
 const WELL_KNOWN: Record<string, string> = { inbox: "f-inbox", sentitems: "f-sent", drafts: "f-drafts", archive: "f-archive", junkemail: "f-junk", deleteditems: "f-deleted" };
 const resolveFolder = (idOrName: string) => WELL_KNOWN[idOrName.toLowerCase()] ?? idOrName;
 
+// Exchange keeps every child of the message root unique by display name,
+// mail folder or not: the calendar, contacts, tasks, notes and journal
+// folders sit next to the Inbox but never appear in /me/mailFolders, so a
+// POST with one of their names is refused (409 ErrorFolderExists), as is
+// any name a listed sibling already has.
+export const RESERVED_SIBLINGS = ["Calendar", "Contacts", "Tasks", "Notes", "Journal", "Outbox", "Conversation History"];
+function assertFolderNameFree(name: string, parentId: string | null, path: string) {
+  const want = name.trim().toLowerCase();
+  const taken = mockFolders.some((f) => (f.parentFolderId ?? null) === parentId && f.displayName.toLowerCase() === want) || (parentId === null && RESERVED_SIBLINGS.some((r) => r.toLowerCase() === want));
+  if (taken) throw new GraphError(409, "ErrorFolderExists", "A folder with the specified name already exists.", path);
+}
+
 const stripBody = (m: Message): Message => {
   const rest = { ...m };
   delete rest.body;
@@ -285,6 +355,14 @@ function applyFilter(items: Message[], filter: string | null): Message[] {
   if (flag) out = out.filter((m) => (m.flag?.flagStatus ?? "notFlagged") === flag[1]);
   const inf = /inferenceClassification eq '([^']+)'/.exec(filter);
   if (inf) out = out.filter((m) => (m.inferenceClassification ?? "focused") === inf[1]);
+  // categories/any(c:c eq 'X') and not(categories/any(c:c eq 'X')); '' unescapes to '
+  const catRe = /(not\s*\(\s*)?categories\/any\(\s*\w+\s*:\s*\w+\s+eq\s+'((?:[^']|'')*)'\s*\)\s*\)?/gi;
+  let cm: RegExpExecArray | null;
+  while ((cm = catRe.exec(filter))) {
+    const name = cm[2].replace(/''/g, "'").toLowerCase();
+    const negate = !!cm[1];
+    out = out.filter((m) => (m.categories ?? []).some((c) => c.toLowerCase() === name) !== negate);
+  }
   if (/isRead eq false/.test(filter)) out = out.filter((m) => !m.isRead);
   if (/hasAttachments eq true/.test(filter)) out = out.filter((m) => m.hasAttachments);
   return out;
@@ -301,6 +379,7 @@ function applySearch(items: Message[], search: string): Message[] {
       if (k === "from") return `${m.from?.emailAddress?.name} ${m.from?.emailAddress?.address}`.toLowerCase().includes(val);
       if (k === "to") return (m.toRecipients ?? []).some((x) => `${x.emailAddress.name} ${x.emailAddress.address}`.toLowerCase().includes(val));
       if (k === "subject") return (m.subject ?? "").toLowerCase().includes(val);
+      if (k === "category") return (m.categories ?? []).some((c) => c.toLowerCase() === val);
       if (k === "hasattachments") return !!m.hasAttachments === (val === "true");
       if (k === "isread") return !!m.isRead === (val === "true");
       return hay.includes(val);
@@ -317,6 +396,7 @@ const newDraft = (partial: Partial<Message>, conversationId?: string): Message =
     webLink: `https://outlook.office365.com/mail/drafts/id/${id}`, body: { contentType: "html", content: "" }, ...partial,
   };
   m.bodyPreview = (m.body?.content ?? "").replace(/<[^>]+>/g, "").slice(0, 200);
+  touch(m);
   mockMessages.push(m);
   recount();
   return m;
@@ -325,15 +405,131 @@ const newDraft = (partial: Partial<Message>, conversationId?: string): Message =
 const quoteOf = (src: Message) =>
   `<br><br><div id="divRplyFwdMsg" style="border-top:1px solid #e1e1e1;padding-top:8px;color:#5f6368;font-size:12px"><b>From:</b> ${src.from?.emailAddress?.name} &lt;${src.from?.emailAddress?.address}&gt;<br><b>Sent:</b> ${src.receivedDateTime}<br><b>Subject:</b> ${src.subject}</div>${src.body?.content ?? ""}`;
 
+// Outlook evaluates rules on arrival; the demo applies a new or edited rule
+// to the inbox immediately so its effect is visible without new mail. Rules
+// this app creates ("Label: ", "Sorting: ") are exempt: the app backfills
+// those itself and reports the counts, exactly as against the real mailbox.
+const APP_RULE = /^(Label|Sorting): /;
+function predicatesMatch(c: MessageRulePredicates, msg: Message): boolean {
+  const addr = (msg.from?.emailAddress?.address ?? "").toLowerCase();
+  const from = `${msg.from?.emailAddress?.name} ${addr}`.toLowerCase();
+  const checks: boolean[] = [];
+  if (c.fromAddresses?.length) checks.push(c.fromAddresses.some((a) => (a.emailAddress?.address ?? "").toLowerCase() === addr));
+  if (c.senderContains?.length) checks.push(c.senderContains.some((x) => from.includes(x.toLowerCase())));
+  if (c.subjectContains?.length) checks.push(c.subjectContains.some((x) => (msg.subject ?? "").toLowerCase().includes(x.toLowerCase())));
+  if (c.bodyOrSubjectContains?.length) checks.push(c.bodyOrSubjectContains.some((x) => `${msg.subject} ${msg.bodyPreview}`.toLowerCase().includes(x.toLowerCase())));
+  if (c.headerContains?.length) checks.push(c.headerContains.some((x) => (msg.internetMessageHeaders ?? []).some((h) => h.name.toLowerCase().includes(x.toLowerCase()))));
+  if (c.sentToMe || c.sentOnlyToMe) checks.push((msg.toRecipients ?? []).some((t) => t.emailAddress.address === ME.address) && (!c.sentOnlyToMe || (msg.toRecipients ?? []).length === 1));
+  if (c.hasAttachments) checks.push(!!msg.hasAttachments);
+  if (c.importance) checks.push(msg.importance === c.importance);
+  if (c.isMeetingRequest) checks.push(/eventMessageRequest/i.test(msg["@odata.type"] ?? ""));
+  if (c.isMeetingResponse) checks.push(/eventMessageResponse/i.test(msg["@odata.type"] ?? ""));
+  return checks.length > 0 && checks.every(Boolean);
+}
+
+// Conditions AND together; any matching exception blocks the rule.
+function ruleMatches(rule: MessageRule, msg: Message): boolean {
+  if (!predicatesMatch(rule.conditions ?? {}, msg)) return false;
+  return !(rule.exceptions && predicatesMatch(rule.exceptions, msg));
+}
+
+function applyRuleToInbox(rule: MessageRule) {
+  for (const msg of mockMessages) {
+    if (msg.parentFolderId !== "f-inbox" || !ruleMatches(rule, msg)) continue;
+    if (rule.actions?.assignCategories) msg.categories = Array.from(new Set([...(msg.categories ?? []), ...rule.actions.assignCategories]));
+    if (rule.actions?.markAsRead) msg.isRead = true;
+    if (rule.actions?.moveToFolder) msg.parentFolderId = resolveFolder(rule.actions.moveToFolder);
+  }
+}
+
+// ---- What Outlook does on its own time ----------------------------------------
+// A sent draft sits in the Outbox for a moment before Sent Items lists it, and
+// new mail arrives while the page is open. Both are driven by the clock and
+// applied at the start of every request, so the demo proves that the UI
+// polls and reconciles instead of trusting its own optimistic state.
+export const mockTiming = { sendDelayMs: 3_000, arrivalDelayMs: 20_000 };
+export const ARRIVAL_SUBJECT = "Arrived from Outlook";
+const OUTBOX = "f-outbox";
+const transit: { id: string; at: number }[] = [];
+let firstRequestAt: number | null = null;
+let arrived = false;
+
+// When each message last changed in this session (the fixtures never did):
+// what a token delta returns. Seeds carry a fixed clock, so their dates say
+// nothing about change.
+const changedAt = new Map<string, number>();
+const touch = (msg: Message, now = Date.now()) => {
+  msg.lastModifiedDateTime = new Date(now).toISOString();
+  changedAt.set(msg.id, now);
+};
+const stampOf = (m: Message) => changedAt.get(m.id) ?? 0;
+// Newest in the mailbox even when the real clock is behind the fixtures' clock.
+const newestStamp = (now: number) => new Date(Math.max(now, NOW - 3600_000 + 60_000)).toISOString();
+
+// Every enabled rule in sequence order, as Outlook runs them on arrival.
+function applyRulesOnArrival(msg: Message) {
+  for (const rule of [...mockRules].sort((a, b) => a.sequence - b.sequence)) {
+    if (!rule.isEnabled || !ruleMatches(rule, msg)) continue;
+    if (rule.actions?.assignCategories) msg.categories = Array.from(new Set([...(msg.categories ?? []), ...rule.actions.assignCategories]));
+    if (rule.actions?.markAsRead) msg.isRead = true;
+    if (rule.actions?.moveToFolder) msg.parentFolderId = resolveFolder(rule.actions.moveToFolder);
+    if (rule.actions?.stopProcessingRules) break;
+  }
+}
+
+function settleClock() {
+  const now = Date.now();
+  if (firstRequestAt === null) firstRequestAt = now;
+  let changed = false;
+  for (let i = transit.length - 1; i >= 0; i--) {
+    if (transit[i].at > now) continue;
+    const msg = mockMessages.find((x) => x.id === transit[i].id);
+    if (msg && msg.parentFolderId === OUTBOX) {
+      msg.parentFolderId = "f-sent";
+      msg.sentDateTime = msg.receivedDateTime = newestStamp(now);
+      touch(msg, now);
+      changed = true;
+    }
+    transit.splice(i, 1);
+  }
+  if (!arrived && now - firstRequestAt >= mockTiming.arrivalDelayMs) {
+    arrived = true;
+    const id = nid("msg");
+    const paras = ["This message reached the mailbox after the page loaded; the poll picked it up without a reload.", "Rahul"];
+    const msg: Message = {
+      id, conversationId: nid("conv"), conversationIndex: `${id}-000`, subject: ARRIVAL_SUBJECT, bodyPreview: paras[0], from: P.rahul, sender: P.rahul, toRecipients: [P.me], ccRecipients: [], bccRecipients: [],
+      receivedDateTime: newestStamp(now), sentDateTime: newestStamp(now), isRead: false, hasAttachments: false,
+      flag: { flagStatus: "notFlagged" }, categories: [], importance: "normal", inferenceClassification: "focused", isDraft: false, parentFolderId: "f-inbox",
+      webLink: `https://outlook.office365.com/mail/id/${id}`, body: { contentType: "html", content: html(paras.slice(0, 1), "Rahul") }, uniqueBody: { contentType: "html", content: html(paras.slice(0, 1), "Rahul") },
+    };
+    applyRulesOnArrival(msg);
+    touch(msg, now);
+    mockMessages.push(msg);
+    changed = true;
+  }
+  if (changed) recount();
+}
+
 export const handleMail: MockHandler = (method, url, body) => {
+  settleClock();
   const p = url.pathname.replace(/^\/v1\.0/, "");
   const b = (body ?? {}) as Record<string, unknown>;
   let m: RegExpExecArray | null;
 
   // ---- folders
-  if (p === "/me/mailFolders" && method === "GET") return { value: mockFolders.filter((f) => !f.parentFolderId) };
+  if (p === "/me/mailFolders" && method === "GET") {
+    const top = mockFolders.filter((f) => !f.parentFolderId);
+    const byName = /displayName eq '((?:[^']|'')*)'/i.exec(url.searchParams.get("$filter") ?? "");
+    if (byName) {
+      const want = byName[1].replace(/''/g, "'").toLowerCase();
+      return { value: top.filter((f) => f.displayName.toLowerCase() === want) };
+    }
+    return { value: top };
+  }
   if (p === "/me/mailFolders" && method === "POST") {
-    const f: MailFolder = { id: nid("f"), displayName: String(b.displayName ?? "New folder"), wellKnownName: null, parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 };
+    const name = String(b.displayName ?? "New folder");
+    assertFolderNameFree(name, null, p);
+    const f: MailFolder = { id: nid("f"), displayName: name, wellKnownName: null, parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 };
     mockFolders.push(f);
     return f;
   }
@@ -341,17 +537,25 @@ export const handleMail: MockHandler = (method, url, body) => {
     const parent = resolveFolder(m[1]);
     if (method === "GET") return { value: mockFolders.filter((f) => f.parentFolderId === parent) };
     if (method === "POST") {
-      const f: MailFolder = { id: nid("f"), displayName: String(b.displayName ?? "New folder"), wellKnownName: null, parentFolderId: parent, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 };
+      const name = String(b.displayName ?? "New folder");
+      assertFolderNameFree(name, parent, p);
+      const f: MailFolder = { id: nid("f"), displayName: name, wellKnownName: null, parentFolderId: parent, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 };
       mockFolders.push(f);
       recount();
       return f;
     }
   }
+  // Delta: the seed (no token) walks the folder; a token (the time of the
+  // previous round) returns only what changed since, like Graph's feed.
   if ((m = /^\/me\/mailFolders\/([^/]+)\/messages\/delta$/.exec(p)) && method === "GET") {
     const fid = resolveFolder(m[1]);
-    return { value: mockMessages.filter((x) => x.parentFolderId === fid).sort(byDateDesc).map(stripBody), "@odata.deltaLink": `https://graph.microsoft.com/v1.0/me/mailFolders/${m[1]}/messages/delta?$deltatoken=mock` };
+    const since = Number(url.searchParams.get("$deltatoken") ?? "");
+    const inFolder = mockMessages.filter((x) => x.parentFolderId === fid);
+    const value = (Number.isFinite(since) && since > 0 ? inFolder.filter((x) => stampOf(x) > since) : inFolder).sort(byDateDesc).map(stripBody);
+    return { value, "@odata.deltaLink": `https://graph.microsoft.com/v1.0/me/mailFolders/${m[1]}/messages/delta?$deltatoken=${Date.now()}` };
   }
   if ((m = /^\/me\/mailFolders\/([^/]+)\/messages$/.exec(p)) && method === "GET") {
+    assertSortableQuery(url);
     const fid = resolveFolder(m[1]);
     let items = mockMessages.filter((x) => x.parentFolderId === fid);
     items = applyFilter(items, url.searchParams.get("$filter"));
@@ -361,23 +565,29 @@ export const handleMail: MockHandler = (method, url, body) => {
     return page(items, url, `/v1.0${p}`);
   }
   if ((m = /^\/me\/mailFolders\/([^/]+)\/messageRules$/.exec(p))) {
-    if (method === "GET") return { value: mockRules };
+    if (method === "GET") return { value: [...mockRules].sort((a, b) => a.sequence - b.sequence) };
     if (method === "POST") {
       const rb = b as Partial<MessageRule>;
-      const rule: MessageRule = { id: nid("rule"), displayName: String(rb.displayName ?? "Rule"), sequence: rb.sequence ?? mockRules.length + 1, isEnabled: rb.isEnabled ?? true, conditions: rb.conditions, actions: rb.actions };
+      const rule: MessageRule = { id: nid("rule"), displayName: String(rb.displayName ?? "Rule"), sequence: rb.sequence ?? mockRules.reduce((x, r) => Math.max(x, r.sequence), 0) + 1, isEnabled: rb.isEnabled ?? true, conditions: rb.conditions, ...(rb.exceptions ? { exceptions: rb.exceptions } : {}), actions: rb.actions };
       mockRules.push(rule);
-      // Apply to existing inbox mail so the effect is visible.
-      const senders = rule.conditions?.senderContains ?? [];
-      for (const msg of mockMessages) {
-        if (msg.parentFolderId !== "f-inbox") continue;
-        const from = `${msg.from?.emailAddress?.name} ${msg.from?.emailAddress?.address}`.toLowerCase();
-        if (!senders.some((s) => from.includes(s.toLowerCase()))) continue;
-        if (rule.actions?.moveToFolder) msg.parentFolderId = resolveFolder(rule.actions.moveToFolder);
-        if (rule.actions?.assignCategories) msg.categories = Array.from(new Set([...(msg.categories ?? []), ...rule.actions.assignCategories]));
-        if (rule.actions?.markAsRead) msg.isRead = true;
-      }
+      if (rule.isEnabled && !APP_RULE.test(rule.displayName)) applyRuleToInbox(rule);
       recount();
       return rule;
+    }
+  }
+  if ((m = /^\/me\/mailFolders\/([^/]+)\/messageRules\/([^/]+)$/.exec(p))) {
+    const i = mockRules.findIndex((x) => x.id === m![2]);
+    if (i < 0) return { error: { code: "ErrorItemNotFound", message: "rule not found" } };
+    if (method === "GET") return mockRules[i];
+    if (method === "PATCH") {
+      Object.assign(mockRules[i], b);
+      if (mockRules[i].isEnabled && !APP_RULE.test(mockRules[i].displayName)) applyRuleToInbox(mockRules[i]);
+      recount();
+      return mockRules[i];
+    }
+    if (method === "DELETE") {
+      mockRules.splice(i, 1);
+      return null;
     }
   }
   if ((m = /^\/me\/mailFolders\/([^/]+)$/.exec(p))) {
@@ -421,6 +631,7 @@ export const handleMail: MockHandler = (method, url, body) => {
 
   // ---- messages
   if (p === "/me/messages" && method === "GET") {
+    assertSortableQuery(url);
     let items = mockMessages.filter((x) => x.parentFolderId !== "f-deleted" && x.parentFolderId !== "f-junk");
     const search = url.searchParams.get("$search");
     if (search) items = applySearch(mockMessages, search);
@@ -429,9 +640,17 @@ export const handleMail: MockHandler = (method, url, body) => {
     return page(items, url, `/v1.0${p}`);
   }
   if (p === "/me/messages" && method === "POST") return newDraft(b as Partial<Message>);
+  // Type cast: fileAttachment-only properties such as contentId.
+  if ((m = /^\/me\/messages\/([^/]+)\/attachments\/microsoft\.graph\.fileAttachment$/.exec(p)) && method === "GET") {
+    const list = (mockAttachments.get(m[1]) ?? []).filter((a) => a["@odata.type"] === "#microsoft.graph.fileAttachment");
+    return { value: list.map(withoutBytes) };
+  }
   if ((m = /^\/me\/messages\/([^/]+)\/attachments$/.exec(p))) {
     const list = mockAttachments.get(m[1]) ?? [];
-    if (method === "GET") return { value: list.map(({ contentBytes: _c, ...rest }) => (url.searchParams.get("$select") ? rest : { ...rest, contentBytes: _c })) };
+    if (method === "GET") {
+      assertBaseAttachmentSelect(url);
+      return { value: url.searchParams.get("$select") ? list.map((a) => { const b = withoutBytes(a); delete b.contentId; return b; }) : list };
+    }
     if (method === "POST") {
       const a: Attachment = { "@odata.type": "#microsoft.graph.fileAttachment", id: nid("att"), name: String(b.name), contentType: String(b.contentType ?? "application/octet-stream"), size: Math.round((String(b.contentBytes ?? "").length * 3) / 4), isInline: !!b.isInline, contentId: null, contentBytes: String(b.contentBytes ?? "") };
       mockAttachments.set(m[1], [...list, a]);
@@ -463,21 +682,33 @@ export const handleMail: MockHandler = (method, url, body) => {
     const msg = mockMessages.find((x) => x.id === m![1]);
     if (!msg) return { error: { code: "ErrorItemNotFound" } };
     const action = m[2];
+    // Graph moves by creating a copy in the destination and removing the
+    // original: the moved message has a NEW id, and the old one is gone.
     if (action === "move") {
-      msg.parentFolderId = resolveFolder(String(b.destinationId));
+      const moved: Message = { ...msg, id: nid("msg"), parentFolderId: resolveFolder(String(b.destinationId)) };
+      moved.webLink = `https://outlook.office365.com/mail/id/${moved.id}`;
+      mockMessages.splice(mockMessages.indexOf(msg), 1, moved);
+      const atts = mockAttachments.get(msg.id);
+      mockAttachments.delete(msg.id);
+      changedAt.delete(msg.id);
+      if (atts) mockAttachments.set(moved.id, atts);
+      touch(moved);
       recount();
-      return stripBody(msg);
+      return stripBody(moved);
     }
     if (action === "copy") {
       const copy = { ...msg, id: nid("msg"), parentFolderId: resolveFolder(String(b.destinationId)) };
+      touch(copy);
       mockMessages.push(copy);
       recount();
       return stripBody(copy);
     }
     if (action === "send") {
       msg.isDraft = false;
-      msg.parentFolderId = "f-sent";
-      msg.sentDateTime = msg.receivedDateTime = new Date().toISOString();
+      msg.parentFolderId = OUTBOX;
+      msg.sentDateTime = msg.receivedDateTime = newestStamp(Date.now());
+      touch(msg);
+      transit.push({ id: msg.id, at: Date.now() + mockTiming.sendDelayMs });
       recount();
       return null;
     }
@@ -506,7 +737,7 @@ export const handleMail: MockHandler = (method, url, body) => {
     if (method === "PATCH") {
       Object.assign(msg, b);
       if (b.body) msg.bodyPreview = ((b.body as { content?: string }).content ?? "").replace(/<[^>]+>/g, "").slice(0, 200);
-      msg.lastModifiedDateTime = new Date().toISOString();
+      touch(msg);
       recount();
       return msg;
     }

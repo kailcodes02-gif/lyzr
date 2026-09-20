@@ -3,6 +3,7 @@
 // Mock mode: real Microsoft sign-in, fake Graph data. Lets every page be
 // exercised before the tenant admin approves the data permissions.
 // Turn on with ?mock=1 on any URL (persists in localStorage), off with ?mock=0.
+import { clearDriveIndexes } from "../local-state";
 import { handleCalendar } from "./calendar";
 import { handleDrive } from "./drive";
 import { handleMail } from "./mail";
@@ -34,13 +35,17 @@ export function syncMockFromUrl(): void {
   }
 }
 
-export function setMockMode(on: boolean) {
+// Leaving demo mode also drops the demo's OneDrive index from IndexedDB
+// (it is stored under the signed-in account's key, so real mode would show
+// demo files). Callers should await this before navigating away.
+export async function setMockMode(on: boolean): Promise<void> {
   try {
     if (on) localStorage.setItem(KEY, "1");
     else localStorage.removeItem(KEY);
   } catch {
     // storage blocked
   }
+  if (!on) await clearDriveIndexes();
 }
 
 export type MockHandler = (method: string, url: URL, body: unknown) => unknown | undefined;

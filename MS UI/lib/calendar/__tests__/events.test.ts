@@ -17,7 +17,10 @@ describe("event helpers", () => {
     expect(w.startWall).toBe("2026-09-21T10:00:00");
     const fc = toFcEvent({ ...w, showAs: "tentative", sensitivity: "private" }, { id: "c", name: "Calendar", color: "lightGreen" });
     expect(fc.color).toBe("#33b679");
-    expect(fc.classNames).toContain("msui-ev-tentative");
+    // FullCalendar v7 reads a single `className` string; `classNames` is silently dropped.
+    expect(fc.className.split(" ")).toContain("msui-ev-tentative");
+    expect(fc.className.split(" ")).toContain("msui-ev");
+    expect((fc as unknown as { classNames?: unknown }).classNames).toBeUndefined();
     expect(fc.start).toBe("2026-09-21T10:00:00");
   });
   it("searches subject and attendees", () => {
@@ -32,5 +35,19 @@ describe("event helpers", () => {
     const g = groupByDay([a, b], "2026-09-20", "2026-09-27");
     expect(g.map((x) => x.day)).toEqual(["2026-09-21", "2026-09-22", "2026-09-23"]);
     expect(g[1].events[0].subject).toBe("Summit");
+  });
+  it("keeps timed events on the DST fall-back day (calendar-day arithmetic, not +24 h)", () => {
+    // 2026-11-01 is the fall-back day in America/New_York: local midnight + 24 h is 23:00 the same day.
+    const prevTz = process.env.TZ;
+    process.env.TZ = "America/New_York";
+    try {
+      const w = normalise({ ...base, id: "dst", start: { dateTime: "2026-11-01T14:00:00", timeZone: "America/New_York" }, end: { dateTime: "2026-11-01T15:00:00", timeZone: "America/New_York" } }, "America/New_York");
+      const g = groupByDay([w], "2026-10-25", "2026-11-08");
+      expect(g.map((x) => x.day)).toEqual(["2026-11-01"]);
+      const spring = normalise({ ...base, id: "dst2", start: { dateTime: "2026-03-08T14:00:00", timeZone: "America/New_York" }, end: { dateTime: "2026-03-08T15:00:00", timeZone: "America/New_York" } }, "America/New_York");
+      expect(groupByDay([spring], "2026-03-01", "2026-03-15").map((x) => x.day)).toEqual(["2026-03-08"]);
+    } finally {
+      process.env.TZ = prevTz;
+    }
   });
 });

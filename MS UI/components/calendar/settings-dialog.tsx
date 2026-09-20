@@ -3,6 +3,8 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
 import { useSupportedTimeZones } from "@/lib/calendar/hooks";
 import type { CalendarSettings } from "@/lib/calendar/settings";
 import { defaultTimeZone } from "@/lib/calendar/time";
@@ -31,6 +33,22 @@ export function SettingsDialog({ open, onOpenChange, settings, onChange }: { ope
   const zones = useSupportedTimeZones();
   const browser = defaultTimeZone();
   const list = Array.from(new Set([browser, ...(zones.data ?? [])]));
+  const notificationsSupported = typeof Notification !== "undefined";
+  // Browsers only honour requestPermission() from a user gesture, so it runs
+  // here, on the switch click, never on page load.
+  const toggleDesktop = async (on: boolean) => {
+    if (!on) {
+      onChange({ desktopNotifications: false });
+      return;
+    }
+    try {
+      const perm = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+      if (perm === "granted") onChange({ desktopNotifications: true });
+      else toast.error("Notifications are blocked for this site in your browser settings.");
+    } catch {
+      toast.error("This browser does not support desktop notifications.");
+    }
+  };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -93,6 +111,12 @@ export function SettingsDialog({ open, onOpenChange, settings, onChange }: { ope
                 ))}
               </SelectContent>
             </Select>
+          </Row>
+          <Row label="Desktop alerts">
+            <label className="flex items-center gap-2 text-sm">
+              <Switch checked={settings.desktopNotifications && notificationsSupported} disabled={!notificationsSupported} onCheckedChange={(v) => void toggleDesktop(v)} aria-label="Desktop notifications for reminders" />
+              <span className="text-xs text-muted-foreground">{notificationsSupported ? "Reminders also as browser notifications" : "Not supported in this browser"}</span>
+            </label>
           </Row>
           {zones.isError && <p className="text-xs text-muted-foreground">Could not load the Outlook time zone list; showing the browser zone only.</p>}
         </div>

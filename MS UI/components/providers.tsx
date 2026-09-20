@@ -24,7 +24,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   // Never construct MSAL during `next build`'s prerender (no window there).
   const instance = isClient ? getMsalInstance() : null;
   const [queryClient] = useState(
-    () => new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false } } })
+    // The UI is a front end for Microsoft: come back to a tab and it re-checks
+    // the server; queries refetch on reconnect too. Mutations refetch
+    // immediately and again ~2.5 s later in each feature's hooks.
+    () => new QueryClient({ defaultOptions: { queries: { staleTime: 15_000, retry: 1, refetchOnWindowFocus: true, refetchOnReconnect: true } } })
   );
   const [authError, setAuthError] = useState<AuthErrorInfo>(null);
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyDelta, chunkRanges, contentRange, filterItems, folderTree, isWithin, moveIndex, nextSelection, parseNextExpected, parseUrlState, pathOf, pathSegments, recentItems, serializeUrlState, sortItems, ROOT } from "../logic";
+import { applyChips, applyDelta, canMutate, chunkRanges, contentRange, filterItems, folderTree, isWithin, kindOf, moveIndex, nextSelection, normalizeRemoteItem, ownerName, parseNextExpected, parseUrlState, pathOf, pathSegments, recentItems, recycleBinUrl, safeId, serializeUrlState, sortItems, ROOT } from "../logic";
 import type { DriveItem, IndexStore } from "../types";
 
 const root: DriveItem = { id: "R", name: "root", root: {} };
@@ -123,5 +123,65 @@ describe("selection and keyboard", () => {
     expect(moveIndex(5, 6, "ArrowRight", 3)).toBe(5);
     expect(moveIndex(3, 6, "End", 3)).toBe(5);
     expect(moveIndex(0, 0, "ArrowDown", 3)).toBe(-1);
+  });
+});
+
+describe("delta without the root facet ($select) and tombstones", () => {
+  it("keeps a pre-seeded rootId, hides the root item and lists real top-level children", () => {
+    const seeded: IndexStore = { items: {}, rootId: "R" };
+    const s = applyDelta(seeded, [{ id: "R", name: "root", folder: { childCount: 2 } }, f("A", "GSI Program", "R"), file("e", "Numbers.xlsx", "R")]);
+    expect(s.rootId).toBe("R");
+    expect(s.items.R).toBeUndefined();
+    expect(filterItems(s, { folder: ROOT }).map((i) => i.id).sort()).toEqual(["A", "e"]);
+    expect(pathOf(s, "A").map((c) => c.id)).toEqual([ROOT, "A"]);
+  });
+  it("treats a nameless deleted tombstone as authoritative (no merge)", () => {
+    const s = applyDelta(base, [{ id: "d", deleted: { state: "deleted" } } as DriveItem]);
+    expect(s.items.d).toBeUndefined();
+  });
+});
+
+describe("shared items and name-less items", () => {
+  const raw: DriveItem = { id: "1312abc", remoteItem: { id: "1991210caf!192", name: "March Proposal.docx", file: { mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }, size: 19121, parentReference: { driveId: "1991210caf", id: "1991210caf!104" }, shared: { sharedBy: { user: { displayName: "Priya Raman" } } } } } as DriveItem;
+  it("normalises remoteItem into the DriveItem shape and keeps the shortcut id", () => {
+    const n = normalizeRemoteItem(raw);
+    expect(n.id).toBe("1312abc");
+    expect(n.name).toBe("March Proposal.docx");
+    expect(n.size).toBe(19121);
+    expect(n.parentReference?.driveId).toBe("1991210caf");
+    expect(kindOf(n)).toBe("doc");
+    expect(ownerName(n)).toBe("Priya Raman");
+    expect(n.remoteItem).toBe(raw.remoteItem);
+  });
+  it("never throws when name is missing (sorting, chips, kind)", () => {
+    const bare = { id: "x" } as DriveItem;
+    expect(() => sortItems([bare, raw, ...Object.values(base.items)], "name")).not.toThrow();
+    expect(() => sortItems([bare, raw], "size")).not.toThrow();
+    expect(applyChips([bare, normalizeRemoteItem(raw)], { q: "march" }).map((i) => i.id)).toEqual(["1312abc"]);
+    expect(kindOf(bare)).toBe("other");
+  });
+  it("blocks mutations on remote and foreign-drive items", () => {
+    expect(canMutate(normalizeRemoteItem(raw), "b!mine")).toBe(false);
+    expect(canMutate(file("z", "Z.txt", "R", { parentReference: { id: "R", driveId: "b!other" } }), "b!mine")).toBe(false);
+    expect(canMutate(file("z", "Z.txt", "R", { parentReference: { id: "R", driveId: "b!mine" } }), "b!mine")).toBe(true);
+    expect(canMutate(file("z", "Z.txt", "R"), undefined)).toBe(true);
+  });
+});
+
+describe("URL ids and recycle bin link", () => {
+  it("rejects ids that would change the Graph path", () => {
+    expect(parseUrlState("?folder=root/children%3F$top=1%23").folder).toBe(ROOT);
+    expect(parseUrlState("?item=x/move").item).toBeNull();
+    expect(parseUrlState("?folder=01ABC!123&item=01ABC!124")).toMatchObject({ folder: "01ABC!123", item: "01ABC!124" });
+    expect(safeId("a/b")).toBeNull();
+    expect(safeId("a#b")).toBeNull();
+  });
+  it("builds the work-account recycle bin from the drive webUrl, with fallbacks", () => {
+    expect(recycleBinUrl({ driveType: "business", webUrl: "https://lyzr-my.sharepoint.com/personal/kailash_lyzr_com/Documents" })).toBe("https://lyzr-my.sharepoint.com/personal/kailash_lyzr_com/_layouts/15/onedrive.aspx?view=5");
+    expect(recycleBinUrl({ driveType: "business", webUrl: "https://lyzr-my.sharepoint.com/personal/kailash_lyzr_com/Documents/" })).toContain("/_layouts/15/onedrive.aspx?view=5");
+    expect(recycleBinUrl({ driveType: "business", webUrl: "https://lyzr.sharepoint.com/sites/Marketing/Shared%20Documents" })).toBe("https://lyzr.sharepoint.com/sites/Marketing/_layouts/15/onedrive.aspx?view=5");
+    expect(recycleBinUrl({ driveType: "business", webUrl: "https://example.invalid/odd" })).toBe("https://example.invalid/odd");
+    expect(recycleBinUrl({ driveType: "personal", webUrl: "https://onedrive.live.com/?cid=1" })).toBe("https://onedrive.live.com/?view=recyclebin");
+    expect(recycleBinUrl(undefined)).toBe("https://onedrive.live.com/?view=recyclebin");
   });
 });

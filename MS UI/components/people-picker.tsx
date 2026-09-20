@@ -2,12 +2,18 @@
 
 import { X } from "lucide-react";
 import { useRef, useState } from "react";
-import { EMAIL_RE, searchPeople, usePeople, type Person } from "@/lib/people";
+import { EMAIL_RE, usePeopleSearch, type Person } from "@/lib/people";
 import { cn } from "@/lib/utils";
 
 export type Recipient = { name: string; email: string };
 
-// Gmail-style chip input with autocomplete from contacts + recent people.
+function initialsOf(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "?") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
+}
+
+// Gmail-style chip input with autocomplete from recent people, /me/people,
+// the directory (/users) and contacts, each source optional.
 // Enter, Tab, comma or blur turns typed text into a chip when it is an email.
 export function PeoplePicker({
   value,
@@ -22,13 +28,13 @@ export function PeoplePicker({
   className?: string;
   autoFocus?: boolean;
 }) {
-  const { people } = usePeople();
   const [text, setText] = useState("");
+  const { suggestions: found, isSearching } = usePeopleSearch(text);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const chosen = new Set(value.map((v) => v.email.toLowerCase()));
-  const suggestions = searchPeople(people, text).filter((p) => !chosen.has(p.email.toLowerCase()));
+  const suggestions = found.filter((p) => !chosen.has(p.email.toLowerCase()));
 
   const add = (p: Person | Recipient) => {
     if (chosen.has(p.email.toLowerCase())) return;
@@ -106,12 +112,20 @@ export function PeoplePicker({
                 add(p);
               }}
               onMouseEnter={() => setActive(i)}
-              className={cn("flex cursor-pointer flex-col px-3 py-1.5 text-sm", i === active && "bg-accent")}
+              className={cn("flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm", i === active && "bg-accent")}
             >
-              <span className="truncate">{p.name}</span>
-              <span className="truncate text-xs text-muted-foreground">{p.email}</span>
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-medium text-primary" aria-hidden>
+                {initialsOf(p.name)}
+              </span>
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate">{p.name}</span>
+                <span className="truncate text-xs text-muted-foreground" data-testid="person-secondary">
+                  {p.title ? `${p.title} · ${p.email}` : p.email}
+                </span>
+              </span>
             </li>
           ))}
+          {isSearching && <li className="px-3 py-1 text-[11px] text-muted-foreground">Searching…</li>}
         </ul>
       )}
     </div>

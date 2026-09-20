@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { calendarHex } from "@/lib/calendar/colors";
+import { withAttendees } from "@/lib/calendar/edit";
 import { allDayExclusiveEnd, allDayInclusiveEnd, addMinutesWall } from "@/lib/calendar/time";
 import type { EventDraft, GraphCalendar } from "@/lib/calendar/types";
 import { REMINDER_OPTIONS } from "./settings-dialog";
@@ -32,8 +33,7 @@ export function EventForm({
   tz,
   durationMinutes,
   titleRef,
-  recurrenceForm,
-  onRecurrenceForm,
+  colorOf,
 }: {
   draft: EventDraft;
   onChange: (d: EventDraft) => void;
@@ -42,19 +42,19 @@ export function EventForm({
   tz: string;
   durationMinutes: number;
   titleRef?: React.RefObject<HTMLInputElement | null>;
-  recurrenceForm?: RecurrenceForm;
-  onRecurrenceForm?: (f: RecurrenceForm) => void;
+  // Resolved chip colour per calendar (blue for the user's own); falls back to the Outlook colour.
+  colorOf?: (calendarId: string) => string;
 }) {
   const set = (p: Partial<EventDraft>) => onChange({ ...draft, ...p });
   const cal = calendars.find((c) => c.id === draft.calendarId);
   const teamsAllowed = !!cal?.allowedOnlineMeetingProviders?.includes("teamsForBusiness");
+  const hexOf = (c: GraphCalendar | undefined) => (c && colorOf ? colorOf(c.id) : calendarHex(c));
   const [showFind, setShowFind] = useState(false);
-  const [localRec, setLocalRec] = useState<RecurrenceForm>(() => fromGraphRecurrence(draft.recurrence, draft.start.slice(0, 10)));
-  const rec = recurrenceForm ?? localRec;
-  const setRec = (f: RecurrenceForm) => {
-    (onRecurrenceForm ?? setLocalRec)(f);
-    set({ recurrence: toGraphRecurrence(f, draft.start.slice(0, 10), tz) });
-  };
+  // The editor state is kept on the draft; draftToGraph / patchBody derive the
+  // Graph recurrence from it at save time, so a later change to the start date
+  // (date field, Find a time) moves range.startDate and the weekday with it.
+  const rec: RecurrenceForm = draft.recurrenceForm ?? fromGraphRecurrence(draft.recurrence, draft.start.slice(0, 10));
+  const setRec = (f: RecurrenceForm) => set({ recurrenceForm: f, recurrenceTouched: true, recurrence: toGraphRecurrence(f, draft.start.slice(0, 10), tz) });
 
   const toggleAllDay = (allDay: boolean) => {
     if (allDay) set({ allDay, start: draft.start.slice(0, 10), end: allDayExclusiveEnd(draft.end.slice(0, 10) < draft.start.slice(0, 10) ? draft.start.slice(0, 10) : draft.end.length > 10 ? draft.end.slice(0, 10) : allDayInclusiveEnd(draft.end)) });
@@ -117,13 +117,13 @@ export function EventForm({
         )}
       </Row>
       <Row icon={<Users className="size-4" />}>
-        <PeoplePicker value={draft.attendees} onChange={(attendees) => set({ attendees })} placeholder="Add guests" />
-        {full && draft.attendees.length > 0 && !draft.allDay && (
+        <PeoplePicker value={draft.attendees} onChange={(attendees) => onChange(withAttendees(draft, attendees, teamsAllowed))} placeholder="Add guests" />
+        {draft.attendees.length > 0 && !draft.allDay && (
           <button type="button" className="mt-1 text-xs text-primary hover:underline" onClick={() => setShowFind((s) => !s)}>
             {showFind ? "Hide availability" : "Find a time"}
           </button>
         )}
-        {full && showFind && !draft.allDay && (
+        {showFind && draft.attendees.length > 0 && !draft.allDay && (
           <div className="mt-2">
             <FindTime
               emails={draft.attendees.map((a) => a.email)}
@@ -137,7 +137,7 @@ export function EventForm({
       </Row>
       <Row icon={<Video className="size-4" />}>
         <label className="flex h-9 items-center gap-2 text-sm">
-          <Switch checked={draft.teams} disabled={!teamsAllowed} onCheckedChange={(v) => set({ teams: v })} aria-label="Add Teams meeting" />
+          <Switch checked={draft.teams} disabled={!teamsAllowed} onCheckedChange={(v) => set({ teams: v, teamsAuto: false })} aria-label="Add Teams meeting" />
           Add Teams meeting
           {!teamsAllowed && <span className="text-xs text-muted-foreground">(not available on this calendar)</span>}
         </label>
@@ -145,16 +145,23 @@ export function EventForm({
       <Row icon={<MapPin className="size-4" />}>
         <Input value={draft.location} onChange={(e) => set({ location: e.target.value })} placeholder="Add location" aria-label="Location" />
       </Row>
-      <Row icon={<span className="inline-block size-3.5 rounded-full" style={{ background: calendarHex(cal) }} />}>
+      <Row icon={<span className="inline-block size-3.5 rounded-full" style={{ background: hexOf(cal) }} />}>
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={draft.calendarId} onValueChange={(v) => v && set({ calendarId: v, teams: draft.teams && !!calendars.find((c) => c.id === v)?.allowedOnlineMeetingProviders?.includes("teamsForBusiness") })}>
+          <Select
+            value={draft.calendarId}
+            onValueChange={(v) => {
+              if (!v) return;
+              const allowed = !!calendars.find((c) => c.id === v)?.allowedOnlineMeetingProviders?.includes("teamsForBusiness");
+              set({ calendarId: v, teams: draft.teamsAuto ? allowed && draft.attendees.length > 0 : draft.teams && allowed });
+            }}
+          >
             <SelectTrigger size="sm" aria-label="Calendar">
               <SelectValue>{cal?.name ?? "Calendar"}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {calendars.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
-                  <span className="mr-2 inline-block size-2.5 rounded-full" style={{ background: calendarHex(c) }} />
+                  <span className="mr-2 inline-block size-2.5 rounded-full" style={{ background: hexOf(c) }} />
                   {c.name}
                 </SelectItem>
               ))}

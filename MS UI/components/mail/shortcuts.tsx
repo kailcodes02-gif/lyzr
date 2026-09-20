@@ -23,12 +23,23 @@ export type ShortcutHandlers = Partial<{
   escape: () => void;
 }>;
 
+// Targets that own the keyboard: form fields, editors, and anything inside a
+// dialog (its buttons and its own Escape handling must not be double-handled).
 export function isTypingTarget(el: EventTarget | null): boolean {
   if (!(el instanceof HTMLElement)) return false;
   const tag = el.tagName;
   if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
   if (el.isContentEditable) return true;
-  return !!el.closest("[data-editor], [contenteditable='true'], [role='dialog'] input");
+  return !!el.closest("[data-editor], [contenteditable='true'], [role='dialog'], [role='alertdialog'], [data-slot='popover-content']");
+}
+
+// Controls that Enter/Space activate natively (or via ARIA); the global
+// Enter -> open binding must never cancel that activation.
+export const ACTIVATABLE = "button, a[href], summary, [role='button'], [role='link'], [role='tab'], [role='menuitem'], [role='menuitemcheckbox'], [role='menuitemradio'], [role='option'], [role='switch'], [role='checkbox'], [role='radio'], [role='combobox']";
+
+export function isActivationKeyOnControl(e: { key: string; target: EventTarget | null }): boolean {
+  if (e.key !== "Enter" && e.key !== " ") return false;
+  return e.target instanceof Element && !!e.target.closest(ACTIVATABLE);
 }
 
 // Maps a keydown event to a handler name (Gmail bindings). Exported for tests.
@@ -66,8 +77,9 @@ export function useMailShortcuts(handlers: ShortcutHandlers, enabled = true) {
   useEffect(() => {
     if (!enabled) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" && isTypingTarget(e.target)) return;
-      if (e.key === "Escape" && isTypingTarget(e.target)) return;
+      if (e.defaultPrevented) return; // a dialog or menu already handled it
+      if (isTypingTarget(e.target)) return;
+      if (isActivationKeyOnControl(e)) return;
       const name = shortcutFor(e);
       if (!name) return;
       const fn = handlers[name];

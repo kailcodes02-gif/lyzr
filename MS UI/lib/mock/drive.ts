@@ -281,6 +281,29 @@ function removeTree(id: string) {
 
 const resolveId = (id: string) => (id === "root" ? ROOT_ID : id);
 
+// Live refresh demo: a colleague adds a file in OneDrive itself (outside
+// this UI) LATE_FILE_DELAY_MS after the first delta walk; polling picks it
+// up without any action in the UI.
+export const LATE_FILE_NAME = "Added in OneDrive.pdf";
+export const LATE_FILE_DELAY_MS = 20_000;
+let firstDeltaAt: number | null = null;
+let lateFileAdded = false;
+function maybeAddLateFile() {
+  const now = Date.now();
+  if (firstDeltaAt === null) firstDeltaAt = now;
+  if (lateFileAdded || now - firstDeltaAt < LATE_FILE_DELAY_MS) return;
+  lateFileAdded = true;
+  const gsi = mockDriveFind("GSI Program");
+  const it = addItem(gsi?.id ?? ROOT_ID, LATE_FILE_NAME, { size: 412_000, file: { mimeType: MIME.pdf } });
+  it.createdBy = { user: SIVA };
+  it.lastModifiedBy = { user: SIVA };
+}
+// Test helper: restart the late-file clock.
+export function mockDriveResetLateFile() {
+  firstDeltaAt = null;
+  lateFileAdded = false;
+}
+
 export const handleDrive: MockHandler = (method, url, body) => {
   let p = decodeURIComponent(url.pathname.replace(/^\/v1\.0/, ""));
   if (!p.startsWith("/me/drive")) return undefined;
@@ -292,12 +315,19 @@ export const handleDrive: MockHandler = (method, url, body) => {
     return { id: DRIVE_ID, driveType: "business", owner: { user: KAILASH }, quota: { total: 1_099_511_627_776, used: 214_748_364_800, remaining: 884_763_262_976, state: "normal" } };
   }
   if (p === "/me/drive/root/delta" && method === "GET") {
+    maybeAddLateFile();
     const token = url.searchParams.get("token");
-    const value: DriveItem[] = token ? [] : [rootItem()];
-    value.push(...Array.from(items.values()));
-    if (token) for (const id of removed) value.push({ id, name: "", "@removed": { reason: "deleted" } });
+    // Like Graph: $select limits every item to the named properties (plus
+    // id), and the deltaLink carries the selection forward; tombstones are
+    // { id, deleted } with no name, as OneDrive for Business sends them.
+    const select = (url.searchParams.get("$select") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    const pick = (it: DriveItem): DriveItem => (select.length ? (Object.fromEntries(Object.entries(it).filter(([k]) => k === "id" || select.includes(k))) as DriveItem) : it);
+    const value: DriveItem[] = token ? [] : [pick(rootItem())];
+    value.push(...Array.from(items.values()).map(pick));
+    if (token) for (const id of removed) value.push({ id, deleted: { state: "deleted" } } as DriveItem);
     removed.clear();
-    return { value, "@odata.deltaLink": `https://graph.microsoft.com/v1.0/me/drive/root/delta?token=mock-${Date.now()}` };
+    const sel = select.length ? `&$select=${encodeURIComponent(select.join(","))}` : "";
+    return { value, "@odata.deltaLink": `https://graph.microsoft.com/v1.0/me/drive/root/delta?token=mock-${Date.now()}${sel}` };
   }
   const search = p.match(/^\/me\/drive\/root\/search\(q='(.*)'\)$/);
   if (search && method === "GET") {
@@ -339,9 +369,9 @@ export const handleDrive: MockHandler = (method, url, body) => {
       it.name = uniqueName(it.parentReference?.id ?? ROOT_ID, b.name);
       if (it.folder) repath(it.id);
     }
-    const pr = b.parentReference as { id?: string; path?: string } | undefined;
-    if (pr?.id || pr?.path) {
-      const newParent = pr.id ? resolveId(pr.id) : ROOT_ID;
+    const pr = b.parentReference as { id?: string } | undefined;
+    if (pr?.id) {
+      const newParent = resolveId(pr.id);
       const oldParent = items.get(it.parentReference?.id ?? "");
       if (oldParent?.folder) oldParent.folder.childCount = Math.max(0, (oldParent.folder.childCount ?? 1) - 1);
       it.parentReference = { driveId: DRIVE_ID, id: newParent, path: pathFor(newParent) };

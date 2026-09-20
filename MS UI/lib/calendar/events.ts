@@ -1,5 +1,6 @@
-import { format } from "date-fns";
+import { addDays, format } from "date-fns";
 import { calendarHex, contrastText } from "./colors";
+import { initials } from "./overlay";
 import { parseWall, toWallInZone, DAY } from "./time";
 import type { CalEvent, GraphCalendar } from "./types";
 
@@ -14,6 +15,8 @@ export function normalise(ev: CalEvent, tz: string): WallEvent {
   };
 }
 
+export type FcPerson = { name: string; email: string; color: string; initials: string };
+
 export type FcEventInput = {
   id: string;
   title: string;
@@ -22,14 +25,17 @@ export type FcEventInput = {
   allDay: boolean;
   color: string;
   contrastColor: string;
-  classNames: string[];
+  // FullCalendar v7: a single space-joined string (arrays are rejected, `classNames` is not a known key).
+  className: string;
   editable: boolean;
-  extendedProps: { ev: WallEvent };
+  extendedProps: { ev: WallEvent; person?: FcPerson };
 };
 
-// Shape FullCalendar consumes. Wall strings without an offset are read in the calendar's timeZone.
-export function toFcEvent(ev: WallEvent, cal: GraphCalendar | undefined): FcEventInput {
-  const hex = calendarHex(cal);
+// Shape FullCalendar consumes. Wall strings without an offset are read in the
+// calendar's timeZone. `hex` is the resolved chip colour (blue for calendars
+// the user owns, a palette colour otherwise); it falls back to the Outlook
+// calendar colour when the caller has none.
+export function toFcEvent(ev: WallEvent, cal: GraphCalendar | undefined, hex: string = calendarHex(cal)): FcEventInput {
   const classNames = ["msui-ev"];
   if (ev.showAs === "tentative" || ev.responseStatus?.response === "tentativelyAccepted") classNames.push("msui-ev-tentative");
   if (ev.isCancelled) classNames.push("msui-ev-cancelled");
@@ -43,9 +49,28 @@ export function toFcEvent(ev: WallEvent, cal: GraphCalendar | undefined): FcEven
     allDay: !!ev.isAllDay,
     color: hex,
     contrastColor: contrastText(hex),
-    classNames,
+    className: classNames.join(" "),
     editable: !!(cal?.canEdit ?? true) && !ev.isCancelled,
     extendedProps: { ev },
+  };
+}
+
+// A colleague's overlay event: their colour, translucent, read-only, initials prefix.
+export function toFcPersonEvent(ev: WallEvent, person: { name: string; email: string; color: string }): FcEventInput {
+  const classNames = ["msui-ev", "msui-ev-colleague"];
+  if (ev.showAs === "tentative") classNames.push("msui-ev-tentative");
+  if (ev.showAs === "oof") classNames.push("msui-ev-oof");
+  return {
+    id: ev.id,
+    title: ev.subject || "Busy",
+    start: ev.startWall,
+    end: ev.endWall,
+    allDay: !!ev.isAllDay,
+    color: person.color,
+    contrastColor: contrastText(person.color),
+    className: classNames.join(" "),
+    editable: false,
+    extendedProps: { ev, person: { name: person.name, email: person.email, color: person.color, initials: initials(person.name) } },
   };
 }
 
@@ -78,10 +103,12 @@ export function groupByDay(list: WallEvent[], rangeStart: string, rangeEnd: stri
   for (const ev of sortEvents(list)) {
     const first = ev.startWall.slice(0, 10);
     let lastExclusive = ev.isAllDay ? ev.endWall.slice(0, 10) : ev.endWall.slice(0, 10);
-    if (!ev.isAllDay && ev.endWall.slice(11) !== "00:00:00") lastExclusive = format(new Date(parseWall(lastExclusive).getTime() + 86_400_000), DAY);
-    if (lastExclusive <= first) lastExclusive = format(new Date(parseWall(first).getTime() + 86_400_000), DAY);
-    const d = parseWall(first);
-    for (let k = format(d, DAY); k < lastExclusive; d.setDate(d.getDate() + 1), k = format(d, DAY)) {
+    // Calendar-day arithmetic (addDays), not +24 h: on the DST fall-back day 24 h of wall
+    // milliseconds lands at 23:00 the same day and the loop below would never run.
+    if (!ev.isAllDay && ev.endWall.slice(11) !== "00:00:00") lastExclusive = format(addDays(parseWall(lastExclusive), 1), DAY);
+    if (lastExclusive <= first) lastExclusive = format(addDays(parseWall(first), 1), DAY);
+    let d = parseWall(first);
+    for (let k = format(d, DAY); k < lastExclusive; d = addDays(d, 1), k = format(d, DAY)) {
       if (k < rangeStart || k >= rangeEnd) continue;
       const arr = map.get(k) ?? [];
       arr.push(ev);

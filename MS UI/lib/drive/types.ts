@@ -16,6 +16,7 @@ export type DriveItem = {
   createdDateTime?: string;
   lastModifiedDateTime?: string;
   webUrl?: string;
+  cTag?: string;
   deleted?: { state?: string };
   "@removed"?: { reason?: string };
   "@microsoft.graph.downloadUrl"?: string;
@@ -24,7 +25,7 @@ export type DriveItem = {
 };
 
 export type DriveQuota = { total?: number; used?: number; remaining?: number; state?: string };
-export type Drive = { id: string; driveType?: string; quota?: DriveQuota; owner?: IdentitySet };
+export type Drive = { id: string; driveType?: string; quota?: DriveQuota; owner?: IdentitySet; webUrl?: string };
 
 export type Permission = {
   id: string;

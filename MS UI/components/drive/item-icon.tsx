@@ -5,6 +5,7 @@ import { FileArchive, FileAudio, FileCode, FileImage, FileSpreadsheet, FileText,
 import { useEffect, useRef, useState } from "react";
 import { KIND_COLOR, type FileKind } from "@/lib/files";
 import { fetchThumbnail } from "@/lib/drive/api";
+import { THUMBNAIL_TTL_MS } from "@/lib/drive/freshness";
 import { kindOf } from "@/lib/drive/logic";
 import type { DriveItem } from "@/lib/drive/types";
 import { cn } from "@/lib/utils";
@@ -20,7 +21,25 @@ export function KindIcon({ kind, className }: { kind: FileKind; className?: stri
 }
 
 const THUMB_KINDS: FileKind[] = ["image", "video", "pdf", "doc", "sheet", "slide"];
-const cache = new Map<string, string | null>();
+type Cached = { url: string | null; cTag?: string; at: number };
+const cache = new Map<string, Cached>();
+
+export function rememberThumbnail(id: string, url: string | null, cTag: string | undefined, at = Date.now()) {
+  cache.set(id, { url, cTag, at });
+}
+
+// A cached thumbnail is reused after a rename or move (same id, same
+// content) and re-requested only when the content changed (new cTag) or
+// the pre-authenticated url is about to expire.
+export function cachedThumbnail(id: string, cTag: string | undefined, now = Date.now()): string | null | undefined {
+  const c = cache.get(id);
+  if (!c) return undefined;
+  if (c.cTag !== cTag || now - c.at > THUMBNAIL_TTL_MS) {
+    cache.delete(id);
+    return undefined;
+  }
+  return c.url;
+}
 
 // Grid tile preview: a lazily fetched thumbnail (IntersectionObserver) for
 // media and Office files, a big kind icon otherwise.
@@ -28,22 +47,31 @@ export function Thumbnail({ item }: { item: DriveItem }) {
   const { instance } = useMsal();
   const kind = kindOf(item);
   const ref = useRef<HTMLDivElement>(null);
-  const [url, setUrl] = useState<string | null | undefined>(cache.get(item.id));
+  // Keyed on id + content tag: a rename or move keeps the key (and the
+  // cached url); a new content version resets it during render.
+  const key = `${item.id}|${item.cTag ?? ""}`;
+  const [state, setState] = useState<{ key: string; url: string | null | undefined }>(() => ({ key, url: cachedThumbnail(item.id, item.cTag) }));
+  if (state.key !== key) setState({ key, url: cachedThumbnail(item.id, item.cTag) });
+  const url = state.key === key ? state.url : cachedThumbnail(item.id, item.cTag);
 
   useEffect(() => {
-    if (!THUMB_KINDS.includes(kind) || cache.has(item.id) || !ref.current) return;
+    if (!THUMB_KINDS.includes(kind) || url !== undefined || !ref.current) return;
     const el = ref.current;
+    let cancelled = false;
     const io = new IntersectionObserver((entries) => {
       if (!entries.some((e) => e.isIntersecting)) return;
       io.disconnect();
       void fetchThumbnail(instance, item.id).then((u) => {
-        cache.set(item.id, u);
-        setUrl(u);
+        rememberThumbnail(item.id, u, item.cTag);
+        if (!cancelled) setState({ key, url: u });
       });
     });
     io.observe(el);
-    return () => io.disconnect();
-  }, [instance, item.id, kind]);
+    return () => {
+      cancelled = true;
+      io.disconnect();
+    };
+  }, [instance, item.id, item.cTag, kind, key, url]);
 
   return (
     <div ref={ref} className="flex h-full w-full items-center justify-center overflow-hidden bg-muted/40">

@@ -1,10 +1,12 @@
 "use client";
 
-import { ChevronDown, Clock, Cloud, FolderPlus, FolderUp, HardDrive, Plus, Star, Trash2, Upload, Users, Folder, FileSpreadsheet, FileText, Presentation, FileType, FileImage, FileVideo } from "lucide-react";
+import { ChevronDown, Clock, Cloud, FolderPlus, FolderUp, HardDrive, Plus, RefreshCw, Star, Trash2, Upload, Users, Folder, FileSpreadsheet, FileText, Presentation, FileType, FileImage, FileVideo } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
 import { formatBytes, KIND_COLOR, KIND_VIEWS } from "@/lib/files";
+import { formatAgo } from "@/lib/drive/freshness";
 import type { DriveQuota } from "@/lib/drive/types";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +18,22 @@ const REPO_COLOR: Record<string, string> = {
 };
 
 export type NavKey = "myfiles" | "starred" | "recent" | "shared" | `repo:${string}`;
+
+// "Updated 12s ago", ticking once a second while the panel is mounted.
+export function UpdatedAgo({ lastSync, refreshing }: { lastSync?: string; refreshing: boolean }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  const at = lastSync ? new Date(lastSync).getTime() : NaN;
+  return (
+    <span className="inline-flex items-center gap-1" data-testid="drive-updated" title={lastSync ? `Last synced with OneDrive at ${new Date(lastSync).toLocaleTimeString()}` : undefined}>
+      <RefreshCw className={cn("h-3 w-3", refreshing && "animate-spin")} aria-hidden />
+      {refreshing ? "Updating..." : Number.isNaN(at) ? "Not synced yet" : `Updated ${formatAgo(now - at)}`}
+    </span>
+  );
+}
 
 function NavItem({ k, active, icon: I, label, color, onNav }: { k: NavKey; active: NavKey; icon: React.ComponentType<{ className?: string }>; label: string; color?: string; onNav: (k: NavKey) => void }) {
   return (
@@ -34,7 +52,7 @@ function NavItem({ k, active, icon: I, label, color, onNav }: { k: NavKey; activ
 }
 
 export function LeftPanel({
-  active, onNav, onNewFolder, onUploadFiles, onUploadFolder, quota, indexing, count, lastSync,
+  active, onNav, onNewFolder, onUploadFiles, onUploadFolder, quota, trashUrl, indexing, count, lastSync,
 }: {
   active: NavKey;
   onNav: (k: NavKey) => void;
@@ -42,6 +60,7 @@ export function LeftPanel({
   onUploadFiles: () => void;
   onUploadFolder: () => void;
   quota?: DriveQuota;
+  trashUrl: string;
   indexing: boolean;
   count: number;
   lastSync?: string;
@@ -76,7 +95,7 @@ export function LeftPanel({
       <NavItem k="recent" active={active} onNav={onNav} icon={Clock} label="Recent" />
       <NavItem k="shared" active={active} onNav={onNav} icon={Users} label="Shared with me" />
       <a
-        href="https://onedrive.live.com/?view=recyclebin"
+        href={trashUrl}
         target="_blank"
         rel="noopener noreferrer"
         title="Graph has no recycle-bin API for work accounts; opens OneDrive's Recycle bin"
@@ -93,8 +112,15 @@ export function LeftPanel({
         <p className="mt-2 text-xs text-muted-foreground">
           {total ? `${formatBytes(used)} of ${formatBytes(total)} used` : "Storage details unavailable"}
         </p>
-        <p className="mt-3 text-[11px] text-muted-foreground" aria-live="polite">
-          {indexing ? `Indexing OneDrive: ${count.toLocaleString()} items so far` : count ? `${count.toLocaleString()} items indexed${lastSync ? ` at ${new Date(lastSync).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : ""}` : ""}
+        <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground" aria-live="polite">
+          {indexing && !lastSync ? (
+            <span>Indexing OneDrive: {count.toLocaleString()} items so far</span>
+          ) : (
+            <>
+              {count ? <span>{count.toLocaleString()} items indexed</span> : null}
+              <UpdatedAgo lastSync={lastSync} refreshing={indexing && Boolean(lastSync)} />
+            </>
+          )}
         </p>
       </div>
     </nav>

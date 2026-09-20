@@ -25,7 +25,7 @@ import { groupThreads } from "@/lib/mail/logic";
 import { ThreadRow } from "../message-list";
 
 function Harness() {
-  const list = useMessageList("inbox", "focused");
+  const list = useMessageList("inbox", "primary", undefined, true);
   const actions = useMessageActions();
   const threads = groupThreads(flattenPages(list.data));
   if (list.isPending) return <p>loading</p>;

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownAZ, Check, ChevronDown, LayoutGrid, List, Search, X } from "lucide-react";
+import { ArrowDownAZ, Check, ChevronDown, LayoutGrid, List, RefreshCw, Search, X } from "lucide-react";
 import { forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -61,8 +61,10 @@ export const TopBar = forwardRef<
     onSort: (s: SortKey) => void;
     layout: "grid" | "list";
     onLayout: (l: "grid" | "list") => void;
+    onRefresh?: () => void;
+    refreshing?: boolean;
   }
->(function TopBar({ q, onQ, filters, onFilters, owners, sort, onSort, layout, onLayout }, ref) {
+>(function TopBar({ q, onQ, filters, onFilters, owners, sort, onSort, layout, onLayout, onRefresh, refreshing }, ref) {
   return (
     <div className="flex flex-col gap-2 px-4 pt-3 pb-2">
       <div className="relative max-w-2xl">
@@ -119,6 +121,11 @@ export const TopBar = forwardRef<
           ))}
         </Chip>
         <div className="ml-auto flex items-center gap-1">
+          {onRefresh && (
+            <Button variant="ghost" size="icon" aria-label="Refresh" title="Refresh from OneDrive" onClick={onRefresh} disabled={refreshing} className="rounded-full">
+              <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+            </Button>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="gap-1.5 text-[13px] font-normal" />}>
               <ArrowDownAZ className="h-4 w-4" />

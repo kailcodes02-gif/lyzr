@@ -15,7 +15,7 @@ export function ConsentFallback({ error }: { error?: unknown }) {
         </p>
         {msg && <p className="mt-2 rounded-lg bg-muted p-2 font-mono text-xs text-muted-foreground">{msg}</p>}
       </div>
-      <ConsentStatus only={["calendar", "contacts"]} />
+      <ConsentStatus only={["calendar", "calendarShared", "people", "contacts"]} />
       <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4">
         <div className="flex-1 text-sm">
           <div className="font-medium">Try the demo</div>

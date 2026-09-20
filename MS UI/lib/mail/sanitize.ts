@@ -8,20 +8,33 @@ export type SanitizeOptions = {
 
 export type SanitizeResult = { html: string; blockedImages: number; hasRemoteImages: boolean };
 
-const FORBID_TAGS = ["script", "style", "form", "input", "button", "textarea", "select", "iframe", "object", "embed", "link", "meta", "base", "svg", "math"];
+// <style> stays: newsletters and Outlook mail depend on class CSS and media
+// queries, and the iframe CSP (default-src 'none', no allow-scripts) already
+// blocks anything a stylesheet could fetch. Media elements go: media-src is none.
+const FORBID_TAGS = ["script", "form", "input", "button", "textarea", "select", "iframe", "object", "embed", "link", "meta", "base", "svg", "math", "video", "audio", "source"];
 const FORBID_ATTR = ["onerror", "onload", "onclick", "onmouseover", "formaction", "srcdoc"];
 
 const REMOTE = /^\s*(https?:)?\/\//i;
+const CSS_REMOTE_URL = /url\(\s*['"]?\s*(https?:)?\/\/[^)]*\)/gi;
+const CSS_IMPORT = /@import\b[^;]*;?/gi;
+
+// srcset: "url 2x, url 640w" -> any remote candidate counts.
+function srcsetHasRemote(srcset: string): boolean {
+  return srcset.split(",").some((c) => REMOTE.test(c.trim().split(/\s+/)[0] ?? ""));
+}
 
 // Sanitises email HTML for a sandboxed iframe: scripts, forms and event
-// handlers are removed, inline styles are kept, remote images are turned into
-// data-src until the reader opts in, cid: images are swapped for attachment URLs.
+// handlers are removed, inline and <style> CSS are kept, remote images are
+// turned into data-src until the reader opts in, cid: images are swapped for
+// attachment URLs.
 export function sanitizeEmailHtml(input: string, opts: SanitizeOptions = {}): SanitizeResult {
   const purified = DOMPurify.sanitize(input ?? "", {
     FORBID_TAGS,
     FORBID_ATTR,
     ALLOW_DATA_ATTR: true,
     WHOLE_DOCUMENT: false,
+    // Graph/Outlook put <style> in <head>; without FORCE_BODY DOMPurify returns only <body>.
+    FORCE_BODY: true,
     ADD_ATTR: ["target"],
   });
   const doc = new DOMParser().parseFromString(`<!doctype html><html><body>${purified}</body></html>`, "text/html");
@@ -30,6 +43,18 @@ export function sanitizeEmailHtml(input: string, opts: SanitizeOptions = {}): Sa
   const cidMap = opts.cidMap ?? {};
   doc.querySelectorAll("img").forEach((img) => {
     const src = img.getAttribute("src") ?? img.getAttribute("data-src") ?? "";
+    const srcset = img.getAttribute("srcset") ?? img.getAttribute("data-srcset") ?? "";
+    if (srcset && srcsetHasRemote(srcset)) {
+      hasRemote = true;
+      if (opts.allowRemoteImages) {
+        img.setAttribute("srcset", srcset);
+        img.removeAttribute("data-srcset");
+      } else {
+        blocked++;
+        img.removeAttribute("srcset");
+        img.setAttribute("data-srcset", srcset);
+      }
+    }
     if (/^cid:/i.test(src)) {
       const id = src.slice(4).replace(/^<|>$/g, "");
       const url = cidMap[id];
@@ -56,6 +81,19 @@ export function sanitizeEmailHtml(input: string, opts: SanitizeOptions = {}): Sa
       }
     }
   });
+  // @import could pull a remote stylesheet; the CSP blocks it, strip it anyway.
+  doc.querySelectorAll("style").forEach((el) => {
+    let css = el.textContent ?? "";
+    if (CSS_IMPORT.test(css)) css = css.replace(CSS_IMPORT, "");
+    CSS_IMPORT.lastIndex = 0;
+    if (!opts.allowRemoteImages && CSS_REMOTE_URL.test(css)) {
+      hasRemote = true;
+      blocked++;
+      css = css.replace(CSS_REMOTE_URL, "none");
+    }
+    CSS_REMOTE_URL.lastIndex = 0;
+    if (css !== el.textContent) el.textContent = css;
+  });
   // Remote backgrounds in inline styles leak the reader's IP the same way.
   if (!opts.allowRemoteImages) {
     doc.querySelectorAll<HTMLElement>("[style]").forEach((el) => {
@@ -63,7 +101,7 @@ export function sanitizeEmailHtml(input: string, opts: SanitizeOptions = {}): Sa
       if (/url\(\s*['"]?\s*(https?:)?\/\//i.test(style)) {
         hasRemote = true;
         blocked++;
-        el.setAttribute("style", style.replace(/url\(\s*['"]?\s*(https?:)?\/\/[^)]*\)/gi, "none"));
+        el.setAttribute("style", style.replace(CSS_REMOTE_URL, "none"));
       }
     });
     doc.querySelectorAll("[background]").forEach((el) => {

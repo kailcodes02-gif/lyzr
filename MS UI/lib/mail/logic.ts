@@ -37,17 +37,62 @@ export function visibleFolders(folders: MailFolder[]): MailFolder[] {
   return folders.filter((f) => !HIDDEN.has((f.wellKnownName ?? "").toLowerCase()));
 }
 
-// The list endpoint for a folder key from the URL.
+// Virtual folder keys: views that span folders rather than one Graph folder.
+export const SEARCH_ID = "search";
+export function isVirtualFolderKey(key: string): boolean {
+  return key === STARRED_ID || key === SEARCH_ID || key.startsWith("label:");
+}
+
+// Graph rejects $filter + $orderby unless every $orderby property leads the
+// $filter (InefficientFilter). Every sorted list query goes through here so
+// the invariant lives in one place; the 1970 sentinel matches everything.
+export const SORTABLE_FILTER_PREFIX = "receivedDateTime ge 1970-01-01T00:00:00Z";
+export function sortableFilter(...clauses: (string | false | undefined)[]): string {
+  return [SORTABLE_FILTER_PREFIX, ...clauses.filter((c): c is string => !!c)].join(" and ");
+}
+
+// The list endpoint for a folder key from the URL. `tab` narrows to Outlook's
+// Focused/Other classification when given.
 export function folderListPath(folderKey: string, tab?: string): string {
   const select = "$select=id,conversationId,conversationIndex,subject,bodyPreview,from,toRecipients,receivedDateTime,isRead,hasAttachments,flag,categories,importance,inferenceClassification,isDraft,webLink,parentFolderId";
-  if (folderKey === STARRED_ID) return `/me/messages?${select}&$filter=flag/flagStatus eq 'flagged'&$orderby=receivedDateTime desc&$top=50`;
-  const filter = folderKey === "inbox" && (tab === "focused" || tab === "other") ? `&$filter=inferenceClassification eq '${tab}'` : "";
+  if (folderKey === STARRED_ID) return `/me/messages?${select}&$filter=${sortableFilter("flag/flagStatus eq 'flagged'")}&$orderby=receivedDateTime desc&$top=50`;
+  const filter = tab === "focused" || tab === "other" ? `&$filter=${sortableFilter(`inferenceClassification eq '${tab}'`)}` : "";
   return `/me/mailFolders/${encodeURIComponent(folderKey)}/messages?${select}${filter}&$orderby=receivedDateTime desc&$top=50`;
 }
 
+// $search takes a KQL string in double quotes; Graph's grammar has no escape
+// for an inner quote, so quotes typed by the user are dropped.
 export function searchListPath(kql: string): string {
   const select = "$select=id,conversationId,conversationIndex,subject,bodyPreview,from,toRecipients,receivedDateTime,isRead,hasAttachments,flag,categories,importance,inferenceClassification,isDraft,webLink,parentFolderId";
-  return `/me/messages?${select}&$search=${encodeURIComponent(JSON.stringify(kql))}&$top=50`;
+  return `/me/messages?${select}&$search=${encodeURIComponent(JSON.stringify(kql.replace(/"/g, "").trim()))}&$top=50`;
+}
+
+// ---- Action scope -----------------------------------------------------------
+
+// Well-known keys are URL state; Graph returns parentFolderId as the opaque id.
+export function resolveFolderId(key: string, folders: MailFolder[]): string | undefined {
+  const lc = key.toLowerCase();
+  return folders.find((f) => f.id === key || (f.wellKnownName ?? "").toLowerCase() === lc)?.id;
+}
+
+const WELL_KNOWN_KEYS = new Set<string>([...WELL_KNOWN_ORDER, ...HIDDEN]);
+const KEEP_OUT = ["sentitems", "drafts", "deleteditems", "junkemail", "outbox"];
+
+// Ids a move-type action (archive, trash, spam, move, delete forever) may
+// touch for a conversation loaded across every folder. In a real folder only
+// the copies that live there; in a virtual view (starred, label, search)
+// everything except Sent/Drafts/Trash/Junk copies. Empty until the folder
+// list is known, so callers disable the action rather than guess.
+export function moveScopeIds(messages: Message[], currentFolder: string, folders: MailFolder[]): string[] {
+  if (isVirtualFolderKey(currentFolder)) {
+    if (!folders.length) return [];
+    const keepOut = new Set(KEEP_OUT.map((k) => resolveFolderId(k, folders)).filter(Boolean));
+    return messages.filter((m) => !keepOut.has(m.parentFolderId ?? "")).map((m) => m.id);
+  }
+  // Custom folders (including child folders, which the top-level list lacks) carry their id as the key.
+  const id = resolveFolderId(currentFolder, folders) ?? (WELL_KNOWN_KEYS.has(currentFolder.toLowerCase()) ? undefined : currentFolder);
+  if (!id) return [];
+  return messages.filter((m) => m.parentFolderId === id).map((m) => m.id);
 }
 
 // ---- Threads --------------------------------------------------------------

@@ -40,6 +40,35 @@
 .msui-cal .msui-ev-free {
   opacity: 0.75;
 }
+/* Colleague overlays: their colour, translucent, read-only, initials badge. */
+.msui-cal .msui-ev-colleague {
+  opacity: 0.72;
+  cursor: default;
+  border-style: dashed;
+  border-color: color-mix(in oklab, var(--fc-event-color, #7986cb) 70%, transparent);
+}
+.msui-cal .msui-ev-colleague:hover {
+  opacity: 0.9;
+  filter: none;
+}
+.msui-cal .msui-ev-oof {
+  background-image: repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.12) 0 3px, transparent 3px 8px) !important;
+}
+.msui-ev-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  color: #202124;
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1;
+  align-self: center;
+}
 .msui-cal a {
   text-decoration: none;
 }

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { handleCalendar, resetCalendarMock } from "@/lib/mock/calendar";
+import { handleCalendar, OUTLOOK_ARRIVAL_MS, OUTLOOK_ARRIVAL_SUBJECT, resetCalendarMock } from "@/lib/mock/calendar";
 import type { GraphEvent } from "../types";
 
 const u = (path: string) => new URL(`https://graph.microsoft.com/v1.0${path}`);
@@ -36,11 +36,52 @@ describe("calendar mock handler", () => {
     start.setHours(15, 0, 0, 0);
     const body = { subject: "Infosys deck review", start: { dateTime: start.toISOString().slice(0, 19), timeZone: "UTC" }, end: { dateTime: new Date(start.getTime() + 3600e3).toISOString().slice(0, 19), timeZone: "UTC" }, isOnlineMeeting: true, onlineMeetingProvider: "teamsForBusiness", transactionId: "t1" };
     const created = handleCalendar("POST", u("/me/calendars/cal-default/events"), body) as GraphEvent;
-    expect(created.onlineMeeting?.joinUrl).toContain("teams.microsoft.com");
+    // Like Outlook, the Teams link is provisioned after the POST answers: the next read has it.
+    expect(created.isOnlineMeeting).toBe(true);
+    expect(created.onlineMeeting?.joinUrl).toBeUndefined();
     const again = handleCalendar("POST", u("/me/calendars/cal-default/events"), body) as GraphEvent;
     expect(again.id).toBe(created.id);
     const r = handleCalendar("GET", u(`/me/calendars/cal-default/calendarView?${monthRange()}`), undefined) as { value: GraphEvent[] };
-    expect(r.value.filter((e) => e.subject === "Infosys deck review")).toHaveLength(1);
+    const listed = r.value.filter((e) => e.subject === "Infosys deck review");
+    expect(listed).toHaveLength(1);
+    expect(listed[0].onlineMeeting?.joinUrl).toContain("teams.microsoft.com");
+  });
+
+  it("delta: the first round yields a token, later rounds return only what changed (creates, patches, deletes)", () => {
+    type Delta = { value: (GraphEvent & { "@removed"?: { reason: string } })[]; "@odata.deltaLink": string };
+    const first = handleCalendar("GET", u(`/me/calendarView/delta?${monthRange()}`), undefined) as Delta;
+    expect(first.value.length).toBeGreaterThan(0);
+    const token = new URL(first["@odata.deltaLink"]).searchParams.get("$deltatoken")!;
+    const quiet = handleCalendar("GET", u(`/me/calendarView/delta?$deltatoken=${token}`), undefined) as Delta;
+    expect(quiet.value).toEqual([]);
+    const start = new Date();
+    start.setDate(start.getDate() + 2);
+    const created = handleCalendar("POST", u("/me/events"), { subject: "From the phone", start: { dateTime: start.toISOString().slice(0, 19), timeZone: "UTC" }, end: { dateTime: new Date(start.getTime() + 1800e3).toISOString().slice(0, 19), timeZone: "UTC" } }) as GraphEvent;
+    handleCalendar("PATCH", u("/me/events/evt-sync-exception"), { subject: "GSI weekly sync (moved again)" });
+    handleCalendar("DELETE", u("/me/events/evt-standup"), undefined);
+    const next = handleCalendar("GET", u(`/me/calendarView/delta?$deltatoken=${token}`), undefined) as Delta;
+    expect(next.value.map((e) => e.id)).toEqual([created.id, "evt-sync-exception", "evt-standup"]);
+    expect(next.value[1].subject).toBe("GSI weekly sync (moved again)");
+    expect(next.value[2]["@removed"]).toEqual({ reason: "deleted" });
+    // the new token is past those changes
+    const token2 = new URL(next["@odata.deltaLink"]).searchParams.get("$deltatoken")!;
+    expect((handleCalendar("GET", u(`/me/calendarView/delta?$deltatoken=${token2}`), undefined) as Delta).value).toEqual([]);
+  });
+
+  it("an event 'Added in Outlook' arrives only through the delta, 20 s after boot", () => {
+    resetCalendarMock({ bootAt: Date.now() - OUTLOOK_ARRIVAL_MS + 5000 });
+    const has = () => (handleCalendar("GET", u(`/me/calendars/cal-default/calendarView?${monthRange()}`), undefined) as { value: GraphEvent[] }).value.some((e) => e.subject === OUTLOOK_ARRIVAL_SUBJECT);
+    type Delta = { value: GraphEvent[]; "@odata.deltaLink": string };
+    const first = handleCalendar("GET", u(`/me/calendarView/delta?${monthRange()}`), undefined) as Delta;
+    const token = new URL(first["@odata.deltaLink"]).searchParams.get("$deltatoken")!;
+    expect(has()).toBe(false);
+    resetCalendarMock({ bootAt: Date.now() - OUTLOOK_ARRIVAL_MS - 1 });
+    // a plain calendarView does not materialise it...
+    expect(has()).toBe(false);
+    // ...the delta does, and the next view lists it
+    const d = handleCalendar("GET", u(`/me/calendarView/delta?$deltatoken=${token}`), undefined) as Delta;
+    expect(d.value.map((e) => e.subject)).toContain(OUTLOOK_ARRIVAL_SUBJECT);
+    expect(has()).toBe(true);
   });
 
   it("patching an occurrence creates an exception; deleting the master removes the series", () => {

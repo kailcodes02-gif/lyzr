@@ -28,6 +28,7 @@ export const MOCK_CALENDARS: GraphCalendar[] = [
     hexColor: "",
     isDefaultCalendar: true,
     canEdit: true,
+    canShare: true,
     owner: ME,
     allowedOnlineMeetingProviders: ["teamsForBusiness"],
     defaultOnlineMeetingProvider: "teamsForBusiness",
@@ -39,11 +40,79 @@ export const MOCK_CALENDARS: GraphCalendar[] = [
     hexColor: "",
     isDefaultCalendar: false,
     canEdit: true,
+    canShare: true,
     owner: ME,
     allowedOnlineMeetingProviders: [],
     defaultOnlineMeetingProvider: "unknown",
   },
 ];
+
+// A colleague's calendar shared with me (sits in the "Other Calendars" group).
+export const MOCK_SHARED_CALENDAR: GraphCalendar = {
+  id: "cal-shared-siva",
+  name: "Siva Surendira",
+  color: "lightOrange",
+  hexColor: "",
+  isDefaultCalendar: false,
+  canEdit: false,
+  canShare: false,
+  owner: PEOPLE.siva,
+  allowedOnlineMeetingProviders: [],
+  defaultOnlineMeetingProvider: "unknown",
+};
+
+export const MOCK_CALENDAR_GROUPS = [
+  { id: "cg-my", name: "My Calendars", classId: "0006f0b7-0000-0000-c000-000000000046", calendars: MOCK_CALENDARS },
+  { id: "cg-other", name: "Other Calendars", classId: "0006f0b7-0000-0000-c000-000000000046", calendars: [MOCK_SHARED_CALENDAR] },
+];
+
+// The Lyzr directory as /me/people and /users see it.
+export type MockUser = { id: string; displayName: string; mail: string; userPrincipalName: string; jobTitle: string };
+export const MOCK_DIRECTORY: MockUser[] = [
+  ["u01", "Siva Surendira", "siva@lyzr.ai", "CEO"],
+  ["u02", "Anirudh Narayan", "anirudh@lyzr.ai", "GSI Partnerships Lead"],
+  ["u03", "Ani Sharma", "ani.sharma@lyzr.ai", "Solutions Engineer"],
+  ["u04", "Anita Krishnan", "anita.k@lyzr.ai", "Product Marketing"],
+  ["u05", "Kailash G M", "kailash.gm@lyzr.com", "Marketing"],
+  ["u06", "Harshad Patel", "harshad@lyzr.ai", "CTO"],
+  ["u07", "Ramya Iyer", "ramya@lyzr.ai", "Head of Design"],
+  ["u08", "Vikram Nair", "vikram@lyzr.ai", "Solutions Engineer"],
+  ["u09", "Deepa Menon", "deepa@lyzr.ai", "Customer Success Manager"],
+  ["u10", "Arjun Reddy", "arjun@lyzr.ai", "Account Executive"],
+  ["u11", "Meera Pillai", "meera@lyzr.ai", "Content Marketing"],
+  ["u12", "Rohan Das", "rohan@lyzr.ai", "Growth Marketing"],
+  ["u13", "Sneha Kulkarni", "sneha@lyzr.ai", "Demand Generation"],
+  ["u14", "Karthik Subramanian", "karthik@lyzr.ai", "Principal Engineer"],
+  ["u15", "Lakshmi Venkat", "lakshmi@lyzr.ai", "Finance"],
+  ["u16", "Nikhil Bhat", "nikhil@lyzr.ai", "Solutions Engineer"],
+  ["u17", "Pooja Shetty", "pooja@lyzr.ai", "People Operations"],
+  ["u18", "Aditya Rao", "aditya@lyzr.ai", "Partner Marketing"],
+  ["u19", "Divya Anand", "divya@lyzr.ai", "Sales Development"],
+  ["u20", "Manish Gupta", "manish@lyzr.ai", "VP Sales"],
+  ["u21", "Shruti Desai", "shruti@lyzr.ai", "Events Marketing"],
+  ["u22", "Varun Mehta", "varun@lyzr.ai", "Forward Deployed Engineer"],
+  ["u23", "Tanvi Joshi", "tanvi@lyzr.ai", "Legal"],
+  ["u24", "Rahul Agarwal", "rahul.a@lyzr.ai", "Enterprise Sales"],
+  ["u25", "Ananya Bose", "ananya@lyzr.ai", "Solutions Architect"],
+].map(([id, displayName, mail, jobTitle]) => ({ id, displayName, mail, userPrincipalName: mail, jobTitle }));
+
+function unquote(v: string | null): string {
+  return (v ?? "").replace(/^"|"$/g, "").trim().toLowerCase();
+}
+function userMatches(u: MockUser, q: string) {
+  if (!q) return true;
+  return u.displayName.toLowerCase().includes(q) || u.mail.toLowerCase().includes(q) || u.displayName.toLowerCase().split(/\s+/).some((w) => w.startsWith(q));
+}
+function toPerson(u: MockUser) {
+  return {
+    id: u.id,
+    displayName: u.displayName,
+    jobTitle: u.jobTitle,
+    userPrincipalName: u.userPrincipalName,
+    scoredEmailAddresses: [{ address: u.mail, relevanceScore: 20 }],
+    personType: { class: "Person", subclass: "OrganizationUser" },
+  };
+}
 
 type StoredEvent = GraphEvent & { calendarId: string; originalStart?: string; deletedOccurrences?: string[] };
 
@@ -211,10 +280,89 @@ function seed(): StoredEvent[] {
     { subject: "LinkedIn campaign retro", start: at(toMonday - 8, 11, 0), end: at(toMonday - 8, 12, 0), attendees: [att(PEOPLE.anirudh)] },
   ];
   for (const s of singles) list.push(mk(s));
+
+  // Siva's calendar, shared with me with full details.
+  const siva = (o: MkInput): MkInput => ({ ...o, calendarId: "cal-shared-siva", organizer: { emailAddress: PEOPLE.siva }, attendees: [att(PEOPLE.siva, "organizer"), ...(o.attendees ?? [])] });
+  const sivaEvents: MkInput[] = [
+    { subject: "Board prep", start: at(toMonday, 9, 0), end: at(toMonday, 10, 0), ...body("Q3 numbers.") },
+    { subject: "Investor call", start: at(toMonday + 1, 15, 0), end: at(toMonday + 1, 16, 0), ...teams("siva-investor") },
+    { subject: "Lyzr leadership sync", start: at(toMonday + 2, 9, 30), end: at(toMonday + 2, 10, 30), attendees: [att(PEOPLE.anirudh)], ...teams("siva-lead") },
+    { subject: "Accenture exec dinner", start: at(toMonday + 3, 19, 0), end: at(toMonday + 3, 21, 0), location: { displayName: "Chennai" } },
+    { subject: "Out of office", start: at(toMonday + 4, 12, 0), end: at(toMonday + 4, 18, 0), showAs: "oof" },
+    { subject: "Hiring panel", start: at(toMonday + 8, 11, 0), end: at(toMonday + 8, 12, 0) },
+  ];
+  for (const s of sivaEvents) list.push(mk(siva(s)));
   return list;
 }
 
+// Deterministic busy blocks for getSchedule: the same address always yields the same week.
+function scheduleItemsFor(email: string, from: Date, to: Date) {
+  const addr = email.toLowerCase();
+  const stored = events.filter((e) => e.calendarId === "cal-shared-siva");
+  const internal = /@lyzr\.(ai|com)$/.test(addr);
+  const out: { status: string; subject?: string; location?: string; isPrivate?: boolean; start: { dateTime: string; timeZone: string }; end: { dateTime: string; timeZone: string } }[] = [];
+  if (addr === PEOPLE.siva.address) {
+    for (const e of stored) {
+      if (!inRange(e, from, to) || e.isAllDay) continue;
+      out.push({ status: e.showAs ?? "busy", subject: e.subject, location: e.location?.displayName, isPrivate: e.sensitivity === "private", start: e.start, end: e.end });
+    }
+    return out;
+  }
+  let h = 0;
+  for (const ch of addr) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const SUBJECTS = ["Customer call", "Design review", "Pipeline review", "1:1", "Partner sync", "Focus time", "Sprint planning", "Interview"];
+  const day = new Date(from);
+  day.setHours(0, 0, 0, 0);
+  for (let i = 0; day < to && i < 70; i++, day.setDate(day.getDate() + 1)) {
+    const dow = day.getDay();
+    if (dow === 0 || dow === 6) continue;
+    const seedN = (h + i * 2654435761) >>> 0;
+    const count = 1 + (seedN % 3);
+    for (let k = 0; k < count; k++) {
+      const v = (seedN >> (k * 5)) & 31;
+      const startH = 9 + (v % 8);
+      const dur = [30, 60, 60, 90][v % 4];
+      const st = new Date(day);
+      st.setHours(startH, v % 2 ? 30 : 0, 0, 0);
+      const en = plusMin(st, dur);
+      if (en <= from || st >= to) continue;
+      const status = v % 7 === 0 ? "tentative" : v % 11 === 0 ? "oof" : "busy";
+      out.push({ status, subject: internal ? SUBJECTS[(v + k) % SUBJECTS.length] : undefined, start: utc(st), end: utc(en) });
+    }
+  }
+  return out;
+}
+
 let events: StoredEvent[] = seed();
+
+// ---------- delta change log ----------
+// Every write appends here; /me/calendarView/delta with a token returns the
+// entries after that token, so the client's polling path sees exactly what
+// changed (its own writes included, which it recognises and ignores).
+type Change = { seq: number; id: string; removed?: boolean };
+let changeSeq = 0;
+let changes: Change[] = [];
+function logChange(id: string, removed = false) {
+  changes.push({ seq: ++changeSeq, id, removed });
+}
+
+// An event "created in Outlook" while the demo runs: it is materialised only
+// by the delta handler, ARRIVAL_MS after the mock booted, so it appears on
+// screen through polling alone (no reload, no full refetch).
+export const OUTLOOK_ARRIVAL_MS = 20_000;
+export const OUTLOOK_ARRIVAL_SUBJECT = "Added in Outlook";
+let bootAt = Date.now();
+let arrived = false;
+function maybeArriveFromOutlook(now = Date.now()) {
+  if (arrived || now - bootAt < OUTLOOK_ARRIVAL_MS) return;
+  arrived = true;
+  const start = new Date();
+  start.setMinutes(0, 0, 0);
+  start.setHours(start.getHours() + 2);
+  const ev = mk({ id: "evt-from-outlook", subject: OUTLOOK_ARRIVAL_SUBJECT, start, end: plusMin(start, 30), attendees: [att(PEOPLE.siva)], location: { displayName: "Created in Outlook on the web" } });
+  events.push(ev);
+  logChange(ev.id);
+}
 
 const DAY_INDEX: Record<DayOfWeek, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
 
@@ -343,13 +491,18 @@ const TIME_ZONES = [
   "Asia/Dubai",
 ];
 
-export function resetCalendarMock() {
+export function resetCalendarMock(opts: { bootAt?: number } = {}) {
   events = seed();
+  changes = [];
+  changeSeq = 0;
+  arrived = false;
+  bootAt = opts.bootAt ?? Date.now();
 }
 
 export const handleCalendar: MockHandler = (method, url, body) => {
   const p = url.pathname.replace(/^\/v1\.0/, "");
   const q = url.searchParams;
+  let m: RegExpExecArray | null;
   const range = () => {
     const s = q.get("startDateTime");
     const e = q.get("endDateTime");
@@ -357,9 +510,41 @@ export const handleCalendar: MockHandler = (method, url, body) => {
   };
 
   if (p === "/me/calendars" && method === "GET") return { value: MOCK_CALENDARS };
+  if (p === "/me/calendarGroups" && method === "GET") return { value: MOCK_CALENDAR_GROUPS.map(({ calendars: _c, ...g }) => (void _c, g)) };
+  m = /^\/me\/calendarGroups\/([^/]+)\/calendars$/.exec(p);
+  if (m && method === "GET") {
+    const g = MOCK_CALENDAR_GROUPS.find((x) => x.id === decodeURIComponent(m![1]));
+    if (!g) throw new Error("ErrorItemNotFound: calendar group not found");
+    return { value: g.calendars };
+  }
+  m = /^\/me\/calendarGroups\/[^/]+\/calendars\/([^/]+)\/calendarView$/.exec(p);
+  if (m && method === "GET") {
+    const { from, to } = range();
+    return { value: view(decodeURIComponent(m[1]), from, to) };
+  }
+  // Another user's calendar: only Siva shares with details; everyone else is 403 (needs Calendars.Read.Shared + sharing).
+  m = /^\/users\/([^/]+)\/calendarView$/.exec(p);
+  if (m && method === "GET") {
+    const upn = decodeURIComponent(m[1]).toLowerCase();
+    if (upn !== PEOPLE.siva.address) throw new Error("ErrorAccessDenied: Access is denied. Check credentials and try again.");
+    const { from, to } = range();
+    return { value: view("cal-shared-siva", from, to) };
+  }
+  if (p === "/me/people" && method === "GET") {
+    const term = unquote(q.get("$search"));
+    const top = Number(q.get("$top") ?? 10);
+    return { value: MOCK_DIRECTORY.filter((u) => userMatches(u, term)).slice(0, top).map(toPerson) };
+  }
+  if (p === "/users" && method === "GET") {
+    const raw = q.get("$search") ?? "";
+    const terms = Array.from(raw.matchAll(/"(?:displayName|mail):([^"]*)"/g)).map((x) => x[1].toLowerCase());
+    const top = Number(q.get("$top") ?? 10);
+    const hits = MOCK_DIRECTORY.filter((u) => (terms.length ? terms.some((t) => userMatches(u, t)) : true)).slice(0, top);
+    return { "@odata.count": hits.length, value: hits.map(({ id, displayName, mail, userPrincipalName, jobTitle }) => ({ id, displayName, mail, userPrincipalName, jobTitle })) };
+  }
   if (p.startsWith("/me/outlook/supportedTimeZones")) return { value: TIME_ZONES.map((alias) => ({ alias, displayName: alias })) };
 
-  let m = /^\/me\/calendars\/([^/]+)\/calendarView$/.exec(p);
+  m = /^\/me\/calendars\/([^/]+)\/calendarView$/.exec(p);
   if (m && method === "GET") {
     const { from, to } = range();
     return { value: view(decodeURIComponent(m[1]), from, to) };
@@ -369,7 +554,28 @@ export const handleCalendar: MockHandler = (method, url, body) => {
     return { value: view("cal-default", from, to) };
   }
   if (p === "/me/calendarView/delta" && method === "GET") {
-    return { value: [], "@odata.deltaLink": "https://graph.microsoft.com/v1.0/me/calendarView/delta?$deltatoken=mock" };
+    maybeArriveFromOutlook();
+    const token = q.get("$deltatoken");
+    const link = (seq: number) => `https://graph.microsoft.com/v1.0/me/calendarView/delta?$deltatoken=mock-${seq}`;
+    if (!token) {
+      // Initial round: everything in the range, then a token.
+      const { from, to } = range();
+      return { value: view("cal-default", from, to), "@odata.deltaLink": link(changeSeq) };
+    }
+    const since = Number(/^mock-(\d+)$/.exec(token)?.[1] ?? 0);
+    const seen = new Set<string>();
+    const value: (GraphEvent | { id: string; "@removed": { reason: string } })[] = [];
+    for (const c of changes.filter((x) => x.seq > since).reverse()) {
+      if (seen.has(c.id)) continue;
+      seen.add(c.id);
+      if (c.removed) {
+        value.push({ id: c.id, "@removed": { reason: "deleted" } });
+        continue;
+      }
+      const cur = events.find((e) => e.id === c.id && e.calendarId === "cal-default");
+      if (cur) value.push(strip(cur));
+    }
+    return { value: value.reverse(), "@odata.deltaLink": link(changeSeq) };
   }
   if (p.startsWith("/me/reminderView")) {
     const rm = /startDateTime='([^']+)',endDateTime='([^']+)'/.exec(decodeURIComponent(p));
@@ -395,7 +601,15 @@ export const handleCalendar: MockHandler = (method, url, body) => {
     const ivl = b.availabilityViewInterval ?? 30;
     const ms = new Date(b.endTime.dateTime).getTime() - new Date(b.startTime.dateTime).getTime();
     const slots = Math.max(1, Math.round(ms / 60_000 / ivl));
-    return { value: b.schedules.map((s) => ({ scheduleId: s, availabilityView: s === ME.address ? "0".repeat(slots) : availabilityFor(s, slots), workingHours: null })) };
+    const from = new Date(b.startTime.dateTime);
+    const to = new Date(b.endTime.dateTime);
+    return {
+      value: b.schedules.map((s) => {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) return { scheduleId: s, availabilityView: "", scheduleItems: [], error: { message: "The address is not a valid SMTP address.", responseCode: "ErrorInvalidSmtpAddress" } };
+        if (s === ME.address) return { scheduleId: s, availabilityView: "0".repeat(slots), scheduleItems: [], workingHours: null };
+        return { scheduleId: s, availabilityView: availabilityFor(s, slots), scheduleItems: scheduleItemsFor(s, from, to), workingHours: null };
+      }),
+    };
   }
 
   m = /^\/me\/(?:calendars\/([^/]+)\/)?events$/.exec(p);
@@ -418,9 +632,13 @@ export const handleCalendar: MockHandler = (method, url, body) => {
       responseStatus: { response: "organizer" },
       transactionId: b.transactionId,
     };
-    if (b.isOnlineMeeting && b.onlineMeetingProvider === "teamsForBusiness") Object.assign(ev, teams(id));
     events.push(ev);
-    return strip(ev);
+    logChange(id);
+    // Like Outlook, the join link is provisioned after the POST answers: the
+    // response carries onlineMeeting null and the next read has the URL.
+    const response = strip(ev);
+    if (b.isOnlineMeeting && b.onlineMeetingProvider === "teamsForBusiness") Object.assign(ev, teams(id));
+    return response;
   }
 
   m = /^\/me\/events\/([^/]+)(?:\/(accept|tentativelyAccept|decline|cancel))?$/.exec(p);
@@ -434,6 +652,7 @@ export const handleCalendar: MockHandler = (method, url, body) => {
     if (method === "DELETE") {
       if (occurrenceDate && master) master.deletedOccurrences = [...(master.deletedOccurrences ?? []), occurrenceDate];
       else events = events.filter((e) => e.id !== event.id && e.seriesMasterId !== event.id);
+      logChange(id, true);
       return undefined;
     }
     if (method === "PATCH") {
@@ -441,21 +660,25 @@ export const handleCalendar: MockHandler = (method, url, body) => {
         const ex: StoredEvent = { ...event, id: `${master.id}_${occurrenceDate.replace(/-/g, "")}`, type: "exception", originalStart: occurrenceDate, recurrence: null };
         applyPatch(ex, body as Record<string, unknown>);
         events.push(ex);
+        logChange(ex.id);
         return strip(ex);
       }
       applyPatch(event, body as Record<string, unknown>);
+      logChange(event.id);
       return strip(event);
     }
     if (method === "POST" && action) {
       const target = event.type === "occurrence" && master ? master : event;
       if (action === "cancel") {
         events = events.filter((e) => e.id !== target.id && e.seriesMasterId !== target.id);
+        logChange(target.id, true);
         return undefined;
       }
       const resp: ResponseType = action === "accept" ? "accepted" : action === "decline" ? "declined" : "tentativelyAccepted";
       target.responseStatus = { response: resp, time: new Date().toISOString() };
       target.attendees = (target.attendees ?? []).map((a) => (a.emailAddress.address === ME.address ? { ...a, status: { response: resp, time: new Date().toISOString() } } : a));
       if (action === "decline") events = events.filter((e) => e.id !== target.id);
+      logChange(target.id, action === "decline");
       return undefined;
     }
   }

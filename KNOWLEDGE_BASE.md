@@ -454,6 +454,33 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-09-20 (late), MS UI: labels with rules, Primary/Social/Promotions, preset labels, colleague calendars, real-time refresh, two review passes (MS UI)
+- **Outlook**: click a label to see all its mail; "New label" dialog with conditions (senders, domains, subject words,
+  calendar invitations, newsletters, sent only to me) that become Outlook inbox rules (`messageRules`); "Skip the
+  inbox" creates a folder named like the label and the rule moves matching mail there (`assignCategories` +
+  `moveToFolder` + `stopProcessingRules`), label rules sequenced before the sorting rules; Primary / Social /
+  Promotions tabs (Social = social sender domains, Promotions = `List-Unsubscribe` header, both as categories via
+  rules, Promotions excepting social senders); Filters dialog listing every rule; "Set up my labels" installs the
+  user's presets from `MS UI/lib/mail/presets.ts` (Leadership, GSI, Marketing, Meeting scripts, Calendar -> folder
+  "Calendar invites" because Exchange reserves "Calendar") with per-label results and error isolation.
+- **Calendar**: mini month fixed; My calendars / Other calendars sections; subscribe to a colleague (getSchedule
+  overlays, or their shared calendar via `Calendars.Read.Shared` when they shared details); calendar groups; guest
+  picker searches `/me/people` (with `X-PeopleQuery-QuerySources: Mailbox,Directory`) and `/users` (User.ReadBasic.All);
+  own calendars' events blue, others in a distinct palette; events with guests default to a Teams meeting.
+- **OneDrive**: double-click opens Office files in Word / Excel / PowerPoint on the web, menu offers the desktop app.
+- **Real-time contract** (user requirement): every action calls Graph, shows the optimistic result, refetches the
+  affected data on settle and again 2.5 s later, polls while visible (15 s mail and calendar deltas, 30 s drive),
+  refetches on focus/visibility, server wins with a toast when something did not apply, "Updated n s ago" + refresh
+  in each app; sent mail is polled into Sent Items; a mock "Arrived from Outlook" / "Added in Outlook" /
+  "Added in OneDrive.pdf" proves live refresh in the browser tests.
+- **Reviews**: a 20-agent adversarial review of the three features plus per-feature verifiers; ~70 findings applied
+  (Graph gotchas recorded in `MS UI/PLAN.md` sections 9-10: `$orderby` properties must lead `$filter`, delta
+  `$select` must include `root`/`deleted`, attachments `$select` cannot include `contentId`, thread actions scoped to
+  the current folder, FullCalendar 7 `className`, all-day exclusive ends, no `recurrence:null` on a series master).
+- Tests: 291 vitest unit tests (36 files), 32 Playwright browser tests in demo mode, all green; deployed to
+  https://lyzr.kailash-gm.com/MS/. Registration now also has Calendars.Read.Shared, Calendars.ReadWrite.Shared,
+  People.Read, User.ReadBasic.All; consent still pending with the Lyzr M365 admin.
+
 ### 2026-09-20, MS UI: first full build of Outlook, OneDrive and Calendar screens, demo mode, tests (MS UI)
 - `MS UI/` is now a working Next.js 16 static-export app (basePath `/MS`): Microsoft sign-in (MSAL v5 with the
   redirect bridge page), 72px app rail, and three screens built by parallel agents: `outlook/` (Gmail layout:

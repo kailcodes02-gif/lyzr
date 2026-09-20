@@ -2,10 +2,11 @@
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Archive, ChevronLeft, ChevronRight, Inbox, Mail, MailOpen, Paperclip, RefreshCw, Star, Tag, Trash2, Users } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatMailDate } from "@/lib/format";
+import { updatedAgoLabel } from "@/lib/mail/freshness";
 import { participantLabel, presetHex } from "@/lib/mail/logic";
 import type { OutlookCategory, Thread } from "@/lib/mail/types";
 import { cn } from "@/lib/utils";
@@ -156,16 +157,38 @@ export function EmptyList({ folder, query }: { folder: string; query?: string })
   );
 }
 
-export function ListToolbar({ total, selectedCount, allSelected, onSelectAll, onClear, onRefresh, refreshing, onArchive, onTrash, onRead, onUnread, onSpam, onLabel, page, onPrev, onNext, hasPrev, hasNext, isTrashOrSpam, onInbox }: { total: number; selectedCount: number; allSelected: boolean; onSelectAll: () => void; onClear: () => void; onRefresh: () => void; refreshing?: boolean; onArchive: () => void; onTrash: () => void; onRead: () => void; onUnread: () => void; onSpam: () => void; onLabel?: React.ReactNode; page: string; onPrev: () => void; onNext: () => void; hasPrev: boolean; hasNext: boolean; isTrashOrSpam?: boolean; onInbox: () => void }) {
+// Ticks once a second while the tab is visible so "Updated <n>s ago" stays true.
+function useNow(everyMs = 1000): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") setNow(Date.now());
+    }, everyMs);
+    return () => window.clearInterval(id);
+  }, [everyMs]);
+  return now;
+}
+
+export function UpdatedAgo({ at }: { at?: number }) {
+  const now = useNow();
+  const label = updatedAgoLabel(at ?? 0, Math.max(now, at ?? 0));
+  if (!label) return null;
+  return <span className="text-xs text-muted-foreground" data-testid="updated-ago">{label}</span>;
+}
+
+export function ListToolbar({ total, selectedCount, allSelected, onSelectAll, onClear, onRefresh, refreshing, updatedAt, onArchive, onTrash, onRead, onUnread, onSpam, onLabel, page, onPrev, onNext, hasPrev, hasNext, isTrashOrSpam, onInbox }: { total: number; selectedCount: number; allSelected: boolean; onSelectAll: () => void; onClear: () => void; onRefresh: () => void; refreshing?: boolean; updatedAt?: number; onArchive: () => void; onTrash: () => void; onRead: () => void; onUnread: () => void; onSpam: () => void; onLabel?: React.ReactNode; page: React.ReactNode; onPrev: () => void; onNext: () => void; hasPrev: boolean; hasNext: boolean; isTrashOrSpam?: boolean; onInbox: () => void }) {
   return (
     <div className="flex h-12 shrink-0 items-center gap-1 border-b border-border px-3">
       <div className="flex w-6 items-center justify-center">
         <Checkbox checked={allSelected && total > 0} indeterminate={selectedCount > 0 && !allSelected} onCheckedChange={() => (selectedCount > 0 ? onClear() : onSelectAll())} aria-label="Select all" />
       </div>
       {selectedCount === 0 ? (
-        <IconButton label="Refresh" onClick={onRefresh}>
-          <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
-        </IconButton>
+        <>
+          <IconButton label="Refresh" onClick={onRefresh}>
+            <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+          </IconButton>
+          <UpdatedAgo at={updatedAt} />
+        </>
       ) : (
         <>
           {isTrashOrSpam ? (

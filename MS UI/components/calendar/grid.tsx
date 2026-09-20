@@ -12,10 +12,11 @@ import breezyTheme from "@fullcalendar/react/themes/breezy";
 import timeGridPlugin from "@fullcalendar/react/timegrid";
 import { Lock, Repeat, Video } from "lucide-react";
 import { useEffect, useRef } from "react";
-import type { FcEventInput, WallEvent } from "@/lib/calendar/events";
+import type { FcEventInput, FcPerson, WallEvent } from "@/lib/calendar/events";
 import type { ViewKind } from "@/lib/calendar/types";
 
 export type GridSelection = { start: string; end: string; allDay: boolean; x: number; y: number };
+// end: exclusive wall end from FullCalendar, or "" when it had none (timed event dropped in the all-day row).
 export type GridMove = { ev: WallEvent; start: string; end: string; allDay: boolean; revert: () => void };
 
 const FC_VIEW: Record<Exclude<ViewKind, "agenda">, string> = { day: "timeGridDay", week: "timeGridWeek", month: "dayGridMonth", "4day": "timeGridFourDay" };
@@ -27,9 +28,15 @@ export function fcWall(s: string): string {
 
 function EventContent(info: EventDisplayInfo) {
   const ev = info.event.extendedProps.ev as WallEvent | undefined;
+  const person = info.event.extendedProps.person as FcPerson | undefined;
   const block = info.view.type.startsWith("timeGrid") && !info.event.allDay;
   return (
     <div className={`msui-ev-inner ${block ? "msui-ev-block" : ""}`}>
+      {person && (
+        <span className="msui-ev-avatar" title={`${person.name} <${person.email}>`} aria-label={person.name}>
+          {person.initials}
+        </span>
+      )}
       {!info.event.allDay && info.timeText && !block && <span className="msui-ev-time">{info.timeText}</span>}
       <span className="msui-ev-title">
         {ev?.sensitivity === "private" && <Lock className="mr-1 inline size-3 align-[-2px]" />}
@@ -73,9 +80,11 @@ export default function CalendarGrid({
     else api.gotoDate(date);
   }, [view, date]);
 
+  // endStr is the exclusive end (date-only for all-day events) and is passed
+  // through unchanged; "" tells the caller FullCalendar had no end to give.
   const change = (info: EventDropInfo | EventResizeDoneInfo) => {
     const ev = info.event.extendedProps.ev as WallEvent;
-    onEventChange({ ev, start: fcWall(info.event.startStr), end: fcWall(info.event.endStr || info.event.startStr), allDay: info.event.allDay, revert: info.revert });
+    onEventChange({ ev, start: fcWall(info.event.startStr), end: info.event.endStr ? fcWall(info.event.endStr) : "", allDay: info.event.allDay, revert: info.revert });
   };
 
   return (

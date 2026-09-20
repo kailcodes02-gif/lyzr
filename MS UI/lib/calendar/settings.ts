@@ -7,12 +7,13 @@ export type CalendarSettings = {
   weekStartsOn: 0 | 1 | 6;
   defaultDuration: 15 | 30 | 45 | 60 | 90 | 120;
   defaultReminder: number | null; // minutes
+  desktopNotifications: boolean; // reminders also as browser notifications (permission asked from the settings switch)
 };
 
 const KEY = "msui.cal.settings";
 const VISIBLE_KEY = "msui.cal.visible";
 
-export const DEFAULT_SETTINGS: CalendarSettings = { timeZone: null, weekStartsOn: 0, defaultDuration: 30, defaultReminder: 15 };
+export const DEFAULT_SETTINGS: CalendarSettings = { timeZone: null, weekStartsOn: 0, defaultDuration: 30, defaultReminder: 15, desktopNotifications: false };
 
 export function loadSettings(): CalendarSettings {
   try {

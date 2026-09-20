@@ -90,8 +90,12 @@ export function FileListing(p: ListingProps) {
     [p]
   );
 
+  const firstId = p.items[0]?.id;
+  const tabStop = p.focusedId && p.items.some((i) => i.id === p.focusedId) ? p.focusedId : firstId;
   const common = (item: DriveItem) => ({
     ...dragProps(item),
+    role: "option",
+    tabIndex: item.id === tabStop ? 0 : -1,
     onClick: (e: React.MouseEvent) => {
       e.stopPropagation();
       p.onSelect(item.id, modeOf(e));
@@ -112,8 +116,8 @@ export function FileListing(p: ListingProps) {
 
   if (p.layout === "list") {
     return (
-      <div role="grid" aria-label="Files" className="min-w-[640px] px-2">
-        <div role="row" className="grid grid-cols-[minmax(0,1fr)_170px_140px_90px_40px] items-center gap-3 border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground">
+      <div role="listbox" aria-multiselectable="true" aria-label="Files" className="min-w-[640px] px-2">
+        <div aria-hidden="true" className="grid grid-cols-[minmax(0,1fr)_170px_140px_90px_40px] items-center gap-3 border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground">
           <span>Name</span><span>Owner</span><span>Last modified</span><span className="text-right">File size</span><span />
         </div>
         {p.items.map((item) => {
@@ -122,7 +126,6 @@ export function FileListing(p: ListingProps) {
           return (
             <div
               key={item.id}
-              role="row"
               data-tile
               {...common(item)}
               className={cn(
@@ -173,7 +176,6 @@ export function FileListing(p: ListingProps) {
     return (
       <div
         key={item.id}
-        role="gridcell"
         data-tile
         {...common(item)}
         className={cn(
@@ -217,17 +219,17 @@ export function FileListing(p: ListingProps) {
   };
 
   return (
-    <div ref={gridRef} role="grid" aria-label="Files" className="flex flex-col gap-4 px-4">
+    <div ref={gridRef} role="listbox" aria-multiselectable="true" aria-label="Files" className="flex flex-col gap-4 px-4">
       {folders.length > 0 && (
         <section>
           <h2 className="mb-2 text-[13px] font-medium text-muted-foreground">Folders</h2>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">{folders.map(renderTile)}</div>
+          <div role="group" aria-label="Folders" className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">{folders.map(renderTile)}</div>
         </section>
       )}
       {files.length > 0 && (
         <section>
           <h2 className="mb-2 text-[13px] font-medium text-muted-foreground">Files</h2>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">{files.map(renderTile)}</div>
+          <div role="group" aria-label="Files" className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">{files.map(renderTile)}</div>
         </section>
       )}
     </div>

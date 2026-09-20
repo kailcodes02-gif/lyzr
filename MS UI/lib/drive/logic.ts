@@ -16,17 +16,22 @@ export function applyDelta(store: IndexStore, page: DriveItem[]): IndexStore {
       rootId = it.id;
       continue;
     }
-    if (it["@removed"] || it.deleted) {
+    // Tombstones (deleted facet, or @removed) are authoritative: OneDrive for
+    // Business sends them without a name, so never merge them.
+    if (it.deleted || it["@removed"]) {
       delete items[it.id];
       continue;
     }
+    // The root item may arrive without its `root` facet (it is not in every
+    // $select); a pre-seeded rootId keeps it out of the listing.
+    if (rootId && it.id === rootId) continue;
     items[it.id] = { ...items[it.id], ...it };
   }
   return { ...store, items, rootId };
 }
 
 export function kindOf(item: DriveItem): FileKind {
-  return fileKind(item.name, item.file?.mimeType, Boolean(item.folder) || Boolean(item.package));
+  return fileKind(item.name ?? "", item.file?.mimeType, Boolean(item.folder) || Boolean(item.package));
 }
 
 export function isFolder(item: DriveItem): boolean {
@@ -146,7 +151,7 @@ export function filterItems(store: IndexStore, f: ViewFilter, now = new Date()):
 // starred, shared, recent).
 export function applyChips(list: DriveItem[], f: Pick<ViewFilter, "kinds" | "owner" | "modified" | "q">, now = new Date()): DriveItem[] {
   const q = (f.q ?? "").trim().toLowerCase();
-  if (q) list = list.filter((it) => it.name.toLowerCase().includes(q));
+  if (q) list = list.filter((it) => (it.name ?? "").toLowerCase().includes(q));
   if (f.kinds && f.kinds.length) list = list.filter((it) => f.kinds!.includes(kindOf(it)));
   if (f.owner) list = list.filter((it) => ownerName(it) === f.owner);
   const since = modifiedSince(f.modified ?? "", now);
@@ -161,10 +166,10 @@ export function sortItems(items: DriveItem[], key: SortKey, dir: "asc" | "desc" 
     const fb = isFolder(b) ? 0 : 1;
     if (fa !== fb) return fa - fb;
     let c = 0;
-    if (key === "name") c = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
+    if (key === "name") c = (a.name ?? "").localeCompare(b.name ?? "", undefined, { numeric: true, sensitivity: "base" });
     else if (key === "modified") c = (a.lastModifiedDateTime ?? "").localeCompare(b.lastModifiedDateTime ?? "");
     else c = (a.size ?? 0) - (b.size ?? 0);
-    if (c === 0) c = a.name.localeCompare(b.name, undefined, { numeric: true });
+    if (c === 0) c = (a.name ?? "").localeCompare(b.name ?? "", undefined, { numeric: true });
     return c * m;
   });
 }
@@ -261,11 +266,11 @@ export function parseUrlState(params: URLSearchParams | string): DriveUrlState {
   const view = p.get("view");
   const layout = p.get("layout");
   return {
-    folder: p.get("folder") || ROOT,
+    folder: safeId(p.get("folder")) || ROOT,
     repo: p.get("repo") || null,
     view: view === "starred" || view === "recent" || view === "shared" ? view : null,
     q: p.get("q") ?? "",
-    item: p.get("item") || null,
+    item: safeId(p.get("item")) || null,
     layout: layout === "grid" || layout === "list" ? layout : null,
   };
 }
@@ -317,4 +322,56 @@ export function moveIndex(index: number, count: number, key: string, cols: numbe
 
 export function itemUrl(id: string, s: Partial<DriveUrlState>): string {
   return serializeUrlState({ ...s, item: id });
+}
+
+// Ids are interpolated into Graph paths (encoded), but an id carrying "/",
+// "?" or "#" can only come from a crafted link: drop it.
+export function safeId(id: string | null | undefined): string | null {
+  if (!id || /[/?#]/.test(id)) return null;
+  return id;
+}
+
+// /sharedWithMe items carry id + remoteItem; with only Files.ReadWrite the
+// display fields (name, file, size, webUrl, parentReference) live under
+// remoteItem, sometimes exclusively. Lift them so listings never read undefined.
+export function normalizeRemoteItem(it: DriveItem): DriveItem {
+  const r = it.remoteItem;
+  if (!r) return it;
+  return {
+    ...it,
+    id: it.id,
+    name: it.name ?? r.name ?? "(untitled)",
+    file: it.file ?? r.file,
+    folder: it.folder ?? r.folder,
+    package: it.package ?? r.package,
+    size: it.size ?? r.size,
+    webUrl: it.webUrl ?? r.webUrl,
+    createdDateTime: it.createdDateTime ?? r.createdDateTime,
+    lastModifiedDateTime: it.lastModifiedDateTime ?? r.lastModifiedDateTime,
+    createdBy: it.createdBy ?? r.createdBy ?? r.shared?.sharedBy,
+    lastModifiedBy: it.lastModifiedBy ?? r.lastModifiedBy,
+    parentReference: r.parentReference ?? it.parentReference,
+    shared: it.shared ?? r.shared,
+    remoteItem: r,
+  };
+}
+
+// Mutations (rename, move, delete, star, share) address /me/drive/items/{id};
+// remote items (shared) and items from another drive (search) 404 there.
+export function canMutate(item: DriveItem, driveId?: string | null): boolean {
+  if (item.remoteItem) return false;
+  const d = item.parentReference?.driveId;
+  if (driveId && d && d !== driveId) return false;
+  return true;
+}
+
+// Graph has no recycle-bin API. Work accounts: the drive's webUrl is
+// ".../personal/{user}/Documents"; the bin is a view of onedrive.aspx next to
+// it. Consumer accounts use onedrive.live.com.
+export function recycleBinUrl(drive?: { webUrl?: string; driveType?: string } | null): string {
+  const w = drive?.webUrl ?? "";
+  if (drive?.driveType === "personal" || (!w && !drive?.driveType)) return "https://onedrive.live.com/?view=recyclebin";
+  const m = w.match(/^(https:\/\/[^/]+\/personal\/[^/]+)\/Documents\/?$/i) ?? w.match(/^(https:\/\/[^/]+\/(?:sites|teams)\/[^/]+)\//i);
+  if (m) return `${m[1]}/_layouts/15/onedrive.aspx?view=5`;
+  return w || "https://onedrive.live.com/?view=recyclebin";
 }

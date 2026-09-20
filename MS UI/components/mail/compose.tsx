@@ -13,6 +13,7 @@ import { useDraftApi } from "@/lib/mail/hooks";
 import type { Attachment, Message } from "@/lib/mail/types";
 import { isMockMode } from "@/lib/mock";
 import { cn } from "@/lib/utils";
+import { EmailFrame } from "./email-frame";
 
 export type ComposeDraft = {
   key: string;
@@ -21,7 +22,8 @@ export type ComposeDraft = {
   cc: Recipient[];
   bcc: Recipient[];
   subject: string;
-  body: string;
+  body: string; // the part the editor owns
+  quotedHtml?: string; // server HTML kept verbatim below the editor (quoted history, signatures, cid images)
   attachments: Attachment[];
   kind?: "new" | "reply" | "forward";
 };
@@ -29,12 +31,55 @@ export type ComposeDraft = {
 export const toRecipients = (list?: Message["toRecipients"]): Recipient[] => (list ?? []).map((r) => ({ name: r.emailAddress.name ?? r.emailAddress.address ?? "", email: r.emailAddress.address ?? "" })).filter((r) => r.email);
 const toGraph = (list: Recipient[]) => list.map((r) => ({ emailAddress: { name: r.name, address: r.email } }));
 
+// Outlook marks the start of quoted history with one of these; everything from
+// the marker on is not something the editor can represent.
+const QUOTE_MARKER = /<div[^>]*\bid=["']?(appendonsend|divRplyFwdMsg)["']?|<hr[\s/>]/i;
+// Nodes StarterKit drops or flattens: if the editable part has them it stays read-only too.
+const UNREPRESENTABLE = /<(img|table|style)\b/i;
+
+// Splits a draft body into the editable part and the verbatim quoted part.
+export function splitDraftBody(html: string): { body: string; quotedHtml?: string } {
+  const m = QUOTE_MARKER.exec(html);
+  const head = m ? html.slice(0, m.index) : html;
+  const tail = m ? html.slice(m.index) : "";
+  if (!head.trim()) return { body: "", quotedHtml: tail || undefined };
+  if (UNREPRESENTABLE.test(head)) return { body: "", quotedHtml: html };
+  return { body: head, quotedHtml: tail || undefined };
+}
+
+// The body sent to Graph: what was typed, then the untouched server HTML.
+export function composeBody(editorHtml: string, quotedHtml?: string): string {
+  const typed = editorHtml.trim() === "<p></p>" ? "" : editorHtml;
+  return quotedHtml ? `<div>${typed}</div><br>${quotedHtml}` : typed;
+}
+
 export function draftFromMessage(m: Message, kind: ComposeDraft["kind"] = "new", attachments: Attachment[] = []): ComposeDraft {
-  return { key: `${m.id}-${Date.now()}`, draftId: m.id, to: toRecipients(m.toRecipients), cc: toRecipients(m.ccRecipients), bcc: toRecipients(m.bccRecipients), subject: m.subject ?? "", body: m.body?.content ?? "", attachments, kind };
+  const content = m.body?.content ?? "";
+  const { body, quotedHtml } = kind === "reply" || kind === "forward" ? { body: "", quotedHtml: content || undefined } : splitDraftBody(content);
+  return { key: `${m.id}-${Date.now()}`, draftId: m.id, to: toRecipients(m.toRecipients), cc: toRecipients(m.ccRecipients), bcc: toRecipients(m.bccRecipients), subject: m.subject ?? "", body, quotedHtml, attachments, kind };
 }
 
 const SMALL_LIMIT = 3 * 1024 * 1024;
 const CHUNK = 4 * 1024 * 1024 - 320 * 1024;
+// Graph upload sessions stop at 150 MB per file; Exchange Online's default
+// message size limit (attachments included) is 35 MB. Both are tenant-tunable.
+export const MAX_ATTACHMENT_BYTES = 150 * 1024 * 1024;
+export const MAX_MESSAGE_BYTES = 35 * 1024 * 1024;
+
+const fmtMb = (n: number) => `${Math.round(n / 1024 / 1024)} MB`;
+
+// Why a file cannot be attached, or null when it fits.
+export function attachmentLimitError(file: { name: string; size: number }, attachedBytes: number, limits = { file: MAX_ATTACHMENT_BYTES, message: MAX_MESSAGE_BYTES }): string | null {
+  if (file.size > limits.file) return `${file.name} is ${fmtMb(file.size)}; the limit per attachment is ${fmtMb(limits.file)}.`;
+  if (attachedBytes + file.size > limits.message) return `Attaching ${file.name} would take the message past ${fmtMb(limits.message)}. Share large files from OneDrive instead.`;
+  return null;
+}
+
+// Attachment id from the final upload PUT (Location: .../Attachments('id')).
+export function attachmentIdFromLocation(location: string | null): string | undefined {
+  const m = /Attachments\('([^']+)'\)/i.exec(location ?? "");
+  return m ? decodeURIComponent(m[1]) : undefined;
+}
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -65,6 +110,7 @@ export function ComposeDrawer({ draft, onClose, onSend, onDiscard }: { draft: Co
   const [showBcc, setShowBcc] = useState(draft.bcc.length > 0);
   const [subject, setSubject] = useState(draft.subject);
   const [body, setBody] = useState(draft.body);
+  const [showQuoted, setShowQuoted] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>(draft.attachments);
   const [uploads, setUploads] = useState<{ name: string; progress: number }[]>([]);
   const [minimized, setMinimized] = useState(false);
@@ -72,7 +118,7 @@ export function ComposeDrawer({ draft, onClose, onSend, onDiscard }: { draft: Co
   const [saveState, setSaveState] = useState<"idle" | "dirty" | "saving" | "saved" | "error">("idle");
   const draftId = useRef<string | undefined>(draft.draftId);
   const dirty = useRef(false);
-  const saving = useRef<Promise<void> | null>(null);
+  const saving = useRef<Promise<boolean> | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
@@ -90,13 +136,14 @@ export function ComposeDrawer({ draft, onClose, onSend, onDiscard }: { draft: Co
   const snapshot = useCallback((): ComposeDraft => ({ ...draft, draftId: draftId.current, to, cc, bcc, subject, body, attachments }), [draft, to, cc, bcc, subject, body, attachments]);
 
   // Draft-first: create on the first pause, then PATCH on later pauses.
-  const save = useCallback(async () => {
+  // Resolves true only when the server copy matches this state.
+  const save = useCallback(async (): Promise<boolean> => {
     if (saving.current) await saving.current;
-    if (!dirty.current && draftId.current) return;
+    if (!dirty.current && draftId.current) return true;
     dirty.current = false;
     setSaveState("saving");
-    const payload: Partial<Message> = { subject, body: { contentType: "html", content: body }, toRecipients: toGraph(to), ccRecipients: toGraph(cc), bccRecipients: toGraph(bcc) };
-    const run = (async () => {
+    const payload: Partial<Message> = { subject, body: { contentType: "html", content: composeBody(body, draft.quotedHtml) }, toRecipients: toGraph(to), ccRecipients: toGraph(cc), bccRecipients: toGraph(bcc) };
+    const run = (async (): Promise<boolean> => {
       try {
         if (!draftId.current) {
           const m = await api.create(payload);
@@ -105,15 +152,18 @@ export function ComposeDrawer({ draft, onClose, onSend, onDiscard }: { draft: Co
           await api.update(draftId.current, payload);
         }
         setSaveState(dirty.current ? "dirty" : "saved");
+        return true;
       } catch {
         dirty.current = true;
         setSaveState("error");
+        return false;
       }
     })();
     saving.current = run;
-    await run;
+    const ok = await run;
     saving.current = null;
-  }, [api, subject, body, to, cc, bcc]);
+    return ok;
+  }, [api, subject, body, to, cc, bcc, draft.quotedHtml]);
   const saveRef = useRef(save);
   useEffect(() => {
     saveRef.current = save;
@@ -131,18 +181,31 @@ export function ComposeDrawer({ draft, onClose, onSend, onDiscard }: { draft: Co
     setSaveState("dirty");
   };
 
-  const ensureDraft = async () => {
+  const ensureDraft = async (): Promise<string> => {
     if (!draftId.current) {
       dirty.current = true;
-      await saveRef.current();
+      const ok = await saveRef.current();
+      if (!ok || !draftId.current) throw new Error("The draft could not be created");
     }
-    return draftId.current!;
+    return draftId.current;
   };
 
   const addFiles = async (files: FileList | null) => {
     if (!files?.length) return;
-    const id = await ensureDraft();
+    let id: string;
+    try {
+      id = await ensureDraft();
+    } catch (e) {
+      toast.error(`Could not attach files. ${e instanceof Error ? e.message : String(e)}`);
+      return;
+    }
+    let attachedBytes = attachments.reduce((n, a) => n + (a.size ?? 0), 0);
     for (const file of Array.from(files)) {
+      const limit = attachmentLimitError(file, attachedBytes);
+      if (limit) {
+        toast.error(limit);
+        continue;
+      }
       setUploads((u) => [...u, { name: file.name, progress: 0 }]);
       const setProgress = (p: number) => setUploads((u) => u.map((x) => (x.name === file.name ? { ...x, progress: p } : x)));
       try {
@@ -151,7 +214,10 @@ export function ComposeDrawer({ draft, onClose, onSend, onDiscard }: { draft: Co
           att = await api.addSmallAttachment(id, { name: file.name, contentType: file.type || "application/octet-stream", contentBytes: await fileToBase64(file) });
           setProgress(1);
         } else {
+          // Same-named files are told apart by diffing the list, never by name alone.
+          const before = new Set((await api.listAttachments(id).catch(() => [] as Attachment[])).map((a) => a.id));
           const session = await api.createUploadSession(id, { name: file.name, contentType: file.type || "application/octet-stream", size: file.size });
+          let newId: string | undefined;
           if (isMockMode() || session.uploadUrl.includes("mock-upload")) {
             for (let p = 0.2; p <= 1; p += 0.2) {
               await new Promise((r) => setTimeout(r, 150));
@@ -162,12 +228,15 @@ export function ComposeDrawer({ draft, onClose, onSend, onDiscard }: { draft: Co
               const end = Math.min(start + CHUNK, file.size);
               const res = await fetch(session.uploadUrl, { method: "PUT", body: file.slice(start, end), headers: { "Content-Range": `bytes ${start}-${end - 1}/${file.size}`, "Content-Type": "application/octet-stream" } });
               if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+              if (res.status === 201) newId = attachmentIdFromLocation(res.headers.get("Location"));
               setProgress(end / file.size);
             }
           }
           const list = await api.listAttachments(id);
-          att = list.find((a) => a.name === file.name) ?? { id: `pending-${file.name}`, name: file.name, size: file.size, contentType: file.type };
+          const added = list.filter((a) => !before.has(a.id));
+          att = (newId ? list.find((a) => a.id === newId) : undefined) ?? (added.length === 1 ? added[0] : added.find((a) => a.name === file.name && a.size === file.size)) ?? { id: `pending-${file.name}-${Date.now()}`, name: file.name, size: file.size, contentType: file.type };
         }
+        attachedBytes += file.size;
         setAttachments((a) => [...a, att]);
       } catch (e) {
         toast.error(`Could not attach ${file.name}. ${e instanceof Error ? e.message : String(e)}`);
@@ -188,15 +257,17 @@ export function ComposeDrawer({ draft, onClose, onSend, onDiscard }: { draft: Co
   };
 
   const send = async () => {
+    if (uploads.length || saveState === "saving") return;
     if (!to.length && !cc.length && !bcc.length) {
       toast.error("Add at least one recipient");
       return;
     }
     if (!subject.trim() && !window.confirm("Send this message without a subject?")) return;
+    // /send sends the server copy: never send while the last save did not land.
     dirty.current = true;
-    await saveRef.current();
-    if (!draftId.current) {
-      toast.error("The draft could not be saved, so it was not sent");
+    const ok = await saveRef.current();
+    if (!ok || !draftId.current) {
+      toast.error("The latest changes could not be saved, so the message was not sent. Check your connection and try again.");
       return;
     }
     onSend(snapshot());
@@ -256,8 +327,22 @@ export function ComposeDrawer({ draft, onClose, onSend, onDiscard }: { draft: Co
             )}
             <input value={subject} onChange={(e) => mark(setSubject)(e.target.value)} placeholder="Subject" aria-label="Subject" className="h-9 border-b border-border bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto" onClick={() => editor?.commands.focus()}>
-            <EditorContent editor={editor} />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <div onClick={() => editor?.commands.focus()}>
+              <EditorContent editor={editor} />
+            </div>
+            {draft.quotedHtml && (
+              <div className="px-4 pb-3">
+                <button type="button" onClick={() => setShowQuoted((s) => !s)} aria-label={showQuoted ? "Hide quoted text" : "Show quoted text"} aria-expanded={showQuoted} className="rounded-full bg-muted px-2 py-0.5 text-xs leading-none text-muted-foreground hover:bg-black/10">
+                  ···
+                </button>
+                {showQuoted && (
+                  <div className="mt-2 rounded-lg border border-border" aria-label="Quoted text (sent as is)">
+                    <EmailFrame body={{ contentType: "html", content: draft.quotedHtml }} />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           {(attachments.length > 0 || uploads.length > 0) && (
             <div className="flex flex-wrap gap-2 border-t border-border px-4 py-2">
@@ -278,7 +363,7 @@ export function ComposeDrawer({ draft, onClose, onSend, onDiscard }: { draft: Co
             </div>
           )}
           <div className="flex shrink-0 items-center gap-1 border-t border-border px-3 py-2">
-            <Button onClick={() => void send()} className="rounded-full px-5" disabled={uploads.length > 0}>Send</Button>
+            <Button onClick={() => void send()} className="rounded-full px-5" disabled={uploads.length > 0 || saveState === "saving"}>Send</Button>
             <span className="mx-1 h-5 w-px bg-border" />
             <ToolButton label="Bold" active={editor?.isActive("bold")} onClick={() => editor?.chain().focus().toggleBold().run()}><Bold className="h-4 w-4" /></ToolButton>
             <ToolButton label="Italic" active={editor?.isActive("italic")} onClick={() => editor?.chain().focus().toggleItalic().run()}><Italic className="h-4 w-4" /></ToolButton>
@@ -289,7 +374,13 @@ export function ComposeDrawer({ draft, onClose, onSend, onDiscard }: { draft: Co
             <ToolButton label="Remove formatting" onClick={() => editor?.chain().focus().unsetAllMarks().clearNodes().run()}><RemoveFormatting className="h-4 w-4" /></ToolButton>
             <ToolButton label="Attach files" onClick={() => fileInput.current?.click()}><Paperclip className="h-4 w-4" /></ToolButton>
             <input ref={fileInput} type="file" multiple hidden onChange={(e) => { void addFiles(e.target.files); e.target.value = ""; }} />
-            <span className="ml-auto text-xs text-muted-foreground">{saveState === "saving" ? "Saving" : saveState === "saved" ? "Draft saved" : saveState === "error" ? "Not saved" : ""}</span>
+            <span className="ml-auto text-xs text-muted-foreground" role="status">
+              {saveState === "saving" ? "Saving" : saveState === "saved" ? "Draft saved" : saveState === "error" ? (
+                <>
+                  Not saved <button type="button" onClick={() => void saveRef.current()} className="text-primary hover:underline">Retry</button>
+                </>
+              ) : ""}
+            </span>
             <Tooltip>
               <TooltipTrigger render={<button type="button" aria-label="Discard draft" onClick={async () => { if (draftId.current) { try { await api.discard(draftId.current); } catch { /* already gone */ } } onDiscard(); }} className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-black/10 hover:text-foreground" />}>
                 <Trash2 className="h-4 w-4" />

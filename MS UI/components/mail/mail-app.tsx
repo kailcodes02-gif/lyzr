@@ -1,30 +1,53 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Menu, Search, SlidersHorizontal, Tag, X } from "lucide-react";
+import { Menu, MoreVertical, Search, SlidersHorizontal, Tag, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useMe } from "@/lib/hooks";
-import { flattenPages, useCategories, useDraftApi, useFolders, useInboxDelta, useMessageActions, useMessageList } from "@/lib/mail/hooks";
-import { buildKql, groupThreads, parseKql, presetHex, WELL_KNOWN_LABEL, type WellKnown } from "@/lib/mail/logic";
+import { clientFilterFor, flattenPages, useCategories, useDraftApi, useEnableSorting, useFolders, useMailPolling, useMessageActions, useMessageList, useSettlerLifecycle, useSortingEnabled } from "@/lib/mail/hooks";
+import { PROMOTIONS_LABEL, SOCIAL_LABEL } from "@/lib/mail/labels";
+import { buildKql, groupThreads, isVirtualFolderKey, moveScopeIds, parseKql, presetHex, resolveFolderId, SEARCH_ID, WELL_KNOWN_LABEL, type WellKnown } from "@/lib/mail/logic";
 import type { Message, Thread } from "@/lib/mail/types";
-import { parseMailUrl, serializeMailUrl, type MailUrlState } from "@/lib/mail/url";
+import { labelFromFolder, parseMailUrl, serializeMailUrl, type MailTab, type MailUrlState } from "@/lib/mail/url";
+import { isMockMode } from "@/lib/mock";
 import { rememberRecipients } from "@/lib/people";
 import { cn } from "@/lib/utils";
 import { ComposeDrawer, draftFromMessage, type ComposeDraft } from "./compose";
 import { MailErrorState } from "./consent-gate";
 import { FolderPanel } from "./folder-panel";
+import { LabelDialog, type LabelDialogState } from "./label-dialog";
 import { EmptyList, ListSkeleton, ListToolbar, MessageList } from "./message-list";
 import { ShortcutHelp, useMailShortcuts } from "./shortcuts";
 import { ThreadView, type ReplyKind } from "./thread-view";
 
 const UNDO_MS = 5000;
+
+// Drafts whose undo window was running when the page went away; sent on the
+// next load so "Sending" never silently ends as a draft.
+const PENDING_KEY = "msui.mail.pendingSends";
+function readPending(): string[] {
+  try {
+    return JSON.parse(sessionStorage.getItem(PENDING_KEY) ?? "[]") as string[];
+  } catch {
+    return [];
+  }
+}
+function writePending(ids: string[]) {
+  try {
+    if (ids.length) sessionStorage.setItem(PENDING_KEY, JSON.stringify(ids));
+    else sessionStorage.removeItem(PENDING_KEY);
+  } catch {
+    // storage blocked
+  }
+}
 
 export function MailApp() {
   const sp = useSearchParams();
@@ -49,11 +72,36 @@ export function MailApp() {
   const actions = useMessageActions();
   const draftApi = useDraftApi();
   const isInbox = state.folder === "inbox" && !state.query;
-  const tab = isInbox ? (state.tab ?? "focused") : undefined;
-  const list = useMessageList(state.folder, tab, state.query);
-  const messages = useMemo(() => flattenPages(list.data), [list.data]);
+  const tab: MailTab | undefined = isInbox ? (state.tab ?? "primary") : undefined;
+  const labelName = labelFromFolder(state.folder);
+  const list = useMessageList(state.folder, tab, state.query, state.focused);
+  // Label views list every folder; Trash and Junk copies are dropped here.
+  const hiddenFolderIds = useMemo(() => new Set(["deleteditems", "junkemail"].map((k) => resolveFolderId(k, folders.data ?? [])).filter((id): id is string => !!id)), [folders.data]);
+  const clientFilter = clientFilterFor({ folder: state.folder, tab, query: state.query, focused: state.focused }, hiddenFolderIds);
+  const messages = useMemo(() => {
+    const all = flattenPages(list.data);
+    return clientFilter ? all.filter(clientFilter) : all;
+  }, [list.data, clientFilter]);
   const threads = useMemo(() => groupThreads(messages), [messages]);
   const isTrashOrSpam = state.folder === "deleteditems" || state.folder === "junkemail";
+  // Client-side exclusion can leave a short first page: keep fetching until 50 rows show.
+  useEffect(() => {
+    if (clientFilter && list.hasNextPage && !list.isFetchingNextPage && messages.length < 50) void list.fetchNextPage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientFilter, list.hasNextPage, list.isFetchingNextPage, messages.length]);
+  const sortingOn = useSortingEnabled();
+  const enableSorting = useEnableSorting();
+  const [labelDialog, setLabelDialog] = useState<LabelDialogState | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const selectTab = (t: MailTab) => {
+    if (t !== "primary" && sortingOn === false && !enableSorting.isPending) enableSorting.mutate();
+    nav({ tab: t }, true);
+  };
+  const openSortingSettings = (name: string) => {
+    const cat = (categories.data ?? []).find((c) => c.displayName === name);
+    if (cat) setLabelDialog({ mode: "edit", category: cat });
+    else enableSorting.mutate(undefined, { onSuccess: () => void categories.refetch() });
+  };
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [cursor, setCursor] = useState(-1);
@@ -64,7 +112,7 @@ export function MailApp() {
   const [adv, setAdv] = useState(() => parseKql(state.query ?? ""));
   const searchRef = useRef<HTMLInputElement>(null);
   // Reset transient list state when the view changes (folder, search or tab).
-  const viewKey = `${state.folder}|${state.query ?? ""}|${state.tab ?? ""}`;
+  const viewKey = `${state.folder}|${state.query ?? ""}|${state.tab ?? ""}|${state.focused ? 1 : 0}`;
   const [seenView, setSeenView] = useState(viewKey);
   if (seenView !== viewKey) {
     setSeenView(viewKey);
@@ -73,15 +121,24 @@ export function MailApp() {
     setCursor(-1);
   }
 
-  useInboxDelta(list.isSuccess);
+  // Every action's settle timers die with this screen; the open view is
+  // polled while the tab is visible.
+  useSettlerLifecycle();
+  const polling = useMailPolling({ folder: state.folder, tab, query: state.query, focused: state.focused }, list.isSuccess);
+  const updatedAt = Math.max(list.dataUpdatedAt ?? 0, polling.lastPolledAt);
   const inboxUnread = folders.data?.find((f) => (f.wellKnownName ?? "").toLowerCase() === "inbox")?.unreadItemCount ?? 0;
-  useEffect(() => {
-    document.title = inboxUnread > 0 ? `Inbox (${inboxUnread}) - Outlook` : "Inbox - Outlook";
-  }, [inboxUnread]);
 
   // ---- selection helpers
   const idsOf = (t: Thread) => t.messages.map((m) => m.id);
   const selectedIds = () => threads.filter((t) => selected.has(t.conversationId)).flatMap(idsOf);
+  // Move-type actions: rows of a real folder are already scoped; virtual
+  // views (starred, label, search) list copies from every folder, so
+  // Sent/Drafts/Trash/Junk siblings are left alone.
+  const scopeKey = state.query ? SEARCH_ID : state.folder;
+  const moveIdsOf = (t: Thread) => (isVirtualFolderKey(scopeKey) ? moveScopeIds(t.messages, scopeKey, folders.data ?? []) : idsOf(t));
+  const selectedThreads = () => threads.filter((t) => selected.has(t.conversationId));
+  const selectedMoveIds = () => selectedThreads().flatMap(moveIdsOf);
+  const currentFolderId = resolveFolderId(state.folder, folders.data ?? []);
   const toggleSelect = (t: Thread) =>
     setSelected((s) => {
       const n = new Set(s);
@@ -89,9 +146,17 @@ export function MailApp() {
       else n.add(t.conversationId);
       return n;
     });
-  const bulk = (fn: (ids: string[]) => void) => () => {
-    const ids = selectedIds();
-    if (ids.length) fn(ids);
+  const bulk = (fn: (ids: string[], conversations: number) => void, scope: "all" | "move" = "all") => () => {
+    const ids = scope === "move" ? selectedMoveIds() : selectedIds();
+    if (ids.length) fn(ids, selected.size);
+    setSelected(new Set());
+  };
+  const bulkDelete = () => {
+    if (!isTrashOrSpam) return bulk(actions.trash, "move")();
+    const ids = selectedMoveIds();
+    if (!ids.length) return;
+    if (!window.confirm(`Delete ${ids.length === 1 ? "this message" : `these ${ids.length} messages`} forever? This cannot be undone.`)) return;
+    actions.deleteForever(ids, currentFolderId);
     setSelected(new Set());
   };
 
@@ -123,35 +188,62 @@ export function MailApp() {
       toast.error(`Could not start a reply. ${e instanceof Error ? e.message : String(e)}`);
     }
   };
+  const sendNow = async (id: string, recipients: { name?: string; email: string }[] = [], subject?: string) => {
+    try {
+      await draftApi.send(id, { subject });
+      // Demo recipients must not seed the real composer's suggestions.
+      if (!isMockMode()) rememberRecipients(recipients);
+      toast.success("Sent");
+    } catch (e) {
+      toast.error(`Send failed. The draft is kept in Drafts. ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      writePending(readPending().filter((x) => x !== id));
+    }
+  };
+  const pendingTimers = useRef(new Map<string, number>());
   const queueSend = (d: ComposeDraft) => {
     setCompose(null);
     const id = d.draftId!;
-    let cancelled = false;
-    const timer = window.setTimeout(async () => {
-      if (cancelled) return;
-      try {
-        await draftApi.send(id);
-        rememberRecipients([...d.to, ...d.cc, ...d.bcc]);
-        toast.success("Message sent");
-      } catch (e) {
-        toast.error(`Send failed. The draft is kept in Drafts. ${e instanceof Error ? e.message : String(e)}`);
-      }
+    writePending([...readPending(), id]);
+    const timer = window.setTimeout(() => {
+      pendingTimers.current.delete(id);
+      void sendNow(id, [...d.to, ...d.cc, ...d.bcc], d.subject);
     }, UNDO_MS);
+    pendingTimers.current.set(id, timer);
     toast("Sending", {
       duration: UNDO_MS,
       action: {
         label: "Undo",
         onClick: () => {
-          cancelled = true;
           window.clearTimeout(timer);
+          pendingTimers.current.delete(id);
+          writePending(readPending().filter((x) => x !== id));
+          draftApi.undoSend(id);
           setCompose({ ...d, key: `${d.key}-undo` });
         },
       },
     });
   };
+  // Leaving the page inside the undo window sends at once; anything that
+  // still did not go out is sent on the next visit.
+  useEffect(() => {
+    const flush = () => {
+      for (const [id, timer] of pendingTimers.current) {
+        window.clearTimeout(timer);
+        void sendNow(id);
+      }
+      pendingTimers.current.clear();
+    };
+    window.addEventListener("pagehide", flush);
+    for (const id of readPending()) void sendNow(id);
+    return () => window.removeEventListener("pagehide", flush);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // ---- search
+  // ---- search: the plain box goes through the same normaliser as the
+  // advanced form, so a typed quote never reaches Graph's $search grammar.
   const runSearch = (kql: string) => nav({ query: kql || undefined, conversation: undefined, message: undefined });
+  const runTextSearch = (text: string) => runSearch(buildKql({ text }));
 
   // ---- shortcuts
   const focusedThread = cursor >= 0 ? threads[cursor] : undefined;
@@ -163,8 +255,8 @@ export function MailApp() {
       prev: () => setCursor((c) => Math.max(c - 1, 0)),
       open: () => focusedThread && openThread(focusedThread),
       back: () => state.conversation && nav({ conversation: undefined, message: undefined }),
-      archive: () => target && !isTrashOrSpam && (actions.archive(idsOf(target)), state.conversation && nav({ conversation: undefined })),
-      trash: () => target && (actions.trash(idsOf(target)), state.conversation && nav({ conversation: undefined })),
+      archive: () => target && !isTrashOrSpam && moveIdsOf(target).length && (actions.archive(moveIdsOf(target)), state.conversation && nav({ conversation: undefined })),
+      trash: () => target && moveIdsOf(target).length && (actions.trash(moveIdsOf(target)), state.conversation && nav({ conversation: undefined })),
       reply: () => target && void startReply("createReply", target.latest),
       replyAll: () => target && void startReply("createReplyAll", target.latest),
       forward: () => target && void startReply("createForward", target.latest),
@@ -178,12 +270,27 @@ export function MailApp() {
       escape: () => (help ? setHelp(false) : state.conversation ? nav({ conversation: undefined, message: undefined }) : setSelected(new Set())),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [threads, focusedThread, target, state.conversation, isTrashOrSpam, help]
+    [threads, focusedThread, target, state.conversation, isTrashOrSpam, help, folders.data, scopeKey]
   );
   useMailShortcuts(handlers, !compose);
 
-  const folderLabel = WELL_KNOWN_LABEL[state.folder as WellKnown] ?? folders.data?.find((f) => f.id === state.folder)?.displayName ?? "Mail";
   const catList = categories.data ?? [];
+  const activeCategory = labelName ? catList.find((c) => c.displayName.toLowerCase() === labelName.toLowerCase()) : undefined;
+  const folderLabel = labelName ?? WELL_KNOWN_LABEL[state.folder as WellKnown] ?? folders.data?.find((f) => f.id === state.folder)?.displayName ?? "Mail";
+
+  // Tab title follows the view (unread count only on the Inbox) and is put
+  // back when the Outlook screen unmounts.
+  const titleSubject = currentThread?.latest.subject;
+  useEffect(() => {
+    const view = state.conversation ? (titleSubject || folderLabel) : state.query ? `Search: ${state.query}` : isInbox && inboxUnread > 0 ? `Inbox (${inboxUnread})` : folderLabel;
+    document.title = `${view} - Outlook`;
+  }, [state.conversation, state.query, titleSubject, isInbox, inboxUnread, folderLabel]);
+  useEffect(() => {
+    const previous = document.title;
+    return () => {
+      document.title = previous;
+    };
+  }, []);
 
   return (
     <div className="flex h-screen min-w-0 bg-background">
@@ -194,6 +301,7 @@ export function MailApp() {
           setNavOpen(false);
         }}
         onCompose={handlers.compose}
+        meAddress={meAddress}
         className={cn("md:flex", navOpen ? "fixed inset-y-0 left-[72px] z-30 flex border-r border-border shadow-xl" : "hidden")}
       />
       {navOpen && <div className="fixed inset-0 z-20 bg-black/20 md:hidden" onClick={() => setNavOpen(false)} />}
@@ -204,7 +312,7 @@ export function MailApp() {
             role="search"
             onSubmit={(e) => {
               e.preventDefault();
-              runSearch(searchText.trim());
+              runTextSearch(searchText);
             }}
             className="flex h-12 max-w-3xl flex-1 items-center gap-2 rounded-full bg-muted px-4 focus-within:bg-card focus-within:shadow-md"
           >
@@ -226,6 +334,10 @@ export function MailApp() {
                 </div>
                 <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!adv.hasAttachment} onChange={(e) => setAdv({ ...adv, hasAttachment: e.target.checked })} /> Has attachment</label>
                 <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!adv.unread} onChange={(e) => setAdv({ ...adv, unread: e.target.checked })} /> Unread only</label>
+                <label className="flex items-center justify-between gap-2 border-t border-border pt-2 text-sm">
+                  <span>Focused only <span className="text-xs text-muted-foreground">(Outlook Focused inbox)</span></span>
+                  <Switch checked={!!state.focused} onCheckedChange={(v) => nav({ focused: v || undefined }, true)} aria-label="Focused only" />
+                </label>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" size="sm" onClick={() => setAdv({})}>Reset</Button>
                   <Button size="sm" onClick={() => { const k = buildKql(adv); setSearchText(k); runSearch(k); }}>Search</Button>
@@ -243,7 +355,7 @@ export function MailApp() {
               key={state.conversation}
               conversationId={state.conversation}
               messageId={state.message}
-              currentFolder={state.folder}
+              currentFolder={scopeKey}
               folders={folders.data ?? []}
               categories={catList}
               onBack={() => nav({ conversation: undefined, message: undefined })}
@@ -258,12 +370,13 @@ export function MailApp() {
                 allSelected={selected.size > 0 && selected.size === threads.length}
                 onSelectAll={() => setSelected(new Set(threads.map((t) => t.conversationId)))}
                 onClear={() => setSelected(new Set())}
-                onRefresh={() => void list.refetch()}
+                onRefresh={polling.refresh}
                 refreshing={list.isRefetching}
-                onArchive={bulk(actions.archive)}
-                onTrash={bulk((ids) => (isTrashOrSpam ? actions.deleteForever(ids) : actions.trash(ids)))}
-                onSpam={bulk(actions.spam)}
-                onInbox={bulk(actions.inbox)}
+                updatedAt={updatedAt}
+                onArchive={bulk(actions.archive, "move")}
+                onTrash={bulkDelete}
+                onSpam={bulk(actions.spam, "move")}
+                onInbox={bulk(actions.inbox, "move")}
                 onRead={bulk((ids) => actions.setRead(ids, true))}
                 onUnread={bulk((ids) => actions.setRead(ids, false))}
                 onLabel={
@@ -284,10 +397,12 @@ export function MailApp() {
                             key={c.id}
                             checked={all}
                             onCheckedChange={() => {
-                              for (const t of sel) for (const m of t.messages) {
-                                const cur = m.categories ?? [];
-                                actions.setCategories([m.id], all ? cur.filter((x) => x !== c.displayName) : Array.from(new Set([...cur, c.displayName])));
-                              }
+                              actions.setCategoriesMany(
+                                sel.flatMap((t) => t.messages).map((m) => {
+                                  const cur = m.categories ?? [];
+                                  return { id: m.id, categories: all ? cur.filter((x) => x !== c.displayName) : Array.from(new Set([...cur, c.displayName])) };
+                                })
+                              );
                             }}
                           >
                             <span className="mr-1 h-2.5 w-2.5 rounded-full" style={{ background: presetHex(c.color) }} /> {c.displayName}
@@ -297,7 +412,18 @@ export function MailApp() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 }
-                page={state.query ? `${threads.length} results` : `${threads.length}${list.hasNextPage ? "+" : ""} in ${folderLabel}`}
+                page={
+                  state.query ? (
+                    `${threads.length} results`
+                  ) : labelName ? (
+                    <span className="inline-flex items-center gap-1.5" aria-label={`Label view ${labelName}`}>
+                      <span className="inline-flex items-center rounded-sm px-1.5 text-[11px] font-medium text-white" style={{ background: presetHex(activeCategory?.color) }}>{labelName}</span>
+                      {threads.length}{list.hasNextPage ? "+" : ""} conversations
+                    </span>
+                  ) : (
+                    `${threads.length}${list.hasNextPage ? "+" : ""} in ${folderLabel}`
+                  )
+                }
                 onPrev={() => setCursor(0)}
                 onNext={() => void list.fetchNextPage()}
                 hasPrev={cursor > 0}
@@ -305,14 +431,33 @@ export function MailApp() {
                 isTrashOrSpam={isTrashOrSpam}
               />
               {isInbox && (
-                <div className="flex shrink-0 border-b border-border" role="tablist" aria-label="Inbox tabs">
-                  {(["focused", "other"] as const).map((t) => (
-                    <button key={t} role="tab" aria-selected={tab === t} onClick={() => nav({ tab: t }, true)} className={cn("relative h-11 w-40 text-sm font-medium text-muted-foreground hover:bg-muted/60", tab === t && "text-primary after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary")}>
-                      {t === "focused" ? "Primary" : "Other"}
+                <div className="flex shrink-0 items-center border-b border-border" role="tablist" aria-label="Inbox tabs">
+                  {(["primary", "social", "promotions"] as const).map((t) => (
+                    <button key={t} role="tab" aria-selected={tab === t} onClick={() => selectTab(t)} className={cn("relative h-11 w-36 text-sm font-medium uppercase tracking-wide text-muted-foreground hover:bg-muted/60", tab === t && "text-primary after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary")}>
+                      {t}
                     </button>
                   ))}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger render={<button type="button" aria-label="Tab options" className="ml-auto mr-2 rounded-full p-1.5 text-muted-foreground hover:bg-black/10" />}>
+                      <MoreVertical className="h-4 w-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Sorting settings</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={() => openSortingSettings(SOCIAL_LABEL)}>Social senders</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => openSortingSettings(PROMOTIONS_LABEL)}>Promotions senders</DropdownMenuItem>
+                      {sortingOn === false && <DropdownMenuItem onClick={() => enableSorting.mutate()}>Turn on inbox sorting</DropdownMenuItem>}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               )}
+              {isInbox && tab === "primary" && sortingOn === false && !bannerDismissed && (
+                <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/40 px-4 py-2 text-sm" role="status">
+                  <span className="flex-1">Sort social updates and newsletters out of Primary. Creates two Outlook rules and the Social and Promotions labels.</span>
+                  <Button size="sm" onClick={() => enableSorting.mutate()} disabled={enableSorting.isPending}>{enableSorting.isPending ? "Sorting" : "Turn on inbox sorting"}</Button>
+                  <button type="button" aria-label="Dismiss" onClick={() => setBannerDismissed(true)} className="rounded-full p-1 hover:bg-black/10"><X className="h-4 w-4" /></button>
+                </div>
+              )}
+              {isInbox && tab !== "primary" && enableSorting.isPending && <p className="px-4 py-2 text-xs text-muted-foreground">Setting up inbox sorting</p>}
               {list.isPending && <ListSkeleton />}
               {list.isError && <MailErrorState error={list.error} onRetry={() => list.refetch()} />}
               {list.isSuccess && threads.length === 0 && <EmptyList folder={state.folder} query={state.query} />}
@@ -340,6 +485,7 @@ export function MailApp() {
         <ComposeDrawer key={compose.key} draft={compose} onClose={() => { setCompose(null); void qc.invalidateQueries({ queryKey: ["mail", "list", "drafts"] }); }} onSend={queueSend} onDiscard={() => { setCompose(null); toast.success("Draft discarded"); }} />
       )}
       <ShortcutHelp open={help} onOpenChange={setHelp} />
+      <LabelDialog state={labelDialog} onClose={() => setLabelDialog(null)} meAddress={meAddress} />
     </div>
   );
 }

@@ -19,6 +19,7 @@ export function QuickCreate({
   tz,
   durationMinutes,
   saving,
+  colorOf,
 }: {
   open: boolean;
   anchor: Anchor;
@@ -31,6 +32,7 @@ export function QuickCreate({
   tz: string;
   durationMinutes: number;
   saving: boolean;
+  colorOf?: (calendarId: string) => string;
 }) {
   const titleRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -54,7 +56,7 @@ export function QuickCreate({
               <X />
             </Button>
           </div>
-          <EventForm draft={draft} onChange={onChange} calendars={calendars} full={false} tz={tz} durationMinutes={durationMinutes} titleRef={titleRef} />
+          <EventForm draft={draft} onChange={onChange} calendars={calendars} full={false} tz={tz} durationMinutes={durationMinutes} titleRef={titleRef} colorOf={colorOf} />
           <div className="flex items-center justify-end gap-2 pt-1">
             <Button type="button" variant="ghost" onClick={onMore}>
               More options

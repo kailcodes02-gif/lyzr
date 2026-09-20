@@ -1,7 +1,6 @@
 "use client";
 
 import { useMsal } from "@azure/msal-react";
-import { useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, Link2, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -9,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { createLink, invite, removePermission, usePermissions } from "@/lib/drive/api";
+import { createLink, invite, removePermission, usePermissions, useSettleInvalidate } from "@/lib/drive/api";
 import type { DriveItem, Permission } from "@/lib/drive/types";
 import { EMAIL_RE } from "@/lib/people";
 import { cn } from "@/lib/utils";
@@ -32,7 +31,7 @@ function Seg<T extends string>({ value, options, onChange }: { value: T; options
 
 export function ShareDialog({ item, onClose }: { item: DriveItem | null; onClose: () => void }) {
   const { instance } = useMsal();
-  const qc = useQueryClient();
+  const settle = useSettleInvalidate();
   const perms = usePermissions(item?.id ?? null);
   const [linkType, setLinkType] = useState<"view" | "edit">("view");
   const [scope, setScope] = useState<"organization" | "users" | "anonymous">("organization");
@@ -42,7 +41,9 @@ export function ShareDialog({ item, onClose }: { item: DriveItem | null; onClose
   const [busy, setBusy] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const refresh = () => qc.invalidateQueries({ queryKey: ["drive", "permissions", item?.id] });
+  // Server truth now and again after a moment: OneDrive provisions sharing
+  // links and invitations asynchronously.
+  const refresh = () => settle(["drive", "permissions", item?.id]);
 
   const doLink = async () => {
     if (!item) return;

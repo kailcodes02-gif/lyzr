@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import type { IPublicClientApplication } from "@azure/msal-browser";
-import { graphBatch, graphFetch, graphGetAll, GraphError } from "../graph";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { InteractionRequiredAuthError, type IPublicClientApplication } from "@azure/msal-browser";
+import { ConsentRequiredError, graphBatch, graphFetch, graphGetAll, GraphError, isConsentRequiredError, redirectMarkerKey, wantsImmutableIds } from "../graph";
 
 const instance = {
   getActiveAccount: () => ({ homeAccountId: "x", username: "u" }),
@@ -31,6 +31,28 @@ describe("graphFetch", () => {
     await graphFetch(instance, ["Mail.ReadWrite"], '/me/messages?$search="from:x"');
     const h = spy.mock.calls[0][1]!.headers as Record<string, string>;
     expect(h.Prefer ?? "").not.toContain("ImmutableId");
+  });
+  it("drops the immutable-id Prefer on a percent-encoded nextLink search page", async () => {
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(json({ value: [] }));
+    await graphFetch(instance, ["Mail.ReadWrite"], "https://graph.microsoft.com/v1.0/me/messages?%24select=id&%24search=%22x%22&%24top=50&%24skip=50");
+    const h = spy.mock.calls[0][1]!.headers as Record<string, string>;
+    expect(h.Prefer ?? "").not.toContain("ImmutableId");
+    // Case-insensitive too (Graph is not consistent about %24 vs %24 casing).
+    expect(wantsImmutableIds("/me/messages?%24SEARCH=%22x%22")).toBe(false);
+    expect(wantsImmutableIds("/me/messages?$select=id&$top=50")).toBe(true);
+    expect(wantsImmutableIds("/me/drive/root")).toBe(false);
+    // An explicit opt-out wins; an explicit opt-in still never applies to search.
+    expect(wantsImmutableIds("/me/messages", false)).toBe(false);
+    expect(wantsImmutableIds('/me/messages?$search="x"', true)).toBe(false);
+  });
+  it("keeps a caller-supplied Prefer alongside the immutable-id one, without duplicating it", async () => {
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => json({ value: [] }));
+    await graphFetch(instance, ["Mail.ReadWrite"], "/me/messages", { headers: { Prefer: 'outlook.body-content-type="text"' } });
+    await graphFetch(instance, ["Mail.ReadWrite"], "/me/messages", { headers: { Prefer: 'IdType="ImmutableId"' } });
+    const h1 = spy.mock.calls[0][1]!.headers as Record<string, string>;
+    const h2 = spy.mock.calls[1][1]!.headers as Record<string, string>;
+    expect(h1.Prefer).toBe('outlook.body-content-type="text", IdType="ImmutableId"');
+    expect(h2.Prefer).toBe('IdType="ImmutableId"');
   });
   it("retries once with a fresh token on 401, then throws a GraphError with the Graph code", async () => {
     vi.spyOn(globalThis, "fetch")
@@ -67,6 +89,24 @@ describe("graphGetAll", () => {
 });
 
 describe("graphBatch", () => {
+  it("adds the immutable-id Prefer to each mail sub-request (outer headers do not propagate)", async () => {
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (_u, init) => {
+      const body = JSON.parse(init!.body as string) as { requests: { id: string; headers?: Record<string, string> }[] };
+      return json({ responses: body.requests.map((r) => ({ id: r.id, status: 200 })) });
+    });
+    await graphBatch(instance, ["Mail.ReadWrite"], [
+      { id: "0", method: "PATCH", url: "/me/messages/a", body: { isRead: true } },
+      { id: "1", method: "DELETE", url: "/me/messages/b" },
+      { id: "2", method: "GET", url: "/me/drive/root" },
+    ]);
+    const sent = JSON.parse(spy.mock.calls[0][1]!.body as string) as { requests: { headers?: Record<string, string> }[] };
+    expect(sent.requests[0].headers).toEqual({ "Content-Type": "application/json", Prefer: 'IdType="ImmutableId"' });
+    expect(sent.requests[1].headers).toEqual({ Prefer: 'IdType="ImmutableId"' });
+    expect(sent.requests[2].headers).toBeUndefined();
+    // The outer $batch POST itself must not carry the mail Prefer.
+    const outer = spy.mock.calls[0][1]!.headers as Record<string, string>;
+    expect(outer.Prefer ?? "").not.toContain("ImmutableId");
+  });
   it("chunks into 20 and strips the Graph prefix", async () => {
     const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (_u, init) => {
       const body = JSON.parse(init!.body as string) as { requests: { id: string; url: string }[] };
@@ -78,5 +118,99 @@ describe("graphBatch", () => {
     expect(out).toHaveLength(25);
     expect(out[0].body).toEqual({ url: "/me/messages/0" });
     expect(spy).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("isConsentRequiredError", () => {
+  // MSAL's signature: (errorCode, correlationId, errorMessage, subError, timestamp, traceId, claims, errorNo)
+  const ira = (subError?: string, errorNo?: string) =>
+    new InteractionRequiredAuthError("interaction_required", "", "AADSTS50076: MFA", subError, "", "", "", errorNo);
+  it("is true for ConsentRequiredError, Graph 401/403 and consent-flavoured MSAL errors", () => {
+    expect(isConsentRequiredError(new ConsentRequiredError(["Mail.ReadWrite"], "x"))).toBe(true);
+    expect(isConsentRequiredError(new GraphError(401, "InvalidAuthenticationToken", "m", "/me"))).toBe(true);
+    expect(isConsentRequiredError(new GraphError(403, "ErrorAccessDenied", "m", "/me"))).toBe(true);
+    expect(isConsentRequiredError(ira("consent_required"))).toBe(true);
+    expect(isConsentRequiredError(ira(undefined, "65001"))).toBe(true);
+    expect(isConsentRequiredError(ira(undefined, "90094"))).toBe(true);
+  });
+  it("is false for other Graph statuses, session-type MSAL errors and plain errors", () => {
+    expect(isConsentRequiredError(new GraphError(404, "ErrorItemNotFound", "m", "/me"))).toBe(false);
+    expect(isConsentRequiredError(new GraphError(429, "Throttled", "m", "/me"))).toBe(false);
+    expect(isConsentRequiredError(ira())).toBe(false);
+    expect(isConsentRequiredError(new Error("boom"))).toBe(false);
+    expect(isConsentRequiredError(null)).toBe(false);
+    expect(isConsentRequiredError(undefined)).toBe(false);
+  });
+});
+
+describe("getToken redirect guard", () => {
+  // A fresh module per test: the in-flight redirect promise is module state.
+  type Graph = typeof import("../graph");
+  let g: Graph;
+  const sessionErr = () => new InteractionRequiredAuthError("interaction_required", "", "AADSTS50076: MFA");
+  const mkInstance = (redirect: () => Promise<void>) =>
+    ({
+      getActiveAccount: () => ({ homeAccountId: "x", username: "u" }),
+      getAllAccounts: () => [{ homeAccountId: "x", username: "u" }],
+      acquireTokenSilent: vi.fn(async () => {
+        throw sessionErr();
+      }),
+      acquireTokenRedirect: vi.fn(redirect),
+    }) as unknown as IPublicClientApplication;
+  const settle = <T,>(p: Promise<T>) =>
+    Promise.race([p.then(() => "resolved" as const, () => "rejected" as const), new Promise<"pending">((r) => setTimeout(() => r("pending"), 20))]);
+
+  beforeEach(async () => {
+    sessionStorage.clear();
+    vi.resetModules();
+    g = await import("../graph");
+  });
+
+  it("starts ONE acquireTokenRedirect for parallel calls with different scope sets and keeps them all pending", async () => {
+    const inst = mkInstance(() => new Promise(() => {}));
+    const a = g.getToken(inst, ["Mail.ReadWrite"]);
+    const b = g.getToken(inst, ["Files.ReadWrite"]);
+    const c = g.getToken(inst, ["Calendars.ReadWrite", "Calendars.Read.Shared"]);
+    await expect(Promise.all([settle(a), settle(b), settle(c)])).resolves.toEqual(["pending", "pending", "pending"]);
+    expect(inst.acquireTokenRedirect).toHaveBeenCalledTimes(1);
+    expect(inst.acquireTokenRedirect).toHaveBeenCalledWith(expect.objectContaining({ scopes: ["Mail.ReadWrite"] }));
+    // Only the scope set that actually redirected is marked; the others may
+    // still redirect after we come back.
+    expect(sessionStorage.getItem(redirectMarkerKey(["Mail.ReadWrite"]))).toBe("1");
+    expect(sessionStorage.getItem(redirectMarkerKey(["Files.ReadWrite"]))).toBeNull();
+    expect(sessionStorage.getItem(redirectMarkerKey(["Calendars.Read.Shared", "Calendars.ReadWrite"]))).toBeNull();
+  });
+
+  it("when the redirect cannot start, every waiter rejects, the marker is rolled back and a later call may redirect again", async () => {
+    const inst = mkInstance(async () => {
+      throw new Error("interaction_in_progress");
+    });
+    const a = g.getToken(inst, ["Mail.ReadWrite"]);
+    const b = g.getToken(inst, ["Files.ReadWrite"]);
+    await expect(a).rejects.toThrow("interaction_in_progress");
+    await expect(b).rejects.toThrow("interaction_in_progress");
+    expect(inst.acquireTokenRedirect).toHaveBeenCalledTimes(1);
+    expect(sessionStorage.getItem(redirectMarkerKey(["Mail.ReadWrite"]))).toBeNull();
+    // Guard released: the next failure redirects again rather than throwing.
+    const inst2 = mkInstance(() => new Promise(() => {}));
+    await expect(settle(g.getToken(inst2, ["Mail.ReadWrite"]))).resolves.toBe("pending");
+    expect(inst2.acquireTokenRedirect).toHaveBeenCalledTimes(1);
+  });
+
+  it("after returning from a redirect that still fails, surfaces the MSAL error instead of looping", async () => {
+    sessionStorage.setItem(redirectMarkerKey(["Mail.ReadWrite"]), "1");
+    const inst = mkInstance(() => new Promise(() => {}));
+    await expect(g.getToken(inst, ["Mail.ReadWrite"])).rejects.toBeInstanceOf(InteractionRequiredAuthError);
+    expect(inst.acquireTokenRedirect).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem(redirectMarkerKey(["Mail.ReadWrite"]))).toBeNull();
+  });
+
+  it("throws ConsentRequiredError without redirecting when the tenant has not approved the scope", async () => {
+    const inst = mkInstance(() => new Promise(() => {}));
+    (inst.acquireTokenSilent as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+      throw new InteractionRequiredAuthError("invalid_grant", "", "AADSTS65001: consent", "consent_required");
+    });
+    await expect(g.getToken(inst, ["Mail.ReadWrite"])).rejects.toBeInstanceOf(g.ConsentRequiredError);
+    expect(inst.acquireTokenRedirect).not.toHaveBeenCalled();
   });
 });

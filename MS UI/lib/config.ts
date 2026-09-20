@@ -17,6 +17,8 @@ export const FEATURE_SCOPES: { key: string; label: string; scopes: string[] }[] 
   { key: "send", label: "Outlook: send", scopes: ["Mail.Send"] },
   { key: "drive", label: "OneDrive: files and folders, sharing", scopes: ["Files.ReadWrite"] },
   { key: "calendar", label: "Calendar: events, invites, RSVP", scopes: ["Calendars.ReadWrite"] },
+  { key: "calendarShared", label: "Calendar: colleagues' shared calendars", scopes: ["Calendars.Read.Shared"] },
   { key: "contacts", label: "Contacts: recipient suggestions", scopes: ["Contacts.Read"] },
+  { key: "people", label: "People: suggest colleagues from the Lyzr directory", scopes: ["People.Read", "User.ReadBasic.All"] },
   { key: "settings", label: "Mailbox settings: categories, rules, time zone", scopes: ["MailboxSettings.ReadWrite"] },
 ];

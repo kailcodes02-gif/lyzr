@@ -1,15 +1,44 @@
 "use client";
 
-import { Archive, ChevronDown, ChevronRight, File, FolderPlus, Inbox, MoreVertical, Pencil, Plus, Send, ShieldAlert, Star, Tag, Trash2, X } from "lucide-react";
+import { Archive, ChevronDown, ChevronRight, Eraser, File, FolderPlus, Inbox, ListFilter, MoreVertical, Pencil, Plus, Send, ShieldAlert, Sparkles, Star, Tag, Trash2, X } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { useCategories, useCategoryMutations, useChildFolders, useFolderMutations, useFolders } from "@/lib/mail/hooks";
-import { orderFolders, presetHex, PRESET_COLORS, STARRED_ID, visibleFolders, WELL_KNOWN_LABEL, type WellKnown } from "@/lib/mail/logic";
-import type { MailFolder } from "@/lib/mail/types";
+import { errorMessage, useCategories, useCategoryMutations, useChildFolders, useFolderMutations, useFolders, useInstallPresets, useRemoveLabelFromAll } from "@/lib/mail/hooks";
+import { PRESET_NAMES } from "@/lib/mail/labels";
+import { orderFolders, presetHex, STARRED_ID, visibleFolders, WELL_KNOWN_LABEL, type WellKnown } from "@/lib/mail/logic";
+import type { MailFolder, OutlookCategory } from "@/lib/mail/types";
+import { labelFolderKey, serializeMailUrl } from "@/lib/mail/url";
 import { cn } from "@/lib/utils";
+import { FiltersDialog } from "./filters-dialog";
+import { LabelDialog, type LabelDialogState } from "./label-dialog";
+
+// Folder, Starred and label rows are real links: focusable, Enter-activatable,
+// Cmd/Ctrl-click opens a tab; a plain click stays a client-side navigation.
+// Nested controls (chevron, options) sit beside the link, not inside it.
+function FolderLink({ folderKey, active, select, className, children, ...rest }: { folderKey: string; active: boolean; select: (key: string) => void; className?: string; children: React.ReactNode } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href" | "onClick" | "onSelect">) {
+  return (
+    <a
+      href={serializeMailUrl({ folder: folderKey }) || "?"}
+      aria-current={active ? "page" : undefined}
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        e.preventDefault();
+        select(folderKey);
+      }}
+      className={cn("flex min-w-0 flex-1 items-center gap-2 self-stretch rounded-r-full outline-none focus-visible:ring-2 focus-visible:ring-ring", className)}
+      {...rest}
+    >
+      {children}
+    </a>
+  );
+}
+
+const ROW = "group flex h-8 items-center gap-2 rounded-r-full pr-2 text-sm hover:bg-black/5 has-[a:focus-visible]:bg-black/5 dark:hover:bg-white/10";
+const HIDDEN_CONTROL = "rounded p-0.5 opacity-0 hover:bg-black/10 focus-visible:opacity-100 group-hover:opacity-100 data-popup-open:opacity-100";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   inbox: Inbox,
@@ -38,36 +67,28 @@ function FolderRow({ folder, depth, active, onSelect, onRename, onDelete, onNewC
   const custom = !folder.wellKnownName;
   return (
     <div>
-      <div
-        className={cn("group flex h-8 cursor-pointer items-center gap-2 rounded-r-full pr-2 text-sm hover:bg-black/5 dark:hover:bg-white/10", isActive && "bg-accent font-semibold")}
-        style={{ paddingLeft: 12 + depth * 14 }}
-        onClick={() => onSelect(key)}
-        role="link"
-        aria-current={isActive ? "page" : undefined}
-      >
+      <div className={cn(ROW, isActive && "bg-accent font-semibold")} style={{ paddingLeft: 12 + depth * 14 }}>
         {hasChildren ? (
           <button
             type="button"
-            aria-label={open ? "Collapse" : "Expand"}
+            aria-label={open ? `Collapse ${folder.displayName}` : `Expand ${folder.displayName}`}
+            aria-expanded={open}
             className="-ml-1 rounded p-0.5 text-muted-foreground hover:bg-black/10"
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpen((o) => !o);
-            }}
+            onClick={() => setOpen((o) => !o)}
           >
             {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
           </button>
         ) : (
           <span className="w-3.5" />
         )}
-        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <span className="flex-1 truncate">{label}</span>
-        {!!badge && badge > 0 && <span className={cn("text-xs", isActive ? "font-semibold" : "text-muted-foreground")}>{badge}</span>}
+        <FolderLink folderKey={key} active={isActive} select={onSelect}>
+          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="flex-1 truncate">{label}</span>
+          {!!badge && badge > 0 && <span className={cn("text-xs", isActive ? "font-semibold" : "text-muted-foreground")}>{badge}</span>}
+        </FolderLink>
         {custom && (
           <DropdownMenu>
-            <DropdownMenuTrigger
-              render={<button aria-label={`Options for ${folder.displayName}`} className="rounded p-0.5 opacity-0 hover:bg-black/10 group-hover:opacity-100 data-popup-open:opacity-100" onClick={(e) => e.stopPropagation()} />}
-            >
+            <DropdownMenuTrigger render={<button aria-label={`Options for ${folder.displayName}`} className={HIDDEN_CONTROL} />}>
               <MoreVertical className="h-3.5 w-3.5" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -96,14 +117,37 @@ function FolderRow({ folder, depth, active, onSelect, onRename, onDelete, onNewC
   );
 }
 
-export function FolderPanel({ active, onSelect, onCompose, className }: { active: string; onSelect: (key: string) => void; onCompose: () => void; className?: string }) {
+const PRESET_BANNER_KEY = "msui.mail.presetBanner";
+const bannerDismissed = () => {
+  try {
+    return localStorage.getItem(PRESET_BANNER_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+
+export function FolderPanel({ active, onSelect, onCompose, className, meAddress }: { active: string; onSelect: (key: string) => void; onCompose: () => void; className?: string; meAddress?: string }) {
   const folders = useFolders();
   const categories = useCategories();
+  const installPresets = useInstallPresets();
+  const [presetBannerHidden, setPresetBannerHidden] = useState(bannerDismissed);
+  const dismissPresetBanner = () => {
+    setPresetBannerHidden(true);
+    try {
+      localStorage.setItem(PRESET_BANNER_KEY, "1");
+    } catch {
+      // storage blocked
+    }
+  };
+  // One-time offer, shown only while none of the preset label names exist.
+  const showPresetBanner = !presetBannerHidden && !!categories.data && !PRESET_NAMES.some((n) => categories.data.some((c) => c.displayName.toLowerCase() === n.toLowerCase()));
   const folderMut = useFolderMutations();
   const catMut = useCategoryMutations();
-  const [dialog, setDialog] = useState<null | { kind: "new"; parent?: MailFolder } | { kind: "rename"; folder: MailFolder } | { kind: "delete"; folder: MailFolder } | { kind: "label" }>(null);
+  const removeFromAll = useRemoveLabelFromAll();
+  const [dialog, setDialog] = useState<null | { kind: "new"; parent?: MailFolder } | { kind: "rename"; folder: MailFolder } | { kind: "delete"; folder: MailFolder } | { kind: "deleteLabel"; category: OutlookCategory }>(null);
+  const [labelDialog, setLabelDialog] = useState<LabelDialogState | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [name, setName] = useState("");
-  const [color, setColor] = useState("preset7");
   const [labelsOpen, setLabelsOpen] = useState(true);
 
   const list = orderFolders(visibleFolders(folders.data ?? []));
@@ -123,7 +167,10 @@ export function FolderPanel({ active, onSelect, onCompose, className }: { active
       folderMut.remove.mutate({ id: dialog.folder.id });
       if (active === dialog.folder.id) onSelect("inbox");
     }
-    if (dialog.kind === "label" && name.trim()) catMut.create.mutate({ displayName: name.trim(), color });
+    if (dialog.kind === "deleteLabel") {
+      catMut.remove.mutate({ id: dialog.category.id, displayName: dialog.category.displayName });
+      if (active === labelFolderKey(dialog.category.displayName)) onSelect("inbox");
+    }
     setDialog(null);
     setName("");
   };
@@ -146,16 +193,12 @@ export function FolderPanel({ active, onSelect, onCompose, className }: { active
         {folders.isError && <p className="px-4 py-2 text-xs text-destructive">Folders unavailable</p>}
         {withStarred.map((f) =>
           f === "starred" ? (
-            <div
-              key="starred"
-              role="link"
-              aria-current={active === STARRED_ID ? "page" : undefined}
-              onClick={() => onSelect(STARRED_ID)}
-              className={cn("flex h-8 cursor-pointer items-center gap-2 rounded-r-full pl-3 pr-2 text-sm hover:bg-black/5 dark:hover:bg-white/10", active === STARRED_ID && "bg-accent font-semibold")}
-            >
+            <div key="starred" className={cn(ROW, "pl-3", active === STARRED_ID && "bg-accent font-semibold")}>
               <span className="w-3.5" />
-              <Star className="h-4 w-4 text-muted-foreground" />
-              <span className="flex-1">Starred</span>
+              <FolderLink folderKey={STARRED_ID} active={active === STARRED_ID} select={onSelect}>
+                <Star className="h-4 w-4 text-muted-foreground" />
+                <span className="flex-1">Starred</span>
+              </FolderLink>
             </div>
           ) : (
             <FolderRow key={f.id} folder={f} depth={0} active={active} onSelect={onSelect} onRename={(folder) => { setName(folder.displayName); setDialog({ kind: "rename", folder }); }} onDelete={(folder) => setDialog({ kind: "delete", folder })} onNewChild={(parent) => { setName(""); setDialog({ kind: "new", parent }); }} />
@@ -171,7 +214,7 @@ export function FolderPanel({ active, onSelect, onCompose, className }: { active
           <button type="button" onClick={() => setLabelsOpen((o) => !o)} className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Labels {labelsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
           </button>
-          <button type="button" aria-label="New label" onClick={() => { setName(""); setDialog({ kind: "label" }); }} className="rounded p-1 text-muted-foreground hover:bg-black/10 hover:text-foreground">
+          <button type="button" aria-label="New label" onClick={() => setLabelDialog({ mode: "create" })} className="rounded p-1 text-muted-foreground hover:bg-black/10 hover:text-foreground">
             <Plus className="h-4 w-4" />
           </button>
         </div>
@@ -180,15 +223,58 @@ export function FolderPanel({ active, onSelect, onCompose, className }: { active
             {categories.isPending && <div className="mx-4 h-5 animate-pulse rounded bg-muted" />}
             {categories.isError && <p className="px-4 py-1 text-xs text-muted-foreground">Labels need the mailbox settings permission.</p>}
             {categories.data?.length === 0 && <p className="px-4 py-1 text-xs text-muted-foreground">No labels yet</p>}
-            {categories.data?.map((c) => (
-              <div key={c.id} className="group flex h-7 items-center gap-2 pl-[30px] pr-2 text-sm hover:bg-black/5 dark:hover:bg-white/10">
-                <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: presetHex(c.color) }} aria-hidden />
-                <span className="flex-1 truncate">{c.displayName}</span>
-                <button type="button" aria-label={`Delete label ${c.displayName}`} onClick={() => catMut.remove.mutate({ id: c.id })} className="rounded p-0.5 opacity-0 hover:bg-black/10 group-hover:opacity-100">
-                  <X className="h-3 w-3" />
-                </button>
+            {showPresetBanner && (
+              <div className="mx-3 my-1 rounded-xl bg-muted/60 p-2 text-xs" role="status">
+                <div className="flex items-start gap-2">
+                  <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                  <span className="flex-1">Set up Leadership, GSI, Marketing, Meeting scripts and Calendar labels, each skipping the inbox.</span>
+                  <button type="button" aria-label="Dismiss" onClick={dismissPresetBanner} className="rounded-full p-0.5 hover:bg-black/10">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <Button size="sm" className="mt-2 h-7 w-full" onClick={() => installPresets.mutate({ meAddress })} disabled={installPresets.isPending}>
+                  {installPresets.isPending ? "Setting up" : "Set up my labels"}
+                </Button>
               </div>
-            ))}
+            )}
+            {categories.data?.map((c) => {
+              const key = labelFolderKey(c.displayName);
+              const isActive = active === key;
+              return (
+                <div key={c.id} className={cn(ROW, "h-7 pl-[30px]", isActive && "bg-accent font-semibold")}>
+                  <FolderLink folderKey={key} active={isActive} select={onSelect} aria-label={`Label ${c.displayName}`}>
+                    <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: presetHex(c.color) }} aria-hidden />
+                    <span className="flex-1 truncate">{c.displayName}</span>
+                  </FolderLink>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger render={<button aria-label={`Options for label ${c.displayName}`} className={HIDDEN_CONTROL} />}>
+                      <MoreVertical className="h-3.5 w-3.5" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setLabelDialog({ mode: "edit", category: c })}>
+                        <Pencil /> Edit label
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (!window.confirm(`Remove "${c.displayName}" from every message that carries it? The label itself stays.`)) return;
+                          removeFromAll(c.displayName).then((n) => toast.success(`Removed "${c.displayName}" from ${n} messages`)).catch((e) => toast.error(errorMessage(e)));
+                        }}
+                      >
+                        <Eraser /> Remove label from all mail
+                      </DropdownMenuItem>
+                      <DropdownMenuItem variant="destructive" onClick={() => setDialog({ kind: "deleteLabel", category: c })}>
+                        <Trash2 /> Delete label
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              );
+            })}
+            {categories.isSuccess && (
+              <button type="button" onClick={() => setFiltersOpen(true)} className="mt-1 flex h-7 w-full items-center gap-2 pl-[30px] text-sm text-muted-foreground hover:text-foreground">
+                <ListFilter className="h-4 w-4" /> Filters
+              </button>
+            )}
           </div>
         )}
       </nav>
@@ -200,12 +286,16 @@ export function FolderPanel({ active, onSelect, onCompose, className }: { active
               {dialog?.kind === "new" && (dialog.parent ? `New folder in ${dialog.parent.displayName}` : "New folder")}
               {dialog?.kind === "rename" && "Rename folder"}
               {dialog?.kind === "delete" && "Delete folder"}
-              {dialog?.kind === "label" && "New label"}
+              {dialog?.kind === "deleteLabel" && "Delete label"}
             </DialogTitle>
           </DialogHeader>
           {dialog?.kind === "delete" ? (
             <p className="text-sm text-muted-foreground">
               &quot;{dialog.folder.displayName}&quot; and its messages move to Trash.
+            </p>
+          ) : dialog?.kind === "deleteLabel" ? (
+            <p className="text-sm text-muted-foreground">
+              &quot;{dialog.category.displayName}&quot; and its automatic filters are deleted. Messages keep the tag text until Outlook cleans it up, but it no longer shows as a label.
             </p>
           ) : (
             <form
@@ -215,26 +305,21 @@ export function FolderPanel({ active, onSelect, onCompose, className }: { active
               }}
               className="flex flex-col gap-3"
             >
-              <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={dialog?.kind === "label" ? "Label name" : "Folder name"} aria-label="Name" />
-              {dialog?.kind === "label" && (
-                <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Colour">
-                  {Object.entries(PRESET_COLORS).map(([k, v]) => (
-                    <button key={k} type="button" role="radio" aria-checked={color === k} title={v.name} onClick={() => setColor(k)} className={cn("h-6 w-6 rounded-full border-2", color === k ? "border-foreground" : "border-transparent")} style={{ background: v.hex }} />
-                  ))}
-                </div>
-              )}
+              <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Folder name" aria-label="Name" />
             </form>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialog(null)}>
               Cancel
             </Button>
-            <Button variant={dialog?.kind === "delete" ? "destructive" : "default"} onClick={submit} disabled={dialog?.kind !== "delete" && !name.trim()}>
-              {dialog?.kind === "delete" ? "Delete" : dialog?.kind === "rename" ? "Rename" : "Create"}
+            <Button variant={dialog?.kind === "delete" || dialog?.kind === "deleteLabel" ? "destructive" : "default"} onClick={submit} disabled={dialog?.kind !== "delete" && dialog?.kind !== "deleteLabel" && !name.trim()}>
+              {dialog?.kind === "delete" || dialog?.kind === "deleteLabel" ? "Delete" : dialog?.kind === "rename" ? "Rename" : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <LabelDialog state={labelDialog} onClose={() => setLabelDialog(null)} meAddress={meAddress} />
+      <FiltersDialog open={filtersOpen} onOpenChange={setFiltersOpen} meAddress={meAddress} />
     </aside>
   );
 }

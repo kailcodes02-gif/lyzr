@@ -1,7 +1,7 @@
 "use client";
 
 import { Archive, ArrowLeft, ChevronDown, Download, ExternalLink, FolderInput, Forward, Mail, MoreVertical, Paperclip, Reply, ReplyAll, ShieldAlert, Star, Tag, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -11,7 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { fileKind, KIND_COLOR, KIND_LABEL } from "@/lib/files";
 import { formatDateTime, initials } from "@/lib/format";
 import { useAttachments, useCreateRule, useDownloadAttachment, useMessage, useMessageActions, useThread } from "@/lib/mail/hooks";
-import { orderFolders, presetHex, recipientsLabel, sortMessagesAsc, visibleFolders, WELL_KNOWN_LABEL, type WellKnown } from "@/lib/mail/logic";
+import { moveScopeIds, orderFolders, presetHex, recipientsLabel, resolveFolderId, sortMessagesAsc, visibleFolders, WELL_KNOWN_LABEL, type WellKnown } from "@/lib/mail/logic";
 import type { Attachment, MailFolder, Message, OutlookCategory } from "@/lib/mail/types";
 import { cn } from "@/lib/utils";
 import { EmailFrame } from "./email-frame";
@@ -72,7 +72,7 @@ function AttachmentChip({ messageId, att }: { messageId: string; att: Attachment
   );
 }
 
-function MessageCard({ message, expanded, onToggle, onReply, categories, isLast }: { message: Message; expanded: boolean; onToggle: () => void; onReply: (kind: ReplyKind, m: Message) => void; categories?: OutlookCategory[]; isLast: boolean }) {
+function MessageCard({ message, expanded, onToggle, onReply, onClose, categories, isLast }: { message: Message; expanded: boolean; onToggle: () => void; onReply: (kind: ReplyKind, m: Message) => void; onClose: () => void; categories?: OutlookCategory[]; isLast: boolean }) {
   const full = useMessage(expanded ? message.id : undefined);
   const attachments = useAttachments(message.id, expanded && (!!message.hasAttachments || /cid:/i.test(full.data?.body?.content ?? "")));
   const download = useDownloadAttachment();
@@ -143,7 +143,8 @@ function MessageCard({ message, expanded, onToggle, onReply, categories, isLast 
                     <DropdownMenuItem onClick={() => onReply("createReplyAll", message)}><ReplyAll /> Reply all</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onReply("createForward", message)}><Forward /> Forward</DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => actions.setRead([message.id], false)}><Mail /> Mark as unread</DropdownMenuItem>
+                    {/* Closes the pane like Gmail, so the open-thread read marking cannot undo it. */}
+                    <DropdownMenuItem onClick={() => { actions.setRead([message.id], false); onClose(); }}><Mail /> Mark as unread</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => actions.trash([message.id])}><Trash2 /> Delete this message</DropdownMenuItem>
                     {message.webLink && (
                       <DropdownMenuItem onClick={() => window.open(message.webLink, "_blank", "noopener")}><ExternalLink /> Open in Outlook</DropdownMenuItem>
@@ -290,17 +291,28 @@ export function ThreadView({ conversationId, messageId, onBack, onReply, onOpenD
   const [filterOpen, setFilterOpen] = useState(false);
   const messages = useMemo(() => sortMessagesAsc(thread.data ?? []), [thread.data]);
   const latest = messages[messages.length - 1];
+  // `ids` (every folder) is for read/star/label state; move-type actions only
+  // touch the copies in the current folder, never Sent/Archive siblings.
   const ids = messages.map((m) => m.id);
-  const unreadIds = messages.filter((m) => m.isRead === false).map((m) => m.id);
+  const moveIds = useMemo(() => moveScopeIds(messages, currentFolder, folders), [messages, currentFolder, folders]);
+  const currentFolderId = resolveFolderId(currentFolder, folders);
+  const canMove = moveIds.length > 0;
   const isTrashOrSpam = currentFolder === "deleteditems" || currentFolder === "junkemail";
 
-  // Expand the requested message, else the latest; mark unread ones read on open.
+  // Expand the requested message, else the latest.
   const defaultExpanded = messages.length ? (messageId && messages.some((m) => m.id === messageId) ? messageId : messages[messages.length - 1].id) : undefined;
   const isExpanded = (id: string) => (expanded.size ? expanded.has(id) : id === defaultExpanded);
+  // Mark unread messages read exactly once per open, after the first successful
+  // fetch. Never re-run on cache writes or refetches: "Mark as unread" from a
+  // card, a star or a label change would otherwise be undone at once.
+  const markedRef = useRef<string | null>(null);
   useEffect(() => {
-    if (unreadIds.length) actions.setRead(unreadIds, true);
+    if (!thread.isSuccess || markedRef.current === conversationId) return;
+    markedRef.current = conversationId;
+    const unread = (thread.data ?? []).filter((m) => m.isRead === false && !m.isDraft).map((m) => m.id);
+    if (unread.length) actions.setRead(unread, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId, thread.dataUpdatedAt]);
+  }, [conversationId, thread.isSuccess]);
   // A draft-only conversation opens straight in the composer.
   useEffect(() => {
     if (messages.length === 1 && messages[0].isDraft) onOpenDraft(messages[0]);
@@ -312,15 +324,29 @@ export function ThreadView({ conversationId, messageId, onBack, onReply, onOpenD
   const threadCategories = Array.from(new Set(messages.flatMap((m) => m.categories ?? [])));
   const toggleCategory = (name: string) => {
     const has = threadCategories.includes(name);
-    for (const m of messages) {
-      const cur = m.categories ?? [];
-      const next = has ? cur.filter((c) => c !== name) : Array.from(new Set([...cur, name]));
-      if (next.length !== cur.length) actions.setCategories([m.id], next);
-    }
+    const updates = messages
+      .map((m) => {
+        const cur = m.categories ?? [];
+        const next = has ? cur.filter((c) => c !== name) : Array.from(new Set([...cur, name]));
+        return next.length !== cur.length ? { id: m.id, categories: next } : null;
+      })
+      .filter((u): u is { id: string; categories: string[] } => u !== null);
+    actions.setCategoriesMany(updates);
   };
   const moveTargets = orderFolders(visibleFolders(folders)).filter((f) => !["inbox", "sentitems", "drafts", "deleteditems", "junkemail", "outbox"].includes((f.wellKnownName ?? "").toLowerCase()));
   const doThen = (fn: () => void) => () => {
     fn();
+    onBack();
+  };
+  // Graph has no undo for a hard delete: confirm, and scope to this folder twice.
+  const deleteThread = () => {
+    if (isTrashOrSpam) {
+      const n = moveIds.length;
+      if (!window.confirm(`Delete ${n === 1 ? "this message" : `these ${n} messages`} forever? This cannot be undone.`)) return;
+      actions.deleteForever(moveIds, currentFolderId);
+    } else {
+      actions.trash(moveIds);
+    }
     onBack();
   };
 
@@ -330,19 +356,19 @@ export function ThreadView({ conversationId, messageId, onBack, onReply, onOpenD
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex h-12 shrink-0 items-center gap-1 border-b border-border px-2">
         <Tip label="Back to list"><button type="button" aria-label="Back to list" onClick={onBack} className={tb}><ArrowLeft className="h-4 w-4" /></button></Tip>
-        {!isTrashOrSpam && <Tip label="Archive"><button type="button" aria-label="Archive" onClick={doThen(() => actions.archive(ids))} className={tb}><Archive className="h-4 w-4" /></button></Tip>}
-        {!isTrashOrSpam && <Tip label="Report spam"><button type="button" aria-label="Report spam" onClick={doThen(() => actions.spam(ids))} className={tb}><ShieldAlert className="h-4 w-4" /></button></Tip>}
-        <Tip label={isTrashOrSpam ? "Delete forever" : "Delete"}><button type="button" aria-label="Delete" onClick={doThen(() => (isTrashOrSpam ? actions.deleteForever(ids) : actions.trash(ids)))} className={tb}><Trash2 className="h-4 w-4" /></button></Tip>
+        {!isTrashOrSpam && <Tip label="Archive"><button type="button" aria-label="Archive" disabled={!canMove} onClick={doThen(() => actions.archive(moveIds))} className={cn(tb, "disabled:opacity-40")}><Archive className="h-4 w-4" /></button></Tip>}
+        {!isTrashOrSpam && <Tip label="Report spam"><button type="button" aria-label="Report spam" disabled={!canMove} onClick={doThen(() => actions.spam(moveIds))} className={cn(tb, "disabled:opacity-40")}><ShieldAlert className="h-4 w-4" /></button></Tip>}
+        <Tip label={isTrashOrSpam ? "Delete forever" : "Delete"}><button type="button" aria-label="Delete" disabled={!canMove} onClick={deleteThread} className={cn(tb, "disabled:opacity-40")}><Trash2 className="h-4 w-4" /></button></Tip>
         <span className="mx-1 h-5 w-px bg-border" />
         <Tip label="Mark as unread"><button type="button" aria-label="Mark as unread" onClick={doThen(() => actions.setRead(ids, false))} className={tb}><Mail className="h-4 w-4" /></button></Tip>
         <Tip label={allStarred ? "Unstar" : "Star"}><button type="button" aria-label={allStarred ? "Unstar" : "Star"} onClick={() => actions.setStar(allStarred || !anyStarred ? ids : [latest.id], !allStarred)} className={tb}><Star className={cn("h-4 w-4", anyStarred && "fill-[#f4b400] text-[#f4b400]")} /></button></Tip>
         <DropdownMenu>
-          <Tip label="Move to"><DropdownMenuTrigger render={<button aria-label="Move to" className={tb} />}><FolderInput className="h-4 w-4" /></DropdownMenuTrigger></Tip>
+          <Tip label="Move to"><DropdownMenuTrigger disabled={!canMove} render={<button aria-label="Move to" className={cn(tb, "disabled:opacity-40")} />}><FolderInput className="h-4 w-4" /></DropdownMenuTrigger></Tip>
           <DropdownMenuContent>
             <DropdownMenuLabel>Move to</DropdownMenuLabel>
-            {isTrashOrSpam && <DropdownMenuItem onClick={doThen(() => actions.inbox(ids))}>Inbox</DropdownMenuItem>}
+            {isTrashOrSpam && <DropdownMenuItem onClick={doThen(() => actions.inbox(moveIds))}>Inbox</DropdownMenuItem>}
             {moveTargets.map((f) => (
-              <DropdownMenuItem key={f.id} onClick={doThen(() => actions.moveTo(ids, f.id, WELL_KNOWN_LABEL[(f.wellKnownName ?? "").toLowerCase() as WellKnown] ?? f.displayName))}>
+              <DropdownMenuItem key={f.id} onClick={doThen(() => actions.moveTo(moveIds, f.id, WELL_KNOWN_LABEL[(f.wellKnownName ?? "").toLowerCase() as WellKnown] ?? f.displayName))}>
                 {WELL_KNOWN_LABEL[(f.wellKnownName ?? "").toLowerCase() as WellKnown] ?? f.displayName}
               </DropdownMenuItem>
             ))}
@@ -398,6 +424,7 @@ export function ThreadView({ conversationId, messageId, onBack, onReply, onOpenD
                   expanded={isExpanded(m.id)}
                   isLast={i === messages.length - 1}
                   categories={categories}
+                  onClose={onBack}
                   onReply={(kind, msg) => (msg.isDraft ? onOpenDraft(msg) : onReply(kind, msg))}
                   onToggle={() =>
                     setExpanded((s) => {

@@ -1,4 +1,5 @@
 // Microsoft Graph v1.0 calendar shapes (only the fields this app reads).
+import type { RecurrenceForm } from "./recurrence";
 
 export type DateTimeTimeZone = { dateTime: string; timeZone: string };
 
@@ -34,6 +35,8 @@ export type GraphCalendar = {
   hexColor?: string;
   isDefaultCalendar?: boolean;
   canEdit?: boolean;
+  // true only for the user who created the calendar (v1.0); the address-independent "mine" signal.
+  canShare?: boolean;
   owner?: EmailAddress;
   allowedOnlineMeetingProviders?: OnlineMeetingProvider[];
   defaultOnlineMeetingProvider?: OnlineMeetingProvider;
@@ -130,9 +133,16 @@ export type EventDraft = {
   attendees: { name: string; email: string }[];
   location: string;
   teams: boolean;
+  // While true the Teams switch follows the guest list (on with guests when the
+  // calendar allows Teams, off without); the user's first toggle turns it off.
+  teamsAuto?: boolean;
   reminder: number | null; // minutes, null = none
   description: string;
   recurrence: PatternedRecurrence | null;
+  // The recurrence editor's state; the Graph recurrence is derived from it at
+  // save time so range.startDate always follows the (possibly edited) start.
+  recurrenceForm?: RecurrenceForm;
+  recurrenceTouched?: boolean;
   showAs: ShowAs;
   isPrivate: boolean;
 };

@@ -10,7 +10,21 @@ A web app for your Microsoft 365 mailbox, OneDrive and calendar, built on the Mi
 
 Locally the same three pages run at `http://localhost:3000/MS/outlook`, `/MS/onedrive`, `/MS/calendar`.
 
-**Status (2026-09-20): milestone M0 built.** Microsoft sign-in, the app shell with the three pages, and a live "Microsoft permissions" panel that shows which permissions are approved. Mail, files and calendar data come in the next milestones. The full feasibility study and phased build plan is in [PLAN.md](PLAN.md).
+**Status (2026-09-20, late): built and live; second version being finished.** All three screens are deployed at the URLs above.
+
+What each screen does today:
+
+- **Outlook (Gmail layout).** Folders and sub-folders, Starred, Primary / Social / Promotions tabs (Social and Promotions are Outlook categories kept up to date by inbox rules the app creates), labels you can click to see everything inside them, labels with conditions (senders, domains, subject words, calendar invitations, newsletters) that become Outlook's own server-side rules, "skip the inbox" so labelled mail lives only under its label (the app creates a folder of the same name and Outlook moves matching mail there on arrival), a Filters list of every rule with a one-click "Set up my labels" that installs the preset labels (Leadership, GSI, Marketing, Meeting scripts, Calendar; senders listed in the app and in the plan), threaded reading pane with safe HTML, compose with undo send, reply, reply all, forward, attachments, Gmail keyboard shortcuts, live inbox refresh.
+- **OneDrive (Google Drive layout).** My files with breadcrumbs, Docs / Sheets / Slides / PDFs / Images / Videos views, Starred, Recent, Shared with me, grid and list, search and filters by type, person and date, new folder, rename, move by drag or dialog, copy, delete, upload with resume for big files, preview for images, PDF, video and text, share by link or invitation. Double-clicking a Word, Excel or PowerPoint file opens it in that app on the web; the menu also offers the desktop app.
+- **Calendar (Google Calendar layout).** Day, week, month, 4-day and agenda views, mini month, My calendars and Other calendars with colour toggles, subscribe to a colleague and see their busy or free blocks over your own grid (details when they have shared their calendar with you), calendars shared with you, quick create, full edit with recurrence, guests suggested from your contacts and the Lyzr directory, find a time, RSVP, Teams links, reminders. Until a Lyzr Microsoft 365 admin approves the app's permissions, real mail, files and calendar data show a "needs admin approval" panel; everything can be tried in demo mode (sample data) meanwhile. The feasibility study and build plan is in [PLAN.md](PLAN.md).
+
+| Live | |
+|---|---|
+| Sign-in | https://lyzr.kailash-gm.com/MS/login/ |
+| Demo (no account needed) | https://lyzr.kailash-gm.com/MS/login/?mock=1 |
+| Cloudflare Worker | `ms-ui`, route `lyzr.kailash-gm.com/MS*`, assets only, no server code |
+
+Production sign-in needs the production redirect URI in the app registration (step 1.7 below); without it Microsoft shows error AADSTS50011.
 
 | App registration (not secret) | |
 |---|---|
@@ -47,9 +61,14 @@ This is the "identity" of the app inside Lyzr's Microsoft 365. Without it, no lo
    - `Mail.Send`
    - `Files.ReadWrite`
    - `Calendars.ReadWrite`
+   - `Calendars.Read.Shared` and `Calendars.ReadWrite.Shared` (added 2026-09-20: see colleagues' calendars they have shared with you)
    - `Contacts.Read`
+   - `People.Read` (added 2026-09-20: suggest the people you email most)
+   - `User.ReadBasic.All` (added 2026-09-20: suggest anyone in the Lyzr directory when adding guests or recipients)
    - `MailboxSettings.ReadWrite` (added 2026-09-20: creating and deleting categories, inbox rules that sort mail automatically, time zone, automatic replies)
    - `offline_access`
+
+Do not add `People.Read.All`: it is a higher-privilege permission that reads other people's relationship data, it is not used, and it needs a stricter admin consent. If it is present, remove it (its row menu, Remove permission).
 
 Do not reuse the "Graph Python quick start" app or the "Lyzr Comms Tracker" app. The reasons are in PLAN.md section 2.
 

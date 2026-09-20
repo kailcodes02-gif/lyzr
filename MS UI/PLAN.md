@@ -1,4 +1,7 @@
 <!--
+STATUS 2026-09-20 (late): built and deployed at https://lyzr.kailash-gm.com/MS/ (see README.md). This file is the
+plan the build followed; section 9 maps the user's requirements to Graph endpoints.
+
 Plan + feasibility for a Gmail-like Outlook UI and a Google-Drive-like OneDrive UI on Microsoft Graph.
 Produced 2026-09-20 from a 22-agent research run: 5 research lenses, 14 load-bearing claims
 fact-checked against learn.microsoft.com (4 corrected and folded in), completeness critique, revision.
@@ -40,7 +43,7 @@ Use a **fresh single-tenant registration** ("Lyzr Mail & Drive UI"). Don't widen
 | Supported account types | Single tenant (Lyzr only) |
 | Platform | **Single-page application** only (PKCE + CORS on token endpoint). No Web platform, no secret, "Allow public client flows" = No, "Assignment required" = No unless the admin wants an allowlist |
 | Redirect URIs | `http://localhost:3000/MS/redirect/` and `https://lyzr.kailash-gm.com/MS/redirect/` (byte-exact, trailing slash) |
-| Delegated permissions | `openid profile offline_access User.Read Mail.ReadWrite Mail.Send Files.ReadWrite Calendars.ReadWrite Contacts.Read MailboxSettings.ReadWrite` (+ `Files.ReadWrite.All` only if "Shared with me" must open items; `People.Read` optional for better autocomplete; `MailboxSettings.Read` only for timezone/category master list) |
+| Delegated permissions | `openid profile offline_access User.Read Mail.ReadWrite Mail.Send Files.ReadWrite Calendars.ReadWrite Contacts.Read People.Read User.ReadBasic.All MailboxSettings.ReadWrite` (+ `Files.ReadWrite.All` only if "Shared with me" must open items; `People.Read` optional for better autocomplete; `MailboxSettings.Read` only for timezone/category master list) |
 | Admin consent routes | (a) API permissions > "Grant admin consent for Lyzr"; (b) `https://login.microsoftonline.com/4b1018eb-9480-4542-89d0-4e6233aba226/adminconsent?client_id=<id>&redirect_uri=<registered uri>`; (c) single-user: `POST /v1.0/oauth2PermissionGrants {consentType:"Principal", principalId:<your user id>, clientId:<app SP id>, resourceId:<Graph SP id>, scope:"<all scopes in one string>"}` ([doc](https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/grant-consent-single-user)) |
 
 Route (c) prerequisites: the app's service principal must exist (created by the first consent attempt or `POST /servicePrincipals`); the admin needs `DelegatedPermissionGrant.ReadWrite.All` (+ `Application.ReadWrite.All` in Graph Explorer); list **every** scope in one grant (tenant-wide grants can revoke earlier ones); then assign the app to you via `POST /servicePrincipals/{id}/appRoleAssignedTo` with the default role.
@@ -260,9 +263,20 @@ Scopes entered in the portal: `User.Read`, `Mail.ReadWrite`, `Mail.Send`, `Files
 | Nested folders | same call with any parent, any depth | Files.ReadWrite | Native |
 | Move files across folders | `PATCH {parentReference:{id}}` | Files.ReadWrite | Native |
 | Rename, delete, copy, upload, download, preview | section 4 | Files.ReadWrite | Native |
+| Open a Word / Excel / PowerPoint file in its app (double-click, like Drive opens Slides in Slides) | `webUrl` opens the Office web app in a new tab; "Open in ... desktop app" uses the Office URI scheme `ms-powerpoint:ofe\|u\|<webUrl>` (and ms-word, ms-excel); images, PDFs, video keep the in-app preview | Files.ReadWrite | Native |
 | Share files | `POST …/createLink` (view or edit; scope `organization` or `users`; `anonymous` only if the tenant allows) and `POST …/invite` (named people, read or write, optional email) ([createLink](https://learn.microsoft.com/en-us/graph/api/driveitem-createlink?view=graph-rest-1.0), [invite](https://learn.microsoft.com/en-us/graph/api/driveitem-invite?view=graph-rest-1.0)) | Files.ReadWrite | Native |
 | "Repos" by type: Sheets, Docs, Slides, PDFs, Images, Videos | Virtual views, not real folders. The app walks the drive once with `GET /me/drive/root/delta?$select=id,name,size,file,folder,parentReference,createdBy,lastModifiedBy,lastModifiedDateTime,webUrl`, keeps the list in the browser (IndexedDB), then refreshes with the `deltaLink`. Each "repo" is a filter on extension / `file.mimeType`. Files stay where they are in OneDrive and also appear in their real folder, like Google Drive's type filter | Files.ReadWrite | Emulated, client-side |
 | Search by name | the local index (instant) plus `GET /me/drive/root/search(q='…')` | Files.ReadWrite | Native + emulated |
 | Filter by file type and by owner | local index: type from extension / mimeType, owner from `createdBy.user.displayName` and `lastModifiedBy.user` (Graph has no `$filter` on children) | Files.ReadWrite | Emulated |
 
 Note on the index: a OneDrive with tens of thousands of items takes a minute or two to walk on first load, then only changes are fetched. Excel, Word and PowerPoint files stay Office files; "Sheets / Docs / Slides" are just the names of the type views.
+
+## 10. Added 2026-09-20 (late): labels, tabs, presets, freshness
+
+- **Label views**: click a label to see every message carrying that category across folders (`$filter=receivedDateTime ge 1970-01-01T00:00:00Z and categories/any(c:c eq '<name>')`, with `$search="category:<name>"` and a client-side fallback if the tenant rejects the lambda).
+- **Labels with conditions** = Outlook inbox rules (`POST /me/mailFolders/inbox/messageRules`), one rule per condition group (from addresses, sender contains, subject contains, meeting requests/responses, newsletters via `headerContains List-Unsubscribe`, sent only to me). "Skip the inbox" adds `moveToFolder` (a folder named like the label, created on demand) and `stopProcessingRules`, and label rules are sequenced before the sorting rules.
+- **Primary / Social / Promotions**: Social and Promotions are categories maintained by two rules (social sender domains; `List-Unsubscribe` header with an exception for social senders). Primary excludes both. Outlook's Focused inbox is a switch in search options.
+- **Presets** (`lib/mail/presets.ts`, installed from Filters > Set up my labels): Leadership, GSI, Marketing, Meeting scripts, Calendar, all with skip-the-inbox. Guessed marketing addresses are shown in the dialog for correction.
+- **Freshness contract**: every action calls Graph, shows the optimistic result, refetches the affected data when the call settles and again about 2.5 s later, polls while the tab is visible (15 s mail and calendar, 30 s drive), refetches on focus, and the server always wins.
+- **Colours**: events on calendars I own are blue; shared calendars and colleague overlays get distinct non-blue colours. Events with guests default to a Teams meeting.
+- **Office files** open in Word / Excel / PowerPoint on double-click; the menu offers the desktop app.

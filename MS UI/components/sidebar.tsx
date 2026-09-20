@@ -1,12 +1,15 @@
 "use client";
 
 import { useMsal } from "@azure/msal-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, HardDrive, LogOut, Mail } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { BASE_PATH } from "@/lib/config";
 import { useMe } from "@/lib/hooks";
 import { initials } from "@/lib/format";
+import { clearDriveIndexes, clearLocalUserState } from "@/lib/local-state";
 import { isMockMode, setMockMode } from "@/lib/mock";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +23,7 @@ const NAV = [
 // own wider panel (folders, drive navigation, mini calendar) next to it.
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const { instance } = useMsal();
   const me = useMe();
   const account = instance.getActiveAccount() ?? instance.getAllAccounts()[0];
@@ -28,12 +31,24 @@ export function Sidebar() {
   const email = me.data?.mail ?? me.data?.userPrincipalName ?? account?.username ?? "";
   const mock = isMockMode();
 
-  const signOut = () => {
+  const signOut = async () => {
     if (mock) {
-      setMockMode(false);
-      router.push("/login/");
+      // Leaving the demo: drop every cached mock result (React Query keeps
+      // folders, messages, categories for minutes) and the demo drive index,
+      // then do a full page load so nothing survives in memory. If a real
+      // account is signed in, /login would otherwise bounce straight to the
+      // mailbox and render demo rows whose ids real Graph rejects.
+      await setMockMode(false);
+      queryClient.clear();
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load is the point: client-side routing would keep the mock cache
+      window.location.assign(`${BASE_PATH}/login/`);
       return;
     }
+    // Shared device: forget this account's local state before MSAL clears
+    // its own cache.
+    clearLocalUserState();
+    await clearDriveIndexes(account?.homeAccountId);
+    queryClient.clear();
     void instance.logoutRedirect({ account: account ?? undefined });
   };
 
@@ -82,7 +97,7 @@ export function Sidebar() {
         </Tooltip>
         <Tooltip>
           <TooltipTrigger
-            render={<button onClick={signOut} aria-label="Sign out" className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10" />}
+            render={<button onClick={() => void signOut()} aria-label="Sign out" className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10" />}
           >
             <LogOut className="h-4 w-4" />
           </TooltipTrigger>

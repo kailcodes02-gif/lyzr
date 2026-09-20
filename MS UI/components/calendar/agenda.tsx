@@ -14,15 +14,18 @@ export function AgendaView({
   range,
   today,
   onOpen,
+  colorOf,
 }: {
   events: WallEvent[];
   calendars: GraphCalendar[];
   range: { start: string; end: string };
   today: string;
   onOpen: (ev: WallEvent, el: HTMLElement) => void;
+  colorOf?: (calendarId: string) => string;
 }) {
   const groups = groupByDay(events, range.start, range.end);
   const calById = new Map(calendars.map((c) => [c.id, c]));
+  const dot = (id: string) => (colorOf ? colorOf(id) : calendarHex(calById.get(id)));
   if (!groups.length)
     return (
       <div className="flex h-full flex-col items-center justify-center gap-1 text-muted-foreground">
@@ -49,7 +52,7 @@ export function AgendaView({
                     onClick={(e) => onOpen(ev, e.currentTarget)}
                     className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-accent"
                   >
-                    <span className="size-3 shrink-0 rounded-full" style={{ background: calendarHex(calById.get(ev.calendarId)) }} />
+                    <span className="size-3 shrink-0 rounded-full" style={{ background: dot(ev.calendarId) }} />
                     <span className="w-36 shrink-0 text-muted-foreground">{ev.isAllDay ? "All day" : `${shortTime(ev.startWall)} to ${shortTime(ev.endWall)}`}</span>
                     <span className={cn("flex-1 truncate", ev.isCancelled && "line-through opacity-60")}>
                       {ev.sensitivity === "private" && <Lock className="mr-1 inline size-3 align-[-2px]" />}

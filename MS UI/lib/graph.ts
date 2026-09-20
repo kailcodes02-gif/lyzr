@@ -30,7 +30,64 @@ export function isConsentRequired(e: InteractionRequiredAuthError): boolean {
   return e.subError === "consent_required" || /^(65001|90094)$/.test(errNo) || /AADSTS(65001|90094)/.test(e.errorMessage);
 }
 
+// True for any failure that the consent panel should explain rather than a
+// generic error: our own ConsentRequiredError, a Graph 401/403 (scope not
+// granted yet), or an MSAL interaction error that names consent.
+export function isConsentRequiredError(e: unknown): boolean {
+  if (e instanceof ConsentRequiredError) return true;
+  if (e instanceof GraphError) return e.status === 401 || e.status === 403;
+  if (e instanceof InteractionRequiredAuthError) return isConsentRequired(e);
+  return false;
+}
+
 export const REDIRECT_MARKER = "msui.redirect";
+export const redirectMarkerKey = (scopes: string[]) => `${REDIRECT_MARKER}:${scopes.slice().sort().join(" ")}`;
+
+// One redirect at a time for the whole page. Parallel queries (folders, list,
+// categories, me) all hit the same expired session at once; only the first
+// may call acquireTokenRedirect, the rest wait on the same promise. It never
+// resolves (the page is leaving), and it rejects only if MSAL could not
+// start the navigation, in which case the next call may try again.
+let redirectInFlight: Promise<never> | null = null;
+
+function startRedirect(instance: IPublicClientApplication, scopes: string[], acc: ReturnType<typeof account>, original: unknown): Promise<never> {
+  if (redirectInFlight) return redirectInFlight;
+  // One redirect attempt per scope set per session.
+  const key = redirectMarkerKey(scopes);
+  let seen = false;
+  try {
+    seen = sessionStorage.getItem(key) === "1";
+    if (seen) sessionStorage.removeItem(key);
+    else sessionStorage.setItem(key, "1");
+  } catch {
+    // storage blocked: fall through to a single redirect
+  }
+  // Already redirected once for these scopes and came back still failing:
+  // surface the original MSAL error instead of looping through Entra.
+  if (seen) return Promise.reject(original);
+  // Deferred one microtask so `redirectInFlight` is assigned before the call
+  // can fail (a synchronous throw would otherwise leave a stale promise).
+  const p: Promise<never> = Promise.resolve()
+    .then(() => instance.acquireTokenRedirect({ scopes, account: acc, redirectStartPage: window.location.href }))
+    .then(
+      // The page is navigating away; keep callers (React Query) pending so
+      // they do not treat the in-flight redirect as a failure.
+      () => new Promise<never>(() => {}),
+      (e: unknown) => {
+        // Navigation never started: undo the marker so the next attempt is
+        // not mistaken for a returning redirect, and let callers retry.
+        redirectInFlight = null;
+        try {
+          sessionStorage.removeItem(key);
+        } catch {
+          // storage blocked
+        }
+        throw e;
+      }
+    );
+  redirectInFlight = p;
+  return p;
+}
 
 function account(instance: IPublicClientApplication) {
   const a = instance.getActiveAccount() ?? instance.getAllAccounts()[0];
@@ -72,22 +129,7 @@ export async function getToken(instance: IPublicClientApplication, scopes: strin
   } catch (e) {
     if (e instanceof InteractionRequiredAuthError) {
       if (isConsentRequired(e)) throw new ConsentRequiredError(scopes, `${e.errorCode}${e.subError ? " / " + e.subError : ""}`);
-      // One redirect attempt per scope set per session: if we come back and
-      // still fail, surface the error instead of looping through Entra.
-      const key = `${REDIRECT_MARKER}:${scopes.slice().sort().join(" ")}`;
-      let seen = false;
-      try {
-        seen = sessionStorage.getItem(key) === "1";
-        if (seen) sessionStorage.removeItem(key);
-        else sessionStorage.setItem(key, "1");
-      } catch {
-        // storage blocked: fall through to a single redirect
-      }
-      if (seen) throw e;
-      await instance.acquireTokenRedirect({ scopes, account: acc, redirectStartPage: window.location.href });
-      // The page is navigating away; keep callers (React Query) pending so
-      // they do not treat the in-flight redirect as a failure.
-      return new Promise<never>(() => {});
+      return startRedirect(instance, scopes, acc, e);
     }
     throw e;
   }
@@ -104,12 +146,25 @@ export type GraphInit = {
   immutableIds?: boolean;
 };
 
+const IMMUTABLE_ID_PREFER = 'IdType="ImmutableId"';
+
+// Whether a request should carry Prefer: IdType="ImmutableId". Mail paths
+// yes, unless the URL is a $search: Graph's @odata.nextLink re-encodes the
+// query options (`%24search=`), so the check is encoding- and case-insensitive.
+export function wantsImmutableIds(url: string, immutableIds?: boolean): boolean {
+  const wants = immutableIds ?? /\/me\/(messages|mailFolders)/i.test(url);
+  return wants && !/(\$|%24)search=/i.test(url);
+}
+
+function withImmutablePrefer(headers: Record<string, string>): Record<string, string> {
+  const existing = headers.Prefer ?? "";
+  if (existing.includes(IMMUTABLE_ID_PREFER)) return headers;
+  return { ...headers, Prefer: [existing, IMMUTABLE_ID_PREFER].filter(Boolean).join(", ") };
+}
+
 function buildHeaders(url: string, init: GraphInit, token: string): Record<string, string> {
-  const h: Record<string, string> = { Authorization: `Bearer ${token}`, Accept: "application/json", ...(init.headers ?? {}) };
-  const wantsImmutable = init.immutableIds ?? /\/me\/(messages|mailFolders)/.test(url);
-  if (wantsImmutable && !/\$search=/.test(url)) {
-    h.Prefer = [h.Prefer, 'IdType="ImmutableId"'].filter(Boolean).join(", ");
-  }
+  let h: Record<string, string> = { Authorization: `Bearer ${token}`, Accept: "application/json", ...(init.headers ?? {}) };
+  if (wantsImmutableIds(url, init.immutableIds)) h = withImmutablePrefer(h);
   if (init.body !== undefined && !(init.body instanceof Blob) && !(init.body instanceof ArrayBuffer) && typeof init.body !== "string") {
     h["Content-Type"] = "application/json";
   }
@@ -193,15 +248,18 @@ export type BatchRequest = { id: string; method: string; url: string; headers?: 
 export type BatchResponse = { id: string; status: number; headers?: Record<string, string>; body?: unknown };
 
 // JSON batching, 20 requests per call, in order. Failed sub-requests are
-// returned with their status rather than thrown.
+// returned with their status rather than thrown. Headers on the outer POST
+// do not reach the sub-requests, so the immutable-id Prefer is added to each
+// mail sub-request here (ids must match what lists and threads carry).
 export async function graphBatch(instance: IPublicClientApplication, scopes: string[], requests: BatchRequest[]): Promise<BatchResponse[]> {
   const out: BatchResponse[] = [];
   for (let i = 0; i < requests.length; i += 20) {
-    const chunk = requests.slice(i, i + 20).map((r) => ({
-      ...r,
-      url: r.url.replace(GRAPH, ""),
-      headers: r.body !== undefined ? { "Content-Type": "application/json", ...(r.headers ?? {}) } : r.headers,
-    }));
+    const chunk = requests.slice(i, i + 20).map((r) => {
+      let headers: Record<string, string> = { ...(r.headers ?? {}) };
+      if (r.body !== undefined) headers = { "Content-Type": "application/json", ...headers };
+      if (wantsImmutableIds(r.url)) headers = withImmutablePrefer(headers);
+      return { ...r, url: r.url.replace(GRAPH, ""), headers: Object.keys(headers).length ? headers : undefined };
+    });
     const res = await graphFetch<{ responses: BatchResponse[] }>(instance, scopes, "/$batch", { method: "POST", body: { requests: chunk }, immutableIds: false });
     out.push(...res.responses);
   }

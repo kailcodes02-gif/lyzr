@@ -24,6 +24,8 @@ export function EventDetail({
   ev,
   anchor,
   calendar,
+  color,
+  person,
   onClose,
   onEdit,
   onDelete,
@@ -33,6 +35,10 @@ export function EventDetail({
   ev: WallEvent | null;
   anchor: Anchor;
   calendar?: GraphCalendar;
+  // Resolved chip colour (blue for the user's own calendars).
+  color?: string;
+  // Set for a colleague's overlay event: read-only, shows who and their status.
+  person?: { name: string; email: string; color: string };
   onClose: () => void;
   onEdit: (scope: SeriesScope) => void;
   onDelete: (scope: SeriesScope) => void;
@@ -42,7 +48,7 @@ export function EventDetail({
   const [ask, setAsk] = useState<null | "edit" | "delete">(null);
   const isSeries = !!ev?.seriesMasterId && (ev.type === "occurrence" || ev.type === "exception");
   const mine = ev?.isOrganizer ?? ev?.responseStatus?.response === "organizer";
-  const canEdit = calendar?.canEdit ?? true;
+  const canEdit = !person && (calendar?.canEdit ?? true);
   const response = ev?.responseStatus?.response;
   const act = (kind: "edit" | "delete") => {
     if (isSeries) setAsk(kind);
@@ -55,7 +61,8 @@ export function EventDetail({
     if (k === "edit") onEdit(scope);
     else if (k === "delete") onDelete(scope);
   };
-  const hex = calendarHex(calendar);
+  const hex = person?.color ?? color ?? calendarHex(calendar);
+  const statusText = (s: string) => (s === "oof" ? "Out of office" : s === "workingElsewhere" ? "Working elsewhere" : s.charAt(0).toUpperCase() + s.slice(1));
   return (
     <AnchoredPopover
       open={!!ev}
@@ -119,6 +126,19 @@ export function EventDetail({
               </p>
               {ev.isCancelled && <p className="text-xs text-destructive">This event was cancelled</p>}
             </div>
+            {person && (
+              <>
+                <Users className="mt-0.5 size-4 text-muted-foreground" />
+                <div className="text-sm" data-testid="colleague-detail">
+                  <p>
+                    {person.name} <span className="text-xs text-muted-foreground">({person.email})</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {statusText(ev.showAs ?? "busy")} · read-only, from {person.name.split(" ")[0]}&apos;s calendar
+                  </p>
+                </div>
+              </>
+            )}
             {ev.seriesMasterId && (
               <>
                 <Repeat className="mt-0.5 size-4 text-muted-foreground" />
@@ -141,7 +161,7 @@ export function EventDetail({
                 <p className="text-sm">{ev.location.displayName}</p>
               </>
             )}
-            {(ev.attendees?.length ?? 0) > 0 && (
+            {!person && (ev.attendees?.length ?? 0) > 0 && (
               <>
                 <Users className="mt-0.5 size-4 text-muted-foreground" />
                 <div className="text-sm">
@@ -173,14 +193,14 @@ export function EventDetail({
                 <p className="line-clamp-6 text-sm whitespace-pre-wrap">{ev.bodyPreview}</p>
               </>
             )}
-            {ev.showAs && ev.showAs !== "busy" && (
+            {!person && ev.showAs && ev.showAs !== "busy" && (
               <>
                 <Clock className="mt-0.5 size-4 text-muted-foreground" />
                 <p className="text-sm capitalize">{ev.showAs === "oof" ? "Out of office" : ev.showAs.replace(/([A-Z])/g, " $1").toLowerCase()}</p>
               </>
             )}
           </div>
-          {!mine && !ev.isCancelled && (ev.attendees?.length ?? 0) > 0 && (
+          {!person && !mine && !ev.isCancelled && (ev.attendees?.length ?? 0) > 0 && (
             <div className="flex items-center gap-2 border-t border-border pt-3 text-sm">
               <span className="text-muted-foreground">Going?</span>
               {(
