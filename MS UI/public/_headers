@@ -17,3 +17,11 @@
   ! X-Frame-Options
   ! Content-Security-Policy
   Content-Security-Policy: default-src 'self'; script-src __SCRIPT_HASHES__; style-src 'self' 'unsafe-inline'; connect-src 'self' https://login.microsoftonline.com; frame-ancestors 'self'; base-uri 'self'; object-src 'none'
+
+# Next's client-navigation payloads reference build-specific chunk names; never
+# let the edge serve a payload from a previous deploy (caused a one-minute
+# "chunk not found" window after each release).
+/MS/*.txt
+  Cache-Control: no-cache, must-revalidate
+/MS/*.html
+  Cache-Control: no-cache, must-revalidate
