@@ -312,21 +312,28 @@ const F={q:'',cat:'',co:'',type:'',reg:'',status:'',part:'',su:false,mine:false,
 
 /* ============ auth ============ */
 const $=id=>document.getElementById(id);
-let msalApp=null;
+let msalAppPromise=null;
+// msal-browser v3+ requires an async initialize() before any other call
+// (crypto module setup); skipping it throws uninitialized_public_client_application.
 function getMsal(){
-  if(!msalApp){
-    msalApp=new msal.PublicClientApplication({
-      auth:{clientId:MS_CLIENT_ID, authority:'https://login.microsoftonline.com/'+MS_TENANT_ID, redirectUri:location.origin+location.pathname},
-      cache:{cacheLocation:'sessionStorage'}
-    });
+  if(!msalAppPromise){
+    msalAppPromise=(async()=>{
+      const app=new msal.PublicClientApplication({
+        auth:{clientId:MS_CLIENT_ID, authority:'https://login.microsoftonline.com/'+MS_TENANT_ID, redirectUri:location.origin+location.pathname},
+        cache:{cacheLocation:'sessionStorage'}
+      });
+      await app.initialize();
+      return app;
+    })();
   }
-  return msalApp;
+  return msalAppPromise;
 }
 $('gbtn').onclick=signIn;
 async function signIn(){
   if(!window.msal){$('gerr').textContent='Microsoft sign-in still loading — try again.';return;}
   try{
-    const res=await getMsal().loginPopup({scopes:['User.Read']});
+    const app=await getMsal();
+    const res=await app.loginPopup({scopes:['User.Read']});
     const p=await(await fetch('https://graph.microsoft.com/v1.0/me',{headers:{Authorization:'Bearer '+res.accessToken}})).json();
     const email=(p.mail||p.userPrincipalName||'').toLowerCase();
     if(!email){$('gerr').textContent='Could not read your Microsoft profile.';return;}
