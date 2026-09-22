@@ -257,12 +257,13 @@ export function ListSkeleton() {
   );
 }
 
-export function EmptyList({ folder, query }: { folder: string; query?: string }) {
-  const msg = query ? `No results for "${query}"` : folder === "inbox" ? "Your inbox is empty. Nice work." : folder === "starred" ? "No starred conversations. Star messages to find them here." : folder === "drafts" ? "No drafts" : "Nothing here";
+export function EmptyList({ folder, query, message, hint }: { folder: string; query?: string; message?: string; hint?: React.ReactNode }) {
+  const msg = message ?? (query ? `No results for "${query}"` : folder === "inbox" ? "Your inbox is empty. Nice work." : folder === "starred" ? "No starred conversations. Star messages to find them here." : folder === "drafts" ? "No drafts" : "Nothing here");
   return (
     <div className="flex flex-col items-center gap-2 py-16 text-center text-sm text-muted-foreground">
       <Inbox className="h-8 w-8 opacity-40" />
       <p>{msg}</p>
+      {hint && <p className="text-xs">{hint}</p>}
     </div>
   );
 }

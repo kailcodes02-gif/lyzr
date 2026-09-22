@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mockFolders, mockRules } from "@/lib/mock/mail";
 import { GraphError } from "@/lib/graph";
 import { backfillLabel, ensureCategory, ensureFolder, installLabel, installPresets, moveLabelBackToInbox, replaceLabelRules, safeFolderName, type GraphApi } from "../install";
-import { EMPTY_CONDITIONS, inboxTabPath, isSortingRule, labelListPath, ownRules, SORTING_RULES } from "../labels";
+import { simpleConditions as S, inboxTabPath, isSortingRule, labelListPath, ownRules, SORTING_RULES } from "../labels";
 import { PRESET_LABELS } from "../presets";
 import type { MailFolder, Message, MessageRule } from "../types";
 import { mockApi, mockCall, type Page } from "./helpers";
@@ -86,7 +86,7 @@ describe("preset installer against the mock", () => {
     const folder = await ensureFolder(api, "Partners");
     expect(folder.displayName).toBe("Partners");
     expect(await ensureFolder(api, "partners")).toEqual(folder);
-    const c = { ...EMPTY_CONDITIONS, from: ["@infosys.com"] };
+    const c = S({ from: ["@infosys.com"] });
     const dry = await backfillLabel(api, "Partners", c, ME);
     expect(dry.labelled).toBeGreaterThan(0);
     expect(dry.moved).toBe(0);
@@ -102,7 +102,7 @@ describe("preset installer against the mock", () => {
 
   it("replaceLabelRules leaves foreign rules alone and turning skip-inbox off recreates rules without the move", async () => {
     const foreign = raw("POST", "/me/mailFolders/inbox/messageRules", { displayName: "Outlook: forward Leadership", sequence: 99, isEnabled: true, conditions: { subjectContains: ["zzz-no-match"] }, actions: { assignCategories: ["Leadership"], forwardTo: [{ emailAddress: { address: "a@b.c" } }] } }) as MessageRule;
-    const created = await replaceLabelRules(api, "Leadership", { ...EMPTY_CONDITIONS, from: ["siva@lyzr.ai"] });
+    const created = await replaceLabelRules(api, "Leadership", S({ from: ["siva@lyzr.ai"] }));
     expect(created).toHaveLength(1);
     expect(created[0].actions).toEqual({ assignCategories: ["Leadership"], stopProcessingRules: false });
     const all = rules();
@@ -112,7 +112,7 @@ describe("preset installer against the mock", () => {
     expect(created[0].sequence).toBeLessThan(Math.min(...all.filter(isSortingRule).map((r) => r.sequence)));
     raw("DELETE", `/me/mailFolders/inbox/messageRules/${foreign.id}`);
     // installLabel with skipInbox=false never creates a folder
-    const r = await installLabel(api, { name: "Urgent", color: "preset1", conditions: { ...EMPTY_CONDITIONS, subject: ["legal review"] }, skipInbox: false }, ME);
+    const r = await installLabel(api, { name: "Urgent", color: "preset1", conditions: S({ subject: ["legal review"] }), skipInbox: false }, ME);
     expect(r.folderId).toBeUndefined();
     expect(mockFolders.some((f: MailFolder) => f.displayName === "Urgent")).toBe(false);
     expect(mockRules.find((x) => x.displayName === "Label: Urgent (subject)")?.actions).toEqual({ assignCategories: ["Urgent"], stopProcessingRules: false });

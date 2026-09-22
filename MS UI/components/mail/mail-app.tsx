@@ -12,8 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useMe } from "@/lib/hooks";
-import { clientFilterFor, errorMessage, flattenPages, useCategories, useDraftApi, useEnableSorting, useFolders, useMailPolling, useMessageActions, useMessageList, useSettlerLifecycle, useSortingEnabled } from "@/lib/mail/hooks";
-import { PROMOTIONS_LABEL, SOCIAL_LABEL } from "@/lib/mail/labels";
+import { clientFilterFor, errorMessage, flattenPages, useCategories, useDraftApi, useEnableSorting, useFolders, useLabelFolder, useMailPolling, useMessageActions, useMessageList, useRules, useSettlerLifecycle, useSortingEnabled } from "@/lib/mail/hooks";
+import { PROMOTIONS_LABEL, rulesOfLabel, SOCIAL_LABEL } from "@/lib/mail/labels";
 import { TAB_LABEL, type TabTarget } from "@/lib/mail/tabs";
 import { buildKql, groupThreads, isVirtualFolderKey, moveScopeIds, parseKql, presetHex, resolveFolderId, SEARCH_ID, WELL_KNOWN_LABEL, type WellKnown } from "@/lib/mail/logic";
 import type { Message, Thread } from "@/lib/mail/types";
@@ -76,6 +76,10 @@ export function MailApp() {
   const tab: MailTab | undefined = isInbox ? (state.tab ?? "primary") : undefined;
   const labelName = labelFromFolder(state.folder);
   const list = useMessageList(state.folder, tab, state.query, state.focused);
+  // Fix 1 / Fix 4: the folder that backs the open label view, with its counts.
+  const labelFolder = useLabelFolder(labelName);
+  const rules = useRules();
+  const labelHasRules = !!labelName && !!rules.data && rulesOfLabel(labelName, rules.data).length > 0;
   // Label views list every folder; Trash and Junk copies are dropped here.
   const hiddenFolderIds = useMemo(() => new Set(["deleteditems", "junkemail"].map((k) => resolveFolderId(k, folders.data ?? [])).filter((id): id is string => !!id)), [folders.data]);
   const clientFilter = clientFilterFor({ folder: state.folder, tab, query: state.query, focused: state.focused }, hiddenFolderIds);
@@ -298,6 +302,11 @@ export function MailApp() {
 
   const catList = categories.data ?? [];
   const activeCategory = labelName ? catList.find((c) => c.displayName.toLowerCase() === labelName.toLowerCase()) : undefined;
+  const backing = labelName ? labelFolder.folder : undefined;
+  const openBackingFolder = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (backing) nav({ folder: backing.id, conversation: undefined, message: undefined, query: undefined, tab: undefined });
+  };
   const folderLabel = labelName ?? WELL_KNOWN_LABEL[state.folder as WellKnown] ?? folders.data?.find((f) => f.id === state.folder)?.displayName ?? "Mail";
 
   // Tab title follows the view (unread count only on the Inbox) and is put
@@ -440,9 +449,17 @@ export function MailApp() {
                   state.query ? (
                     `${threads.length} results`
                   ) : labelName ? (
-                    <span className="inline-flex items-center gap-1.5" aria-label={`Label view ${labelName}`}>
+                    <span className="inline-flex flex-wrap items-center gap-1.5" aria-label={`Label view ${labelName}`}>
                       <span className="inline-flex items-center rounded-sm px-1.5 text-[11px] font-medium text-white" style={{ background: presetHex(activeCategory?.color) }}>{labelName}</span>
-                      {threads.length}{list.hasNextPage ? "+" : ""} conversations
+                      {backing ? `${backing.totalItemCount ?? threads.length} in folder` : `${threads.length}${list.hasNextPage ? "+" : ""} conversations`}
+                      {backing && (
+                        <span className="text-muted-foreground" aria-label="Backing folder">
+                          Folder: {backing.displayName}{" "}
+                          <a href={`${pathname}${serializeMailUrl({ folder: backing.id })}`} onClick={openBackingFolder} className="text-primary underline-offset-2 hover:underline">
+                            Open folder
+                          </a>
+                        </span>
+                      )}
                     </span>
                   ) : (
                     `${threads.length}${list.hasNextPage ? "+" : ""} in ${folderLabel}`
@@ -508,7 +525,14 @@ export function MailApp() {
                   <button type="button" className="underline underline-offset-2" onClick={() => void list.refetch()}>Retry</button>
                 </p>
               )}
-              {showList && threads.length === 0 && !list.isPlaceholderData && <EmptyList folder={state.folder} query={state.query} />}
+              {showList && threads.length === 0 && !list.isPlaceholderData && (
+                <EmptyList
+                  folder={state.folder}
+                  query={state.query}
+                  message={labelName && !state.query ? "No mail carries this label yet" : undefined}
+                  hint={labelName && !state.query && labelHasRules ? "Rules run on new mail only; use Edit label > Run on existing mail." : undefined}
+                />
+              )}
               {showList && threads.length > 0 && (
                 <MessageList
                   threads={threads}

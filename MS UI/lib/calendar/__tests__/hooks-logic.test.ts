@@ -83,3 +83,23 @@ describe("polling cadence (mailbox concurrency budget)", () => {
     expect(FOCUS_THROTTLE_MS).toBe(10_000);
   });
 });
+
+describe("viewFetching (delta round starvation guard)", () => {
+  it("is true only while the SAME range's calendarView is in flight, not for a neighbour's prefetch", async () => {
+    const { QueryClient } = await import("@tanstack/react-query");
+    const { viewFetching, viewKey } = await import("../hooks");
+    const qc = new QueryClient();
+    const range = { start: "2026-09-23", end: "2026-09-24" };
+    let release!: () => void;
+    const neighbour = qc.fetchQuery({ queryKey: viewKey("UTC", "2026-09-24", "2026-09-25", ["a"]), queryFn: () => new Promise<null>((r) => (release = () => r(null))) });
+    expect(qc.isFetching({ queryKey: ["calendarView"] })).toBe(1);
+    expect(viewFetching(qc, "UTC", range)).toBe(false); // a prefetch of tomorrow must not skip today's delta round
+    let release2!: () => void;
+    const same = qc.fetchQuery({ queryKey: viewKey("UTC", range.start, range.end, ["a", "b"]), queryFn: () => new Promise<null>((r) => (release2 = () => r(null))) });
+    expect(viewFetching(qc, "UTC", range)).toBe(true); // this range, any calendar set
+    release();
+    release2();
+    await Promise.all([neighbour, same]);
+    expect(viewFetching(qc, "UTC", range)).toBe(false);
+  });
+});

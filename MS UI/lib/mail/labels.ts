@@ -7,17 +7,102 @@ import { PRESET_LABELS, SORTING_PRESETS, type PresetLabel } from "./presets";
 import type { Message, MessageRule, MessageRulePredicates } from "./types";
 
 // ---- Conditions <-> rules -------------------------------------------------
+//
+// Outlook's own vocabulary, one row per condition. "any" = one inbox rule per
+// row (Graph ANDs every predicate inside a rule, so OR needs several rules);
+// "all" = one rule carrying every predicate. Exceptions use the same rows and
+// ride on every rule (`messageRule.exceptions`: any matching exception blocks).
 
-export type LabelConditions = {
-  from: string[]; // full addresses (siva@lyzr.ai) or domains/keywords (@accenture.com, accenture)
-  subject: string[];
-  meetings: boolean; // calendar invitations and responses
-  newsletters: boolean; // has a List-Unsubscribe header
-  toMe: boolean; // sent only to me (rule predicate sentOnlyToMe)
-  exceptFrom?: string[]; // never match these senders (rule `exceptions.senderContains`)
+export type ConditionKind =
+  | "fromContains" // senderContains: words in the sender's name or address (@accenture.com, infosys)
+  | "fromIs" // fromAddresses: exact addresses
+  | "sentTo" // sentToAddresses: exact recipient addresses
+  | "recipientContains" // recipientContains
+  | "subjectContains"
+  | "subjectOrBodyContains" // bodyOrSubjectContains
+  | "bodyContains"
+  | "hasAttachment" // hasAttachments
+  | "importance"
+  | "headerContains" // List-Unsubscribe = newsletter
+  | "meeting" // isMeetingRequest + isMeetingResponse (two rules)
+  | "sentOnlyToMe"
+  | "sentToMe"
+  | "sizeBetween"; // withinSizeRange, KB
+
+export type Condition = {
+  kind: ConditionKind;
+  values?: string[]; // text kinds
+  importance?: "low" | "normal" | "high";
+  minKb?: number;
+  maxKb?: number;
 };
 
-export const EMPTY_CONDITIONS: LabelConditions = { from: [], subject: [], meetings: false, newsletters: false, toMe: false };
+export type LabelConditions = { match: "any" | "all"; conditions: Condition[]; exceptions: Condition[] };
+
+export const EMPTY_CONDITIONS: LabelConditions = { match: "any", conditions: [], exceptions: [] };
+
+export const NEWSLETTER_HEADER = "List-Unsubscribe";
+export const isNewsletterHeader = (h: string) => h.trim().toLowerCase() === NEWSLETTER_HEADER.toLowerCase();
+
+export const CONDITION_KINDS: ConditionKind[] = ["fromContains", "fromIs", "sentTo", "recipientContains", "subjectContains", "subjectOrBodyContains", "bodyContains", "hasAttachment", "importance", "headerContains", "meeting", "sentOnlyToMe", "sentToMe", "sizeBetween"];
+
+// Outlook's menu labels for the row picker.
+export const CONDITION_LABEL: Record<ConditionKind, string> = {
+  fromContains: "From contains",
+  fromIs: "From is exactly",
+  sentTo: "Sent to",
+  recipientContains: "Recipient contains",
+  subjectContains: "Subject contains",
+  subjectOrBodyContains: "Subject or body contains",
+  bodyContains: "Body contains",
+  hasAttachment: "Has attachment",
+  importance: "Importance is",
+  headerContains: "Header contains",
+  meeting: "Message is a meeting request or response",
+  sentOnlyToMe: "Sent only to me",
+  sentToMe: "Sent to me (any)",
+  sizeBetween: "Message size between (KB)",
+};
+
+export const TEXT_KINDS = new Set<ConditionKind>(["fromContains", "fromIs", "sentTo", "recipientContains", "subjectContains", "subjectOrBodyContains", "bodyContains", "headerContains"]);
+export const FLAG_KINDS = new Set<ConditionKind>(["hasAttachment", "meeting", "sentOnlyToMe", "sentToMe"]);
+export const conditionValueKind = (k: ConditionKind): "text" | "importance" | "size" | "none" => (TEXT_KINDS.has(k) ? "text" : k === "importance" ? "importance" : k === "sizeBetween" ? "size" : "none");
+
+const trimmed = (values?: string[]) => (values ?? []).map((s) => s.trim()).filter(Boolean);
+
+// A row that would produce no predicate (blank chips, no size) is dropped.
+export function isCompleteCondition(c: Condition): boolean {
+  switch (conditionValueKind(c.kind)) {
+    case "text":
+      return trimmed(c.values).length > 0;
+    case "importance":
+      return !!c.importance;
+    case "size":
+      return (c.minKb ?? 0) > 0 || (c.maxKb ?? 0) > 0;
+    default:
+      return true;
+  }
+}
+
+export const completeConditions = (rows: Condition[]) => rows.filter(isCompleteCondition);
+export const hasConditions = (c: LabelConditions) => completeConditions(c.conditions).length > 0;
+
+// The simple form (presets, inbox sorting, tests): sender addresses or
+// keywords, subjects, meetings, newsletters, sent only to me, sender exceptions.
+export type SimpleConditions = { from?: string[]; subject?: string[]; meetings?: boolean; newsletters?: boolean; toMe?: boolean; exceptFrom?: string[] };
+export function simpleConditions(s: SimpleConditions): LabelConditions {
+  const conditions: Condition[] = [];
+  const addresses = (s.from ?? []).map((x) => x.trim()).filter(isFullAddress);
+  const keywords = (s.from ?? []).map((x) => x.trim()).filter((x) => x && !isFullAddress(x));
+  if (addresses.length) conditions.push({ kind: "fromIs", values: addresses });
+  if (keywords.length) conditions.push({ kind: "fromContains", values: keywords });
+  if (trimmed(s.subject).length) conditions.push({ kind: "subjectContains", values: trimmed(s.subject) });
+  if (s.meetings) conditions.push({ kind: "meeting" });
+  if (s.newsletters) conditions.push({ kind: "headerContains", values: [NEWSLETTER_HEADER] });
+  if (s.toMe) conditions.push({ kind: "sentOnlyToMe" });
+  const exceptions: Condition[] = trimmed(s.exceptFrom).length ? [{ kind: "fromContains", values: trimmed(s.exceptFrom) }] : [];
+  return { match: "any", conditions, exceptions };
+}
 
 export const isFullAddress = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
 
@@ -39,32 +124,89 @@ export function ruleActions(label: string, opts: RuleOptions = {}): MessageRule[
   return opts.moveToFolder ? { assignCategories: [label], moveToFolder: opts.moveToFolder, stopProcessingRules: true } : { assignCategories: [label], stopProcessingRules: false };
 }
 
-// One rule per condition group, because Graph ANDs predicates inside a rule.
-// Each rule gets its own sequence, starting after `maxSequence`.
+const asRecipients = (values: string[]) => values.map((address) => ({ emailAddress: { address } }));
+
+// Rows of one kind merge into one predicate (Outlook ORs the values inside a
+// predicate); `meeting` is two predicates that can never share a rule.
+const GROUP_NAME: Record<ConditionKind, string> = {
+  fromIs: "senders", fromContains: "sender keywords", sentTo: "sent to", recipientContains: "recipients", subjectContains: "subject", subjectOrBodyContains: "subject or body", bodyContains: "body",
+  hasAttachment: "attachments", importance: "importance", headerContains: "header", meeting: "meetings", sentOnlyToMe: "only to me", sentToMe: "to me", sizeBetween: "size",
+};
+
+// Merges the rows into Graph predicates. `meeting` is left out and reported
+// separately (the caller emits one rule per meeting predicate).
+export function predicatesOf(rows: Condition[]): { predicates: MessageRulePredicates; meeting: boolean } {
+  const p: MessageRulePredicates = {};
+  let meeting = false;
+  const add = (key: "senderContains" | "subjectContains" | "bodyOrSubjectContains" | "bodyContains" | "recipientContains" | "headerContains", values: string[]) => {
+    p[key] = uniqueSpellings([...(p[key] ?? []), ...values]);
+  };
+  for (const c of completeConditions(rows)) {
+    const v = trimmed(c.values);
+    switch (c.kind) {
+      case "fromIs": p.fromAddresses = [...(p.fromAddresses ?? []), ...asRecipients(v.map((a) => a.toLowerCase()))]; break;
+      case "fromContains": add("senderContains", v); break;
+      case "sentTo": p.sentToAddresses = [...(p.sentToAddresses ?? []), ...asRecipients(v.map((a) => a.toLowerCase()))]; break;
+      case "recipientContains": add("recipientContains", v); break;
+      case "subjectContains": add("subjectContains", v); break;
+      case "subjectOrBodyContains": add("bodyOrSubjectContains", v); break;
+      case "bodyContains": add("bodyContains", v); break;
+      case "headerContains": add("headerContains", v); break;
+      case "hasAttachment": p.hasAttachments = true; break;
+      case "importance": p.importance = c.importance; break;
+      case "sentOnlyToMe": p.sentOnlyToMe = true; break;
+      case "sentToMe": p.sentToMe = true; break;
+      case "sizeBetween": p.withinSizeRange = { ...(c.minKb ? { minimumSize: c.minKb } : {}), ...(c.maxKb ? { maximumSize: c.maxKb } : {}) }; break;
+      case "meeting": meeting = true; break;
+    }
+  }
+  return { predicates: p, meeting };
+}
+
+const isEmptyPredicates = (p: MessageRulePredicates) => Object.keys(p).length === 0;
+
+// The rule bodies for a label: "any" = one rule per condition kind (rows of
+// one kind merged), "all" = one rule with every predicate. A meeting row
+// becomes two rules (invitations, responses) either way. Each rule gets its
+// own sequence, starting after `maxSequence`.
 export function rulesForLabel(label: string, c: LabelConditions, maxSequence: number, opts: RuleOptions = {}): Omit<MessageRule, "id">[] {
   const out: Omit<MessageRule, "id">[] = [];
   const actions = ruleActions(label, opts);
-  const exceptFrom = (c.exceptFrom ?? []).map((s) => s.trim()).filter(Boolean);
-  const exceptions = exceptFrom.length ? { senderContains: exceptFrom } : undefined;
+  const ex = predicatesOf(c.exceptions);
+  const exceptions: MessageRulePredicates | undefined = isEmptyPredicates(ex.predicates) && !ex.meeting ? undefined : { ...ex.predicates, ...(ex.meeting ? { isMeetingRequest: true } : {}) };
   let seq = Math.max(0, Math.floor(maxSequence));
   const push = (group: string, conditions: MessageRulePredicates) => {
     seq += 1;
     out.push({ displayName: ruleName(label, group), sequence: seq, isEnabled: true, conditions, ...(exceptions ? { exceptions } : {}), actions });
   };
-  const addresses = c.from.map((s) => s.trim()).filter(isFullAddress);
-  const keywords = c.from.map((s) => s.trim()).filter((s) => s && !isFullAddress(s));
-  if (addresses.length) push("senders", { fromAddresses: addresses.map((address) => ({ emailAddress: { address } })) });
-  if (keywords.length) push("sender keywords", { senderContains: keywords });
-  const subjects = c.subject.map((s) => s.trim()).filter(Boolean);
-  if (subjects.length) push("subject", { subjectContains: subjects });
-  if (c.meetings) {
-    push("invitations", { isMeetingRequest: true });
-    push("responses", { isMeetingResponse: true });
+  const rows = completeConditions(c.conditions);
+  if (!rows.length) return out;
+  if (c.match === "all") {
+    const { predicates, meeting } = predicatesOf(rows);
+    if (meeting) {
+      push("invitations", { ...predicates, isMeetingRequest: true });
+      push("responses", { ...predicates, isMeetingResponse: true });
+    } else push("all conditions", predicates);
+    return out;
   }
-  if (c.newsletters) push("newsletters", { headerContains: ["List-Unsubscribe"] });
-  // sentOnlyToMe: the owner is the only recipient (sentToMe would match any
-  // mail that lists the owner in To, whatever the recipient count).
-  if (c.toMe) push("only to me", { sentOnlyToMe: true });
+  // any: merge by kind, in the order the kinds first appear
+  const kinds: ConditionKind[] = [];
+  for (const r of rows) if (!kinds.includes(r.kind)) kinds.push(r.kind);
+  for (const kind of kinds) {
+    const group = rows.filter((r) => r.kind === kind);
+    if (kind === "meeting") {
+      push("invitations", { isMeetingRequest: true });
+      push("responses", { isMeetingResponse: true });
+      continue;
+    }
+    if (kind === "sizeBetween" || kind === "importance") {
+      // Ranges and levels cannot be merged: one rule per row.
+      for (const r of group) push(GROUP_NAME[kind], predicatesOf([r]).predicates);
+      continue;
+    }
+    const name = kind === "headerContains" && group.every((r) => trimmed(r.values).every(isNewsletterHeader)) ? "newsletters" : GROUP_NAME[kind];
+    push(name, predicatesOf(group).predicates);
+  }
   return out;
 }
 
@@ -105,42 +247,89 @@ export function moveFolderOf(label: string, rules: MessageRule[]): string | unde
   return ownRules(label, rules).map((r) => r.actions?.moveToFolder).find((id): id is string => !!id);
 }
 
-// De-duplicates case-insensitively, keeping the first spelling seen; a value
-// listed in `spellings` takes that spelling (the one the user typed).
+// De-duplicates case-insensitively. A value listed in `spellings` takes that
+// spelling (the one the user typed); otherwise the first spelling seen wins,
+// unless it is Graph's all-caps echo and a later copy is not.
 export function uniqueSpellings(values: string[], spellings: string[] = []): string[] {
   const preferred = new Map(spellings.map((s) => [s.toLowerCase(), s]));
-  const seen = new Set<string>();
+  const at = new Map<string, number>();
   const out: string[] = [];
+  const shouting = (v: string) => v === v.toUpperCase() && v !== v.toLowerCase();
   for (const v of values) {
     const k = v.toLowerCase();
-    if (seen.has(k)) continue;
-    seen.add(k);
+    const i = at.get(k);
+    if (i !== undefined) {
+      if (!preferred.has(k) && shouting(out[i]) && !shouting(v)) out[i] = v;
+      continue;
+    }
+    at.set(k, out.length);
     out.push(preferred.get(k) ?? v);
   }
   return out;
 }
 
-// Rebuilds the dialog state from a label's own rules. Graph echoes predicate
-// strings upper-cased (senderContains ['adele'] comes back as ['ADELE']), so
-// values are matched case-insensitively and `spellings` (the preset's or the
-// dialog's own values) restores the casing the user knows.
-export function conditionsFromRules(label: string, rules: MessageRule[], spellings: string[] = presetSpellings(label)): LabelConditions {
-  const c: LabelConditions = { from: [], subject: [], meetings: false, newsletters: false, toMe: false };
-  const except: string[] = [];
-  for (const r of ownRules(label, rules)) {
-    const p = r.conditions ?? {};
-    for (const a of p.fromAddresses ?? []) if (a.emailAddress?.address) c.from.push(a.emailAddress.address);
-    for (const s of p.senderContains ?? []) c.from.push(s);
-    for (const s of p.subjectContains ?? []) c.subject.push(s);
-    if (p.isMeetingRequest || p.isMeetingResponse) c.meetings = true;
-    if ((p.headerContains ?? []).some((h) => h.toLowerCase() === "list-unsubscribe")) c.newsletters = true;
-    if (p.sentToMe || p.sentOnlyToMe) c.toMe = true;
-    for (const s of r.exceptions?.senderContains ?? []) except.push(s);
+// Rows for one rule's predicates (conditions or exceptions).
+export function conditionsOfPredicates(p: MessageRulePredicates, spellings: string[] = []): Condition[] {
+  const rows: Condition[] = [];
+  const text = (kind: ConditionKind, values?: string[]) => {
+    if (values?.length) rows.push({ kind, values: uniqueSpellings(values, spellings) });
+  };
+  const addrs = (kind: ConditionKind, list?: { emailAddress?: { address?: string } }[]) => {
+    const values = (list ?? []).map((a) => a.emailAddress?.address?.toLowerCase() ?? "").filter(Boolean);
+    if (values.length) rows.push({ kind, values: uniqueSpellings(values, spellings) });
+  };
+  addrs("fromIs", p.fromAddresses);
+  text("fromContains", p.senderContains);
+  addrs("sentTo", p.sentToAddresses);
+  text("recipientContains", p.recipientContains);
+  text("subjectContains", p.subjectContains);
+  text("subjectOrBodyContains", p.bodyOrSubjectContains);
+  text("bodyContains", p.bodyContains);
+  text("headerContains", p.headerContains);
+  if (p.hasAttachments) rows.push({ kind: "hasAttachment" });
+  if (p.importance) rows.push({ kind: "importance", importance: p.importance });
+  if (p.isMeetingRequest || p.isMeetingResponse) rows.push({ kind: "meeting" });
+  if (p.sentOnlyToMe) rows.push({ kind: "sentOnlyToMe" });
+  if (p.sentToMe) rows.push({ kind: "sentToMe" });
+  if (p.withinSizeRange && (p.withinSizeRange.minimumSize || p.withinSizeRange.maximumSize)) rows.push({ kind: "sizeBetween", minKb: p.withinSizeRange.minimumSize, maxKb: p.withinSizeRange.maximumSize });
+  return rows;
+}
+
+const sameRow = (a: Condition, b: Condition) => JSON.stringify(a) === JSON.stringify(b);
+const mergeRows = (into: Condition[], rows: Condition[]) => {
+  for (const r of rows) {
+    const twin = into.find((x) => x.kind === r.kind && conditionValueKind(r.kind) === "text");
+    if (twin) twin.values = uniqueSpellings([...(twin.values ?? []), ...(r.values ?? [])]);
+    else if (!into.some((x) => sameRow(x, r))) into.push(r);
   }
-  c.from = uniqueSpellings(c.from.map((s) => (isFullAddress(s) ? s.toLowerCase() : s)), spellings);
-  c.subject = uniqueSpellings(c.subject, spellings);
-  if (except.length) c.exceptFrom = uniqueSpellings(except.map((s) => s.toLowerCase()), spellings);
-  return c;
+};
+
+// Rebuilds the dialog state from a label's own rules: one rule carrying
+// several predicates is "all of these", several rules are "any of these"
+// (the invitations + responses pair reads back as one meeting row). Graph
+// echoes predicate strings upper-cased (senderContains ['adele'] comes back
+// as ['ADELE']), so values are matched case-insensitively and `spellings`
+// (the preset's or the dialog's own values) restores the casing the user knows.
+export function conditionsFromRules(label: string, rules: MessageRule[], spellings: string[] = presetSpellings(label)): LabelConditions {
+  const own = ownRules(label, rules);
+  const conditions: Condition[] = [];
+  const exceptions: Condition[] = [];
+  let all = false;
+  const meetingOnly = (p: MessageRulePredicates) => Object.keys(p).filter((k) => k !== "isMeetingRequest" && k !== "isMeetingResponse");
+  for (const r of own) {
+    const p = r.conditions ?? {};
+    const rows = conditionsOfPredicates(p, spellings);
+    // Several predicates in one rule (beyond the meeting flag) = all-of.
+    if (rows.length > 1 || (rows.length === 1 && rows[0].kind === "meeting" && meetingOnly(p).length > 0)) all = true;
+    mergeRows(conditions, rows);
+    mergeRows(exceptions, conditionsOfPredicates(r.exceptions ?? {}, spellings));
+  }
+  // Two rules that share every non-meeting predicate are the meeting pair of an all-of set.
+  if (all && own.length === 2) {
+    const [a, b] = own.map((r) => JSON.stringify(meetingOnly(r.conditions ?? {}).sort().map((k) => [k, (r.conditions as Record<string, unknown>)[k]])));
+    if (a !== b) all = false;
+  } else if (all && own.length > 1) all = false;
+  return { match: all ? "all" : "any", conditions, exceptions };
 }
 
 // Save in the label dialog: a name, not already saving and, when editing,
@@ -194,20 +383,43 @@ export function hasUnsubscribeHeader(m: Message): boolean {
 // mail is detectable without extra $select.
 export const isMeetingMail = (m: Message) => /eventMessage/i.test(m["@odata.type"] ?? "");
 
-// Client-side approximation of the rules. Newsletter and sent-only-to-me
-// toggles are only honoured when the list payload carries the information.
-export function matchesConditions(m: Message, c: LabelConditions, meAddress?: string): boolean {
-  if ((c.exceptFrom ?? []).some((p) => senderMatches(m, p))) return false;
-  if (c.from.some((p) => senderMatches(m, p))) return true;
-  const subject = (m.subject ?? "").toLowerCase();
-  if (c.subject.some((s) => s.trim() && subject.includes(s.trim().toLowerCase()))) return true;
-  if (c.meetings && isMeetingMail(m)) return true;
-  if (c.newsletters && hasUnsubscribeHeader(m)) return true;
-  if (c.toMe && meAddress) {
-    const to = m.toRecipients ?? [];
-    if (to.length === 1 && (to[0].emailAddress.address ?? "").toLowerCase() === meAddress.toLowerCase()) return true;
+const recipientsOf = (m: Message) => [...(m.toRecipients ?? []), ...(m.ccRecipients ?? [])];
+const includesAny = (hay: string, values?: string[]) => trimmed(values).some((v) => hay.toLowerCase().includes(v.toLowerCase()));
+
+// Client-side approximation of one row. Body rows only see the preview and
+// the size is unknown in a list payload, so those never match here.
+export function conditionMatches(m: Message, c: Condition, meAddress?: string): boolean {
+  const me = (meAddress ?? "").toLowerCase();
+  const subject = m.subject ?? "";
+  const preview = m.bodyPreview ?? "";
+  switch (c.kind) {
+    case "fromContains": return trimmed(c.values).some((p) => senderMatches(m, p));
+    case "fromIs": return trimmed(c.values).some((p) => addressOf(m) === p.toLowerCase());
+    case "sentTo": return recipientsOf(m).some((r) => trimmed(c.values).some((p) => (r.emailAddress.address ?? "").toLowerCase() === p.toLowerCase()));
+    case "recipientContains": return recipientsOf(m).some((r) => includesAny(`${r.emailAddress.name ?? ""} ${r.emailAddress.address ?? ""}`, c.values));
+    case "subjectContains": return includesAny(subject, c.values);
+    case "subjectOrBodyContains": return includesAny(`${subject}\n${preview}`, c.values);
+    case "bodyContains": return includesAny(preview, c.values);
+    case "hasAttachment": return !!m.hasAttachments;
+    case "importance": return (m.importance ?? "normal") === c.importance;
+    case "headerContains": return (m.internetMessageHeaders ?? []).some((h) => includesAny(h.name, c.values));
+    case "meeting": return isMeetingMail(m);
+    case "sentOnlyToMe": {
+      const to = m.toRecipients ?? [];
+      return !!me && to.length === 1 && (to[0].emailAddress.address ?? "").toLowerCase() === me;
+    }
+    case "sentToMe": return !!me && (m.toRecipients ?? []).some((r) => (r.emailAddress.address ?? "").toLowerCase() === me);
+    case "sizeBetween": return false;
   }
-  return false;
+}
+
+// Client-side approximation of the rules: any / all of the rows, unless an
+// exception matches. Empty conditions never match.
+export function matchesConditions(m: Message, c: LabelConditions, meAddress?: string): boolean {
+  const rows = completeConditions(c.conditions);
+  if (!rows.length) return false;
+  if (completeConditions(c.exceptions).some((e) => conditionMatches(m, e, meAddress))) return false;
+  return c.match === "all" ? rows.every((r) => conditionMatches(m, r, meAddress)) : rows.some((r) => conditionMatches(m, r, meAddress));
 }
 
 export const hasCategory = (m: Message, label: string) => (m.categories ?? []).some((x) => sameName(x, label));
@@ -252,21 +464,19 @@ export const folderByNamePath = (name: string) => `/me/mailFolders?$select=id,di
 // ---- Presets -----------------------------------------------------------------
 
 export function presetConditions(p: PresetLabel): LabelConditions {
-  return {
+  return simpleConditions({
     from: [...(p.conditions.fromAddresses ?? []), ...(p.conditions.senderContains ?? [])],
     subject: [...(p.conditions.subjectContains ?? [])],
     meetings: !!p.conditions.meetingRequests,
     newsletters: !!p.conditions.newsletters,
-    toMe: false,
-  };
+  });
 }
 
 // The spellings a preset label was installed with, for conditionsFromRules.
 export function presetSpellings(label: string): string[] {
   const p = [...PRESET_LABELS, ...SORTING_PRESETS].find((x) => sameName(x.name, label));
   if (!p) return [];
-  const c = presetConditions(p);
-  return [...c.from, ...c.subject];
+  return presetConditions(p).conditions.flatMap((c) => c.values ?? []);
 }
 
 export const SOCIAL_LABEL = "Social";
@@ -280,7 +490,7 @@ export const SOCIAL_SENDERS: string[] = socialPreset.conditions.senderContains ?
 export const SOCIAL_CONDITIONS: LabelConditions = presetConditions(socialPreset);
 // Social senders' digests carry List-Unsubscribe too; the exception keeps
 // each of them in one tab.
-export const PROMOTIONS_CONDITIONS: LabelConditions = { ...presetConditions(promotionsPreset), exceptFrom: SOCIAL_SENDERS };
+export const PROMOTIONS_CONDITIONS: LabelConditions = { ...presetConditions(promotionsPreset), exceptions: [{ kind: "fromContains", values: SOCIAL_SENDERS }] };
 
 const sortingRule = (label: string, c: LabelConditions): Omit<MessageRule, "id" | "sequence"> => {
   const [first] = rulesForLabel(label, c, 0);
@@ -312,39 +522,86 @@ export function inboxTabPath(tab: "primary" | "social" | "promotions", focused?:
 
 export const isSortingCategory = (m: Message) => (m.categories ?? []).some((c) => c === SOCIAL_LABEL || c === PROMOTIONS_LABEL);
 
-// ---- Rule summary (Filters dialog) ----------------------------------------
+// ---- Outlook's rule sentence -------------------------------------------------
+// "Apply this rule after the message arrives: from X or Y, move it to the
+// Leadership folder and assign it to the Leadership category and stop
+// processing more rules". Used by the label dialog preview, the Filters
+// dialog and the preset summaries.
 
-function describePredicates(p: MessageRulePredicates): string[] {
-  const when: string[] = [];
-  if (p.fromAddresses?.length) when.push(`from ${p.fromAddresses.map((a) => a.emailAddress?.address ?? "").filter(Boolean).join(", ")}`);
-  if (p.senderContains?.length) when.push(`sender contains ${p.senderContains.join(", ")}`);
-  if (p.subjectContains?.length) when.push(`subject contains ${p.subjectContains.join(", ")}`);
-  if (p.bodyOrSubjectContains?.length) when.push(`subject or body contains ${p.bodyOrSubjectContains.join(", ")}`);
-  if (p.headerContains?.length) when.push(p.headerContains.some((h) => /list-unsubscribe/i.test(h)) ? "is a newsletter" : `header contains ${p.headerContains.join(", ")}`);
-  if (p.recipientContains?.length) when.push(`recipient contains ${p.recipientContains.join(", ")}`);
-  if (p.isMeetingRequest) when.push("is a calendar invitation");
-  if (p.isMeetingResponse) when.push("is a calendar response");
-  if (p.sentToMe) when.push("sent to me");
-  if (p.sentOnlyToMe) when.push("sent only to me");
-  if (p.hasAttachments) when.push("has attachments");
-  if (p.importance) when.push(`importance is ${p.importance}`);
-  if (p.categories?.length) when.push(`labelled ${p.categories.join(", ")}`);
-  return when;
+const orList = (values: string[]) => values.map((v) => `'${v}'`).join(" or ");
+const addrList = (list?: { emailAddress?: { address?: string; name?: string } }[]) => (list ?? []).map((a) => a.emailAddress?.address || a.emailAddress?.name || "").filter(Boolean);
+
+export function describePredicates(p: MessageRulePredicates): string[] {
+  const out: string[] = [];
+  if (p.fromAddresses?.length) out.push(`from ${addrList(p.fromAddresses).join(" or ")}`);
+  if (p.senderContains?.length) out.push(`with ${orList(p.senderContains)} in the sender's address`);
+  if (p.sentToAddresses?.length) out.push(`sent to ${addrList(p.sentToAddresses).join(" or ")}`);
+  if (p.recipientContains?.length) out.push(`with ${orList(p.recipientContains)} in the recipient's address`);
+  if (p.subjectContains?.length) out.push(`with ${orList(p.subjectContains)} in the subject`);
+  if (p.bodyOrSubjectContains?.length) out.push(`with ${orList(p.bodyOrSubjectContains)} in the subject or body`);
+  if (p.bodyContains?.length) out.push(`with ${orList(p.bodyContains)} in the body`);
+  if (p.headerContains?.length) out.push(p.headerContains.every(isNewsletterHeader) ? "which is a newsletter (has an unsubscribe header)" : `with ${orList(p.headerContains)} in the message header`);
+  if (p.hasAttachments) out.push("which has an attachment");
+  if (p.importance) out.push(`marked as ${p.importance} importance`);
+  if (p.isMeetingRequest && p.isMeetingResponse) out.push("which is a meeting invitation, update or response");
+  else if (p.isMeetingRequest) out.push("which is a meeting invitation or update");
+  else if (p.isMeetingResponse) out.push("which is a meeting response");
+  if (p.sentOnlyToMe) out.push("sent only to me");
+  if (p.sentToMe) out.push("where my name is in the To box");
+  if (p.withinSizeRange && (p.withinSizeRange.minimumSize || p.withinSizeRange.maximumSize)) {
+    const { minimumSize: lo, maximumSize: hi } = p.withinSizeRange;
+    out.push(lo && hi ? `with a size between ${lo} KB and ${hi} KB` : lo ? `with a size of at least ${lo} KB` : `with a size of at most ${hi} KB`);
+  }
+  if (p.categories?.length) out.push(`assigned to the ${orList(p.categories)} category`);
+  return out;
 }
 
+export function describeActions(a: MessageRule["actions"] | undefined, folderName?: (id: string) => string | undefined): string[] {
+  const out: string[] = [];
+  const x = a ?? {};
+  if (x.moveToFolder) out.push(`move it to the ${folderName?.(x.moveToFolder) ?? "chosen"} folder`);
+  if (x.copyToFolder) out.push(`copy it to the ${folderName?.(x.copyToFolder) ?? "chosen"} folder`);
+  if (x.assignCategories?.length) out.push(`assign it to the ${x.assignCategories.join(", ")} category`);
+  if (x.markAsRead) out.push("mark it as read");
+  if (x.markImportance) out.push(`mark it as ${x.markImportance} importance`);
+  if (x.forwardTo?.length) out.push(`forward it to ${addrList(x.forwardTo).join(" or ")}`);
+  if (x.delete) out.push("delete it");
+  if (x.stopProcessingRules) out.push("stop processing more rules");
+  return out;
+}
+
+export const APPLY_PREFIX = "Apply this rule after the message arrives";
+
+// Outlook's sentence for one rule.
+export function outlookRuleSentence(r: Pick<MessageRule, "conditions" | "exceptions" | "actions">, folderName?: (id: string) => string | undefined): string {
+  const when = describePredicates(r.conditions ?? {});
+  const except = describePredicates(r.exceptions ?? {});
+  const then = describeActions(r.actions, folderName);
+  const parts = [when.length ? when.join(" and ") : "on every message", ...(except.length ? [`except if ${except.join(" or ")}`] : []), then.length ? then.join(" and ") : "do nothing"];
+  return `${APPLY_PREFIX}: ${parts.join(", ")}`;
+}
+
+// The sentence for a whole label as the dialog shows it: "any" joins the
+// rows with "or", "all" with "and".
+export function labelSentence(label: string, c: LabelConditions, opts: { folderName?: string } = {}): string {
+  const rows = completeConditions(c.conditions);
+  const joiner = c.match === "all" ? " and " : " or ";
+  const when = rows.map((r) => describePredicates(predicatesOfRow(r)).join(" and ")).filter(Boolean);
+  const except = completeConditions(c.exceptions).map((r) => describePredicates(predicatesOfRow(r)).join(" or ")).filter(Boolean);
+  const then = describeActions(ruleActions(label, opts.folderName ? { moveToFolder: "x" } : {}), () => opts.folderName);
+  const parts = [when.length ? when.join(joiner) : "on every message", ...(except.length ? [`except if ${except.join(" or ")}`] : []), then.join(" and ")];
+  return `${APPLY_PREFIX}: ${parts.join(", ")}`;
+}
+
+const predicatesOfRow = (r: Condition): MessageRulePredicates => {
+  const { predicates, meeting } = predicatesOf([r]);
+  return meeting ? { ...predicates, isMeetingRequest: true, isMeetingResponse: true } : predicates;
+};
+
+// Kept for callers that want the two halves ("when", "then").
 export function summarizeRule(r: MessageRule, folderName?: (id: string) => string | undefined): { when: string; then: string } {
   const when = describePredicates(r.conditions ?? {});
   const except = describePredicates(r.exceptions ?? {});
-  const a = r.actions ?? {};
-  const then: string[] = [];
-  if (a.assignCategories?.length) then.push(`label ${a.assignCategories.join(", ")}`);
-  if (a.moveToFolder) then.push(`move to ${folderName?.(a.moveToFolder) ?? "a folder"}`);
-  if (a.copyToFolder) then.push(`copy to ${folderName?.(a.copyToFolder) ?? "a folder"}`);
-  if (a.markAsRead) then.push("mark as read");
-  if (a.markImportance) then.push(`mark ${a.markImportance} importance`);
-  if (a.delete) then.push("delete");
-  if (a.forwardTo?.length) then.push(`forward to ${a.forwardTo.map((x) => x.emailAddress?.address ?? "").join(", ")}`);
-  if (a.stopProcessingRules) then.push("stop other rules");
-  const whenText = (when.length ? when.join(" and ") : "every message") + (except.length ? ` (except ${except.join(" or ")})` : "");
-  return { when: whenText, then: then.length ? then.join(", ") : "do nothing" };
+  const then = describeActions(r.actions, folderName);
+  return { when: (when.length ? when.join(" and ") : "on every message") + (except.length ? `, except if ${except.join(" or ")}` : ""), then: then.length ? then.join(" and ") : "do nothing" };
 }

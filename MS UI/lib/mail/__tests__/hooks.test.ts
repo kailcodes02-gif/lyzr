@@ -5,9 +5,9 @@ vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), err
 
 import { ConsentRequiredError, GraphError, type BatchRequest, type BatchResponse } from "@/lib/graph";
 import { handleMail, mockFolders } from "@/lib/mock/mail";
-import { ATTACHMENT_CAST_PATH, deltaSeedPath, fetchAttachments, isConsentError, isDeadDeltaLink, labelFolderId, labelMessagesClientSide, partitionBatch, runBatch } from "../hooks";
+import { ATTACHMENT_CAST_PATH, collectLabelMessages, deltaSeedPath, fetchAttachments, fetchLabelFolder, isConsentError, isDeadDeltaLink, labelEnrichment, labelFolderId, labelFolderNames, labelMessagesClientSide, mergeLabelRows, partitionBatch, runBatch, runLabelDiagnostics } from "../hooks";
 import { backfillLabel, ensureFolder } from "../install";
-import { EMPTY_CONDITIONS } from "../labels";
+import { simpleConditions as S } from "../labels";
 import type { Attachment, MessageRule } from "../types";
 import { mockApi, type Message, type Page } from "./helpers";
 
@@ -112,7 +112,7 @@ describe("client-side label fallback", () => {
   it("includes the label's own folder (from the cached rules, else by name) so skip-inbox mail is not hidden", async () => {
     const api = mockApi();
     const folder = await ensureFolder(api, "Wipro");
-    const res = await backfillLabel(api, "Wipro", { ...EMPTY_CONDITIONS, from: ["@wipro.com"] }, undefined, folder.id);
+    const res = await backfillLabel(api, "Wipro", S({ from: ["@wipro.com"] }), undefined, folder.id);
     expect(res.moved).toBeGreaterThan(0);
     // Inbox + Archive alone miss every moved message.
     const without = await labelMessagesClientSide(getAll, "Wipro", undefined);
@@ -137,5 +137,66 @@ describe("client-side label fallback", () => {
     expect(tasks.displayName).toBe("Tasks mail");
     expect(await labelFolderId(get, "Tasks")).toBe(tasks.id);
     expect(mockFolders.some((f) => f.displayName === "Tasks")).toBe(false);
+  });
+});
+
+describe("folder-first label view (Fix 1) and its diagnostics (Fix 2)", () => {
+  const call = <T,>(path: string) => handleMail("GET", new URL(`https://graph.microsoft.com/v1.0${path}`), undefined) as T;
+  const get = async <T,>(path: string) => call<T>(path);
+  const getAll = async (path: string) => call<Page<Message>>(path).value;
+  it("resolves the folder by rules, by the preset folder name, by the cached list without a request, or by name", async () => {
+    expect(labelFolderNames("Calendar")).toEqual(["Calendar invites", "Calendar mail"]);
+    expect(labelFolderNames("GSI")).toEqual(["GSI", "GSI mail"]);
+    // The demo ships a "GSI" folder next to the GSI category.
+    const gsi = await fetchLabelFolder(get, "gsi");
+    expect(gsi?.displayName).toBe("GSI");
+    expect(gsi?.totalItemCount).toBe(3);
+    // A cached folder list answers without any GET.
+    let gets = 0;
+    const counting = async <T,>(path: string) => (gets++, call<T>(path));
+    const cached = await fetchLabelFolder(counting, "GSI", undefined, mockFolders);
+    expect(cached?.id).toBe("f-gsi");
+    expect(gets).toBe(0);
+    expect(await fetchLabelFolder(get, "Events")).toBeNull();
+  });
+  it("lists the folder first and merges the labelled mail from the inbox, the archive and the categories query, each message once, newest first", async () => {
+    const folder = call<Page<Message>>("/me/mailFolders/f-gsi/messages?$top=50");
+    expect(folder.value).toHaveLength(3);
+    expect(folder.value.some((m) => !(m.categories ?? []).includes("GSI"))).toBe(true); // moved without the category
+    const extras = await labelEnrichment(get, "GSI", "f-gsi");
+    expect(extras.length).toBeGreaterThan(3);
+    expect(extras.every((m) => m.categories?.includes("GSI") && m.parentFolderId !== "f-gsi")).toBe(true);
+    // The subfolder copy comes through the categories query (accepted by the demo).
+    expect(extras.some((m) => m.parentFolderId === "f-partners-acc")).toBe(true);
+    // The inbox scan and the categories query overlap: merged rows are unique.
+    const merged = mergeLabelRows(folder.value, [...extras, ...extras]);
+    expect(new Set(merged.map((m) => m.id)).size).toBe(merged.length);
+    expect(merged.length).toBe(folder.value.length + new Set(extras.map((m) => m.id)).size);
+    const dates = merged.map((m) => m.receivedDateTime ?? "");
+    expect(dates).toEqual([...dates].sort().reverse());
+    // Remove-from-all sees the folder copies and the labelled mail elsewhere.
+    const all = await collectLabelMessages(get, getAll, "GSI", "f-gsi");
+    expect(all.filter((m) => m.parentFolderId === "f-gsi")).toHaveLength(3);
+    expect(all.length).toBe(merged.length);
+  });
+  it("runs every strategy for a label and reports a count or the error per strategy", async () => {
+    const rows = await runLabelDiagnostics(get, getAll, "GSI");
+    expect(rows.map((r) => r.strategy)).toEqual(["folder", "filter", "search", "client", "folder+enrichment"]);
+    const by = Object.fromEntries(rows.map((r) => [r.strategy, r]));
+    expect(by.folder).toMatchObject({ count: 3, folder: "GSI" });
+    expect(by.filter.count).toBeGreaterThan(0);
+    expect(by.search.count).toBeGreaterThan(0);
+    expect(by["folder+enrichment"].count).toBeGreaterThan(by.folder.count!);
+    // A label without a folder says so instead of failing.
+    const none = await runLabelDiagnostics(get, getAll, "Events");
+    expect(none[0]).toEqual({ strategy: "folder", error: "No folder backs this label" });
+    // A strategy that throws is reported, not fatal.
+    const failing = async <T,>(path: string) => {
+      if (/\$filter=.*categories/.test(decodeURIComponent(path))) throw new GraphError(400, "ErrorInvalidUrlQueryFilter", "lambda rejected", path);
+      return call<T>(path);
+    };
+    const rejected = await runLabelDiagnostics(failing, getAll, "GSI");
+    expect(rejected.find((r) => r.strategy === "filter")?.error).toMatch(/ErrorInvalidUrlQueryFilter/);
+    expect(rejected.find((r) => r.strategy === "folder")?.count).toBe(3);
   });
 });

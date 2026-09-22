@@ -6,7 +6,7 @@
 // rules cannot remove a category, so the Primary rule assigns nothing and
 // stops processing before the sorting rules can run. Pure functions only.
 import type { GraphApi } from "./install";
-import { isSortingRule, maxSequence, PROMOTIONS_LABEL, RULES_PATH, SOCIAL_LABEL, SORTING_RULE_PREFIX, summarizeRule } from "./labels";
+import { isSortingRule, maxSequence, outlookRuleSentence, PROMOTIONS_LABEL, RULES_PATH, SOCIAL_LABEL, SORTING_RULE_PREFIX } from "./labels";
 import type { Message, MessageRule } from "./types";
 import type { MailTab } from "./url";
 
@@ -122,11 +122,10 @@ export async function alwaysSortSender(api: GraphApi, target: TabTarget, address
   return api.post<MessageRule>(RULES_PATH, { ...senderRule(target, address), sequence: plan.sequence });
 }
 
-// Filters dialog line: sender rules read as a sentence, the rest as
-// "When ..., then ...".
+// Filters dialog line: sender rules read as a sentence, the rest exactly as
+// Outlook phrases a rule ("Apply this rule after the message arrives: ...").
 export function ruleSentence(r: MessageRule, folderName?: (id: string) => string | undefined): string {
   const s = parseSenderRule(r);
   if (s) return s.target === "primary" ? `Always keep mail from ${s.address} in Primary.` : `Always put mail from ${s.address} in ${TAB_LABEL[s.target]}.`;
-  const { when, then } = summarizeRule(r, folderName);
-  return `When ${when}, then ${then}.`;
+  return outlookRuleSentence(r, folderName);
 }

@@ -457,6 +457,17 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-09-23, MS UI: folder-backed label views, Outlook-style rule builder, diagnostics, polling fix (MS UI)
+- Real-mailbox finding: rules moved mail into label folders (Calendar invites 320 etc.) but label views searched by
+  category and returned nothing. Label views now list the label's own folder (resolved from the rule's moveToFolder
+  or the folder name) and merge category matches from Inbox/Archive; header shows "Folder: X" + Open folder.
+  Filters dialog gained a Diagnostics section that runs each strategy and reports counts/errors.
+- Label dialog rebuilt with Outlook's rule vocabulary (from contains/is, sent to, subject/body contains, has
+  attachment, importance, header, meeting, sent only to me, size), any/all matching, "Except when", "Only in this
+  label" (default on), live Outlook-phrased preview; Edit round-trips every predicate.
+- Calendar: polling round was starved by neighbour prefetches after the throttle queue; now only the same range's
+  own fetch blocks a round, prefetch once per range. 343 unit + 37 browser tests green; deployed.
+
 ### 2026-09-22, MS UI: Move to tab, always-for-sender rules, print, spam undo; menu crash fix (MS UI)
 - Any message can be moved to Primary / Social / Promotions (thread menu, hover, bulk, right-click, drag onto a
   tab); a "Do this for all mail from <address>" prompt creates an Outlook rule for that exact address placed

@@ -72,6 +72,10 @@ export type MessageRulePredicates = {
   bodyOrSubjectContains?: string[];
   headerContains?: string[];
   recipientContains?: string[];
+  bodyContains?: string[];
+  sentToAddresses?: Recipient[];
+  // Kilobytes, like Outlook's "with a size in a specific range".
+  withinSizeRange?: { minimumSize?: number; maximumSize?: number };
   isMeetingRequest?: boolean;
   isMeetingResponse?: boolean;
   sentToMe?: boolean;

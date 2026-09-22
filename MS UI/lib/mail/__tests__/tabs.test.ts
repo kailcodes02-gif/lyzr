@@ -72,10 +72,10 @@ describe("per-sender rules", () => {
     expect(planSenderRuleInsert([])).toEqual({ sequence: 1, renumber: [] });
     expect(planSenderRuleInsert([...existing, mk("ro", "Tenant policy", 4, true)])).toEqual({ sequence: 5, renumber: [] });
   });
-  it("summarises sender rules as a sentence and other rules as when/then", () => {
+  it("summarises sender rules as a sentence and other rules as Outlook phrases them", () => {
     expect(ruleSentence({ id: "1", sequence: 1, ...senderRule("primary", "mayuri.murthy@linkedin.com") })).toBe("Always keep mail from mayuri.murthy@linkedin.com in Primary.");
     expect(ruleSentence({ id: "1", sequence: 1, ...senderRule("social", "a@b.com") })).toBe("Always put mail from a@b.com in Social.");
-    expect(ruleSentence({ id: "2", displayName: "x", sequence: 1, isEnabled: true, conditions: { subjectContains: ["report"] }, actions: { moveToFolder: "f" } }, () => "Reports")).toBe("When subject contains report, then move to Reports.");
+    expect(ruleSentence({ id: "2", displayName: "x", sequence: 1, isEnabled: true, conditions: { subjectContains: ["report"] }, actions: { moveToFolder: "f" } }, () => "Reports")).toBe("Apply this rule after the message arrives: with 'report' in the subject, move it to the Reports folder");
   });
   it("against the demo mailbox: the Primary rule lands before Sorting: Social and a later move replaces it", async () => {
     const api = mockApi();

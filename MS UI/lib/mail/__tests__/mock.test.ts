@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ARRIVAL_SUBJECT, handleMail, mockTiming } from "@/lib/mock/mail";
+import { ARRIVAL_SUBJECT, handleMail, mockRules, mockTiming } from "@/lib/mock/mail";
 import type { Message, Page } from "./helpers";
 
 const call = <T,>(method: string, path: string, body?: unknown) => handleMail(method, new URL(`https://graph.microsoft.com/v1.0${path}`), body) as T;
@@ -110,5 +110,41 @@ describe("mock mail handler", () => {
     const folders = call<Page<{ id: string; unreadItemCount: number }>>("GET", "/me/mailFolders");
     const inboxId = call<{ id: string }>("GET", "/me/mailFolders/inbox").id;
     expect(folders.value.find((f) => f.id === inboxId)!.unreadItemCount).toBeGreaterThan(0);
+  });
+});
+
+describe("mock rules: Outlook vocabulary on arrival", () => {
+  const post = (rule: unknown) => call<{ id: string }>("POST", "/me/mailFolders/inbox/messageRules", rule);
+  const inbox = () => call<Page<Message>>("GET", "/me/mailFolders/inbox/messages?$top=100").value;
+  const cleanup = (id: string) => call("DELETE", `/me/mailFolders/inbox/messageRules/${id}`);
+  it("applies bodyContains, recipientContains, sentToAddresses, hasAttachments, importance and size ranges; any one exception blocks", () => {
+    const before = inbox();
+    const withAtt = before.filter((m) => m.hasAttachments);
+    expect(withAtt.length).toBeGreaterThan(0);
+    // Not an app rule ("Label: "), so the demo applies it to the inbox at once.
+    const r1 = post({ displayName: "Attachments from partners", sequence: 50, isEnabled: true, conditions: { hasAttachments: true, recipientContains: ["kailash"] }, exceptions: { importance: "high", subjectContains: ["nothing matches this"] }, actions: { assignCategories: ["Urgent"] } });
+    const after = inbox();
+    const tagged = after.filter((m) => m.categories?.includes("Urgent") && m.hasAttachments);
+    expect(tagged.length).toBeGreaterThan(0);
+    // The high-importance exception alone (one of two) blocked those.
+    expect(after.filter((m) => m.hasAttachments && m.importance === "high").every((m) => !m.categories?.includes("Urgent") || before.find((b) => b.id === m.id)?.categories?.includes("Urgent"))).toBe(true);
+    cleanup(r1.id);
+    // (The Wipro mail was filed by an earlier test; the TCS redline mail is still in the inbox.)
+    expect(inbox().some((m) => /TCS co-sell deck: legal review complete/.test(m.subject ?? ""))).toBe(true);
+    const r2 = post({ displayName: "Small redlines to me", sequence: 51, isEnabled: true, conditions: { withinSizeRange: { minimumSize: 1, maximumSize: 100 }, sentToAddresses: [{ emailAddress: { address: "kailash.gm@lyzr.com" } }], bodyContains: ["redline"] }, actions: { moveToFolder: "f-archive" } });
+    expect(inbox().some((m) => /TCS co-sell deck: legal review complete/.test(m.subject ?? ""))).toBe(false);
+    expect(call<Page<Message>>("GET", "/me/mailFolders/archive/messages?$top=50").value.some((m) => /TCS co-sell deck/.test(m.subject ?? ""))).toBe(true);
+    // Out of range: nothing else moves.
+    const r3 = post({ displayName: "Huge", sequence: 52, isEnabled: true, conditions: { withinSizeRange: { minimumSize: 50_000 } }, actions: { moveToFolder: "f-archive" } });
+    expect(inbox().length).toBeGreaterThan(20);
+    cleanup(r3.id);
+    cleanup(r2.id);
+    expect(mockRules.some((r) => r.id === r1.id || r.id === r2.id)).toBe(false);
+  });
+  it("ships a GSI folder with mail both with and without the category", () => {
+    const gsi = call<Page<Message>>("GET", "/me/mailFolders/f-gsi/messages?$top=50").value;
+    expect(gsi).toHaveLength(3);
+    expect(gsi.filter((m) => m.categories?.includes("GSI"))).toHaveLength(1);
+    expect(call<Page<{ displayName: string }>>("GET", "/me/mailFolders?$select=id,displayName").value.some((f) => f.displayName === "GSI")).toBe(true);
   });
 });

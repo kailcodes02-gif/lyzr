@@ -87,6 +87,9 @@ export const mockFolders: MailFolder[] = [
   { id: "f-partners", displayName: "GSI Partners", parentFolderId: null, childFolderCount: 1, unreadItemCount: 0, totalItemCount: 0 },
   { id: "f-partners-acc", displayName: "Accenture", parentFolderId: "f-partners", childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 },
   { id: "f-reports", displayName: "Weekly Reports", parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 },
+  // The GSI label's folder, as an Outlook rule left it: some mail carries the
+  // category, some was moved without it (both must show under the label).
+  { id: "f-gsi", displayName: "GSI", parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 },
 ];
 
 export const mockCategories: OutlookCategory[] = [
@@ -242,6 +245,10 @@ const SEEDS: Seed[] = [
   { subject: "Weekly GSI report: Aug 25 to Aug 31", folder: "f-reports", messages: [{ from: P.anirudh, hoursAgo: 480, paras: ["Report attached."], read: true, categories: ["Weekly report"], attachments: [{ name: "GSI-weekly-Aug25-31.xlsx", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", size: 80_000 }] }] },
   { subject: "Weekly GSI report: Sep 1 to Sep 7", folder: "f-reports", messages: [{ from: P.anirudh, hoursAgo: 310, paras: ["Report attached."], read: true, categories: ["Weekly report"], attachments: [{ name: "GSI-weekly-Sep1-7.xlsx", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", size: 84_000 }] }] },
   { subject: "Accenture partner agreement countersigned", folder: "f-partners-acc", messages: [{ from: P.priya, hoursAgo: 900, paras: ["Countersigned agreement attached for your records."], read: true, categories: ["GSI"] }] },
+  // Inside the GSI folder: one stamped with the category, two moved by a rule that stamped nothing.
+  { subject: "GSI partner day: booth and speaking slot", folder: "f-gsi", messages: [{ from: P.pooja, to: [P.me], hoursAgo: 11, paras: ["Booth 22 and a 20 minute slot at the Infosys partner day are confirmed. Please send the deck by Oct 1."], read: false, categories: ["GSI"] }] },
+  { subject: "GSI enablement: Wipro SE cohort dates", folder: "f-gsi", messages: [{ from: P.pooja, to: [P.me], hoursAgo: 19, paras: ["The Wipro SE enablement cohort runs Oct 6 to Oct 10. Twelve engineers registered so far."], read: true }] },
+  { subject: "GSI co-sell: TCS BFSI intro call", folder: "f-gsi", messages: [{ from: P.rahul, to: [P.me], hoursAgo: 27, paras: ["Intro call with the TCS BFSI practice leads is set for Sep 29, 15:00 IST."], read: true }] },
   { subject: "You have won a free conference pass!!!", folder: "f-junk", messages: [{ from: r("Prize Desk", "win@prize-desk.biz"), hoursAgo: 33, paras: ["Click now to claim."], read: true }] },
   { subject: "Old vendor quote", folder: "f-deleted", messages: [{ from: r("Vendor", "quotes@vendor.example"), hoursAgo: 1000, paras: ["Quote for 2025 swag."], read: true }] },
 ];
@@ -424,27 +431,43 @@ const quoteOf = (src: Message) =>
 // this app creates ("Label: ", "Sorting: ") are exempt: the app backfills
 // those itself and reports the counts, exactly as against the real mailbox.
 const APP_RULE = /^(Label|Sorting): /;
+// Message size as Outlook sees it, in KB (the demo has no MIME size).
+const sizeKb = (msg: Message) => Math.ceil(((msg.body?.content ?? msg.bodyPreview ?? "").length + (msg.subject ?? "").length + 1024) / 1024);
+const recipientsOf = (msg: Message) => [...(msg.toRecipients ?? []), ...(msg.ccRecipients ?? [])];
 function predicatesMatch(c: MessageRulePredicates, msg: Message): boolean {
   const addr = (msg.from?.emailAddress?.address ?? "").toLowerCase();
   const from = `${msg.from?.emailAddress?.name} ${addr}`.toLowerCase();
+  const body = `${msg.body?.content ?? ""} ${msg.bodyPreview ?? ""}`.toLowerCase();
   const checks: boolean[] = [];
   if (c.fromAddresses?.length) checks.push(c.fromAddresses.some((a) => (a.emailAddress?.address ?? "").toLowerCase() === addr));
   if (c.senderContains?.length) checks.push(c.senderContains.some((x) => from.includes(x.toLowerCase())));
+  if (c.sentToAddresses?.length) checks.push(recipientsOf(msg).some((r) => c.sentToAddresses!.some((a) => (a.emailAddress?.address ?? "").toLowerCase() === (r.emailAddress.address ?? "").toLowerCase())));
+  if (c.recipientContains?.length) checks.push(recipientsOf(msg).some((r) => c.recipientContains!.some((x) => `${r.emailAddress.name} ${r.emailAddress.address}`.toLowerCase().includes(x.toLowerCase()))));
   if (c.subjectContains?.length) checks.push(c.subjectContains.some((x) => (msg.subject ?? "").toLowerCase().includes(x.toLowerCase())));
-  if (c.bodyOrSubjectContains?.length) checks.push(c.bodyOrSubjectContains.some((x) => `${msg.subject} ${msg.bodyPreview}`.toLowerCase().includes(x.toLowerCase())));
+  if (c.bodyOrSubjectContains?.length) checks.push(c.bodyOrSubjectContains.some((x) => `${msg.subject} ${body}`.toLowerCase().includes(x.toLowerCase())));
+  if (c.bodyContains?.length) checks.push(c.bodyContains.some((x) => body.includes(x.toLowerCase())));
   if (c.headerContains?.length) checks.push(c.headerContains.some((x) => (msg.internetMessageHeaders ?? []).some((h) => h.name.toLowerCase().includes(x.toLowerCase()))));
   if (c.sentToMe || c.sentOnlyToMe) checks.push((msg.toRecipients ?? []).some((t) => t.emailAddress.address === ME.address) && (!c.sentOnlyToMe || (msg.toRecipients ?? []).length === 1));
   if (c.hasAttachments) checks.push(!!msg.hasAttachments);
   if (c.importance) checks.push(msg.importance === c.importance);
+  if (c.withinSizeRange) {
+    const kb = sizeKb(msg);
+    checks.push((c.withinSizeRange.minimumSize ?? 0) <= kb && (c.withinSizeRange.maximumSize ? kb <= c.withinSizeRange.maximumSize : true));
+  }
   if (c.isMeetingRequest) checks.push(/eventMessageRequest/i.test(msg["@odata.type"] ?? ""));
   if (c.isMeetingResponse) checks.push(/eventMessageResponse/i.test(msg["@odata.type"] ?? ""));
   return checks.length > 0 && checks.every(Boolean);
 }
 
+// Exceptions the way Outlook applies them: any one matching predicate blocks the rule.
+function exceptionsMatch(e: MessageRulePredicates, msg: Message): boolean {
+  return Object.entries(e).some(([k, v]) => v !== undefined && v !== null && !(Array.isArray(v) && v.length === 0) && predicatesMatch({ [k]: v } as MessageRulePredicates, msg));
+}
+
 // Conditions AND together; any matching exception blocks the rule.
 function ruleMatches(rule: MessageRule, msg: Message): boolean {
   if (!predicatesMatch(rule.conditions ?? {}, msg)) return false;
-  return !(rule.exceptions && predicatesMatch(rule.exceptions, msg));
+  return !(rule.exceptions && exceptionsMatch(rule.exceptions, msg));
 }
 
 function applyRuleToInbox(rule: MessageRule) {

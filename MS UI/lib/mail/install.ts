@@ -22,7 +22,7 @@ export type GraphApi = {
 };
 
 export const CATEGORIES_PATH = "/me/outlook/masterCategories";
-export const BACKFILL_SELECT = "id,conversationId,subject,from,sender,toRecipients,categories,receivedDateTime,internetMessageHeaders";
+export const BACKFILL_SELECT = "id,conversationId,subject,bodyPreview,from,sender,toRecipients,ccRecipients,categories,receivedDateTime,hasAttachments,importance,parentFolderId,internetMessageHeaders";
 export const BACKFILL_MAX = 500;
 export const inboxScanPath = () => `/me/mailFolders/inbox/messages?$select=${BACKFILL_SELECT}&$orderby=receivedDateTime desc&$top=100`;
 

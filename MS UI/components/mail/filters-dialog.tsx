@@ -5,22 +5,80 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { errorMessage, useCategories, useFolderNames, useFolders, useInstallPresets, useRuleMutations, useRules, type InstallResult } from "@/lib/mail/hooks";
-import { PRESET_NAMES } from "@/lib/mail/labels";
+import { errorMessage, useCategories, useFolderNames, useFolders, useInstallPresets, useLabelDiagnostics, useRuleMutations, useRules, type InstallResult, type LabelDiagnostic } from "@/lib/mail/hooks";
+import { labelSentence, presetConditions, PRESET_NAMES } from "@/lib/mail/labels";
 import { ruleSentence } from "@/lib/mail/tabs";
 import { WELL_KNOWN_LABEL, type WellKnown } from "@/lib/mail/logic";
 import { PRESET_LABELS, type PresetLabel } from "@/lib/mail/presets";
 import { cn } from "@/lib/utils";
 
+// The preset's rule, phrased as Outlook does (long address lists are counted).
 function presetSummary(p: PresetLabel): string {
-  const c = p.conditions;
-  const parts: string[] = [];
-  if (c.fromAddresses?.length) parts.push(`from ${c.fromAddresses.length} addresses`);
-  if (c.senderContains?.length) parts.push(`sender contains ${c.senderContains.join(", ")}`);
-  if (c.subjectContains?.length) parts.push(`subject contains ${c.subjectContains.join(", ")}`);
-  if (c.meetingRequests) parts.push("calendar invitations and responses");
-  if (c.newsletters) parts.push("newsletters");
-  return parts.join("; ");
+  const sentence = labelSentence(p.name, presetConditions(p), p.skipInbox ? { folderName: p.folderName ?? p.name } : {});
+  const n = p.conditions.fromAddresses?.length ?? 0;
+  return n > 4 ? sentence.replace(/from [^,]+/, `from ${n} addresses`) : sentence;
+}
+
+const STRATEGY_HINT: Record<LabelDiagnostic["strategy"], string> = {
+  folder: "the label's folder (what the label view lists first)",
+  filter: "GET /me/messages?$filter=categories/any(...)",
+  search: "GET /me/messages?$search=\"category:...\"",
+  client: "inbox + archive + folder, filtered here",
+  "folder+enrichment": "what the label view shows",
+};
+
+// Fix 2: runs every label strategy for one label and shows what each gives,
+// so a real mailbox says whether Graph rejects the lambda or the category
+// is not stamped on the moved mail.
+export function LabelDiagnostics() {
+  const categories = useCategories();
+  const run = useLabelDiagnostics();
+  const [label, setLabel] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [rows, setRows] = useState<LabelDiagnostic[] | null>(null);
+  const names = (categories.data ?? []).map((c) => c.displayName);
+  const chosen = label || names[0] || "";
+  const go = async () => {
+    if (!chosen) return;
+    setBusy(true);
+    try {
+      setRows(await run(chosen));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <details className="rounded-xl border border-border p-3 text-sm">
+      <summary className="cursor-pointer font-medium">Diagnostics</summary>
+      <p className="mt-1 text-xs text-muted-foreground">Runs each label strategy for one label and shows the count or the error Graph returns.</p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <select aria-label="Diagnose label" value={chosen} onChange={(e) => setLabel(e.target.value)} className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm">
+          {names.map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
+        <Button size="sm" variant="outline" onClick={() => void go()} disabled={busy || !chosen}>
+          {busy ? "Running" : "Run diagnostics"}
+        </Button>
+      </div>
+      {rows && (
+        <table className="mt-2 w-full text-xs" aria-label="Label diagnostics">
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.strategy} className="border-t border-border">
+                <td className="py-1 pr-2 font-medium" title={STRATEGY_HINT[r.strategy]}>{r.strategy}</td>
+                <td className="py-1" aria-label={`Diagnostic ${r.strategy}`}>
+                  {r.error ? <span className="text-destructive">{r.error}</span> : `${r.count ?? 0} messages${r.folder ? ` in "${r.folder}"` : ""}`}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </details>
+  );
 }
 
 // "Set up my labels": installs PRESET_LABELS (category, folder, rules,
@@ -102,6 +160,7 @@ export function FiltersDialog({ open, onOpenChange, meAddress }: { open: boolean
           <DialogDescription>Inbox rules run in Outlook when mail arrives. Rules run in order; labels and sorting create their own rules here.</DialogDescription>
         </DialogHeader>
         <PresetInstaller meAddress={meAddress} compact />
+        <LabelDiagnostics />
         {rules.isPending && <p className="text-sm text-muted-foreground">Loading rules</p>}
         {rules.isError && <p className="text-sm text-destructive">Rules unavailable. {errorMessage(rules.error)}</p>}
         {rules.isSuccess && list.length === 0 && <p className="text-sm text-muted-foreground">No filters yet. Create a label with conditions to add one.</p>}

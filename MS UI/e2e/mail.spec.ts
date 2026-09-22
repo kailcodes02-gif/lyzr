@@ -44,26 +44,45 @@ test.describe("Outlook (Gmail layout) in demo mode", () => {
 });
 
 test.describe("Labels, filters and inbox tabs in demo mode", () => {
-  test("clicking label GSI opens the label view with only GSI rows", async ({ page }) => {
+  test("clicking label GSI opens the folder-backed label view: the folder's mail plus labelled mail elsewhere", async ({ page }) => {
     await openDemo(page, "/MS/outlook/");
     await page.getByRole("link", { name: "Label GSI" }).click();
     await expect(page).toHaveURL(/f=label(%3A|:)GSI/);
     await expect(page.getByRole("link", { name: "Label GSI" })).toHaveAttribute("aria-current", "page");
     await expect(page.getByLabel("Label view GSI")).toBeVisible();
+    // Fix 4: the header names the backing folder and its count (3 messages sit in the GSI folder).
+    await expect(page.getByLabel("Backing folder")).toContainText("Folder: GSI");
+    await expect(page.getByLabel("Label view GSI")).toContainText("3 in folder");
     const rows = page.getByRole("row");
     await expect(rows.first()).toBeVisible();
-    await expect.poll(() => rows.count()).toBeGreaterThan(2);
-    await expect(rows.filter({ hasNotText: "GSI" })).toHaveCount(0);
-    // Accenture partner agreement lives in a subfolder and still shows in the label view.
+    await expect.poll(() => rows.count()).toBeGreaterThan(4);
+    // Moved into the folder without the category (an Outlook rule that stamped nothing) still lists.
+    await expect(page.getByText(/GSI enablement: Wipro SE cohort dates/)).toBeVisible();
+    // Stamped mail in the folder and in the inbox both list.
+    await expect(page.getByText(/GSI partner day: booth and speaking slot/)).toBeVisible();
+    await expect(page.getByText(/TCS co-sell deck: legal review complete/)).toBeVisible();
+    // Accenture partner agreement lives in a subfolder and still shows (categories query accepted by the demo).
     await expect(page.getByText(/Accenture partner agreement countersigned/)).toBeVisible();
+    // Open folder lands on the plain folder view.
+    await page.getByRole("link", { name: "Open folder" }).click();
+    await expect(page).toHaveURL(/f=f-gsi/);
+    await expect(page.getByText(/GSI enablement: Wipro SE cohort dates/)).toBeVisible();
+    await expect(page.getByText(/TCS co-sell deck: legal review complete/)).toHaveCount(0);
   });
 
-  test("creating a label with a From domain backfills the Accenture thread", async ({ page }) => {
+  test("creating a label with a From domain (kept in the inbox) backfills the Accenture thread", async ({ page }) => {
     await openDemo(page, "/MS/outlook/");
     await page.getByRole("button", { name: "New label" }).click();
     await page.getByLabel("Label name").fill("Accenture");
-    await page.getByLabel("From addresses or domains").fill("@accenture.com");
-    await page.getByLabel("From addresses or domains").press("Enter");
+    await page.getByLabel("Condition 1 value").fill("@accenture.com");
+    await page.getByLabel("Condition 1 value").press("Enter");
+    // Outlook's phrasing, live.
+    await expect(page.getByLabel("Rule preview")).toContainText("Apply this rule after the message arrives: with '@accenture.com' in the sender's address, move it to the Accenture folder");
+    // "Only in this label" is on by default; this label stays in the inbox.
+    await expect(page.getByRole("switch", { name: "Only in this label" })).toHaveAttribute("aria-checked", "true");
+    await page.getByRole("switch", { name: "Only in this label" }).click();
+    await expect(page.getByLabel("Rule preview")).toContainText("assign it to the Accenture category");
+    await expect(page.getByLabel("Rule preview")).not.toContainText("move it to");
     await page.getByRole("button", { name: /^create$/i }).click();
     await expect(page.getByText(/labelled "Accenture"/)).toBeVisible();
     const row = page.getByRole("row").filter({ hasText: "Accenture x Lyzr: joint webinar" });
@@ -71,6 +90,54 @@ test.describe("Labels, filters and inbox tabs in demo mode", () => {
     await page.getByRole("link", { name: "Label Accenture" }).click();
     await expect(page).toHaveURL(/f=label(%3A|:)Accenture/);
     await expect(page.getByRole("row").first()).toBeVisible();
+  });
+
+  test("a label with two any-of conditions and an exception: Outlook sentence in Filters, matching mail only under the label", async ({ page }) => {
+    await openDemo(page, "/MS/outlook/");
+    await expect(page.getByText(/Design assets for Wipro landing page/)).toBeVisible();
+    await expect(page.getByText(/Partner portal access for two new Wipro SEs/)).toBeVisible();
+    await page.getByRole("button", { name: "New label" }).click();
+    await page.getByLabel("Label name").fill("Wipro");
+    await page.getByLabel("Condition 1 value").fill("@wipro.com");
+    await page.getByLabel("Condition 1 value").press("Enter");
+    await page.getByRole("button", { name: "Add condition" }).click();
+    await page.getByLabel("Condition 2 type").selectOption("subjectContains");
+    await page.getByLabel("Condition 2 value").fill("ai360");
+    await page.getByLabel("Condition 2 value").press("Enter");
+    await page.getByRole("button", { name: "Add exception" }).click();
+    await page.getByLabel("Exception 1 type").selectOption("subjectContains");
+    await page.getByLabel("Exception 1 value").fill("Partner portal");
+    await page.getByLabel("Exception 1 value").press("Enter");
+    await expect(page.getByLabel("Rule preview")).toContainText("with '@wipro.com' in the sender's address or with 'ai360' in the subject, except if with 'Partner portal' in the subject, move it to the Wipro folder and assign it to the Wipro category and stop processing more rules");
+    await page.getByRole("button", { name: /^create$/i }).click();
+    await expect(page.getByText(/moved out of the inbox/)).toBeVisible();
+    // The exception kept the portal-access mail in Primary; the design assets mail left.
+    await expect(page.getByText(/Design assets for Wipro landing page/)).toHaveCount(0);
+    await expect(page.getByText(/Partner portal access for two new Wipro SEs/)).toBeVisible();
+    await page.getByRole("link", { name: "Label Wipro" }).click();
+    await expect(page.getByText(/Design assets for Wipro landing page/)).toBeVisible();
+    await expect(page.getByText(/Wipro ai360: campaign launch checklist/)).toBeVisible();
+    await expect(page.getByText(/Partner portal access for two new Wipro SEs/)).toHaveCount(0);
+    // Two rules (any-of), each with the exception, phrased as Outlook does.
+    await page.getByRole("button", { name: "Filters" }).click();
+    await expect(page.getByText("Label: Wipro (sender keywords)")).toBeVisible();
+    await expect(page.getByText("Label: Wipro (subject)")).toBeVisible();
+    await expect(page.getByText("Apply this rule after the message arrives: with '@wipro.com' in the sender's address, except if with 'Partner portal' in the subject, move it to the Wipro folder and assign it to the Wipro category and stop processing more rules")).toBeVisible();
+    // Diagnostics: every strategy reports a count for the new label.
+    await page.getByText("Diagnostics", { exact: true }).click();
+    await page.getByLabel("Diagnose label").selectOption("Wipro");
+    await page.getByRole("button", { name: "Run diagnostics" }).click();
+    await expect(page.getByLabel("Diagnostic folder", { exact: true })).toContainText(/\d+ messages in "Wipro"/);
+    await expect(page.getByLabel("Diagnostic filter", { exact: true })).toContainText(/\d+ messages/);
+    await expect(page.getByLabel("Diagnostic folder+enrichment", { exact: true })).toContainText(/\d+ messages/);
+    await page.keyboard.press("Escape");
+    // Edit label round-trips both rows and the exception.
+    await page.getByRole("button", { name: "Options for label Wipro" }).click();
+    await page.getByRole("menuitem", { name: "Edit label" }).click();
+    await expect(page.getByLabel("Condition 1 type")).toHaveValue("fromContains");
+    await expect(page.getByLabel("Condition 2 type")).toHaveValue("subjectContains");
+    await expect(page.getByLabel("Exception 1 type")).toHaveValue("subjectContains");
+    await expect(page.getByRole("group", { name: "Exception 1" })).toContainText("Partner portal");
   });
 
   test("Social tab shows a LinkedIn row after inbox sorting is enabled", async ({ page }) => {
@@ -196,7 +263,7 @@ test.describe("Preset labels and skip-the-inbox in demo mode", () => {
     await expect(page.getByRole("link", { name: /^Calendar invites/ })).toBeVisible();
     // Filters dialog summarises the move.
     await page.getByRole("button", { name: "Filters" }).click();
-    await expect(page.getByText(/then label Leadership, move to Leadership, stop other rules/).first()).toBeVisible();
+    await expect(page.getByText(/move it to the Leadership folder and assign it to the Leadership category and stop processing more rules/).first()).toBeVisible();
   });
 
   test("a label with Skip the inbox creates a folder visible in the folder list and moves matching mail", async ({ page }) => {
@@ -204,9 +271,10 @@ test.describe("Preset labels and skip-the-inbox in demo mode", () => {
     await expect(page.getByText(/Infosys Topaz partner enablement/)).toBeVisible();
     await page.getByRole("button", { name: "New label" }).click();
     await page.getByLabel("Label name").fill("Infosys");
-    await page.getByLabel("From addresses or domains").fill("@infosys.com");
-    await page.getByLabel("From addresses or domains").press("Enter");
-    await page.getByRole("switch", { name: "Skip the inbox" }).click();
+    await page.getByLabel("Condition 1 value").fill("@infosys.com");
+    await page.getByLabel("Condition 1 value").press("Enter");
+    // "Only in this label" is the default for a new label.
+    await expect(page.getByRole("switch", { name: "Only in this label" })).toHaveAttribute("aria-checked", "true");
     await page.getByRole("button", { name: /^create$/i }).click();
     await expect(page.getByText(/moved out of the inbox/)).toBeVisible();
     await expect(page.getByRole("link", { name: /^Infosys/ })).toBeVisible();
@@ -216,8 +284,9 @@ test.describe("Preset labels and skip-the-inbox in demo mode", () => {
     // Edit reflects the switch and offers to move the mail back.
     await page.getByRole("button", { name: "Options for label Infosys" }).click();
     await page.getByRole("menuitem", { name: "Edit label" }).click();
-    await expect(page.getByRole("switch", { name: "Skip the inbox" })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByRole("switch", { name: "Only in this label" })).toHaveAttribute("aria-checked", "true");
     await expect(page.getByRole("button", { name: "Move this label's mail back to Inbox" })).toBeVisible();
+    await expect(page.getByRole("group", { name: "Condition 1" })).toContainText("@infosys.com");
   });
 });
 

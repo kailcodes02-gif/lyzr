@@ -197,13 +197,17 @@ export function useCalendarView(tz: string, view: ViewKind, date: string, weekSt
     queryFn: () => fetchView(instance, tz, range.start, range.end, ids, groupOf),
   });
   // Prefetch the neighbouring ranges so j/k feel instant: only once the
-  // current range is on screen, so the prefetches never compete with it.
+  // current range is on screen (so they never compete with it), and only
+  // ranges the cache has never seen (a refetch of the current range must not
+  // re-fetch both neighbours every time; stepping into one refreshes it if stale).
   const loaded = q.isSuccess && !q.isFetching;
   useEffect(() => {
     if (!ids.length || !loaded) return;
     for (const dir of [1, -1] as const) {
       const r = visibleRange(view, stepDate(view, date, dir), weekStartsOn);
-      void qc.prefetchQuery({ queryKey: viewKey(tz, r.start, r.end, ids), staleTime: 30_000, queryFn: () => fetchView(instance, tz, r.start, r.end, ids, groupOf) });
+      const key = viewKey(tz, r.start, r.end, ids);
+      if (qc.getQueryState(key)) continue;
+      void qc.prefetchQuery({ queryKey: key, staleTime: 30_000, queryFn: () => fetchView(instance, tz, r.start, r.end, ids, groupOf) });
     }
     // groupOf is keyed by groupKey to avoid re-running on every new object identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -232,6 +236,11 @@ export async function refreshServerData(qc: QueryClient) {
 const deltaWakers = new Set<() => void>();
 function wakeDelta() {
   for (const w of deltaWakers) w();
+}
+
+// Whether a calendarView fetch for exactly this (tz, range) is in flight, whatever its calendar set.
+export function viewFetching(qc: QueryClient, tz: string, range: { start: string; end: string }): boolean {
+  return qc.isFetching({ queryKey: ["calendarView", tz, range.start, range.end] }) > 0;
 }
 
 // Every event the cached views currently show, by id (delta items are compared against it).
@@ -266,8 +275,10 @@ export function useLiveRefresh(tz: string, range: { start: string; end: string }
     const tick = async (manual = false) => {
       if (stop) return;
       const known = links.current.get(rangeKey);
-      // A scheduled tick while a view request is bringing fresh data has nothing to add.
-      if (known && !manual && qc.isFetching({ queryKey: ["calendarView"] }) > 0) return;
+      // A scheduled tick while THIS range's own view request is bringing fresh
+      // data has nothing to add; fetches of other ranges (prefetches, a
+      // safety refetch of a neighbour) must not starve the delta round.
+      if (known && !manual && viewFetching(qc, tz, { start: range.start, end: range.end })) return;
       // Microsoft asked us to slow down: the pollers stay quiet for a while.
       if (!manual && calendarQueue.isPaused()) return;
       try {

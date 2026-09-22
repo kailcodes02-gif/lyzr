@@ -9,7 +9,7 @@ import { isMockMode } from "@/lib/mock";
 import { FOLDER_SELECT, guessWellKnownByName, wellKnownIdsFrom, wellKnownRequests, withWellKnownNames, type WellKnownMap } from "./folders";
 import { createPoller, isSentCopy, listKey, pageFingerprint, pollUntil, refetchTargets, Settler, type ActionContext, type ActionKind, type Poller } from "./freshness";
 import { backfillLabel, BACKFILL_MAX, BACKFILL_SELECT, CATEGORIES_PATH, errorMessage, installPresets, isReservedFolderName, moveLabelBackToInbox, safeFolderName, type BackfillResult, type BatchOutcome, type GraphApi } from "./install";
-import { encodeFilter, escapeOData, folderByNamePath, inboxTabPath, labelListPath, moveFolderOf, ownRules, PROMOTIONS_COLOR, PROMOTIONS_CONDITIONS, PROMOTIONS_LABEL, RULES_PATH, rulesOfLabel, SOCIAL_COLOR, SOCIAL_CONDITIONS, SOCIAL_LABEL, SORTING_RULES, withoutCategory, type LabelConditions } from "./labels";
+import { encodeFilter, escapeOData, folderByNamePath, hasCategory, inboxTabPath, labelListPath, moveFolderOf, ownRules, PROMOTIONS_COLOR, PROMOTIONS_CONDITIONS, PROMOTIONS_LABEL, RULES_PATH, rulesOfLabel, SOCIAL_COLOR, SOCIAL_CONDITIONS, SOCIAL_LABEL, SORTING_RULES, withoutCategory, type LabelConditions } from "./labels";
 import { folderListPath, isVirtualFolderKey, resolveFolderId, searchListPath } from "./logic";
 import { PRESET_LABELS } from "./presets";
 import type { Attachment, MailFolder, Message, MessageRule, OutlookCategory } from "./types";
@@ -65,6 +65,7 @@ export const keys = {
   attachments: (id: string) => ["mail", "attachments", id] as const,
   categories: ["mail", "categories"] as const,
   rules: ["mail", "rules"] as const,
+  labelFolder: (label: string, hint: string) => ["mail", "labelFolder", label.toLowerCase(), hint] as const,
 };
 
 // ---- Folders --------------------------------------------------------------
@@ -225,14 +226,24 @@ export function listPathFor(v: ListView): string {
 // the fallback flipped the strategy.
 export const listQueryKey = (v: ListView) => keys.list(v.folder, `${v.tab ?? ""}${v.focused ? "|focused" : ""}`, v.query);
 
-// The folder a skip-inbox label's rules move into: from the cached rules,
-// else the top-level folder named after the label (or its safe name, see
-// ensureFolder). Undefined for a label that stays in the inbox.
-export async function labelFolderId(get: <T>(path: string) => Promise<T>, label: string, cachedRules?: MessageRule[]): Promise<string | undefined> {
+// The folder a label's mail is filed in: from the cached rules' moveToFolder,
+// else the top-level folder named after the label (its preset folder name,
+// the name itself, or the safe name, see ensureFolder). `known` (the cached
+// folder list) answers by name without a request. Undefined for a label
+// that stays in the inbox.
+export function labelFolderNames(label: string): string[] {
+  const preset = PRESET_LABELS.find((p) => p.name.toLowerCase() === label.toLowerCase())?.folderName;
+  const names = isReservedFolderName(label) ? [safeFolderName(label)] : [label, `${label} mail`];
+  return [...new Set([...(preset ? [preset] : []), ...names])];
+}
+export async function labelFolderId(get: <T>(path: string) => Promise<T>, label: string, cachedRules?: MessageRule[], known: MailFolder[] = []): Promise<string | undefined> {
   const fromRules = cachedRules ? moveFolderOf(label, cachedRules) : undefined;
   if (fromRules) return fromRules;
-  const names = isReservedFolderName(label) ? [safeFolderName(label)] : [label, `${label} mail`];
-  for (const n of names) {
+  for (const n of labelFolderNames(label)) {
+    const cached = known.find((f) => f.displayName.toLowerCase() === n.toLowerCase());
+    if (cached) return cached.id;
+  }
+  for (const n of labelFolderNames(label)) {
     const page = await get<Page<MailFolder>>(folderByNamePath(n)).catch(() => undefined);
     const hit = page?.value.find((f) => f.displayName.toLowerCase() === n.toLowerCase());
     if (hit) return hit.id;
@@ -240,20 +251,133 @@ export async function labelFolderId(get: <T>(path: string) => Promise<T>, label:
   return undefined;
 }
 
-// Client-side label view, when Graph rejects both the categories/any filter
-// and the category: search: the union of the Inbox, the Archive and the
-// label's own folder (where its skip-inbox rules put the mail), filtered by
-// category and newest first.
+export const LABEL_FOLDER_SELECT = "id,displayName,parentFolderId,totalItemCount,unreadItemCount";
+export type LabelFolder = Pick<MailFolder, "id" | "displayName" | "parentFolderId" | "totalItemCount" | "unreadItemCount">;
+
+// The folder behind a label, with its counts; null when the label has none.
+export async function fetchLabelFolder(get: <T>(path: string) => Promise<T>, label: string, cachedRules?: MessageRule[], known: MailFolder[] = []): Promise<LabelFolder | null> {
+  const id = await labelFolderId(get, label, cachedRules, known);
+  if (!id) return null;
+  const cached = known.find((f) => f.id === id);
+  if (cached) return { id: cached.id, displayName: cached.displayName, parentFolderId: cached.parentFolderId, totalItemCount: cached.totalItemCount, unreadItemCount: cached.unreadItemCount };
+  return get<LabelFolder>(`/me/mailFolders/${id}?$select=${LABEL_FOLDER_SELECT}`).catch(() => null);
+}
+
+// Resolves (and caches for a minute) the folder behind a label. The rules'
+// moveToFolder is part of the key so a change in the rules re-resolves.
+export function labelFolderQuery(qc: QueryClient, get: <T>(path: string) => Promise<T>, label: string) {
+  const rules = qc.getQueryData<MessageRule[]>(keys.rules);
+  const hint = rules ? (moveFolderOf(label, rules) ?? "byname") : "norules";
+  return {
+    queryKey: keys.labelFolder(label, hint),
+    staleTime: 60_000,
+    queryFn: () => fetchLabelFolder(get, label, rules, qc.getQueryData<MailFolder[]>(keys.folders) ?? []),
+  };
+}
+export const resolveLabelFolder = (qc: QueryClient, get: <T>(path: string) => Promise<T>, label: string) => qc.fetchQuery<LabelFolder | null>(labelFolderQuery(qc, get, label));
+
+// The folder behind the open label view (Fix 4: "Folder: Calendar invites",
+// the header count). Counts come from the cached folder list when the
+// folder is top-level, so every poll round keeps them fresh.
+export function useLabelFolder(label?: string) {
+  const { instance } = useMsal();
+  const qc = useQueryClient();
+  const rules = useRules();
+  const folders = useFolders();
+  const q = useQuery({
+    ...calm,
+    ...labelFolderQuery(qc, (path) => graphFetch(instance, MAIL_SCOPES, path), label ?? ""),
+    enabled: !!label && (rules.isFetched || rules.isError) && (folders.isFetched || folders.isError),
+  });
+  const live = q.data ? folders.data?.find((f) => f.id === q.data!.id) : undefined;
+  return { ...q, folder: q.data ? { ...q.data, ...(live ? { displayName: live.displayName, totalItemCount: live.totalItemCount, unreadItemCount: live.unreadItemCount } : {}) } : q.data };
+}
+
+export const folderPagePath = (folderId: string, top = 50, select = LIST_SELECT) => `/me/mailFolders/${folderId}/messages?$select=${select}&$orderby=receivedDateTime desc&$top=${top}`;
+
+// Category matches outside the label's folder: the first pages of the Inbox
+// and the Archive filtered here (always works), plus, while Graph has not
+// rejected it, the categories/any query across the mailbox. Any failure is
+// skipped silently; a 400 on the lambda flips the strategy for the session.
+export async function labelEnrichment(get: <T>(path: string) => Promise<T>, label: string, excludeFolderId?: string, select = LIST_SELECT): Promise<Message[]> {
+  const scan = (folder: string) => get<ListPage>(folderPagePath(folder, 100, select)).then((p) => p.value).catch(() => [] as Message[]);
+  const lambda = listStrategy.label === "filter"
+    ? get<ListPage>(labelListPath(label, "filter")).then((p) => p.value).catch((e) => {
+        if (isFilterRejected(e)) setListStrategy({ label: "search" });
+        return [] as Message[];
+      })
+    : Promise.resolve([] as Message[]);
+  const [inbox, archive, everywhere] = await Promise.all([scan("inbox"), scan("archive"), lambda]);
+  return [...inbox, ...archive, ...everywhere].filter((m) => hasCategory(m, label) && (!excludeFolderId || m.parentFolderId !== excludeFolderId));
+}
+
+// One list, newest first, each message once (a moved message has a new id,
+// so an inbox copy and a folder copy never collide; conversations are
+// grouped by the list view).
+export function mergeLabelRows(primary: Message[], extras: Message[]): Message[] {
+  const seen = new Set<string>();
+  return [...primary, ...extras]
+    .filter((m) => (seen.has(m.id) ? false : (seen.add(m.id), true)))
+    .sort((a, b) => (b.receivedDateTime ?? "").localeCompare(a.receivedDateTime ?? ""));
+}
+
+// Client-side label view, when the label has no folder and Graph rejects
+// both the categories/any filter and the category: search: the union of the
+// Inbox, the Archive and the label's own folder, filtered by category and
+// newest first.
 export async function labelMessagesClientSide(getAll: (path: string) => Promise<Message[]>, label: string, folderId: string | undefined, select = LIST_SELECT): Promise<Message[]> {
   const path = (folder: string) => `/me/mailFolders/${folder}/messages?$select=${select}&$orderby=receivedDateTime desc&$top=100`;
   const own = folderId && !/^(inbox|archive)$/i.test(folderId) ? getAll(path(folderId)).catch(() => [] as Message[]) : Promise.resolve([] as Message[]);
   const [inbox, archive, moved] = await Promise.all([getAll(path("inbox")), getAll(path("archive")).catch(() => [] as Message[]), own]);
-  const want = label.toLowerCase();
-  const seen = new Set<string>();
-  return [...inbox, ...archive, ...moved]
-    .filter((m) => (m.categories ?? []).some((c) => c.toLowerCase() === want))
-    .filter((m) => (seen.has(m.id) ? false : (seen.add(m.id), true)))
-    .sort((a, b) => (b.receivedDateTime ?? "").localeCompare(a.receivedDateTime ?? ""));
+  return mergeLabelRows([], [...inbox, ...archive, ...moved].filter((m) => hasCategory(m, label)));
+}
+
+// Every message a label view can show, for "Remove label from all mail":
+// the folder's messages (paged, 500 max) plus the category matches from the
+// inbox, the archive and, when Graph accepts it, the whole mailbox.
+export async function collectLabelMessages(get: <T>(path: string) => Promise<T>, getAll: (path: string) => Promise<Message[]>, label: string, folderId: string | undefined, select = BACKFILL_SELECT): Promise<Message[]> {
+  const inFolder = folderId ? await getAll(folderPagePath(folderId, 100, select)).catch(() => [] as Message[]) : [];
+  const extras = await labelEnrichment(get, label, folderId, select);
+  const client = folderId ? [] : await labelMessagesClientSide(getAll, label, undefined, select).catch(() => [] as Message[]);
+  return mergeLabelRows(inFolder, [...extras, ...client]);
+}
+
+export type LabelStrategy = "folder" | "filter" | "search" | "client";
+const logged = new Set<string>();
+// Once per label per session: which path the label view runs on.
+export function logLabelStrategy(label: string, strategy: LabelStrategy, detail = "") {
+  const key = `${label.toLowerCase()}|${strategy}`;
+  if (logged.has(key)) return;
+  logged.add(key);
+  console.info(`[mail] label view "${label}": ${strategy}${detail ? ` (${detail})` : ""}`);
+}
+
+// Fix 2: the same label through every strategy, with counts or the error
+// each one gives, so a real mailbox tells whether Graph rejects the
+// categories lambda or the category is simply not stamped.
+export type LabelDiagnostic = { strategy: LabelStrategy | "folder+enrichment"; count?: number; folder?: string; error?: string };
+export async function runLabelDiagnostics(get: <T>(path: string) => Promise<T>, getAll: (path: string) => Promise<Message[]>, label: string, cachedRules?: MessageRule[], known: MailFolder[] = []): Promise<LabelDiagnostic[]> {
+  const out: LabelDiagnostic[] = [];
+  const attempt = async (strategy: LabelDiagnostic["strategy"], run: () => Promise<Partial<LabelDiagnostic>>) => {
+    try {
+      out.push({ strategy, ...(await run()) });
+    } catch (e) {
+      out.push({ strategy, error: errorMessage(e) });
+    }
+  };
+  const folder = await fetchLabelFolder(get, label, cachedRules, known).catch(() => null);
+  await attempt("folder", async () => (folder ? { count: folder.totalItemCount, folder: folder.displayName } : { error: "No folder backs this label" }));
+  await attempt("filter", async () => ({ count: (await get<ListPage>(labelListPath(label, "filter"))).value.length }));
+  await attempt("search", async () => ({ count: (await get<ListPage>(labelListPath(label, "search"))).value.length }));
+  await attempt("client", async () => ({ count: (await labelMessagesClientSide(getAll, label, folder?.id)).length }));
+  await attempt("folder+enrichment", async () => ({ count: (await collectLabelMessages(get, getAll, label, folder?.id)).length }));
+  return out;
+}
+
+export function useLabelDiagnostics() {
+  const { instance } = useMsal();
+  const qc = useQueryClient();
+  return (label: string) => runLabelDiagnostics((path) => graphFetch(instance, MAIL_SCOPES, path), (path) => graphGetAll<Message>(instance, MAIL_SCOPES, path, BACKFILL_MAX), label, qc.getQueryData<MessageRule[]>(keys.rules), qc.getQueryData<MailFolder[]>(keys.folders) ?? []);
 }
 
 export function useMessageList(folder: string, tab?: MailTab, query?: string, focused?: boolean) {
@@ -268,22 +392,38 @@ export function useMessageList(folder: string, tab?: MailTab, query?: string, fo
     staleTime: 30_000,
     queryFn: async ({ pageParam }): Promise<ListPage> => {
       const isFirst = pageParam === "";
+      const get = <T,>(path: string) => graphFetch<T>(instance, MAIL_SCOPES, path);
       // Client-side label view: inbox + archive + the label's folder, filtered here (single page).
       const clientLabel = async (name: string): Promise<ListPage> => {
-        const folderId = await labelFolderId((path) => graphFetch(instance, MAIL_SCOPES, path), name, qc.getQueryData<MessageRule[]>(keys.rules));
+        const folderId = await labelFolderId(get, name, qc.getQueryData<MessageRule[]>(keys.rules), qc.getQueryData<MailFolder[]>(keys.folders) ?? []);
+        logLabelStrategy(name, "client");
         return { value: await labelMessagesClientSide((path) => graphGetAll<Message>(instance, MAIL_SCOPES, path, 500), name, folderId) };
       };
+      if (label && isFirst) {
+        // Fix 1: a label with a folder lists the folder (always works) and
+        // merges the category matches from elsewhere into the first page.
+        const backing = await resolveLabelFolder(qc, get, label).catch(() => null);
+        if (backing) {
+          const [page, extras] = await Promise.all([get<ListPage>(folderPagePath(backing.id)), labelEnrichment(get, label, backing.id)]);
+          logLabelStrategy(label, "folder", `${backing.displayName}, +${extras.length} labelled elsewhere`);
+          return { ...page, value: mergeLabelRows(page.value, extras) };
+        }
+      }
       if (label && listStrategy.label === "client") return clientLabel(label);
       const url = isFirst ? listPathFor(view) : pageParam;
       try {
-        return await graphFetch<ListPage>(instance, MAIL_SCOPES, url);
+        const page = await graphFetch<ListPage>(instance, MAIL_SCOPES, url);
+        if (label && isFirst) logLabelStrategy(label, listStrategy.label);
+        return page;
       } catch (e) {
         if (!isFirst || !isFilterRejected(e)) throw e;
         if (label) {
           if (listStrategy.label === "filter") {
             setListStrategy({ label: "search" });
             try {
-              return await graphFetch<ListPage>(instance, MAIL_SCOPES, labelListPath(label, "search"));
+              const page = await graphFetch<ListPage>(instance, MAIL_SCOPES, labelListPath(label, "search"));
+              logLabelStrategy(label, "search", "categories/any rejected");
+              return page;
             } catch (e2) {
               if (!isFilterRejected(e2)) throw e2;
             }
@@ -992,17 +1132,16 @@ export function useMoveLabelBack() {
   };
 }
 
-// Removes a label from every message that carries it (label view pages, 500
-// max). When Graph rejects the category query the fallback scans the Inbox,
-// the Archive and the label's own folder, so skip-inbox mail is not missed.
+// Removes a label from every message that carries it: the label's folder
+// (paged, 500 max) plus the category matches in the Inbox, the Archive and,
+// when Graph accepts the query, the whole mailbox.
 export function useRemoveLabelFromAll() {
   const { instance } = useMsal();
   const qc = useQueryClient();
   return async (label: string): Promise<number> => {
-    const list = await graphGetAll<Message>(instance, MAIL_SCOPES, labelListPath(label, listStrategy.label === "search" ? "search" : "filter"), BACKFILL_MAX).catch(async () => {
-      const folderId = await labelFolderId((path) => graphFetch(instance, MAIL_SCOPES, path), label, qc.getQueryData<MessageRule[]>(keys.rules));
-      return labelMessagesClientSide((path) => graphGetAll<Message>(instance, MAIL_SCOPES, path, BACKFILL_MAX), label, folderId, BACKFILL_SELECT);
-    });
+    const get = <T,>(path: string) => graphFetch<T>(instance, MAIL_SCOPES, path);
+    const folderId = await labelFolderId(get, label, qc.getQueryData<MessageRule[]>(keys.rules), qc.getQueryData<MailFolder[]>(keys.folders) ?? []);
+    const list = (await collectLabelMessages(get, (path) => graphGetAll<Message>(instance, MAIL_SCOPES, path, BACKFILL_MAX), label, folderId)).filter((m) => hasCategory(m, label));
     if (!list.length) return 0;
     const res = await runBatch((reqs) => graphBatch(instance, MAIL_SCOPES, reqs), list.map((m) => ({ id: m.id, method: "PATCH", url: `/me/messages/${m.id}`, body: { categories: withoutCategory(m.categories, label) } })));
     void settleAction(qc, "label", { labels: [label], messageIds: list.map((m) => m.id), ...viewContext(qc) });
@@ -1243,18 +1382,28 @@ export function useMailPolling(view: ListView, enabled: boolean): { lastPolledAt
     };
     const pageTick = async (v: ListView) => {
       const key = listQueryKey(v);
+      const label = labelFromFolder(v.folder);
+      // A folder-backed label view polls its folder's first page and compares
+      // the folder rows only (the merged category matches are refetched when
+      // the folder changed or an action settles).
+      const backing = label ? qc.getQueryData<LabelFolder | null>(labelFolderQuery(qc, (p) => graphFetch(instance, MAIL_SCOPES, p), label).queryKey) : undefined;
       // The client-side label fallback has no cheap first page: plain refetch.
-      if (labelFromFolder(v.folder) && listStrategy.label === "client") {
+      if (label && !backing && listStrategy.label === "client") {
         await qc.invalidateQueries({ queryKey: key });
         return;
       }
-      const path = listPathFor(v);
+      const path = backing ? folderPagePath(backing.id) : listPathFor(v);
       if (!path) return;
       const page = await graphFetch<ListPage>(instance, MAIL_SCOPES, path);
       const cached = qc.getQueryData<InfiniteData<ListPage>>(key);
       // An action in flight owns the cache: its own settle refetches.
       if (!cached || qc.isMutating() > 0) return;
-      if (pageFingerprint(page.value) === pageFingerprint(cached.pages[0]?.value ?? [])) return;
+      const cachedRows = cached.pages[0]?.value ?? [];
+      if (backing) {
+        if (pageFingerprint(page.value) !== pageFingerprint(cachedRows.filter((m) => m.parentFolderId === backing.id))) await qc.invalidateQueries({ queryKey: key });
+        return;
+      }
+      if (pageFingerprint(page.value) === pageFingerprint(cachedRows)) return;
       if (cached.pages.length === 1) qc.setQueryData<InfiniteData<ListPage>>(key, { pages: [page], pageParams: [""] });
       else await qc.invalidateQueries({ queryKey: key });
     };
