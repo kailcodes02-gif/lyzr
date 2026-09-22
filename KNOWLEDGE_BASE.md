@@ -409,9 +409,12 @@ Three distinct auth layers (do not conflate them):
 
 | Surface | Mechanism | Restriction |
 |---|---|---|
-| Pipeline dashboard + write API | Google Identity Services, client-side; Bearer token verified server-side in `functions/api/*` against Google userinfo | `hd === 'lyzr.ai'` (or `@lyzr.ai` email), `email_verified`; plus one allowlisted gmail in code |
+| Pipeline dashboard + write API (`functions/api/rows.js`, `rows/[id].js`, `snapshot.js`) | Google Identity Services, client-side; Bearer token verified server-side against Google userinfo | `hd === 'lyzr.ai'` (or `@lyzr.ai` email), `email_verified`; plus one allowlisted gmail in code |
+| GSIEvents tracker + write API (`GSIEvents/index.html`, `functions/api/events.js`) | **Microsoft (MSAL.js v5, popup login)**, client-side; Bearer token verified server-side against Microsoft Graph `/me`. Reuses the MS UI project's Entra app registration ("Lyzr MS UI", client `cd569c2f-...`, tenant `4b1018eb-...`, single-tenant). Switched from Google 2026-09-22 | Tenant itself restricts sign-in to Lyzr; editor allowlist is `@lyzr.com` (the Microsoft UPN domain, not `@lyzr.ai`) |
 | Work OS `/control/` | username/password modal -> `sessionStorage.wos_auth` | `kailash` / `Kail@lyzr` (test-grade; lockout disabled for testing) |
 | GSI Tracker app | Supabase Auth (Google SSO) | domain-restricted to `@lyzr.ai`; roles admin/member |
+
+Note: `functions/api/*` is **not uniformly Google** any more — `events.js` verifies Microsoft tokens, the rest still verify Google tokens. Check the specific file before assuming which provider a given endpoint expects.
 
 Client-side OAuth on the pipeline is **bypassable** (static `data.json` is readable
 directly). Acceptable for non-confidential internal data; migrate to Cloudflare
@@ -453,6 +456,14 @@ Access if the data ever becomes confidential.
 
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
+
+### 2026-09-22, GSIEvents: swap Google sign-in for Microsoft (Outlook) via MSAL (GSIEvents)
+- **Frontend** (`GSIEvents/index.html`): replaced Google Identity Services (implicit token popup) with `@azure/msal-browser@5` (jsdelivr CDN) `loginPopup`, requesting only `User.Read` against the existing "Lyzr MS UI" Entra app registration (client `cd569c2f-9121-4a99-8ba0-691c6df81cbd`, tenant `4b1018eb-9480-4542-89d0-4e6233aba226`, single-tenant — same registration as the MS UI project, not a new one). Identity read from Microsoft Graph `/me` instead of Google's userinfo endpoint. Sign-in button/icon and copy updated to "Continue with Microsoft".
+- **Backend** (`functions/api/events.js`): `verifyGoogleToken` replaced with `verifyMicrosoftToken`, which validates the bearer token the same way (a 200 from Graph `/me` = a live token for the tenant-scoped app) instead of calling Google's userinfo endpoint.
+- **Correction (same day):** `EDITOR_EMAILS` was first left as `@lyzr.ai` with a local-part-only matching workaround (since the Google identities were `@lyzr.ai` but Microsoft UPNs are `@lyzr.com`); user asked to just change the list to `@lyzr.com` directly, so it was updated in both files and the matching reverted to a plain exact-match `EDITOR_EMAILS.includes(email)`.
+- **User-side manual step, done:** added `https://lyzr.kailash-gm.com/GSIEvents/` as a Redirect URI on the "Lyzr MS UI" app registration's SPA platform in Entra.
+- Scope: only `GSIEvents/index.html` + `functions/api/events.js` touched. `functions/api/rows.js`, `rows/[id].js`, `snapshot.js` (the separate Pipeline dashboard, section 6) are untouched and still verify Google tokens — see the corrected Authentication summary table (section 11).
+- Commit: `c32fce8` "GSIEvents: swap Google sign-in for Microsoft (Outlook) via MSAL".
 
 ### 2026-09-20 (late), MS UI: labels with rules, Primary/Social/Promotions, preset labels, colleague calendars, real-time refresh, two review passes (MS UI)
 - **Outlook**: click a label to see all its mail; "New label" dialog with conditions (senders, domains, subject words,
