@@ -13,14 +13,19 @@
 
 const EVENTS_PATH = 'GSIEvents/events.json';
 
-// View access = any verified @lyzr.ai account. Write access (add/edit/assign) =
+// View access = any Microsoft account in the Lyzr tenant (the "Lyzr MS UI"
+// Entra app registration is single-tenant, so Microsoft itself is the
+// account-domain gate; verifyMicrosoftToken below just confirms the bearer
+// token is a live token for that tenant). Write access (add/edit/assign) =
 // only these emails. Edit this list to add/remove editors.
+// @lyzr.com — the Lyzr Microsoft tenant's UPN domain (see MS UI/README.md),
+// not the @lyzr.ai Google Workspace domain the old sign-in used.
 const EDITOR_EMAILS = [
-  'subs@lyzr.ai',        // Kailash (admin)
-  'kailash.gm@lyzr.ai',  // Kailash (admin)
-  'ani@lyzr.ai',         // Anirudh
-  'ankita@lyzr.ai',      // Ankita
-  'anju@lyzr.ai',        // Anju
+  'subs@lyzr.com',        // Kailash (admin)
+  'kailash.gm@lyzr.com',  // Kailash (admin)
+  'ani@lyzr.com',         // Anirudh
+  'ankita@lyzr.com',      // Ankita
+  'anju@lyzr.com',        // Anju
   'kailcodes02@gmail.com', // dev fallback
 ];
 
@@ -50,18 +55,20 @@ function parseEmails(v) {
   return [...new Set(String(v).split(/[,;\s]+/).map((s) => s.trim().toLowerCase()).filter(Boolean))];
 }
 
-async function verifyGoogleToken(accessToken) {
+async function verifyMicrosoftToken(accessToken) {
   try {
-    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    // Graph itself validates the token's signature, expiry and audience (our
+    // single-tenant "Lyzr MS UI" app), so a 200 here already means "a live
+    // Lyzr Microsoft 365 account" — same trust model the Google version used
+    // by calling Google's userinfo endpoint.
+    const res = await fetch('https://graph.microsoft.com/v1.0/me?$select=displayName,mail,userPrincipalName', {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (!res.ok) return null;
     const p = await res.json();
-    const email = (p.email || '').toLowerCase();
-    const verified = p.email_verified === true || p.email_verified === 'true';
-    const isLyzr = verified && (email.endsWith('@lyzr.ai') || p.hd === 'lyzr.ai' || email === 'kailcodes02@gmail.com');
-    if (!isLyzr) return null;
-    return { name: p.name, email, isEditor: EDITOR_EMAILS.map((e) => e.toLowerCase()).includes(email) };
+    const email = (p.mail || p.userPrincipalName || '').toLowerCase();
+    if (!email) return null;
+    return { name: p.displayName || email, email, isEditor: EDITOR_EMAILS.includes(email) };
   } catch {
     return null;
   }
@@ -149,8 +156,8 @@ export async function onRequestGet({ env }) {
 export async function onRequestPost({ request, env }) {
   const auth = (request.headers.get('Authorization') || '');
   if (!auth.startsWith('Bearer ')) return json({ error: 'Missing Authorization' }, 401);
-  const user = await verifyGoogleToken(auth.slice(7));
-  if (!user) return json({ error: 'Not a verified @lyzr.ai account' }, 403);
+  const user = await verifyMicrosoftToken(auth.slice(7));
+  if (!user) return json({ error: 'Not a verified Lyzr Microsoft account' }, 403);
   if (!user.isEditor) return json({ error: 'Only designated editors can add events' }, 403);
   if (!envReady(env)) return json({ error: 'GitHub env vars not configured' }, 503);
 
@@ -212,8 +219,8 @@ export async function onRequestPut({ request, env }) {
   if (!id) return json({ error: 'Missing ?id=' }, 400);
   const auth = (request.headers.get('Authorization') || '');
   if (!auth.startsWith('Bearer ')) return json({ error: 'Missing Authorization' }, 401);
-  const user = await verifyGoogleToken(auth.slice(7));
-  if (!user) return json({ error: 'Not a verified @lyzr.ai account' }, 403);
+  const user = await verifyMicrosoftToken(auth.slice(7));
+  if (!user) return json({ error: 'Not a verified Lyzr Microsoft account' }, 403);
   if (!user.isEditor) return json({ error: 'Only designated editors can edit/assign events' }, 403);
   if (!envReady(env)) return json({ error: 'GitHub env vars not configured' }, 503);
 
