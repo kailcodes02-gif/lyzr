@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@azure/msal-react", () => ({ useMsal: () => ({ instance: {}, accounts: [] }) }));
 
-import { collectBatch, draftToGraph, isConsentError, recurrenceProblem } from "../hooks";
+import { collectBatch, draftToGraph, FOCUS_THROTTLE_MS, isConsentError, recurrenceProblem } from "../hooks";
+import { POLL_INTERVAL_MS, SAFETY_INTERVAL_MS } from "../freshness";
 import { defaultForm } from "../recurrence";
 import { ConsentRequiredError, GraphError } from "@/lib/graph";
 import type { EventDraft } from "../types";
@@ -72,5 +73,13 @@ describe("isConsentError", () => {
     expect(isConsentError(new GraphError(403, "ErrorAccessDenied", "denied", "/me/calendars"))).toBe(true);
     expect(isConsentError(new GraphError(500, "Internal", "boom", "/me/calendars"))).toBe(false);
     expect(isConsentError(new Error("network"))).toBe(false);
+  });
+});
+
+describe("polling cadence (mailbox concurrency budget)", () => {
+  it("refetches every calendar every 120 s, polls the delta every 15 s and throttles focus refetches to one per 10 s", () => {
+    expect(SAFETY_INTERVAL_MS).toBe(120_000);
+    expect(POLL_INTERVAL_MS).toBe(15_000);
+    expect(FOCUS_THROTTLE_MS).toBe(10_000);
   });
 });

@@ -1,11 +1,12 @@
 "use client";
 
 import { useMsal } from "@azure/msal-react";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData, type QueryClient, type QueryKey } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData, type QueryClient, type QueryKey } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { graphBatch, graphFetch, graphFetchBlob, graphGetAll, GraphError, isConsentRequiredError, type BatchRequest, type BatchResponse, type Page } from "@/lib/graph";
 import { isMockMode } from "@/lib/mock";
+import { FOLDER_SELECT, guessWellKnownByName, wellKnownIdsFrom, wellKnownRequests, withWellKnownNames, type WellKnownMap } from "./folders";
 import { createPoller, isSentCopy, listKey, pageFingerprint, pollUntil, refetchTargets, Settler, type ActionContext, type ActionKind, type Poller } from "./freshness";
 import { backfillLabel, BACKFILL_MAX, BACKFILL_SELECT, CATEGORIES_PATH, errorMessage, installPresets, isReservedFolderName, moveLabelBackToInbox, safeFolderName, type BackfillResult, type BatchOutcome, type GraphApi } from "./install";
 import { encodeFilter, escapeOData, folderByNamePath, inboxTabPath, labelListPath, moveFolderOf, ownRules, PROMOTIONS_COLOR, PROMOTIONS_CONDITIONS, PROMOTIONS_LABEL, RULES_PATH, rulesOfLabel, SOCIAL_COLOR, SOCIAL_CONDITIONS, SOCIAL_LABEL, SORTING_RULES, withoutCategory, type LabelConditions } from "./labels";
@@ -16,6 +17,7 @@ import { labelFromFolder, type MailTab } from "./url";
 
 export { errorMessage, type BackfillResult, type BatchOutcome, type GraphApi, type InstallResult } from "./install";
 export { POLL_INTERVAL_MS, SETTLE_DELAY_MS } from "./freshness";
+export { FOLDER_SELECT, WELL_KNOWN_ALIASES } from "./folders";
 
 export const MAIL_SCOPES = ["Mail.ReadWrite"];
 export const SEND_SCOPES = ["Mail.ReadWrite", "Mail.Send"];
@@ -34,8 +36,22 @@ export function isConsentError(e: unknown): boolean {
   return e instanceof Error && e.name === "ConsentRequiredError";
 }
 
+const isBadRequest = (e: unknown) => e instanceof GraphError && e.status === 400;
+
+// Every mail query: one retry (Graph is retried for throttling inside
+// graphFetch already), none on a 4xx (consent, a rejected query, a bad id:
+// retrying cannot help and the loop is what the user sees as "reloading").
+export const mailRetry = (n: number, e: unknown): boolean => !isConsentError(e) && !(e instanceof GraphError && e.status >= 400 && e.status < 500) && n < 1;
+export const mailRetryDelay = (n: number) => Math.min(1000 * 2 ** n, 4000);
+
+// Shared shape for read queries: background refetches keep the data on
+// screen (only the very first load has no data, hence the only skeleton);
+// the poller owns focus refreshes, so TanStack's own focus refetch is off.
+const calm = { retry: mailRetry, retryDelay: mailRetryDelay, refetchOnWindowFocus: false as const, placeholderData: keepPreviousData };
+
 export const keys = {
   folders: ["mail", "folders"] as const,
+  wellKnown: (accountId: string) => ["mail", "wellKnown", accountId] as const,
   children: (id: string) => ["mail", "childFolders", id] as const,
   list: (folder: string, tab?: string, query?: string) => ["mail", "list", folder, tab ?? "", query ?? ""] as const,
   thread: (conversationId: string) => ["mail", "thread", conversationId] as const,
@@ -47,26 +63,58 @@ export const keys = {
 
 // ---- Folders --------------------------------------------------------------
 
+export const FOLDERS_PATH = `/me/mailFolders?$select=${FOLDER_SELECT}&$top=100`;
+export const childFoldersPath = (parentId: string) => `/me/mailFolders/${parentId}/childFolders?$select=${FOLDER_SELECT}&$top=100`;
+
+// id -> well-known name for this account: one $batch of alias GETs, kept for
+// the session (the ids never change). A batch that fails outright resolves
+// to an empty map and the folder list falls back to the default names.
+export async function fetchWellKnownIds(batch: (reqs: BatchRequest[]) => Promise<BatchResponse[]>): Promise<WellKnownMap> {
+  return wellKnownIdsFrom(await batch(wellKnownRequests()));
+}
+
+function wellKnownQuery(instance: ReturnType<typeof useMsal>["instance"], accountId: string) {
+  return {
+    queryKey: keys.wellKnown(accountId),
+    staleTime: Infinity,
+    gcTime: 24 * 3600_000,
+    retry: mailRetry,
+    retryDelay: mailRetryDelay,
+    // A failed batch is not cached: fetchFolders falls back to the default
+    // names for that round and the next folder refetch asks again.
+    queryFn: () => fetchWellKnownIds((reqs) => graphBatch(instance, MAIL_SCOPES, reqs)),
+  };
+}
+
+// Resolves the well-known map (cached) and stamps it onto the list. With an
+// empty map (alias batch failed) the default display names are used instead.
+export async function fetchFolders(get: <T>(path: string) => Promise<T>, wellKnown: () => Promise<WellKnownMap>): Promise<MailFolder[]> {
+  const [map, page] = await Promise.all([wellKnown().catch(() => ({}) as WellKnownMap), get<Page<MailFolder>>(FOLDERS_PATH)]);
+  const known = Object.keys(map).length ? map : guessWellKnownByName(page.value);
+  return withWellKnownNames(page.value, known);
+}
+
 export function useFolders() {
-  const { instance } = useMsal();
+  const { instance, accounts } = useMsal();
+  const qc = useQueryClient();
+  const accountId = accounts[0]?.homeAccountId ?? "anon";
   return useQuery({
+    ...calm,
     queryKey: keys.folders,
     staleTime: 60_000,
-    retry: (n, e) => !isConsentError(e) && n < 2,
-    queryFn: () =>
-      graphFetch<Page<MailFolder>>(instance, MAIL_SCOPES, "/me/mailFolders?$select=id,displayName,wellKnownName,parentFolderId,childFolderCount,unreadItemCount,totalItemCount&$top=100").then((p) => p.value),
+    queryFn: () => fetchFolders((path) => graphFetch(instance, MAIL_SCOPES, path), () => qc.ensureQueryData(wellKnownQuery(instance, accountId))),
   });
 }
 
+// Child folders are never well-known; stamped null so they read as custom.
 export function useChildFolders(parentId: string | null) {
   const { instance } = useMsal();
   return useQuery({
+    ...calm,
     queryKey: keys.children(parentId ?? ""),
     enabled: !!parentId,
     staleTime: 60_000,
-    retry: (n, e) => !isConsentError(e) && n < 2,
-    queryFn: () =>
-      graphFetch<Page<MailFolder>>(instance, MAIL_SCOPES, `/me/mailFolders/${parentId}/childFolders?$select=id,displayName,wellKnownName,parentFolderId,childFolderCount,unreadItemCount,totalItemCount&$top=100`).then((p) => p.value),
+    queryFn: () => graphFetch<Page<MailFolder>>(instance, MAIL_SCOPES, childFoldersPath(parentId!)).then((p) => withWellKnownNames(p.value, {})),
   });
 }
 
@@ -122,11 +170,36 @@ export type ListPage = Page<Message>;
 // any-lambda for label views and not(any) for the Primary tab. The first 400
 // flips the strategy for the rest of the session so later pages are consistent.
 export type ListStrategy = { label: "filter" | "search" | "client"; primary: "server" | "client" };
-export const listStrategy: ListStrategy = { label: "filter", primary: "server" };
-const isBadRequest = (e: unknown) => e instanceof GraphError && e.status === 400;
-// Only a 400 that rejects the filter syntax itself may flip the session-wide
-// strategy; any other 400 (a bad id, a malformed name) stays local to its view.
-export const isFilterRejected = (e: unknown) => isBadRequest(e) && /InvalidUrlQueryFilter|InefficientFilter|UnsupportedQuery|ParseUri|InvalidUrlQuery/i.test((e as GraphError).code);
+const STRATEGY_KEY = "msui.mail.listStrategy";
+// A rejected query is remembered across reloads (per browser): the Primary
+// tab must never open on a query Graph already refused once.
+export function loadListStrategy(): ListStrategy {
+  const base: ListStrategy = { label: "filter", primary: "server" };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STRATEGY_KEY) ?? "{}") as Partial<ListStrategy>;
+    if (saved.label === "search" || saved.label === "client") base.label = saved.label;
+    if (saved.primary === "client") base.primary = saved.primary;
+  } catch {
+    // storage blocked or no window
+  }
+  return base;
+}
+export function saveListStrategy(s: ListStrategy) {
+  try {
+    localStorage.setItem(STRATEGY_KEY, JSON.stringify(s));
+  } catch {
+    // storage blocked
+  }
+}
+export const listStrategy: ListStrategy = typeof window === "undefined" ? { label: "filter", primary: "server" } : loadListStrategy();
+export function setListStrategy(patch: Partial<ListStrategy>) {
+  Object.assign(listStrategy, patch);
+  saveListStrategy(listStrategy);
+}
+// A 400 on a first page is about the query (the path is ours, never a user
+// id): the view falls back right away instead of going blank. The code
+// check is kept for logging and tests, but any 400 flips the strategy.
+export const isFilterRejected = (e: unknown) => isBadRequest(e);
 
 export type ListView = { folder: string; tab?: MailTab; query?: string; focused?: boolean };
 
@@ -183,10 +256,10 @@ export function useMessageList(folder: string, tab?: MailTab, query?: string, fo
   const view: ListView = { folder, tab, query, focused };
   const label = labelFromFolder(folder);
   return useInfiniteQuery({
+    ...calm,
     queryKey: listQueryKey(view),
     initialPageParam: "",
     staleTime: 30_000,
-    retry: (n, e) => !isConsentError(e) && !isBadRequest(e) && n < 2,
     queryFn: async ({ pageParam }): Promise<ListPage> => {
       const isFirst = pageParam === "";
       // Client-side label view: inbox + archive + the label's folder, filtered here (single page).
@@ -202,18 +275,21 @@ export function useMessageList(folder: string, tab?: MailTab, query?: string, fo
         if (!isFirst || !isFilterRejected(e)) throw e;
         if (label) {
           if (listStrategy.label === "filter") {
-            listStrategy.label = "search";
+            setListStrategy({ label: "search" });
             try {
               return await graphFetch<ListPage>(instance, MAIL_SCOPES, labelListPath(label, "search"));
             } catch (e2) {
               if (!isFilterRejected(e2)) throw e2;
             }
           }
-          listStrategy.label = "client";
+          setListStrategy({ label: "client" });
           return clientLabel(label);
         }
+        // The plain inbox page cannot be a bad query: a 400 on it is the
+        // not(any) filter, so Primary falls back to the plain list plus
+        // client-side exclusion (clientFilterFor) and remembers that.
         if (folder === "inbox" && listStrategy.primary === "server") {
-          listStrategy.primary = "client";
+          setListStrategy({ primary: "client" });
           return graphFetch<ListPage>(instance, MAIL_SCOPES, inboxTabPath(tab ?? "primary", focused, "client"));
         }
         throw e;
@@ -250,7 +326,9 @@ export function useThread(conversationId?: string) {
     queryKey: keys.thread(conversationId ?? ""),
     enabled: !!conversationId,
     staleTime: 30_000,
-    retry: (n, e) => !isConsentError(e) && n < 2,
+    retry: mailRetry,
+    retryDelay: mailRetryDelay,
+    refetchOnWindowFocus: false,
     queryFn: () =>
       graphFetch<Page<Message>>(instance, MAIL_SCOPES, `/me/messages?$select=${LIST_SELECT}&$filter=${encodeFilter(`conversationId eq '${escapeOData(conversationId!)}'`)}&$top=100`).then((p) => p.value),
   });
@@ -262,7 +340,9 @@ export function useMessage(id?: string) {
     queryKey: keys.message(id ?? ""),
     enabled: !!id,
     staleTime: 5 * 60_000,
-    retry: (n, e) => !isConsentError(e) && n < 2,
+    retry: mailRetry,
+    retryDelay: mailRetryDelay,
+    refetchOnWindowFocus: false,
     queryFn: () => graphFetch<Message>(instance, MAIL_SCOPES, `/me/messages/${id}?$select=${LIST_SELECT},body,uniqueBody,bccRecipients,replyTo,sentDateTime`),
   });
 }
@@ -300,7 +380,9 @@ export function useAttachments(id?: string, enabled = true) {
     queryKey: keys.attachments(id ?? ""),
     enabled: !!id && enabled,
     staleTime: 5 * 60_000,
-    retry: (n, e) => !isConsentError(e) && n < 2,
+    retry: mailRetry,
+    retryDelay: mailRetryDelay,
+    refetchOnWindowFocus: false,
     queryFn: () => fetchAttachments((path) => graphFetch(instance, MAIL_SCOPES, path), id!),
   });
 }
@@ -650,9 +732,9 @@ export function useMessageActions() {
 export function useCategories() {
   const { instance } = useMsal();
   return useQuery({
+    ...calm,
     queryKey: keys.categories,
     staleTime: 5 * 60_000,
-    retry: false,
     queryFn: () => graphFetch<Page<OutlookCategory>>(instance, SETTINGS_SCOPES, "/me/outlook/masterCategories").then((p) => p.value),
   });
 }
@@ -708,10 +790,10 @@ export function useCategoryMutations() {
 export function useRules(enabled = true) {
   const { instance } = useMsal();
   return useQuery({
+    ...calm,
     queryKey: keys.rules,
     enabled,
     staleTime: 60_000,
-    retry: false,
     queryFn: () => graphFetch<Page<MessageRule>>(instance, SETTINGS_SCOPES, RULES_PATH).then((p) => p.value),
   });
 }
@@ -768,10 +850,10 @@ export function useFolderNames(ids: string[]) {
   const { instance } = useMsal();
   const key = [...new Set(ids)].sort().join("|");
   return useQuery({
+    ...calm,
     queryKey: ["mail", "folderNames", key],
     enabled: ids.length > 0,
     staleTime: 5 * 60_000,
-    retry: false,
     queryFn: async () => {
       const out: Record<string, string> = {};
       await Promise.all(
@@ -865,34 +947,52 @@ export function useSortingEnabled() {
 
 // Creates the Social and Promotions categories and rules if missing (after
 // every existing rule, so "Label:" rules run first), then backfills the last
-// 500 inbox messages for both.
+// 500 inbox messages for both. Pure of React so it can run against the mock.
+export type SortingProgress = "labels" | "rules" | "social" | "promotions";
+export const SORTING_PROGRESS_LABEL: Record<SortingProgress, string> = {
+  labels: "Creating the Social and Promotions labels",
+  rules: "Creating the two inbox rules",
+  social: "Sorting social updates from the last 500 inbox messages",
+  promotions: "Sorting newsletters from the last 500 inbox messages",
+};
+export async function enableSorting(api: GraphApi, backfill: (label: string, c: LabelConditions) => Promise<BackfillResult>, onProgress: (p: SortingProgress) => void = () => {}): Promise<{ social: number; promos: number; failed: number }> {
+  onProgress("labels");
+  const cats = await api.get<Page<OutlookCategory>>(CATEGORIES_PATH).then((p) => p.value);
+  const have = new Set(cats.map((c) => c.displayName.toLowerCase()));
+  for (const [name, color] of [[SOCIAL_LABEL, SOCIAL_COLOR], [PROMOTIONS_LABEL, PROMOTIONS_COLOR]] as const) {
+    if (!have.has(name.toLowerCase())) await api.post(CATEGORIES_PATH, { displayName: name, color });
+  }
+  onProgress("rules");
+  const rules = await api.get<Page<MessageRule>>(RULES_PATH).then((p) => p.value);
+  let seq = rules.reduce((m, r) => Math.max(m, r.sequence ?? 0), 0);
+  const names = new Set(rules.map((r) => r.displayName));
+  for (const r of SORTING_RULES) {
+    if (names.has(r.displayName)) continue;
+    seq += 1;
+    await api.post(RULES_PATH, { ...r, sequence: seq });
+  }
+  onProgress("social");
+  const social = await backfill(SOCIAL_LABEL, SOCIAL_CONDITIONS);
+  onProgress("promotions");
+  const promos = await backfill(PROMOTIONS_LABEL, PROMOTIONS_CONDITIONS);
+  return { social: social.labelled, promos: promos.labelled, failed: social.failed + promos.failed };
+}
+
 export function useEnableSorting() {
-  const { instance } = useMsal();
+  const api = useGraphApi();
   const qc = useQueryClient();
   const backfill = useBackfill();
-  return useMutation({
-    mutationFn: async () => {
-      const cats = await graphFetch<Page<OutlookCategory>>(instance, SETTINGS_SCOPES, CATEGORIES_PATH).then((p) => p.value);
-      const have = new Set(cats.map((c) => c.displayName.toLowerCase()));
-      for (const [name, color] of [[SOCIAL_LABEL, SOCIAL_COLOR], [PROMOTIONS_LABEL, PROMOTIONS_COLOR]] as const) {
-        if (!have.has(name.toLowerCase())) await graphFetch(instance, SETTINGS_SCOPES, CATEGORIES_PATH, { method: "POST", body: { displayName: name, color } });
-      }
-      const rules = await graphFetch<Page<MessageRule>>(instance, SETTINGS_SCOPES, RULES_PATH).then((p) => p.value);
-      let seq = rules.reduce((m, r) => Math.max(m, r.sequence ?? 0), 0);
-      const names = new Set(rules.map((r) => r.displayName));
-      for (const r of SORTING_RULES) {
-        if (names.has(r.displayName)) continue;
-        seq += 1;
-        await graphFetch(instance, SETTINGS_SCOPES, RULES_PATH, { method: "POST", body: { ...r, sequence: seq } });
-      }
-      const social = (await backfill(SOCIAL_LABEL, SOCIAL_CONDITIONS)).labelled;
-      const promos = (await backfill(PROMOTIONS_LABEL, PROMOTIONS_CONDITIONS)).labelled;
-      return { social, promos };
-    },
-    onSuccess: ({ social, promos }) => toast.success(`Inbox sorting on. ${social} social and ${promos} promotional messages sorted.`),
+  const [progress, setProgress] = useState<SortingProgress | null>(null);
+  const mutation = useMutation({
+    mutationFn: () => enableSorting(api, (label, c) => backfill(label, c), setProgress),
+    onSuccess: ({ social, promos, failed }) => toast.success(`Inbox sorting on. ${social} social and ${promos} promotional ${social + promos === 1 ? "message" : "messages"} sorted${failed ? `, ${failed} could not be labelled` : ""}.`),
     onError: (e) => toast.error(`Could not turn on inbox sorting. ${errorMessage(e)}`),
-    onSettled: () => void settleAction(qc, "presets"),
+    onSettled: () => {
+      setProgress(null);
+      void settleAction(qc, "presets");
+    },
   });
+  return Object.assign(mutation, { progress: mutation.isPending ? progress : null, progressLabel: mutation.isPending && progress ? SORTING_PROGRESS_LABEL[progress] : null });
 }
 
 export function useCreateRule() {
@@ -1063,13 +1163,18 @@ export function useMailPolling(view: ListView, enabled: boolean): { lastPolledAt
       if (cached.pages.length === 1) qc.setQueryData<InfiniteData<ListPage>>(key, { pages: [page], pageParams: [""] });
       else await qc.invalidateQueries({ queryKey: key });
     };
+    // One round: the open view, then the folder counts. A query in error is
+    // left alone (its error stays on screen with a retry button) so a
+    // rejected request is not replayed every 15 s.
     const tick = async () => {
       const v = viewRef.current;
+      const listErrored = qc.getQueryState(listQueryKey(v))?.status === "error";
       try {
+        if (listErrored) return;
         if (v.folder === "inbox" && !v.query) await inboxTick();
         else await pageTick(v);
       } finally {
-        void qc.invalidateQueries({ queryKey: keys.folders });
+        if (qc.getQueryState(keys.folders)?.status !== "error") void qc.invalidateQueries({ queryKey: keys.folders });
         if (!stopped) setLastPolledAt(Date.now());
       }
     };

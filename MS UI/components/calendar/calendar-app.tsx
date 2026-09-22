@@ -5,11 +5,9 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMsal } from "@azure/msal-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { graphFetch } from "@/lib/graph";
 import {
-  CAL_SCOPES,
-  EVENT_FIELDS,
   draftToGraph,
+  fetchEventWithBody,
   isConsentError,
   recurrenceProblem,
   useCalendarColors,
@@ -17,6 +15,7 @@ import {
   useCalendarSettings,
   useCalendarView,
   useDelayedDelete,
+  useEventBody,
   useEventMutations,
   useHiddenCalendars,
   useLiveRefresh,
@@ -28,7 +27,7 @@ import { groupCalendars, isColleagueCalendar } from "@/lib/calendar/overlay";
 import { useCalendarGroups, useColleagues, useColleagueSchedules } from "@/lib/calendar/people";
 import { fromGraphRecurrence } from "@/lib/calendar/recurrence";
 import { addMinutesWall, nowWall, rangeTitle, roundToNext, stepDate, todayStr } from "@/lib/calendar/time";
-import type { EventDraft, GraphEvent, ViewKind } from "@/lib/calendar/types";
+import type { EventDraft, ViewKind } from "@/lib/calendar/types";
 import { parseUrlState, serializeUrlState } from "@/lib/calendar/url-state";
 import { AgendaView } from "./agenda";
 import type { Anchor } from "./anchored-popover";
@@ -119,17 +118,21 @@ export function CalendarApp() {
     return base.filter((c) => !hidden.has(c.id)).map((c) => c.id);
   }, [allCalendars, hidden, url.calendars]);
 
-  const events = useCalendarView(tz, view, date, settings.weekStartsOn, visibleIds, groupOf);
+  // Request order (see lib/calendar/queue.ts): the calendar list and groups
+  // first, then ONE batch for the range, and only once that is on screen the
+  // colleagues, the delta poller and the reminders.
+  const events = useCalendarView(tz, view, date, settings.weekStartsOn, visibleIds, groupOf, !groups.isLoading);
+  const viewLoaded = events.isSuccess;
   const colleagues = useColleagues();
-  const overlays = useColleagueSchedules(tz, events.range, colleagues.people);
+  const overlays = useColleagueSchedules(tz, events.range, colleagues.people, viewLoaded);
   const colleagueByCal = useMemo(() => new Map(colleagues.people.map((p) => [`people:${p.email.toLowerCase()}`, p])), [colleagues.people]);
   // Own calendars blue, everything else a distinct palette colour (kept per calendar / person).
   const otherCals = useMemo(() => otherCalendars.map((o) => o.cal), [otherCalendars]);
   const colleagueColors = useMemo(() => colleagues.people.map((p) => p.color), [colleagues.people]);
   const colorOf = useCalendarColors(myCalendars, otherCals, colleagueColors, dark);
-  const live = useLiveRefresh(tz, events.range, !calendars.isError && !events.isError && allCalendars.length > 0);
+  const live = useLiveRefresh(tz, events.range, viewLoaded && !calendars.isError && !events.isError && allCalendars.length > 0);
   const updatedAt = Math.max(events.dataUpdatedAt || 0, live.lastChecked ?? 0) || null;
-  useReminders(tz, !calendars.isError && allCalendars.length > 0, settings.desktopNotifications);
+  useReminders(tz, viewLoaded && !calendars.isError && allCalendars.length > 0, settings.desktopNotifications);
   const { create, patch, rsvp } = useEventMutations(tz);
   const delayedDelete = useDelayedDelete(tz);
 
@@ -175,6 +178,9 @@ export function CalendarApp() {
   // looked up in the unfiltered list so a ?q filter never hides a deep-linked event.
   const selected = useMemo(() => (url.eventId ? allWall.find((e) => e.id === url.eventId) ?? null : null), [url.eventId, allWall]);
   const detailAnchor: Anchor = anchor ?? (typeof window !== "undefined" ? { x: window.innerWidth / 2, y: 120 } : null);
+  // calendarView omits `body`; the popover fetches it (through the queue) for the user's own events.
+  const wantsBody = !!selected && !selected.body && !isColleagueCalendar(selected.calendarId) && !selected.id.startsWith("temp-");
+  const selectedBody = useEventBody(wantsBody ? selected!.id : null, tz, wantsBody);
   // A deep link to an event outside this view: drop `e` once the data has settled, and say so.
   const missingToastFor = useRef<string | null>(null);
   useEffect(() => {
@@ -282,10 +288,7 @@ export function CalendarApp() {
     const id = wantMaster ? base.seriesMasterId! : base.id;
     let full: WallEvent;
     try {
-      const fetched = await graphFetch<GraphEvent>(instance, CAL_SCOPES, `/me/events/${encodeURIComponent(id)}?$select=${EVENT_FIELDS},body`, {
-        immutableIds: false,
-        headers: { Prefer: `outlook.timezone="${tz}"` },
-      });
+      const fetched = await fetchEventWithBody(instance, id, tz);
       full = normalise({ ...fetched, calendarId: base.calendarId }, tz);
     } catch (e) {
       // Fall back to the cached copy; the description is then treated as unchanged unless edited.
@@ -465,6 +468,8 @@ export function CalendarApp() {
           onToggle={toggle}
           colleagues={colleagues.people}
           colleagueErrors={overlays.errors}
+          colleagueDetails={overlays.details}
+          onRetryCalendar={() => void events.refetch()}
           onAddColleague={colleagues.add}
           onRemoveColleague={colleagues.remove}
           onToggleColleague={colleagues.toggle}
@@ -478,7 +483,7 @@ export function CalendarApp() {
           failed={failed}
           colorOf={colorOf}
         />
-        <main className="relative min-w-0 flex-1">
+        <main className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           {calendars.isError && !isConsentError(calendars.error) && (
             <div className="m-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
               <p className="font-medium text-destructive">Could not load your calendars</p>
@@ -488,19 +493,22 @@ export function CalendarApp() {
               </button>
             </div>
           )}
+          {/* Failure bars sit in the flow above the grid (never over the day headers). */}
           {events.isError && !isConsentError(events.error) && (
-            <div className="absolute inset-x-4 top-2 z-10 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm">
-              <span className="font-medium text-destructive">Events failed to load. </span>
-              <span className="text-muted-foreground">{(events.error as Error).message} </span>
+            <div className="flex shrink-0 flex-wrap items-center gap-x-2 border-b border-destructive/30 bg-destructive/5 px-4 py-1.5 text-xs" role="alert" data-testid="events-failure">
+              <span className="font-medium text-destructive">Events failed to load.</span>
+              <span className="min-w-0 truncate text-muted-foreground">{(events.error as Error).message}</span>
               <button type="button" className="text-primary hover:underline" onClick={() => events.refetch()}>
                 Retry
               </button>
             </div>
           )}
           {!events.isError && events.failed.length > 0 && (
-            <div className="absolute inset-x-4 top-2 z-10 rounded-xl border border-warning/40 bg-warning/10 p-2 text-xs" data-testid="partial-failure">
-              <span className="font-medium">Could not load {failedNames.join(", ")}. </span>
-              <span className="text-muted-foreground">{events.failed[0].message} </span>
+            <div className="flex shrink-0 flex-wrap items-center gap-x-2 border-b border-amber-400/50 bg-amber-50 px-4 py-1.5 text-xs dark:bg-amber-950/40" role="status" data-testid="partial-failure">
+              <span className="font-medium">Could not load {failedNames.join(", ")}.</span>
+              <span className="min-w-0 truncate text-muted-foreground" title={events.failed[0].message}>
+                {events.failed[0].message}
+              </span>
               <button type="button" className="text-primary hover:underline" onClick={() => events.refetch()}>
                 Retry
               </button>
@@ -513,11 +521,13 @@ export function CalendarApp() {
           {calendars.isSuccess && allCalendars.length > 0 && visibleIds.length === 0 && (
             <div className="absolute inset-x-0 top-14 z-10 text-center text-xs text-muted-foreground">All calendars are hidden. Tick one on the left.</div>
           )}
-          {gridView ? (
-            <CalendarGrid view={gridView} date={date} timeZone={tz} weekStartsOn={settings.weekStartsOn} events={fcEvents} dark={dark} onSelect={openCreate} onEventClick={onEventClick} onEventChange={onMove} />
-          ) : (
-            <AgendaView events={wallEvents} calendars={allCalendars} range={events.range} today={today} onOpen={onEventClick} colorOf={colorOf} />
-          )}
+          <div className="relative min-h-0 min-w-0 flex-1">
+            {gridView ? (
+              <CalendarGrid view={gridView} date={date} timeZone={tz} weekStartsOn={settings.weekStartsOn} events={fcEvents} dark={dark} onSelect={openCreate} onEventClick={onEventClick} onEventChange={onMove} />
+            ) : (
+              <AgendaView events={wallEvents} calendars={allCalendars} range={events.range} today={today} onOpen={onEventClick} colorOf={colorOf} />
+            )}
+          </div>
         </main>
       </div>
 
@@ -550,6 +560,8 @@ export function CalendarApp() {
         onDelete={onDelete}
         onRsvp={onRsvp}
         tz={tz}
+        body={selectedBody.data}
+        bodyLoading={selectedBody.isFetching}
       />
       <SettingsDialog
         open={settingsOpen}

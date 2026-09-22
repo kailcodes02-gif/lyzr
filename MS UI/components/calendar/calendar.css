@@ -1,4 +1,13 @@
-/* FullCalendar v7 overrides for a Google Calendar look. Loaded by grid.tsx. */
+/* FullCalendar v7 overrides for a Google Calendar look. Loaded by grid.tsx.
+
+   Chips (see chipKind in grid.tsx):
+   - time-grid blocks show the event NAME only, wrapping over as many lines as
+     the block height allows; the axis shows the time. Text is the computed
+     contrast colour for the chip (dark on light, white on dark) and nothing is
+     drawn over it: tentative = a striped left edge, invite = outline, colleague
+     = dashed edge + a small initials badge in front of the title.
+   - month timed events are a colour dot + title; all-day chips a solid row.
+   - 15-minute events get one 11 px line. */
 .msui-cal {
   --fc-breezy-primary: var(--primary);
   --fc-breezy-background: var(--background);
@@ -21,77 +30,169 @@
   cursor: pointer;
   font-size: 12px;
   line-height: 1.25;
+  overflow: hidden;
+}
+/* Solid chips: the event colour itself (not the theme's tint), text in the contrast colour. */
+.msui-cal .msui-ev-solid {
+  background-color: var(--fc-event-color, #1a73e8) !important;
+  border-color: color-mix(in oklab, var(--fc-event-color, #1a73e8) 80%, var(--background)) !important;
+}
+.msui-cal .msui-ev-dot-event {
+  background-color: transparent !important;
+  border-color: transparent !important;
+}
+.msui-cal .msui-ev-dot-event:hover {
+  background-color: var(--accent) !important;
 }
 .msui-cal .msui-ev:hover {
-  filter: brightness(0.92);
+  filter: brightness(0.94);
 }
-.msui-cal .msui-ev-tentative {
-  background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0 4px, transparent 4px 8px) !important;
+/* Tentative: a striped 4 px left edge instead of stripes over the text. */
+.msui-cal .msui-ev-tentative .msui-ev-inner {
+  padding-left: 8px;
 }
+.msui-cal .msui-ev-tentative .msui-ev-inner::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-image: repeating-linear-gradient(135deg, var(--msui-ev-text, #fff) 0 3px, transparent 3px 6px);
+  opacity: 0.7;
+}
+/* Invite not yet answered: outline chip, tinted background, page text colour. */
 .msui-cal .msui-ev-invite {
   background-color: color-mix(in oklab, var(--fc-event-color, #1a73e8) 12%, var(--background)) !important;
   border-color: var(--fc-event-color, #1a73e8) !important;
-  color: var(--fc-event-color, #1a73e8) !important;
+}
+.msui-cal .msui-ev-invite .msui-ev-inner {
+  --msui-ev-text: var(--foreground);
 }
 .msui-cal .msui-ev-cancelled {
   text-decoration: line-through;
   opacity: 0.55;
 }
 .msui-cal .msui-ev-free {
-  opacity: 0.75;
+  opacity: 0.8;
 }
-/* Colleague overlays: their colour, translucent, read-only, initials badge. */
+/* Colleague overlays: their colour as a full block, dashed edge, read-only. */
 .msui-cal .msui-ev-colleague {
-  opacity: 0.72;
   cursor: default;
   border-style: dashed;
-  border-color: color-mix(in oklab, var(--fc-event-color, #7986cb) 70%, transparent);
+  border-color: color-mix(in oklab, var(--msui-ev-text, #fff) 45%, transparent) !important;
 }
 .msui-cal .msui-ev-colleague:hover {
-  opacity: 0.9;
   filter: none;
 }
-.msui-cal .msui-ev-oof {
-  background-image: repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.12) 0 3px, transparent 3px 8px) !important;
+/* Out of office: a dotted right edge, never over the text. */
+.msui-cal .msui-ev-oof .msui-ev-inner::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-image: repeating-linear-gradient(0deg, var(--msui-ev-text, #fff) 0 3px, transparent 3px 6px);
+  opacity: 0.6;
 }
+/* Initials badge: inverted colours (chip colour on text colour), inline in
+   front of the title so it can never cover it. */
 .msui-ev-avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: none;
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
+  margin-right: 3px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.85);
-  color: #202124;
+  background: var(--msui-ev-text, #fff);
+  color: var(--fc-event-color, #1a73e8);
   font-size: 8px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1;
-  align-self: center;
+  vertical-align: -2px;
 }
 .msui-cal a {
   text-decoration: none;
 }
 .msui-ev-inner {
+  position: relative;
   display: flex;
   gap: 4px;
   align-items: baseline;
+  min-width: 0;
   padding: 1px 4px;
   overflow: hidden;
-  white-space: nowrap;
+  color: var(--msui-ev-text, var(--foreground));
 }
 .msui-ev-inner .msui-ev-title {
   font-weight: 500;
+  min-width: 0;
+}
+.msui-ev-icon {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  margin-right: 3px;
+  vertical-align: -1px;
+  opacity: 0.85;
+}
+.msui-ev-icon-after {
+  margin-right: 0;
+  margin-left: 3px;
+}
+/* Single-line chips (month rows, all-day lane, month dot rows). */
+.msui-ev-inner.msui-ev-row,
+.msui-ev-inner.msui-ev-dot {
+  white-space: nowrap;
+}
+.msui-ev-row .msui-ev-title,
+.msui-ev-inner.msui-ev-dot .msui-ev-title {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.msui-ev-inner .msui-ev-time {
-  opacity: 0.85;
-  flex-shrink: 0;
+.msui-ev-inner.msui-ev-dot {
+  --msui-ev-text: var(--foreground);
+  align-items: center;
+  padding: 1px 2px;
 }
-.msui-ev-block .msui-ev-inner {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0;
+.msui-ev-inner.msui-ev-dot .msui-ev-avatar {
+  background: var(--fc-event-color, #1a73e8);
+  color: #fff;
+}
+.msui-ev-bullet {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+/* Time-grid blocks: title only, wrapping to fill the block, clipped at the
+   bottom. Never an ellipsis: a narrow chip still shows the whole title word
+   by word (overflow-wrap breaks a word only when it is wider than the chip). */
+.msui-ev-inner.msui-ev-block {
+  display: block;
+  height: 100%;
+  padding: 2px 4px;
   white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  hyphens: auto;
+}
+.msui-ev-inner.msui-ev-block .msui-ev-title {
+  display: inline;
+  overflow: visible;
+  text-overflow: clip;
+}
+/* Short (<= 15 min) blocks: one 11 px line, clipped. */
+.msui-cal .msui-ev-short .msui-ev-inner.msui-ev-block {
+  padding: 0 4px;
+  font-size: 11px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.msui-cal .msui-ev-short .msui-ev-inner.msui-ev-block .msui-ev-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: clip;
 }

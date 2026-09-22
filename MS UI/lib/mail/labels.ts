@@ -246,7 +246,8 @@ export function labelListPath(name: string, strategy: "filter" | "search" = "fil
   return `/me/messages?$select=${LIST_SELECT}&$filter=${encodeFilter(sortableFilter(categoryFilter(name)))}&$orderby=receivedDateTime desc&$top=50`;
 }
 
-export const folderByNamePath = (name: string) => `/me/mailFolders?$select=id,displayName,wellKnownName,parentFolderId&$filter=${encodeFilter(`displayName eq '${escapeOData(name)}'`)}`;
+// v1.0 mailFolder has no wellKnownName: never put it in a $select.
+export const folderByNamePath = (name: string) => `/me/mailFolders?$select=id,displayName,parentFolderId&$filter=${encodeFilter(`displayName eq '${escapeOData(name)}'`)}`;
 
 // ---- Presets -----------------------------------------------------------------
 

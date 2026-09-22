@@ -457,6 +457,19 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-09-22, MS UI: first real-mailbox fix-up after admin consent (MS UI)
+- Admin consent granted; user tested live. Two root causes found from screenshots: (1) every mailFolders
+  request selected `wellKnownName`, which exists only in Graph beta; v1.0 returned 400, causing "Folders
+  unavailable", empty Social/Promotions, failed preset install and constant reload loops. Fixed by resolving
+  well-known folders via `/me/mailFolders/{inbox|sentitems|...}?$select=id` in one $batch and stamping the name
+  client-side; mock now rejects the beta field so it cannot regress. (2) Calendar hit "MailboxConcurrency limit"
+  (Outlook allows 4 concurrent requests per mailbox); all calendar Graph calls now go through a FIFO queue
+  (max 3 in flight, 429 backoff 2/4/8 s, 30 s pause), one $batch per range, lazy reminders/time zones.
+- UX asked by the user: background refreshes keep content on screen (keepPreviousData), no skeleton after first
+  load, 4xx not retried; calendar blocks show the event name only (no time), wrapped and contrast-safe, month
+  chips dot+title, detail popover fetches the full body, colleague rows say whether titles or busy/free only.
+- 316 unit tests, 32 browser tests green; deployed.
+
 ### 2026-09-22 (later), GSIEvents: two MSAL v5 sign-in fixes found on the live page (GSIEvents)
 - **`uninitialized_public_client_application`** (commit `fcb6ead`): msal-browser v3+ requires `await new PublicClientApplication(...).initialize()` before `loginPopup()`. `getMsal()` in `GSIEvents/index.html` now returns a cached promise that constructs then initializes once.
 - **Popup stuck on `/GSIEvents/#code=...`, and `block_nested_popups` when clicked inside it** (commit `eae680a`): MSAL v5 no longer reads the popup's URL from the opener window; the page the popup lands on must call `broadcastResponseToMainFrame()` from the redirect bridge (same mechanism as `MS UI/app/redirect/page.tsx`). Fix: load the official UMD bridge build (`lib/redirect-bridge/msal-redirect-bridge.min.js`, global `msalRedirectBridge`) and, when `index.html` opens inside the popup with `code=`/`error=` in the URL, broadcast the response and skip booting the app (`window.__msalBridging`). A stale response in a top-level tab is stripped from the URL. Redirect URI unchanged (`https://lyzr.kailash-gm.com/GSIEvents/`), so no new Entra entry. Constraint: this page must keep being served without a `Cross-Origin-Opener-Policy` header (root `_headers` sets none for it).

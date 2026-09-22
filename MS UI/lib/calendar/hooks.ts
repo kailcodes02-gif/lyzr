@@ -26,6 +26,7 @@ import { toGraphRecurrence } from "./recurrence";
 import { instantToWall, stepDate, visibleRange, wallToInstant, wallToOffsetIso } from "./time";
 import type { CalEvent, EventDraft, GraphCalendar, GraphEvent, Reminder, ScheduleInformation, ViewKind } from "./types";
 import { dedupe } from "./events";
+import { calendarQueue, queued } from "./queue";
 
 export const CAL_SCOPES = ["Calendars.ReadWrite"];
 
@@ -81,7 +82,7 @@ export function useCalendars() {
     staleTime: 5 * 60_000,
     retry: (n, e) => !isConsentError(e) && n < 2,
     queryFn: async () => {
-      const list = await graphGetAll<GraphCalendar>(instance, CAL_SCOPES, `/me/calendars?${CAL_SELECT}`, 100, { immutableIds: false });
+      const list = await queued(() => graphGetAll<GraphCalendar>(instance, CAL_SCOPES, `/me/calendars?${CAL_SELECT}`, 100, { immutableIds: false }));
       return list.sort((a, b) => Number(!!b.isDefaultCalendar) - Number(!!a.isDefaultCalendar) || a.name.localeCompare(b.name));
     },
   });
@@ -143,15 +144,20 @@ async function fetchView(instance: ReturnType<typeof useMsal>["instance"], tz: s
   const startIso = encodeURIComponent(wallToOffsetIso(start, tz));
   const endIso = encodeURIComponent(wallToOffsetIso(end, tz));
   const prefer = { Prefer: `outlook.timezone="${tz}"` };
-  const responses = await graphBatch(
-    instance,
-    CAL_SCOPES,
-    ids.map((id) => ({
-      id,
-      method: "GET",
-      url: `${calendarPath(id, groupOf)}/calendarView?startDateTime=${startIso}&endDateTime=${endIso}&${EVENT_SELECT}&$top=1000`,
-      headers: prefer,
-    })),
+  // Every calendar of the range in ONE $batch (Graph runs the sub-requests
+  // itself; the outer request counts once against the mailbox concurrency),
+  // through the queue so nothing else runs alongside beyond the limit.
+  const responses = await queued(() =>
+    graphBatch(
+      instance,
+      CAL_SCOPES,
+      ids.map((id) => ({
+        id,
+        method: "GET",
+        url: `${calendarPath(id, groupOf)}/calendarView?startDateTime=${startIso}&endDateTime=${endIso}&${EVENT_SELECT}&$top=1000`,
+        headers: prefer,
+      })),
+    ),
   );
   const { pages, failed } = collectBatch(responses);
   // Only a consent problem on every calendar is a real failure; a single shared
@@ -165,7 +171,7 @@ async function fetchView(instance: ReturnType<typeof useMsal>["instance"], tz: s
   for (const { id, page } of pages) {
     let items = page.value ?? [];
     if (page["@odata.nextLink"]) {
-      const rest = await graphGetAll<GraphEvent>(instance, CAL_SCOPES, page["@odata.nextLink"], 5000, { headers: prefer, immutableIds: false });
+      const rest = await queued(() => graphGetAll<GraphEvent>(instance, CAL_SCOPES, page["@odata.nextLink"]!, 5000, { headers: prefer, immutableIds: false }));
       items = [...items, ...rest];
     }
     out.push(...items.map((e) => ({ ...e, calendarId: id })));
@@ -174,7 +180,9 @@ async function fetchView(instance: ReturnType<typeof useMsal>["instance"], tz: s
   return { events: merged.events, failed, pending: merged.pending };
 }
 
-export function useCalendarView(tz: string, view: ViewKind, date: string, weekStartsOn: 0 | 1 | 6, calendarIds: string[], groupOf?: GroupOf) {
+// `ready` false holds the request (e.g. until the calendar groups are known,
+// so the range is fetched once with every calendar instead of twice).
+export function useCalendarView(tz: string, view: ViewKind, date: string, weekStartsOn: 0 | 1 | 6, calendarIds: string[], groupOf?: GroupOf, ready = true) {
   const { instance } = useMsal();
   const qc = useQueryClient();
   const range = useMemo(() => visibleRange(view, date, weekStartsOn), [view, date, weekStartsOn]);
@@ -182,22 +190,24 @@ export function useCalendarView(tz: string, view: ViewKind, date: string, weekSt
   const groupKey = ids.map((id) => groupOf?.[id] ?? "").join("|");
   const q = useQuery({
     queryKey: viewKey(tz, range.start, range.end, ids),
-    enabled: ids.length > 0,
+    enabled: ids.length > 0 && ready,
     staleTime: 30_000,
     placeholderData: (prev) => prev,
     retry: (n, e) => !isConsentError(e) && n < 2,
     queryFn: () => fetchView(instance, tz, range.start, range.end, ids, groupOf),
   });
-  // Prefetch the neighbouring ranges so j/k feel instant.
+  // Prefetch the neighbouring ranges so j/k feel instant: only once the
+  // current range is on screen, so the prefetches never compete with it.
+  const loaded = q.isSuccess && !q.isFetching;
   useEffect(() => {
-    if (!ids.length || q.isError) return;
+    if (!ids.length || !loaded) return;
     for (const dir of [1, -1] as const) {
       const r = visibleRange(view, stepDate(view, date, dir), weekStartsOn);
       void qc.prefetchQuery({ queryKey: viewKey(tz, r.start, r.end, ids), staleTime: 30_000, queryFn: () => fetchView(instance, tz, r.start, r.end, ids, groupOf) });
     }
     // groupOf is keyed by groupKey to avoid re-running on every new object identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qc, instance, tz, view, date, weekStartsOn, ids, q.isError, groupKey]);
+  }, [qc, instance, tz, view, date, weekStartsOn, ids, loaded, groupKey]);
   return { ...q, data: q.data?.events, failed: q.data?.failed ?? [], range };
 }
 
@@ -205,8 +215,11 @@ export function useCalendarView(tz: string, view: ViewKind, date: string, weekSt
 //
 // The freshness contract: while the tab is visible the default calendar's
 // delta is polled every 15 s (jittered) and every calendar is refetched every
-// 60 s as a safety net; coming back to the tab or focusing the window refetches
-// at once; a manual refresh does everything. Hidden tabs do not poll.
+// 120 s as a safety net; coming back to the tab or focusing the window refetches
+// at once (at most once per 10 s); a manual refresh does everything. Hidden
+// tabs do not poll, and nothing polls for 30 s after Microsoft throttled us.
+// The delta round only starts once the initial calendarView has loaded
+// (`enabled` carries that), so it never competes with the first paint.
 
 // Refetch every active server query the grid draws from. Resolves once the
 // data is back in the cache.
@@ -230,6 +243,9 @@ function cachedById(qc: QueryClient): Map<string, GraphEvent> {
 
 export type LiveRefresh = { lastChecked: number | null; refresh: () => void; refreshing: boolean };
 
+// A focus / visibility refetch at most this often.
+export const FOCUS_THROTTLE_MS = 10_000;
+
 // The initial delta round of a range only yields a token (it returns what the
 // calendarView batch already fetched), so it runs after a short delay and never
 // invalidates; the deltaLink is kept per (tz, range) so stepping back is one
@@ -252,15 +268,17 @@ export function useLiveRefresh(tz: string, range: { start: string; end: string }
       const known = links.current.get(rangeKey);
       // A scheduled tick while a view request is bringing fresh data has nothing to add.
       if (known && !manual && qc.isFetching({ queryKey: ["calendarView"] }) > 0) return;
+      // Microsoft asked us to slow down: the pollers stay quiet for a while.
+      if (!manual && calendarQueue.isPaused()) return;
       try {
         let url = known ?? `/me/calendarView/delta?startDateTime=${encodeURIComponent(wallToOffsetIso(range.start, tz))}&endDateTime=${encodeURIComponent(wallToOffsetIso(range.end, tz))}`;
         const init = known ? { immutableIds: false, headers: { Prefer: "odata.maxpagesize=50" } } : { immutableIds: false };
-        let page = await graphFetch<Page<GraphEvent>>(instance, CAL_SCOPES, url, init);
+        let page = await queued(() => graphFetch<Page<GraphEvent>>(instance, CAL_SCOPES, url, init));
         const items: GraphEvent[] = known ? [...(page.value ?? [])] : [];
         while (page["@odata.nextLink"]) {
           if (stop) return;
           url = page["@odata.nextLink"];
-          page = await graphFetch<Page<GraphEvent>>(instance, CAL_SCOPES, url, init);
+          page = await queued(() => graphFetch<Page<GraphEvent>>(instance, CAL_SCOPES, url, init));
           if (known) items.push(...(page.value ?? []));
         }
         if (page["@odata.deltaLink"]) links.current.set(rangeKey, page["@odata.deltaLink"]);
@@ -275,15 +293,16 @@ export function useLiveRefresh(tz: string, range: { start: string; end: string }
     const poller = createVisiblePoller({ intervalMs: POLL_INTERVAL_MS, run: () => tick(), isVisible, initialDelayMs: links.current.has(rangeKey) ? 0 : 1_000 });
     poller.start();
     // Safety net: a full refetch of every calendar (the delta only covers the
-    // default one) once a minute while visible.
-    const safety = createVisiblePoller({ intervalMs: SAFETY_INTERVAL_MS, run: () => refreshServerData(qc), isVisible });
+    // default one) every two minutes while visible, skipped while throttled.
+    const safety = createVisiblePoller({ intervalMs: SAFETY_INTERVAL_MS, run: () => (calendarQueue.isPaused() ? undefined : refreshServerData(qc)), isVisible });
     safety.start();
     // Back to the tab / window: refetch now (throttled so focus flapping does not hammer Graph).
     let lastWake = 0;
     const wake = (force = false) => {
       if (stop || !isVisible()) return;
       const now = Date.now();
-      if (!force && now - lastWake < 3_000) return;
+      if (!force && now - lastWake < FOCUS_THROTTLE_MS) return;
+      if (!force && calendarQueue.isPaused()) return;
       lastWake = now;
       void refreshServerData(qc).then(() => {
         if (!stop) void tick(true);
@@ -352,16 +371,47 @@ export function useCalendarColors(mine: GraphCalendar[], other: GraphCalendar[],
 
 // ---------- time zones ----------
 
-export function useSupportedTimeZones() {
+// Fetched once, lazily (the settings dialog asks for it when it opens).
+export function useSupportedTimeZones(enabled = true) {
   const { instance } = useMsal();
   return useQuery({
     queryKey: ["supportedTimeZones"],
+    enabled,
     staleTime: Infinity,
     gcTime: Infinity,
     retry: false,
     queryFn: async () => {
-      const list = await graphGetAll<{ alias: string; displayName: string }>(instance, ["User.Read"], "/me/outlook/supportedTimeZones(TimeZoneStandard=microsoft.graph.timeZoneStandard'Iana')", 1000, { immutableIds: false });
+      const list = await queued(() => graphGetAll<{ alias: string; displayName: string }>(instance, ["User.Read"], "/me/outlook/supportedTimeZones(TimeZoneStandard=microsoft.graph.timeZoneStandard'Iana')", 1000, { immutableIds: false }));
       return list.map((z) => z.alias).sort();
+    },
+  });
+}
+
+// ---------- single event with body ----------
+
+// The full event (with its HTML/text body). calendarView deliberately omits
+// `body`, so the detail popover and the edit dialog fetch it here, through the queue.
+export function fetchEventWithBody(instance: ReturnType<typeof useMsal>["instance"], id: string, tz: string): Promise<GraphEvent> {
+  return queued(() =>
+    graphFetch<GraphEvent>(instance, CAL_SCOPES, `/me/events/${encodeURIComponent(id)}?$select=${EVENT_FIELDS},body`, {
+      immutableIds: false,
+      headers: { Prefer: `outlook.timezone="${tz}"` },
+    }),
+  );
+}
+
+// Body of the selected event for the detail popover; only asked for when the
+// cached copy has none (e.g. a colleague's overlay never has one).
+export function useEventBody(id: string | null, tz: string, enabled: boolean) {
+  const { instance } = useMsal();
+  return useQuery({
+    queryKey: ["eventBody", id, tz],
+    enabled: enabled && !!id,
+    staleTime: 5 * 60_000,
+    retry: false,
+    queryFn: async () => {
+      const ev = await fetchEventWithBody(instance, id!, tz);
+      return ev.body ?? { contentType: "text" as const, content: ev.bodyPreview ?? "" };
     },
   });
 }
@@ -468,7 +518,7 @@ export function useEventMutations(tz: string) {
   const create = useMutation({
     mutationFn: async (input: { calendarId: string; body: Partial<GraphEvent> }) => {
       const body = { ...input.body, transactionId: crypto.randomUUID() };
-      return graphFetch<GraphEvent>(instance, CAL_SCOPES, `/me/calendars/${encodeURIComponent(input.calendarId)}/events`, { method: "POST", body, immutableIds: false, headers: { Prefer: `outlook.timezone="${tz}"` } });
+      return queued(() => graphFetch<GraphEvent>(instance, CAL_SCOPES, `/me/calendars/${encodeURIComponent(input.calendarId)}/events`, { method: "POST", body, immutableIds: false, headers: { Prefer: `outlook.timezone="${tz}"` } }));
     },
     onMutate: (input) => {
       const snap = snapshot(qc);
@@ -516,7 +566,7 @@ export function useEventMutations(tz: string) {
 
   const patch = useMutation({
     mutationFn: (input: { id: string; body: Partial<GraphEvent>; quiet?: boolean }) =>
-      graphFetch<GraphEvent>(instance, CAL_SCOPES, `/me/events/${encodeURIComponent(input.id)}`, { method: "PATCH", body: input.body, immutableIds: false, headers: { Prefer: `outlook.timezone="${tz}"` } }),
+      queued(() => graphFetch<GraphEvent>(instance, CAL_SCOPES, `/me/events/${encodeURIComponent(input.id)}`, { method: "PATCH", body: input.body, immutableIds: false, headers: { Prefer: `outlook.timezone="${tz}"` } })),
     onMutate: (input) => {
       const snap = snapshot(qc);
       updateViews(qc, (l) => l.map((ev) => (ev.id === input.id ? { ...ev, ...(input.body as Partial<CalEvent>) } : ev)));
@@ -537,17 +587,17 @@ export function useEventMutations(tz: string) {
   const remove = useMutation({
     mutationFn: async (input: { id: string; mode: "delete" | "cancel" | "declineDelete"; comment?: string; snap?: Snapshot }) => {
       const path = `/me/events/${encodeURIComponent(input.id)}`;
-      if (input.mode === "cancel") return graphFetch(instance, CAL_SCOPES, `${path}/cancel`, { method: "POST", body: { comment: input.comment ?? "" }, immutableIds: false });
+      if (input.mode === "cancel") return queued(() => graphFetch(instance, CAL_SCOPES, `${path}/cancel`, { method: "POST", body: { comment: input.comment ?? "" }, immutableIds: false }));
       if (input.mode === "declineDelete") {
-        await graphFetch(instance, CAL_SCOPES, `${path}/decline`, { method: "POST", body: { sendResponse: true, comment: input.comment ?? "" }, immutableIds: false });
+        await queued(() => graphFetch(instance, CAL_SCOPES, `${path}/decline`, { method: "POST", body: { sendResponse: true, comment: input.comment ?? "" }, immutableIds: false }));
         try {
-          await graphFetch(instance, CAL_SCOPES, path, { method: "DELETE", immutableIds: false });
+          await queued(() => graphFetch(instance, CAL_SCOPES, path, { method: "DELETE", immutableIds: false }));
         } catch (e) {
           if (!(e instanceof GraphError && e.status === 404)) throw e; // decline may already have removed it
         }
         return;
       }
-      return graphFetch(instance, CAL_SCOPES, path, { method: "DELETE", immutableIds: false });
+      return queued(() => graphFetch(instance, CAL_SCOPES, path, { method: "DELETE", immutableIds: false }));
     },
     onMutate: (input) => {
       // A delayed delete already removed the event from the cache; its snapshot
@@ -574,7 +624,7 @@ export function useEventMutations(tz: string) {
 
   const rsvp = useMutation({
     mutationFn: (input: { id: string; action: "accept" | "tentativelyAccept" | "decline"; comment?: string }) =>
-      graphFetch(instance, CAL_SCOPES, `/me/events/${encodeURIComponent(input.id)}/${input.action}`, { method: "POST", body: { sendResponse: true, comment: input.comment ?? "" }, immutableIds: false }),
+      queued(() => graphFetch(instance, CAL_SCOPES, `/me/events/${encodeURIComponent(input.id)}/${input.action}`, { method: "POST", body: { sendResponse: true, comment: input.comment ?? "" }, immutableIds: false })),
     onMutate: (input) => {
       const snap = snapshot(qc);
       const response = input.action === "accept" ? "accepted" : input.action === "decline" ? "declined" : "tentativelyAccepted";
@@ -649,12 +699,14 @@ export function useSchedule(emails: string[], day: string, tz: string, enabled: 
     staleTime: 60_000,
     retry: false,
     queryFn: async () => {
-      const res = await graphFetch<{ value: ScheduleInformation[] }>(instance, ["Calendars.ReadWrite"], "/me/calendar/getSchedule", {
-        method: "POST",
-        immutableIds: false,
-        headers: { Prefer: `outlook.timezone="${tz}"` },
-        body: { schedules: list, startTime: { dateTime: `${day}T08:00:00`, timeZone: tz }, endTime: { dateTime: `${day}T20:00:00`, timeZone: tz }, availabilityViewInterval: 30 },
-      });
+      const res = await queued(() =>
+        graphFetch<{ value: ScheduleInformation[] }>(instance, ["Calendars.ReadWrite"], "/me/calendar/getSchedule", {
+          method: "POST",
+          immutableIds: false,
+          headers: { Prefer: `outlook.timezone="${tz}"` },
+          body: { schedules: list, startTime: { dateTime: `${day}T08:00:00`, timeZone: tz }, endTime: { dateTime: `${day}T20:00:00`, timeZone: tz }, availabilityViewInterval: 30 },
+        }),
+      );
       return res.value;
     },
   });
@@ -663,7 +715,9 @@ export function useSchedule(emails: string[], day: string, tz: string, enabled: 
 // ---------- reminders ----------
 
 // Browser notifications are only sent when the user switched them on in
-// settings (which is where the permission is requested, from a click).
+// settings (which is where the permission is requested, from a click). The
+// caller enables this only once the calendar view has loaded, so the first
+// reminderView call never competes with the view fetch.
 export function useReminders(tz: string, enabled: boolean, desktop = false) {
   const { instance } = useMsal();
   const fired = useRef<Set<string>>(new Set());
@@ -675,7 +729,7 @@ export function useReminders(tz: string, enabled: boolean, desktop = false) {
         const now = new Date();
         const end = new Date(now.getTime() + 6 * 60_000 + 60 * 60_000);
         const path = `/me/reminderView(startDateTime='${encodeURIComponent(now.toISOString())}',endDateTime='${encodeURIComponent(end.toISOString())}')`;
-        const res = await graphFetch<{ value: Reminder[] }>(instance, CAL_SCOPES, path, { immutableIds: false });
+        const res = await queued(() => graphFetch<{ value: Reminder[] }>(instance, CAL_SCOPES, path, { immutableIds: false }));
         for (const t of timers) clearTimeout(t);
         timers = [];
         for (const r of res.value ?? []) {

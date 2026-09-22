@@ -3,13 +3,14 @@
 // Colleague overlays (localStorage list + getSchedule / shared calendarView
 // fetches) and calendar groups. See overlay.ts for the pure mapping.
 import { useMsal } from "@azure/msal-react";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import { graphFetch, graphGetAll, GraphError, probeScopes } from "@/lib/graph";
 import { isMockMode } from "@/lib/mock";
 import { isPaletteColor, loadAssignedColors } from "./colors";
 import { CAL_SCOPES, EVENT_SELECT, isConsentError } from "./hooks";
 import { nextColor, scheduleItemsToEvents, sharedEventsToEvents, splitRange, type CalendarGroup, type Colleague, type ScheduleItem } from "./overlay";
+import { queued } from "./queue";
 import { wallToOffsetIso } from "./time";
 import type { CalEvent, GraphCalendar, GraphEvent } from "./types";
 
@@ -84,11 +85,11 @@ export function useCalendarGroups() {
     staleTime: 5 * 60_000,
     retry: false,
     queryFn: async (): Promise<CalendarGroup[]> => {
-      const groups = await graphGetAll<GraphCalendarGroup>(instance, CAL_SCOPES, "/me/calendarGroups", 50, { immutableIds: false });
+      const groups = await queued(() => graphGetAll<GraphCalendarGroup>(instance, CAL_SCOPES, "/me/calendarGroups", 50, { immutableIds: false }));
       const out: CalendarGroup[] = [];
       for (const g of groups) {
         try {
-          const cals = await graphGetAll<GraphCalendar>(instance, CAL_SCOPES, `/me/calendarGroups/${encodeURIComponent(g.id)}/calendars?${GROUP_CAL_SELECT}`, 100, { immutableIds: false });
+          const cals = await queued(() => graphGetAll<GraphCalendar>(instance, CAL_SCOPES, `/me/calendarGroups/${encodeURIComponent(g.id)}/calendars?${GROUP_CAL_SELECT}`, 100, { immutableIds: false }));
           out.push({ id: g.id, name: g.name, calendars: cals });
         } catch {
           out.push({ id: g.id, name: g.name, calendars: [] });
@@ -101,7 +102,19 @@ export function useCalendarGroups() {
 
 // ---------- colleague schedules ----------
 
-export type ColleagueResult = { person: Colleague; events: CalEvent[]; error?: string; source: "shared" | "schedule" | "none" };
+// How much of the person's calendar Microsoft lets us see:
+//   full     their calendar is shared with us with details (titles, locations, guests)
+//   limited  getSchedule items carry subject/location (the org's "limited details" sharing level)
+//   busy     free/busy blocks only
+//   none     nothing came back (an error, or not fetched yet)
+export type ColleagueDetail = "full" | "limited" | "busy" | "none";
+export type ColleagueResult = { person: Colleague; events: CalEvent[]; error?: string; source: "shared" | "schedule" | "none"; detail: ColleagueDetail };
+
+export function detailLevel(source: ColleagueResult["source"], items?: ScheduleItem[]): ColleagueDetail {
+  if (source === "shared") return "full";
+  if (source === "none") return "none";
+  return (items ?? []).some((it) => !!it.subject && !it.isPrivate) ? "limited" : "busy";
+}
 
 type Instance = ReturnType<typeof useMsal>["instance"];
 
@@ -137,12 +150,14 @@ async function fetchShared(instance: Instance, person: Colleague, tz: string, st
   const startIso = encodeURIComponent(wallToOffsetIso(start, tz));
   const endIso = encodeURIComponent(wallToOffsetIso(end, tz));
   try {
-    const list = await graphGetAll<GraphEvent>(
-      instance,
-      SHARED_SCOPES,
-      `/users/${encodeURIComponent(person.email)}/calendarView?startDateTime=${startIso}&endDateTime=${endIso}&${EVENT_SELECT}&$top=500`,
-      2000,
-      { immutableIds: false, headers: { Prefer: `outlook.timezone="${tz}"` } },
+    const list = await queued(() =>
+      graphGetAll<GraphEvent>(
+        instance,
+        SHARED_SCOPES,
+        `/users/${encodeURIComponent(person.email)}/calendarView?startDateTime=${startIso}&endDateTime=${endIso}&${EVENT_SELECT}&$top=500`,
+        2000,
+        { immutableIds: false, headers: { Prefer: `outlook.timezone="${tz}"` } },
+      ),
     );
     return sharedEventsToEvents(person, list.map((e) => ({ ...e, calendarId: "" })));
   } catch (e) {
@@ -153,18 +168,30 @@ async function fetchShared(instance: Instance, person: Colleague, tz: string, st
   }
 }
 
+// Shared calendars for every person, one after the other through the queue
+// (a person the session already knows cannot be read costs nothing).
+async function fetchAllShared(instance: Instance, people: Colleague[], tz: string, start: string, end: string): Promise<Map<string, CalEvent[] | null>> {
+  const out = new Map<string, CalEvent[] | null>();
+  for (const p of people) out.set(p.email.toLowerCase(), await fetchShared(instance, p, tz, start, end));
+  return out;
+}
+
+// Free/busy (or limited details) for everybody in ONE getSchedule call (20
+// people per call is Graph's cap), per 62-day chunk of the range.
 async function fetchSchedules(instance: Instance, people: Colleague[], tz: string, start: string, end: string): Promise<Map<string, { items: ScheduleItem[]; error?: string }>> {
   const out = new Map<string, { items: ScheduleItem[]; error?: string }>();
   const chunks = splitRange(`${start}T00:00:00`, `${end}T00:00:00`);
   for (let i = 0; i < people.length; i += 20) {
     const batch = people.slice(i, i + 20);
     for (const r of chunks) {
-      const res = await graphFetch<{ value: { scheduleId: string; scheduleItems?: ScheduleItem[]; error?: { message?: string; responseCode?: string } }[] }>(instance, CAL_SCOPES, "/me/calendar/getSchedule", {
-        method: "POST",
-        immutableIds: false,
-        headers: { Prefer: `outlook.timezone="${tz}"` },
-        body: { schedules: batch.map((p) => p.email), startTime: { dateTime: r.start, timeZone: tz }, endTime: { dateTime: r.end, timeZone: tz }, availabilityViewInterval: 30 },
-      });
+      const res = await queued(() =>
+        graphFetch<{ value: { scheduleId: string; scheduleItems?: ScheduleItem[]; error?: { message?: string; responseCode?: string } }[] }>(instance, CAL_SCOPES, "/me/calendar/getSchedule", {
+          method: "POST",
+          immutableIds: false,
+          headers: { Prefer: `outlook.timezone="${tz}"` },
+          body: { schedules: batch.map((p) => p.email), startTime: { dateTime: r.start, timeZone: tz }, endTime: { dateTime: r.end, timeZone: tz }, availabilityViewInterval: 30 },
+        }),
+      );
       for (const s of res.value ?? []) {
         const key = s.scheduleId.toLowerCase();
         const cur = out.get(key) ?? { items: [] };
@@ -177,47 +204,44 @@ async function fetchSchedules(instance: Instance, people: Colleague[], tz: strin
   return out;
 }
 
-// Stable combine so useQueries hands back a structurally-shared result (no new array per render).
-function combineShared(results: { data?: CalEvent[] | null; isFetching: boolean }[]) {
-  return { data: results.map((r) => r.data ?? null), fetching: results.some((r) => r.isFetching) };
-}
-
-export function useColleagueSchedules(tz: string, range: { start: string; end: string }, people: Colleague[]) {
+// `ready` false (the user's own view still loading) holds both requests so the
+// colleagues never compete with the first paint.
+export function useColleagueSchedules(tz: string, range: { start: string; end: string }, people: Colleague[], ready = true) {
   const { instance } = useMsal();
   const enabled = useMemo(() => people.filter((p) => !p.hidden), [people]);
   const emails = enabled.map((p) => p.email.toLowerCase()).sort().join(",");
   // One query for all free/busy (getSchedule takes up to 20 people per call)...
   const schedule = useQuery({
     queryKey: ["colleagueSchedule", tz, range.start, range.end, emails],
-    enabled: enabled.length > 0,
+    enabled: ready && enabled.length > 0,
     staleTime: 60_000,
     retry: false,
     placeholderData: (prev) => prev,
     queryFn: () => fetchSchedules(instance, enabled, tz, range.start, range.end),
   });
-  // ...and one per person for a shared calendar with full details (preferred when it works).
-  const shared = useQueries({
-    queries: enabled.map((p) => ({
-      queryKey: ["colleagueShared", tz, range.start, range.end, p.email.toLowerCase()],
-      staleTime: 60_000,
-      retry: false,
-      queryFn: () => fetchShared(instance, p, tz, range.start, range.end),
-    })),
-    combine: combineShared,
+  // ...and one for the shared calendars with full details (preferred when they work).
+  const shared = useQuery({
+    queryKey: ["colleagueShared", tz, range.start, range.end, emails],
+    enabled: ready && enabled.length > 0,
+    staleTime: 60_000,
+    retry: false,
+    placeholderData: (prev) => prev,
+    queryFn: () => fetchAllShared(instance, enabled, tz, range.start, range.end),
   });
   const results = useMemo<ColleagueResult[]>(
     () =>
-      enabled.map((p, i) => {
+      enabled.map((p) => {
         const key = p.email.toLowerCase();
-        const sh = shared.data[i];
-        if (sh && sh.length) return { person: p, events: sh, source: "shared" };
+        const sh = shared.data?.get(key);
+        if (sh && sh.length) return { person: p, events: sh, source: "shared", detail: "full" };
         const s = schedule.data?.get(key);
-        if (!s) return { person: p, events: [], source: "none", error: schedule.error ? (schedule.error as Error).message : undefined };
-        return { person: p, events: scheduleItemsToEvents(p, s.items, tz), source: "schedule", error: s.error };
+        if (!s) return { person: p, events: [], source: "none", detail: "none", error: schedule.error ? (schedule.error as Error).message : undefined };
+        return { person: p, events: scheduleItemsToEvents(p, s.items, tz), source: "schedule", detail: detailLevel("schedule", s.items), error: s.error };
       }),
     [enabled, shared.data, schedule.data, schedule.error, tz],
   );
   const events = useMemo(() => results.flatMap((r) => r.events), [results]);
   const errors = useMemo(() => new Map(results.filter((r) => r.error).map((r) => [r.person.email.toLowerCase(), r.error!])), [results]);
-  return { events, errors, results, isFetching: schedule.isFetching || shared.fetching };
+  const details = useMemo(() => new Map(results.map((r) => [r.person.email.toLowerCase(), r.detail])), [results]);
+  return { events, errors, details, results, isFetching: schedule.isFetching || shared.isFetching };
 }

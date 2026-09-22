@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupByDay, matchesSearch, normalise, toFcEvent, type WallEvent } from "../events";
+import { chipKind, chipOuterClass, durationMinutes, groupByDay, isShortEvent, matchesSearch, normalise, toFcEvent, toFcPersonEvent, type WallEvent } from "../events";
 import type { CalEvent } from "../types";
 
 const base: CalEvent = {
@@ -49,5 +49,35 @@ describe("event helpers", () => {
     } finally {
       process.env.TZ = prevTz;
     }
+  });
+});
+
+describe("event chips", () => {
+  it("marks 15-minute events short so the grid gives them one 11 px line", () => {
+    const w = normalise(base, "UTC");
+    expect(durationMinutes(w)).toBe(60);
+    expect(isShortEvent(w)).toBe(false);
+    const short = normalise({ ...base, end: { dateTime: "2026-09-21T04:45:00.0000000", timeZone: "UTC" } }, "UTC");
+    expect(isShortEvent(short)).toBe(true);
+    expect(toFcEvent(short, undefined).className.split(" ")).toContain("msui-ev-short");
+    expect(toFcEvent(w, undefined).className.split(" ")).not.toContain("msui-ev-short");
+    expect(toFcPersonEvent(short, { name: "Siva", email: "siva@lyzr.ai", color: "#0b8043" }).className.split(" ")).toContain("msui-ev-short");
+    // All-day events are never "short".
+    expect(isShortEvent({ ...short, isAllDay: true })).toBe(false);
+  });
+  it("draws time-grid blocks as title-only blocks, month timed events as dot + title, all-day as rows", () => {
+    expect(chipKind("timeGridWeek", false)).toBe("block");
+    expect(chipKind("timeGridDay", true)).toBe("row");
+    expect(chipKind("dayGridMonth", false)).toBe("dot");
+    expect(chipKind("dayGridMonth", true)).toBe("row");
+    expect(chipOuterClass("dot")).toBe("msui-ev-dot-event");
+    expect(chipOuterClass("block")).toBe("msui-ev-solid");
+    expect(chipOuterClass("row")).toBe("msui-ev-solid");
+  });
+  it("computes a readable text colour for every chip colour", () => {
+    const w = normalise(base, "UTC");
+    expect(toFcEvent(w, undefined, "#f6bf26").contrastColor).toBe("#202124"); // banana: dark text
+    expect(toFcEvent(w, undefined, "#d50000").contrastColor).toBe("#ffffff"); // tomato: white text
+    expect(toFcPersonEvent(w, { name: "Siva", email: "siva@lyzr.ai", color: "#a8c7fa" }).contrastColor).toBe("#202124");
   });
 });

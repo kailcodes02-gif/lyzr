@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { errorMessage, useCategories, useCategoryMutations, useChildFolders, useFolderMutations, useFolders, useInstallPresets, useRemoveLabelFromAll } from "@/lib/mail/hooks";
+import { errorMessage, isConsentError, useCategories, useCategoryMutations, useChildFolders, useFolderMutations, useFolders, useInstallPresets, useRemoveLabelFromAll } from "@/lib/mail/hooks";
 import { PRESET_NAMES } from "@/lib/mail/labels";
 import { orderFolders, presetHex, STARRED_ID, visibleFolders, WELL_KNOWN_LABEL, type WellKnown } from "@/lib/mail/logic";
 import type { MailFolder, OutlookCategory } from "@/lib/mail/types";
@@ -183,14 +183,21 @@ export function FolderPanel({ active, onSelect, onCompose, className, meAddress 
         </Button>
       </div>
       <nav className="min-h-0 flex-1 overflow-y-auto pb-4 pr-2" aria-label="Folders">
-        {folders.isPending && (
+        {folders.isPending && !folders.isError && (
           <div className="space-y-2 px-3 py-2">
             {Array.from({ length: 7 }).map((_, i) => (
               <div key={i} className="h-6 animate-pulse rounded bg-muted" />
             ))}
           </div>
         )}
-        {folders.isError && <p className="px-4 py-2 text-xs text-destructive">Folders unavailable</p>}
+        {folders.isError && !folders.data && (
+          <div className="px-4 py-2 text-xs" role="alert">
+            <p className="text-destructive">Folders unavailable. {errorMessage(folders.error)}</p>
+            <Button variant="outline" size="sm" className="mt-1 h-6" onClick={() => void folders.refetch()} disabled={folders.isFetching}>
+              {folders.isFetching ? "Retrying" : "Retry"}
+            </Button>
+          </div>
+        )}
         {withStarred.map((f) =>
           f === "starred" ? (
             <div key="starred" className={cn(ROW, "pl-3", active === STARRED_ID && "bg-accent font-semibold")}>
@@ -220,8 +227,13 @@ export function FolderPanel({ active, onSelect, onCompose, className, meAddress 
         </div>
         {labelsOpen && (
           <div className="mt-1">
-            {categories.isPending && <div className="mx-4 h-5 animate-pulse rounded bg-muted" />}
-            {categories.isError && <p className="px-4 py-1 text-xs text-muted-foreground">Labels need the mailbox settings permission.</p>}
+            {categories.isPending && !categories.isError && <div className="mx-4 h-5 animate-pulse rounded bg-muted" />}
+            {categories.isError && !categories.data && (
+              <p className="px-4 py-1 text-xs text-muted-foreground" role="alert">
+                {isConsentError(categories.error) ? "Labels need the mailbox settings permission." : `Labels unavailable. ${errorMessage(categories.error)}`}{" "}
+                <button type="button" className="underline underline-offset-2" onClick={() => void categories.refetch()} disabled={categories.isFetching}>Retry</button>
+              </p>
+            )}
             {categories.data?.length === 0 && <p className="px-4 py-1 text-xs text-muted-foreground">No labels yet</p>}
             {showPresetBanner && (
               <div className="mx-3 my-1 rounded-xl bg-muted/60 p-2 text-xs" role="status">

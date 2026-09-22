@@ -517,10 +517,19 @@ export const handleCalendar: MockHandler = (method, url, body) => {
     if (!g) throw new Error("ErrorItemNotFound: calendar group not found");
     return { value: g.calendars };
   }
+  // Like Graph, a $select without `body` leaves the body out (the popover / editor fetch it separately).
+  const selected = (list: GraphEvent[]) => {
+    const sel = q.get("$select");
+    if (!sel || sel.split(",").includes("body")) return list;
+    return list.map(({ body: _b, ...rest }) => {
+      void _b;
+      return rest as GraphEvent;
+    });
+  };
   m = /^\/me\/calendarGroups\/[^/]+\/calendars\/([^/]+)\/calendarView$/.exec(p);
   if (m && method === "GET") {
     const { from, to } = range();
-    return { value: view(decodeURIComponent(m[1]), from, to) };
+    return { value: selected(view(decodeURIComponent(m[1]), from, to)) };
   }
   // Another user's calendar: only Siva shares with details; everyone else is 403 (needs Calendars.Read.Shared + sharing).
   m = /^\/users\/([^/]+)\/calendarView$/.exec(p);
@@ -547,11 +556,11 @@ export const handleCalendar: MockHandler = (method, url, body) => {
   m = /^\/me\/calendars\/([^/]+)\/calendarView$/.exec(p);
   if (m && method === "GET") {
     const { from, to } = range();
-    return { value: view(decodeURIComponent(m[1]), from, to) };
+    return { value: selected(view(decodeURIComponent(m[1]), from, to)) };
   }
   if (p === "/me/calendarView" && method === "GET") {
     const { from, to } = range();
-    return { value: view("cal-default", from, to) };
+    return { value: selected(view("cal-default", from, to)) };
   }
   if (p === "/me/calendarView/delta" && method === "GET") {
     maybeArriveFromOutlook();

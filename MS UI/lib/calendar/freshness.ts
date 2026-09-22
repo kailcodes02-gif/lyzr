@@ -9,7 +9,7 @@ import { toWallInZone } from "./time";
 import type { CalEvent, GraphEvent } from "./types";
 
 export const POLL_INTERVAL_MS = 15_000; // delta poll while the tab is visible
-export const SAFETY_INTERVAL_MS = 60_000; // full calendarView refetch, catches non-default calendars
+export const SAFETY_INTERVAL_MS = 120_000; // full calendarView refetch, catches non-default calendars
 export const SETTLE_DELAY_MS = 2_500; // second refetch after a write
 export const LATE_SETTLE_DELAY_MS = 8_000; // third refetch when the second still disagrees
 export const JITTER_RATIO = 0.2; // ±10 % around the interval so many tabs do not tick together

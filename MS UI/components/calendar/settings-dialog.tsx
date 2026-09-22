@@ -30,7 +30,8 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 export function SettingsDialog({ open, onOpenChange, settings, onChange }: { open: boolean; onOpenChange: (o: boolean) => void; settings: CalendarSettings; onChange: (p: Partial<CalendarSettings>) => void }) {
-  const zones = useSupportedTimeZones();
+  // Lazily: the list is only fetched once the dialog opens (and then cached forever).
+  const zones = useSupportedTimeZones(open);
   const browser = defaultTimeZone();
   const list = Array.from(new Set([browser, ...(zones.data ?? [])]));
   const notificationsSupported = typeof Notification !== "undefined";

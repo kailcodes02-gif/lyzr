@@ -4,10 +4,11 @@ import { AlignLeft, Check, CircleHelp, Clock, ExternalLink, Lock, MapPin, Pencil
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { calendarHex } from "@/lib/calendar/colors";
+import { bodyToText } from "@/lib/calendar/edit";
 import type { WallEvent } from "@/lib/calendar/events";
 import { describeRecurrence } from "@/lib/calendar/recurrence";
 import { formatTimeRange } from "@/lib/calendar/time";
-import type { GraphCalendar, ResponseType } from "@/lib/calendar/types";
+import type { GraphCalendar, GraphEvent, ResponseType } from "@/lib/calendar/types";
 import { cn } from "@/lib/utils";
 import { AnchoredPopover, type Anchor } from "./anchored-popover";
 
@@ -31,6 +32,8 @@ export function EventDetail({
   onDelete,
   onRsvp,
   tz,
+  body,
+  bodyLoading = false,
 }: {
   ev: WallEvent | null;
   anchor: Anchor;
@@ -44,6 +47,9 @@ export function EventDetail({
   onDelete: (scope: SeriesScope) => void;
   onRsvp: (action: "accept" | "tentativelyAccept" | "decline") => void;
   tz: string;
+  // The full body, fetched on open when calendarView omitted it (see useEventBody).
+  body?: GraphEvent["body"] | null;
+  bodyLoading?: boolean;
 }) {
   const [ask, setAsk] = useState<null | "edit" | "delete">(null);
   const isSeries = !!ev?.seriesMasterId && (ev.type === "occurrence" || ev.type === "exception");
@@ -62,6 +68,9 @@ export function EventDetail({
     else if (k === "delete") onDelete(scope);
   };
   const hex = person?.color ?? color ?? calendarHex(calendar);
+  // Full description: the fetched body, else the cached body, else the 255-char preview.
+  const fullBody = body ?? ev?.body;
+  const description = fullBody ? bodyToText(fullBody) : (ev?.bodyPreview ?? "");
   const statusText = (s: string) => (s === "oof" ? "Out of office" : s === "workingElsewhere" ? "Working elsewhere" : s.charAt(0).toUpperCase() + s.slice(1));
   return (
     <AnchoredPopover
@@ -187,10 +196,13 @@ export function EventDetail({
                 </div>
               </>
             )}
-            {ev.bodyPreview && (
+            {(description || bodyLoading) && (
               <>
                 <AlignLeft className="mt-0.5 size-4 text-muted-foreground" />
-                <p className="line-clamp-6 text-sm whitespace-pre-wrap">{ev.bodyPreview}</p>
+                <div className="max-h-56 overflow-auto text-sm whitespace-pre-wrap" data-testid="event-description">
+                  {description}
+                  {bodyLoading && !fullBody && <span className="block text-xs text-muted-foreground">Loading the full description…</span>}
+                </div>
               </>
             )}
             {!person && ev.showAs && ev.showAs !== "busy" && (

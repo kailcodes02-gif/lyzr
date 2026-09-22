@@ -17,6 +17,33 @@ export function normalise(ev: CalEvent, tz: string): WallEvent {
 
 export type FcPerson = { name: string; email: string; color: string; initials: string };
 
+// How a chip is drawn (grid.tsx renders it, calendar.css styles it):
+//   block  time-grid block: the title only (the axis shows the time), wrapping
+//          over as many lines as the block allows, in the computed contrast colour
+//   dot    month view, timed event: colour dot + title, no time
+//   row    all-day chips (month rows, the all-day lane): single line, solid colour
+export type ChipKind = "block" | "dot" | "row";
+export function chipKind(viewType: string, allDay: boolean): ChipKind {
+  if (viewType.startsWith("timeGrid")) return allDay ? "row" : "block";
+  return allDay ? "row" : "dot";
+}
+export function chipOuterClass(kind: ChipKind): string {
+  return kind === "dot" ? "msui-ev-dot-event" : "msui-ev-solid";
+}
+
+// Timed events of 15 minutes or less get one 11 px line for the title.
+export const SHORT_EVENT_MINUTES = 15;
+
+export function durationMinutes(ev: Pick<WallEvent, "startWall" | "endWall">): number {
+  const s = parseWall(ev.startWall).getTime();
+  const e = parseWall(ev.endWall).getTime();
+  return Number.isFinite(s) && Number.isFinite(e) ? Math.round((e - s) / 60_000) : 0;
+}
+
+export function isShortEvent(ev: Pick<WallEvent, "startWall" | "endWall" | "isAllDay">): boolean {
+  return !ev.isAllDay && durationMinutes(ev) <= SHORT_EVENT_MINUTES;
+}
+
 export type FcEventInput = {
   id: string;
   title: string;
@@ -41,6 +68,7 @@ export function toFcEvent(ev: WallEvent, cal: GraphCalendar | undefined, hex: st
   if (ev.isCancelled) classNames.push("msui-ev-cancelled");
   if (ev.responseStatus?.response === "notResponded" || ev.responseStatus?.response === "none") classNames.push("msui-ev-invite");
   if (ev.showAs === "free") classNames.push("msui-ev-free");
+  if (isShortEvent(ev)) classNames.push("msui-ev-short");
   return {
     id: ev.id,
     title: ev.subject || "(No title)",
@@ -60,6 +88,7 @@ export function toFcPersonEvent(ev: WallEvent, person: { name: string; email: st
   const classNames = ["msui-ev", "msui-ev-colleague"];
   if (ev.showAs === "tentative") classNames.push("msui-ev-tentative");
   if (ev.showAs === "oof") classNames.push("msui-ev-oof");
+  if (isShortEvent(ev)) classNames.push("msui-ev-short");
   return {
     id: ev.id,
     title: ev.subject || "Busy",

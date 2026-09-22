@@ -192,3 +192,24 @@ describe("preset installer against the mock", () => {
     expect(ownRules("GSI", rules()).length).toBeGreaterThan(0);
   });
 });
+
+describe("preset addresses", () => {
+  it("lists both lyzr.ai and lyzr.com for every person, and both reach the rule's fromAddresses", async () => {
+    for (const p of PRESET_LABELS) {
+      const addrs = p.conditions.fromAddresses ?? [];
+      for (const a of addrs) {
+        const [local, domain] = a.split("@");
+        expect(["lyzr.ai", "lyzr.com"]).toContain(domain);
+        expect(addrs).toContain(`${local}@lyzr.ai`);
+        expect(addrs).toContain(`${local}@lyzr.com`);
+      }
+    }
+    const leadership = PRESET_LABELS.find((p) => p.name === "Leadership")!;
+    const results = await installPresets(mockApi(), [leadership], ME);
+    expect(results[0].error).toBeUndefined();
+    const senders = rules().find((r) => r.displayName === "Label: Leadership (senders)")!;
+    const listed = (senders.conditions?.fromAddresses ?? []).map((r) => r.emailAddress.address);
+    expect(listed).toContain("siva@lyzr.ai");
+    expect(listed).toContain("siva@lyzr.com");
+  });
+});

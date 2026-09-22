@@ -99,7 +99,7 @@ export function ThreadRow({ thread, selected, focused, meAddress, categories, on
   );
 }
 
-export function MessageList({ threads, selected, cursor, meAddress, categories, onOpen, onToggleSelect, actions, hasMore, loadMore, isFetchingMore, isTrashOrSpam }: { threads: Thread[]; selected: Set<string>; cursor: number; meAddress?: string; categories?: OutlookCategory[]; onOpen: (t: Thread) => void; onToggleSelect: (t: Thread) => void; actions: ListActions; hasMore?: boolean; loadMore?: () => void; isFetchingMore?: boolean; isTrashOrSpam?: boolean }) {
+export function MessageList({ threads, selected, cursor, meAddress, categories, onOpen, onToggleSelect, actions, hasMore, loadMore, isFetchingMore, isTrashOrSpam, busy }: { threads: Thread[]; selected: Set<string>; cursor: number; meAddress?: string; categories?: OutlookCategory[]; onOpen: (t: Thread) => void; onToggleSelect: (t: Thread) => void; actions: ListActions; hasMore?: boolean; loadMore?: () => void; isFetchingMore?: boolean; isTrashOrSpam?: boolean; busy?: boolean }) {
   const parentRef = useRef<HTMLDivElement>(null);
   const v = useVirtualizer({ count: threads.length + (hasMore ? 1 : 0), getScrollElement: () => parentRef.current, estimateSize: () => 40, overscan: 12 });
   const items = v.getVirtualItems();
@@ -113,7 +113,7 @@ export function MessageList({ threads, selected, cursor, meAddress, categories, 
   }, [cursor]);
 
   return (
-    <div ref={parentRef} role="grid" aria-label="Conversations" className="min-h-0 flex-1 overflow-y-auto">
+    <div ref={parentRef} role="grid" aria-label="Conversations" aria-busy={busy || undefined} className={cn("min-h-0 flex-1 overflow-y-auto", busy && "opacity-60 transition-opacity")}>
       <div style={{ height: v.getTotalSize(), position: "relative" }}>
         {items.map((it) => {
           const t = threads[it.index];

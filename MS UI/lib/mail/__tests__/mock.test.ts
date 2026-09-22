@@ -107,7 +107,8 @@ describe("mock mail handler", () => {
     const inbox = call<Page<Message>>("GET", "/me/mailFolders/inbox/messages?$top=5");
     expect(inbox.value[0].subject).toBe(ARRIVAL_SUBJECT);
     expect(inbox.value[0].isRead).toBe(false);
-    const folders = call<Page<{ wellKnownName: string; unreadItemCount: number }>>("GET", "/me/mailFolders");
-    expect(folders.value.find((f) => f.wellKnownName === "inbox")!.unreadItemCount).toBeGreaterThan(0);
+    const folders = call<Page<{ id: string; unreadItemCount: number }>>("GET", "/me/mailFolders");
+    const inboxId = call<{ id: string }>("GET", "/me/mailFolders/inbox").id;
+    expect(folders.value.find((f) => f.id === inboxId)!.unreadItemCount).toBeGreaterThan(0);
   });
 });

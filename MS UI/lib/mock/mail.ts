@@ -32,6 +32,16 @@ function assertBaseAttachmentSelect(url: URL) {
   if (bad) throw new GraphError(400, "RequestBroker--ParseUri", `Could not find a property named '${bad}' on type 'Microsoft.OutlookServices.Attachment'.`, url.pathname + url.search);
 }
 
+// v1.0 mailFolder has no wellKnownName (beta only); Graph rejects the
+// $select with exactly this error, so the demo does too.
+const MAIL_FOLDER_PROPS = new Set(["id", "displayname", "parentfolderid", "childfoldercount", "unreaditemcount", "totalitemcount", "ishidden"]);
+export function assertMailFolderSelect(url: URL) {
+  const select = url.searchParams.get("$select");
+  if (!select) return;
+  const bad = select.split(",").map((s) => s.trim()).find((s) => !MAIL_FOLDER_PROPS.has(s.toLowerCase()));
+  if (bad) throw new GraphError(400, "BadRequest", `Parsing OData Select and Expand failed: Could not find a property named '${bad}' on type 'microsoft.graph.mailFolder'.`, url.pathname + url.search);
+}
+
 // In-memory Outlook mailbox for a Lyzr marketer. Mutations persist for the
 // life of the page so moves, flags, drafts and new folders show on re-fetch.
 
@@ -65,15 +75,15 @@ let seq = 1000;
 const nid = (p: string) => `${p}-${(seq++).toString(36)}`;
 
 export const mockFolders: MailFolder[] = [
-  { id: "f-inbox", displayName: "Inbox", wellKnownName: "inbox", parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 },
-  { id: "f-sent", displayName: "Sent Items", wellKnownName: "sentitems", parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 },
-  { id: "f-drafts", displayName: "Drafts", wellKnownName: "drafts", parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 },
-  { id: "f-archive", displayName: "Archive", wellKnownName: "archive", parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 },
-  { id: "f-junk", displayName: "Junk Email", wellKnownName: "junkemail", parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 },
-  { id: "f-deleted", displayName: "Deleted Items", wellKnownName: "deleteditems", parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 },
-  { id: "f-partners", displayName: "GSI Partners", wellKnownName: null, parentFolderId: null, childFolderCount: 1, unreadItemCount: 0, totalItemCount: 0 },
-  { id: "f-partners-acc", displayName: "Accenture", wellKnownName: null, parentFolderId: "f-partners", childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 },
-  { id: "f-reports", displayName: "Weekly Reports", wellKnownName: null, parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 },
+  { id: "f-inbox", displayName: "Inbox", parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 },
+  { id: "f-sent", displayName: "Sent Items", parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 },
+  { id: "f-drafts", displayName: "Drafts", parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 },
+  { id: "f-archive", displayName: "Archive", parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 },
+  { id: "f-junk", displayName: "Junk Email", parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 },
+  { id: "f-deleted", displayName: "Deleted Items", parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 },
+  { id: "f-partners", displayName: "GSI Partners", parentFolderId: null, childFolderCount: 1, unreadItemCount: 0, totalItemCount: 0 },
+  { id: "f-partners-acc", displayName: "Accenture", parentFolderId: "f-partners", childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 },
+  { id: "f-reports", displayName: "Weekly Reports", parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 },
 ];
 
 export const mockCategories: OutlookCategory[] = [
@@ -518,6 +528,7 @@ export const handleMail: MockHandler = (method, url, body) => {
 
   // ---- folders
   if (p === "/me/mailFolders" && method === "GET") {
+    assertMailFolderSelect(url);
     const top = mockFolders.filter((f) => !f.parentFolderId);
     const byName = /displayName eq '((?:[^']|'')*)'/i.exec(url.searchParams.get("$filter") ?? "");
     if (byName) {
@@ -529,17 +540,20 @@ export const handleMail: MockHandler = (method, url, body) => {
   if (p === "/me/mailFolders" && method === "POST") {
     const name = String(b.displayName ?? "New folder");
     assertFolderNameFree(name, null, p);
-    const f: MailFolder = { id: nid("f"), displayName: name, wellKnownName: null, parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 };
+    const f: MailFolder = { id: nid("f"), displayName: name, parentFolderId: null, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 };
     mockFolders.push(f);
     return f;
   }
   if ((m = /^\/me\/mailFolders\/([^/]+)\/childFolders$/.exec(p))) {
     const parent = resolveFolder(m[1]);
-    if (method === "GET") return { value: mockFolders.filter((f) => f.parentFolderId === parent) };
+    if (method === "GET") {
+      assertMailFolderSelect(url);
+      return { value: mockFolders.filter((f) => f.parentFolderId === parent) };
+    }
     if (method === "POST") {
       const name = String(b.displayName ?? "New folder");
       assertFolderNameFree(name, parent, p);
-      const f: MailFolder = { id: nid("f"), displayName: name, wellKnownName: null, parentFolderId: parent, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 };
+      const f: MailFolder = { id: nid("f"), displayName: name, parentFolderId: parent, childFolderCount: 0, unreadItemCount: 0, totalItemCount: 0 };
       mockFolders.push(f);
       recount();
       return f;
@@ -591,8 +605,12 @@ export const handleMail: MockHandler = (method, url, body) => {
     }
   }
   if ((m = /^\/me\/mailFolders\/([^/]+)$/.exec(p))) {
+    if (method === "GET") assertMailFolderSelect(url);
     const fid = resolveFolder(m[1]);
     const f = mockFolders.find((x) => x.id === fid);
+    // Well-known aliases the demo mailbox lacks (outbox, clutter, ...) are a
+    // 404 like Graph's; inside a $batch that is a failed sub-request.
+    if (!f && method === "GET" && /^[a-z]+$/.test(m[1])) throw new GraphError(404, "ErrorItemNotFound", `The specified object was not found in the store., The folder '${m[1]}' could not be found.`, p);
     if (!f) return { error: { code: "ErrorItemNotFound" } };
     if (method === "GET") return f;
     if (method === "PATCH") {

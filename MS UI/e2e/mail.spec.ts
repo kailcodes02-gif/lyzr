@@ -52,9 +52,8 @@ test.describe("Labels, filters and inbox tabs in demo mode", () => {
     await expect(page.getByLabel("Label view GSI")).toBeVisible();
     const rows = page.getByRole("row");
     await expect(rows.first()).toBeVisible();
-    const n = await rows.count();
-    expect(n).toBeGreaterThan(2);
-    for (let i = 0; i < n; i++) await expect(rows.nth(i)).toContainText("GSI");
+    await expect.poll(() => rows.count()).toBeGreaterThan(2);
+    await expect(rows.filter({ hasNotText: "GSI" })).toHaveCount(0);
     // Accenture partner agreement lives in a subfolder and still shows in the label view.
     await expect(page.getByText(/Accenture partner agreement countersigned/)).toBeVisible();
   });

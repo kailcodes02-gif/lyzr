@@ -11,8 +11,8 @@ import interactionPlugin from "@fullcalendar/react/interaction";
 import breezyTheme from "@fullcalendar/react/themes/breezy";
 import timeGridPlugin from "@fullcalendar/react/timegrid";
 import { Lock, Repeat, Video } from "lucide-react";
-import { useEffect, useRef } from "react";
-import type { FcEventInput, FcPerson, WallEvent } from "@/lib/calendar/events";
+import { useEffect, useRef, type CSSProperties } from "react";
+import { chipKind, chipOuterClass, type FcEventInput, type FcPerson, type WallEvent } from "@/lib/calendar/events";
 import type { ViewKind } from "@/lib/calendar/types";
 
 export type GridSelection = { start: string; end: string; allDay: boolean; x: number; y: number };
@@ -26,25 +26,33 @@ export function fcWall(s: string): string {
   return s.length <= 10 ? s : s.slice(0, 19);
 }
 
+// The outer element's class: solid chips get the event colour as background,
+// dot chips stay transparent (the dot carries the colour).
+function chipClass(info: Pick<EventDisplayInfo, "view" | "event">): string {
+  return chipOuterClass(chipKind(info.view.type, info.event.allDay));
+}
+
 function EventContent(info: EventDisplayInfo) {
   const ev = info.event.extendedProps.ev as WallEvent | undefined;
   const person = info.event.extendedProps.person as FcPerson | undefined;
-  const block = info.view.type.startsWith("timeGrid") && !info.event.allDay;
+  const kind = chipKind(info.view.type, info.event.allDay);
+  // The text colour is computed for the chip colour (dark on light, white on
+  // dark); a CSS variable so the invite / dot variants can override it.
+  const style = { "--msui-ev-text": info.contrastColor } as CSSProperties;
   return (
-    <div className={`msui-ev-inner ${block ? "msui-ev-block" : ""}`}>
-      {person && (
-        <span className="msui-ev-avatar" title={`${person.name} <${person.email}>`} aria-label={person.name}>
-          {person.initials}
-        </span>
-      )}
-      {!info.event.allDay && info.timeText && !block && <span className="msui-ev-time">{info.timeText}</span>}
+    <div className={`msui-ev-inner msui-ev-${kind}`} style={style} title={info.event.title}>
+      {kind === "dot" && <span className="msui-ev-bullet" style={{ background: info.color }} aria-hidden />}
       <span className="msui-ev-title">
-        {ev?.sensitivity === "private" && <Lock className="mr-1 inline size-3 align-[-2px]" />}
+        {person && (
+          <span className="msui-ev-avatar" title={`${person.name} <${person.email}>`} aria-label={person.name}>
+            {person.initials}
+          </span>
+        )}
+        {ev?.sensitivity === "private" && <Lock className="msui-ev-icon" aria-label="Private" />}
         {info.event.title}
+        {ev?.isOnlineMeeting && kind === "block" && <Video className="msui-ev-icon msui-ev-icon-after" aria-label="Teams meeting" />}
+        {ev?.seriesMasterId && kind === "block" && <Repeat className="msui-ev-icon msui-ev-icon-after" aria-label="Repeats" />}
       </span>
-      {block && <span className="msui-ev-time">{info.timeText}</span>}
-      {ev?.isOnlineMeeting && block && <Video className="mt-0.5 size-3 opacity-80" />}
-      {ev?.seriesMasterId && block && <Repeat className="mt-0.5 size-3 opacity-80" />}
     </div>
   );
 }
@@ -109,8 +117,10 @@ export default function CalendarGrid({
         slotDuration="00:30:00"
         snapDuration="00:15:00"
         scrollTime="08:00:00"
-        eventTimeFormat={{ hour: "numeric", minute: "2-digit", meridiem: "short" }}
+        // Chips carry no time text (the axis and the popover show it).
+        displayEventTime={false}
         events={events}
+        eventClass={chipClass}
         eventContent={EventContent}
         select={(info: DateSelectInfo) => {
           const js = info.jsEvent;

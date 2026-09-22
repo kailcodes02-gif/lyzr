@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Ellipsis, Plus, UserPlus, Users } from "lucide-react";
+import { ChevronDown, Ellipsis, Plus, TriangleAlert, UserPlus, Users } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
 import { PeoplePicker, type Recipient } from "@/components/people-picker";
@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuGroup } from "@/components/ui/dropdown-menu";
 import { calendarHex } from "@/lib/calendar/colors";
 import { initials, PERSON_COLORS, type Colleague, type OtherCalendar } from "@/lib/calendar/overlay";
+import type { ColleagueDetail } from "@/lib/calendar/people";
 import { parseWall, DAY } from "@/lib/calendar/time";
 import type { GraphCalendar } from "@/lib/calendar/types";
 import { cn } from "@/lib/utils";
@@ -43,14 +44,33 @@ function Swatch({ on, hex, onToggle, label }: { on: boolean; hex: string; onTogg
   );
 }
 
-function CalendarRow({ cal, on, onToggle, secondary, warning, hex = calendarHex(cal) }: { cal: GraphCalendar; on: boolean; onToggle: () => void; secondary?: string; warning?: string; hex?: string }) {
+function CalendarRow({ cal, on, onToggle, secondary, warning, hex = calendarHex(cal), onRetry }: { cal: GraphCalendar; on: boolean; onToggle: () => void; secondary?: string; warning?: string; hex?: string; onRetry?: () => void }) {
   return (
     <li data-testid="calendar-row" data-failed={warning ? "true" : undefined}>
       <label className={cn("group flex cursor-pointer items-center gap-2 rounded-lg px-1 py-1 text-sm hover:bg-accent", !on && "text-muted-foreground")} title={warning}>
         <Swatch on={on} hex={hex} onToggle={onToggle} label={`Show ${cal.name}`} />
         <span className="flex min-w-0 flex-1 flex-col leading-tight">
           <span className="truncate">{cal.name}</span>
-          {warning ? <span className="truncate text-[11px] text-destructive">Could not load</span> : secondary && <span className="truncate text-[11px] text-muted-foreground">{secondary}</span>}
+          {warning ? (
+            <span className="flex items-center gap-1 text-[11px] text-destructive">
+              <span className="truncate">Could not load</span>
+              {onRetry && (
+                <button
+                  type="button"
+                  className="shrink-0 text-primary hover:underline"
+                  aria-label={`Retry ${cal.name}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onRetry();
+                  }}
+                >
+                  Retry
+                </button>
+              )}
+            </span>
+          ) : (
+            secondary && <span className="truncate text-[11px] text-muted-foreground">{secondary}</span>
+          )}
         </span>
         {cal.allowedOnlineMeetingProviders?.includes("teamsForBusiness") && <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Teams</span>}
       </label>
@@ -58,9 +78,17 @@ function CalendarRow({ cal, on, onToggle, secondary, warning, hex = calendarHex(
   );
 }
 
+// What the row says under the name when nothing went wrong.
+export function colleagueDetailText(detail: ColleagueDetail | undefined): { text: string; warning: boolean } | null {
+  if (detail === "busy") return { text: "Busy/free only (calendar not shared with you)", warning: true };
+  if (detail === "limited") return { text: "Limited details (titles, no descriptions)", warning: false };
+  return null;
+}
+
 function ColleagueRow({
   person,
   error,
+  detail,
   onToggle,
   onRemove,
   onColor,
@@ -68,14 +96,16 @@ function ColleagueRow({
 }: {
   person: Colleague;
   error?: string;
+  detail?: ColleagueDetail;
   onToggle: () => void;
   onRemove: () => void;
   onColor: (hex: string) => void;
   onOnly: () => void;
 }) {
   const on = !person.hidden;
+  const note = colleagueDetailText(detail);
   return (
-    <li data-testid="colleague-row" data-email={person.email}>
+    <li data-testid="colleague-row" data-email={person.email} data-detail={detail}>
       <div className={cn("group flex items-center gap-2 rounded-lg px-1 py-1 text-sm hover:bg-accent", !on && "text-muted-foreground")}>
         <Swatch on={on} hex={person.color} onToggle={onToggle} label={`Show ${person.name}`} />
         <span className="flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium text-white" style={{ background: person.color }} aria-hidden>
@@ -85,7 +115,16 @@ function ColleagueRow({
           <span className="truncate" title={person.email}>
             {person.name}
           </span>
-          {error ? <span className="truncate text-[11px] text-destructive">{error}</span> : person.name !== person.email && <span className="truncate text-[11px] text-muted-foreground">{person.email}</span>}
+          {error ? (
+            <span className="truncate text-[11px] text-destructive">{error}</span>
+          ) : note ? (
+            <span className={cn("truncate text-[11px]", note.warning ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground")} title={note.text}>
+              {note.warning && <TriangleAlert className="mr-1 inline size-3 align-[-2px]" aria-label="Warning" />}
+              {note.text}
+            </span>
+          ) : (
+            person.name !== person.email && <span className="truncate text-[11px] text-muted-foreground">{person.email}</span>
+          )}
         </span>
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -129,6 +168,7 @@ export function LeftPanel({
   onToggle,
   colleagues = [],
   colleagueErrors,
+  colleagueDetails,
   onAddColleague,
   onRemoveColleague,
   onToggleColleague,
@@ -141,6 +181,7 @@ export function LeftPanel({
   onClose,
   failed,
   colorOf,
+  onRetryCalendar,
 }: {
   date: string;
   onDate: (d: string) => void;
@@ -151,6 +192,8 @@ export function LeftPanel({
   onToggle: (id: string) => void;
   colleagues?: Colleague[];
   colleagueErrors?: Map<string, string>;
+  // Email -> how much of the person's calendar we can see (see people.ts).
+  colleagueDetails?: Map<string, ColleagueDetail>;
   onAddColleague?: (p: { email: string; name?: string }) => void;
   onRemoveColleague?: (email: string) => void;
   onToggleColleague?: (email: string) => void;
@@ -166,6 +209,8 @@ export function LeftPanel({
   failed?: Map<string, string>;
   // Resolved swatch colour per calendar (own calendars blue); falls back to the Outlook colour.
   colorOf?: (calendarId: string) => string;
+  // Retry the range fetch (through the request queue) for a calendar that failed.
+  onRetryCalendar?: () => void;
 }) {
   const hexOf = (c: GraphCalendar) => (colorOf ? colorOf(c.id) : calendarHex(c));
   const selected = parseWall(date);
@@ -230,7 +275,7 @@ export function LeftPanel({
         )}
         <ul className="flex flex-col">
           {calendars.map((c) => (
-            <CalendarRow key={c.id} cal={c} on={!hidden.has(c.id)} onToggle={() => onToggle(c.id)} warning={failed?.get(c.id)} hex={hexOf(c)} />
+            <CalendarRow key={c.id} cal={c} on={!hidden.has(c.id)} onToggle={() => onToggle(c.id)} warning={failed?.get(c.id)} hex={hexOf(c)} onRetry={onRetryCalendar} />
           ))}
         </ul>
       </Section>
@@ -265,13 +310,14 @@ export function LeftPanel({
       >
         <ul className="flex flex-col">
           {otherCalendars.map((o) => (
-              <CalendarRow key={o.cal.id} cal={o.cal} on={!hidden.has(o.cal.id)} onToggle={() => onToggle(o.cal.id)} secondary={[o.groupName, o.ownerName].filter(Boolean).join(" · ")} warning={failed?.get(o.cal.id)} hex={hexOf(o.cal)} />
+              <CalendarRow key={o.cal.id} cal={o.cal} on={!hidden.has(o.cal.id)} onToggle={() => onToggle(o.cal.id)} secondary={[o.groupName, o.ownerName].filter(Boolean).join(" · ")} warning={failed?.get(o.cal.id)} hex={hexOf(o.cal)} onRetry={onRetryCalendar} />
             ))}
           {colleagues.map((p) => (
             <ColleagueRow
               key={p.email}
               person={p}
               error={colleagueErrors?.get(p.email.toLowerCase())}
+              detail={colleagueDetails?.get(p.email.toLowerCase())}
               onToggle={() => onToggleColleague?.(p.email)}
               onRemove={() => onRemoveColleague?.(p.email)}
               onColor={(hex) => onColleagueColor?.(p.email, hex)}
@@ -297,7 +343,10 @@ export function LeftPanel({
         <DialogContent className="sm:max-w-md" showCloseButton>
           <DialogHeader>
             <DialogTitle>Subscribe to a colleague</DialogTitle>
-            <DialogDescription>Their busy times show on your grid in their own colour. Details appear when they share them with you.</DialogDescription>
+            <DialogDescription>
+              Their calendar shows on your grid in their own colour. You see what this person shares with you: titles and details if they shared their calendar with you, otherwise
+              busy/free blocks only.
+            </DialogDescription>
           </DialogHeader>
           <form
             className="flex flex-col gap-4"

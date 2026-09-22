@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useMe } from "@/lib/hooks";
-import { clientFilterFor, flattenPages, useCategories, useDraftApi, useEnableSorting, useFolders, useMailPolling, useMessageActions, useMessageList, useSettlerLifecycle, useSortingEnabled } from "@/lib/mail/hooks";
+import { clientFilterFor, errorMessage, flattenPages, useCategories, useDraftApi, useEnableSorting, useFolders, useMailPolling, useMessageActions, useMessageList, useSettlerLifecycle, useSortingEnabled } from "@/lib/mail/hooks";
 import { PROMOTIONS_LABEL, SOCIAL_LABEL } from "@/lib/mail/labels";
 import { buildKql, groupThreads, isVirtualFolderKey, moveScopeIds, parseKql, presetHex, resolveFolderId, SEARCH_ID, WELL_KNOWN_LABEL, type WellKnown } from "@/lib/mail/logic";
 import type { Message, Thread } from "@/lib/mail/types";
@@ -126,6 +126,9 @@ export function MailApp() {
   useSettlerLifecycle();
   const polling = useMailPolling({ folder: state.folder, tab, query: state.query, focused: state.focused }, list.isSuccess);
   const updatedAt = Math.max(list.dataUpdatedAt ?? 0, polling.lastPolledAt);
+  // Content stays on screen through every background refetch (and, while a
+  // new view loads, the previous view's rows sit dimmed under aria-busy).
+  const showList = !!list.data;
   const inboxUnread = folders.data?.find((f) => (f.wellKnownName ?? "").toLowerCase() === "inbox")?.unreadItemCount ?? 0;
 
   // ---- selection helpers
@@ -453,15 +456,22 @@ export function MailApp() {
               {isInbox && tab === "primary" && sortingOn === false && !bannerDismissed && (
                 <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/40 px-4 py-2 text-sm" role="status">
                   <span className="flex-1">Sort social updates and newsletters out of Primary. Creates two Outlook rules and the Social and Promotions labels.</span>
+                  {enableSorting.progressLabel && <span className="text-xs text-muted-foreground" aria-live="polite">{enableSorting.progressLabel}</span>}
                   <Button size="sm" onClick={() => enableSorting.mutate()} disabled={enableSorting.isPending}>{enableSorting.isPending ? "Sorting" : "Turn on inbox sorting"}</Button>
                   <button type="button" aria-label="Dismiss" onClick={() => setBannerDismissed(true)} className="rounded-full p-1 hover:bg-black/10"><X className="h-4 w-4" /></button>
                 </div>
               )}
-              {isInbox && tab !== "primary" && enableSorting.isPending && <p className="px-4 py-2 text-xs text-muted-foreground">Setting up inbox sorting</p>}
-              {list.isPending && <ListSkeleton />}
-              {list.isError && <MailErrorState error={list.error} onRetry={() => list.refetch()} />}
-              {list.isSuccess && threads.length === 0 && <EmptyList folder={state.folder} query={state.query} />}
-              {list.isSuccess && threads.length > 0 && (
+              {isInbox && tab !== "primary" && enableSorting.isPending && <p className="px-4 py-2 text-xs text-muted-foreground" aria-live="polite">{enableSorting.progressLabel ?? "Setting up inbox sorting"}</p>}
+              {list.isPending && !list.isError && <ListSkeleton />}
+              {list.isError && !list.data && <MailErrorState error={list.error} onRetry={() => list.refetch()} />}
+              {list.isError && list.data && (
+                <p className="flex items-center gap-2 border-b border-border bg-destructive/5 px-4 py-1.5 text-xs text-destructive" role="alert">
+                  Could not refresh. {errorMessage(list.error)}
+                  <button type="button" className="underline underline-offset-2" onClick={() => void list.refetch()}>Retry</button>
+                </p>
+              )}
+              {showList && threads.length === 0 && !list.isPlaceholderData && <EmptyList folder={state.folder} query={state.query} />}
+              {showList && threads.length > 0 && (
                 <MessageList
                   threads={threads}
                   selected={selected}
@@ -475,6 +485,7 @@ export function MailApp() {
                   loadMore={() => void list.fetchNextPage()}
                   isFetchingMore={list.isFetchingNextPage}
                   isTrashOrSpam={isTrashOrSpam}
+                  busy={list.isPlaceholderData}
                 />
               )}
             </>
