@@ -64,6 +64,9 @@ const P = {
   linkedinNotify: r("LinkedIn", "notifications-noreply@linkedin.com"),
   linkedinInvites: r("LinkedIn", "invitations@linkedin.com"),
   facebook: r("Facebook", "notification@facebookmail.com"),
+  // A person at LinkedIn (not a notification): the Social rule catches the
+  // domain, so the demo can move her to Primary and keep her there.
+  mayuri: r("Mayuri Murthy", "mayuri.murthy@linkedin.com"),
   // Preset label senders (Leadership, GSI, Marketing, Meeting scripts, Calendar)
   pooja: r("Pooja Nair", "pooja@lyzr.ai"),
   ankita: r("Ankita Sharma", "ankita@lyzr.ai"),
@@ -225,6 +228,7 @@ const SEEDS: Seed[] = [
   { subject: "Priya Raman reacted to your post", folder: "f-inbox", messages: [{ from: P.linkedinNotify, hoursAgo: 7, paras: ["Priya Raman and 14 others reacted to your post about the Accenture webinar."], read: false, other: true }] },
   { subject: "You have 3 new connection requests", folder: "f-inbox", messages: [{ from: P.linkedinInvites, hoursAgo: 31, paras: ["Daniel Okafor, Mei Chen and Arjun Nair want to connect."], read: true, other: true }] },
   { subject: "Lyzr AI Community: 12 new posts this week", folder: "f-inbox", messages: [{ from: P.facebook, hoursAgo: 48, paras: ["Catch up on what you missed in the Lyzr AI Community group."], read: true, other: true }] },
+  { subject: "Partner marketing slot at LinkedIn Talent Connect", folder: "f-inbox", messages: [{ from: P.mayuri, to: [P.me], hoursAgo: 4, paras: ["Hi Kailash, I run partner marketing for LinkedIn Marketing Solutions in India. We have a partner showcase slot at Talent Connect Bengaluru on Oct 22 and Lyzr's GSI story would fit well.", "Could we do a 20 minute call this week? I am free Thursday after 2 pm IST."], read: false }] },
   // One mail per preset label (Set up my labels moves these out of Primary)
   { subject: "Leadership offsite agenda: Oct 3", folder: "f-inbox", messages: [{ from: P.siva, to: [P.me], hoursAgo: 2.5, paras: ["Agenda for the leadership offsite: FY27 plan, partner strategy, hiring. Please add your GSI marketing slot by Friday."], read: false }] },
   { subject: "GSI pipeline review: Infosys and Wipro updates", folder: "f-inbox", messages: [{ from: P.pooja, to: [P.me], hoursAgo: 3.5, paras: ["Infosys Topaz moved to stage 3, Wipro ai360 is waiting on the security review. Deck for Tuesday attached."], read: false }] },

@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -14,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useMe } from "@/lib/hooks";
 import { clientFilterFor, errorMessage, flattenPages, useCategories, useDraftApi, useEnableSorting, useFolders, useMailPolling, useMessageActions, useMessageList, useSettlerLifecycle, useSortingEnabled } from "@/lib/mail/hooks";
 import { PROMOTIONS_LABEL, SOCIAL_LABEL } from "@/lib/mail/labels";
+import { TAB_LABEL, type TabTarget } from "@/lib/mail/tabs";
 import { buildKql, groupThreads, isVirtualFolderKey, moveScopeIds, parseKql, presetHex, resolveFolderId, SEARCH_ID, WELL_KNOWN_LABEL, type WellKnown } from "@/lib/mail/logic";
 import type { Message, Thread } from "@/lib/mail/types";
 import { labelFromFolder, parseMailUrl, serializeMailUrl, type MailTab, type MailUrlState } from "@/lib/mail/url";
@@ -24,7 +25,7 @@ import { ComposeDrawer, draftFromMessage, type ComposeDraft } from "./compose";
 import { MailErrorState } from "./consent-gate";
 import { FolderPanel } from "./folder-panel";
 import { LabelDialog, type LabelDialogState } from "./label-dialog";
-import { EmptyList, ListSkeleton, ListToolbar, MessageList } from "./message-list";
+import { EmptyList, ListSkeleton, ListToolbar, MessageList, THREAD_DRAG_TYPE } from "./message-list";
 import { ShortcutHelp, useMailShortcuts } from "./shortcuts";
 import { ThreadView, type ReplyKind } from "./thread-view";
 
@@ -84,6 +85,7 @@ export function MailApp() {
   }, [list.data, clientFilter]);
   const threads = useMemo(() => groupThreads(messages), [messages]);
   const isTrashOrSpam = state.folder === "deleteditems" || state.folder === "junkemail";
+  const isSpam = state.folder === "junkemail";
   // Client-side exclusion can leave a short first page: keep fetching until 50 rows show.
   useEffect(() => {
     if (clientFilter && list.hasNextPage && !list.isFetchingNextPage && messages.length < 50) void list.fetchNextPage();
@@ -161,6 +163,23 @@ export function MailApp() {
     if (!window.confirm(`Delete ${ids.length === 1 ? "this message" : `these ${ids.length} messages`} forever? This cannot be undone.`)) return;
     actions.deleteForever(ids, currentFolderId);
     setSelected(new Set());
+  };
+
+  // Bulk "Move to tab": every selected message that sits in the Inbox.
+  const bulkMoveToTab = (target: TabTarget) => {
+    const inboxId = resolveFolderId("inbox", folders.data ?? []);
+    const msgs = selectedThreads().flatMap((t) => t.messages).filter((m) => !m.isDraft && (!inboxId || m.parentFolderId === inboxId));
+    actions.moveToTab(msgs, target);
+    setSelected(new Set());
+  };
+  // A list row dragged onto a tab.
+  const [dropTab, setDropTab] = useState<TabTarget | null>(null);
+  const dropOnTab = (e: React.DragEvent, target: TabTarget) => {
+    e.preventDefault();
+    setDropTab(null);
+    const id = e.dataTransfer.getData(THREAD_DRAG_TYPE);
+    const t = threads.find((x) => x.conversationId === id);
+    if (t) actions.moveToTab(t.messages.filter((m) => !m.isDraft), target);
   };
 
   const openThread = (t: Thread) => {
@@ -379,6 +398,8 @@ export function MailApp() {
                 onArchive={bulk(actions.archive, "move")}
                 onTrash={bulkDelete}
                 onSpam={bulk(actions.spam, "move")}
+                onNotSpam={isSpam ? bulk(actions.notSpam, "move") : undefined}
+                onMoveToTab={isInbox ? bulkMoveToTab : undefined}
                 onInbox={bulk(actions.inbox, "move")}
                 onRead={bulk((ids) => actions.setRead(ids, true))}
                 onUnread={bulk((ids) => actions.setRead(ids, false))}
@@ -390,7 +411,7 @@ export function MailApp() {
                       </TooltipTrigger>
                       <TooltipContent>Label as</TooltipContent>
                     </Tooltip>
-                    <DropdownMenuContent>
+                    <DropdownMenuContent><DropdownMenuGroup>
                       <DropdownMenuLabel>Label as</DropdownMenuLabel>
                       {catList.map((c) => {
                         const sel = threads.filter((t) => selected.has(t.conversationId));
@@ -411,7 +432,7 @@ export function MailApp() {
                             <span className="mr-1 h-2.5 w-2.5 rounded-full" style={{ background: presetHex(c.color) }} /> {c.displayName}
                           </DropdownMenuCheckboxItem>
                         );
-                      })}
+                      })}</DropdownMenuGroup>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 }
@@ -432,11 +453,28 @@ export function MailApp() {
                 hasPrev={cursor > 0}
                 hasNext={!!list.hasNextPage}
                 isTrashOrSpam={isTrashOrSpam}
+                isSpam={isSpam}
               />
               {isInbox && (
                 <div className="flex shrink-0 items-center border-b border-border" role="tablist" aria-label="Inbox tabs">
                   {(["primary", "social", "promotions"] as const).map((t) => (
-                    <button key={t} role="tab" aria-selected={tab === t} onClick={() => selectTab(t)} className={cn("relative h-11 w-36 text-sm font-medium uppercase tracking-wide text-muted-foreground hover:bg-muted/60", tab === t && "text-primary after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary")}>
+                    <button
+                      key={t}
+                      role="tab"
+                      aria-selected={tab === t}
+                      onClick={() => selectTab(t)}
+                      onDragOver={(e) => {
+                        if (!e.dataTransfer.types.includes(THREAD_DRAG_TYPE)) return;
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                        if (dropTab !== t) setDropTab(t);
+                      }}
+                      onDragLeave={() => dropTab === t && setDropTab(null)}
+                      onDrop={(e) => dropOnTab(e, t)}
+                      data-drop-target={dropTab === t || undefined}
+                      title={`Drop a conversation here to move it to ${TAB_LABEL[t]}`}
+                      className={cn("relative h-11 w-36 text-sm font-medium uppercase tracking-wide text-muted-foreground hover:bg-muted/60", tab === t && "text-primary after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary", dropTab === t && "bg-accent/60 ring-2 ring-inset ring-primary")}
+                    >
                       {t}
                     </button>
                   ))}
@@ -444,11 +482,11 @@ export function MailApp() {
                     <DropdownMenuTrigger render={<button type="button" aria-label="Tab options" className="ml-auto mr-2 rounded-full p-1.5 text-muted-foreground hover:bg-black/10" />}>
                       <MoreVertical className="h-4 w-4" />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end"><DropdownMenuGroup>
                       <DropdownMenuLabel>Sorting settings</DropdownMenuLabel>
                       <DropdownMenuItem onClick={() => openSortingSettings(SOCIAL_LABEL)}>Social senders</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => openSortingSettings(PROMOTIONS_LABEL)}>Promotions senders</DropdownMenuItem>
-                      {sortingOn === false && <DropdownMenuItem onClick={() => enableSorting.mutate()}>Turn on inbox sorting</DropdownMenuItem>}
+                      {sortingOn === false && <DropdownMenuItem onClick={() => enableSorting.mutate()}>Turn on inbox sorting</DropdownMenuItem>}</DropdownMenuGroup>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -485,6 +523,8 @@ export function MailApp() {
                   loadMore={() => void list.fetchNextPage()}
                   isFetchingMore={list.isFetchingNextPage}
                   isTrashOrSpam={isTrashOrSpam}
+                  isSpam={isSpam}
+                  showTabs={isInbox}
                   busy={list.isPlaceholderData}
                 />
               )}

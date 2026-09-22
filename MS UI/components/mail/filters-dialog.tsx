@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { errorMessage, useCategories, useFolderNames, useFolders, useInstallPresets, useRuleMutations, useRules, type InstallResult } from "@/lib/mail/hooks";
-import { PRESET_NAMES, summarizeRule } from "@/lib/mail/labels";
+import { PRESET_NAMES } from "@/lib/mail/labels";
+import { ruleSentence } from "@/lib/mail/tabs";
 import { WELL_KNOWN_LABEL, type WellKnown } from "@/lib/mail/logic";
 import { PRESET_LABELS, type PresetLabel } from "@/lib/mail/presets";
 import { cn } from "@/lib/utils";
@@ -106,13 +107,13 @@ export function FiltersDialog({ open, onOpenChange, meAddress }: { open: boolean
         {rules.isSuccess && list.length === 0 && <p className="text-sm text-muted-foreground">No filters yet. Create a label with conditions to add one.</p>}
         <ul className="divide-y divide-border" aria-label="Inbox rules">
           {list.map((r) => {
-            const s = summarizeRule(r, folderName);
+            const sentence = ruleSentence(r, folderName);
             return (
               <li key={r.id} className={cn("flex items-start gap-3 py-2 text-sm", !r.isEnabled && "opacity-60")}>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{r.displayName}</p>
                   <p className="text-xs text-muted-foreground">
-                    When {s.when}, then {s.then}.{r.hasError ? " (Outlook reports an error on this rule)" : ""}
+                    {sentence}{r.hasError ? " (Outlook reports an error on this rule)" : ""}
                   </p>
                 </div>
                 <Switch checked={r.isEnabled} aria-label={`Enable ${r.displayName}`} disabled={r.isReadOnly || mut.update.isPending} onCheckedChange={(v) => mut.update.mutate({ id: r.id, isEnabled: v })} />

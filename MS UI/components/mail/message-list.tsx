@@ -1,14 +1,17 @@
 "use client";
 
+import { Menu } from "@base-ui/react/menu";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Archive, ChevronLeft, ChevronRight, Inbox, Mail, MailOpen, Paperclip, RefreshCw, Star, Tag, Trash2, Users } from "lucide-react";
+import { Archive, ChevronLeft, ChevronRight, Inbox, Mail, MailOpen, Paperclip, RefreshCw, ShieldAlert, ShieldCheck, Star, Trash2, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatMailDate } from "@/lib/format";
 import { updatedAgoLabel } from "@/lib/mail/freshness";
 import { participantLabel, presetHex } from "@/lib/mail/logic";
-import type { OutlookCategory, Thread } from "@/lib/mail/types";
+import { TAB_LABEL, TAB_TARGETS, tabOf, type TabTarget } from "@/lib/mail/tabs";
+import type { Message, OutlookCategory, Thread } from "@/lib/mail/types";
 import { cn } from "@/lib/utils";
 
 export type ListActions = {
@@ -16,7 +19,27 @@ export type ListActions = {
   trash: (ids: string[]) => void;
   setRead: (ids: string[], read: boolean) => void;
   setStar: (ids: string[], starred: boolean) => void;
+  spam?: (ids: string[]) => void;
+  notSpam?: (ids: string[]) => void;
+  // Primary / Social / Promotions (inbox views only).
+  moveToTab?: (messages: Message[], target: TabTarget) => void;
 };
+
+// Drag payload of a list row dropped onto an inbox tab (see MailApp).
+export const THREAD_DRAG_TYPE = "application/x-msui-thread";
+
+// The Move to tab entries, shared by the hover menu, the context menu and the bulk toolbar.
+export function TabMoveItems({ current, onMove, Item }: { current?: TabTarget; onMove: (t: TabTarget) => void; Item: React.ComponentType<{ onClick: () => void; disabled?: boolean; children: React.ReactNode }> }) {
+  return (
+    <>
+      {TAB_TARGETS.map((t) => (
+        <Item key={t} onClick={() => onMove(t)} disabled={t === current}>
+          {TAB_LABEL[t]}
+        </Item>
+      ))}
+    </>
+  );
+}
 
 function IconButton({ label, onClick, children, className }: { label: string; onClick: (e: React.MouseEvent) => void; children: React.ReactNode; className?: string }) {
   return (
@@ -29,17 +52,24 @@ function IconButton({ label, onClick, children, className }: { label: string; on
   );
 }
 
-export function ThreadRow({ thread, selected, focused, meAddress, categories, onOpen, onToggleSelect, actions, isTrashOrSpam }: { thread: Thread; selected: boolean; focused: boolean; meAddress?: string; categories?: OutlookCategory[]; onOpen: () => void; onToggleSelect: () => void; actions: ListActions; isTrashOrSpam?: boolean }) {
+export function ThreadRow({ thread, selected, focused, meAddress, categories, onOpen, onToggleSelect, actions, isTrashOrSpam, isSpam, showTabs }: { thread: Thread; selected: boolean; focused: boolean; meAddress?: string; categories?: OutlookCategory[]; onOpen: () => void; onToggleSelect: () => void; actions: ListActions; isTrashOrSpam?: boolean; isSpam?: boolean; showTabs?: boolean }) {
   const ids = thread.messages.map((m) => m.id);
   const colorOf = (name: string) => presetHex(categories?.find((c) => c.displayName === name)?.color);
   const subject = thread.latest.subject || "(no subject)";
+  const currentTab = tabOf(thread.latest);
   return (
     <div
       role="row"
       aria-selected={selected}
       data-focused={focused || undefined}
+      data-conversation-id={thread.conversationId}
       tabIndex={-1}
       onClick={onOpen}
+      draggable={!!showTabs && !!actions.moveToTab}
+      onDragStart={(e) => {
+        e.dataTransfer.setData(THREAD_DRAG_TYPE, thread.conversationId);
+        e.dataTransfer.effectAllowed = "move";
+      }}
       className={cn(
         "group relative flex h-10 cursor-pointer items-center gap-1 border-b border-border/70 pl-2 pr-3 text-sm outline-none",
         thread.unread ? "bg-card font-semibold" : "bg-muted/40 text-foreground/80",
@@ -88,19 +118,54 @@ export function ThreadRow({ thread, selected, focused, meAddress, categories, on
             <Archive className="h-4 w-4" />
           </IconButton>
         )}
+        {!isTrashOrSpam && actions.spam && (
+          <IconButton label="Report spam" onClick={() => actions.spam!(ids)}>
+            <ShieldAlert className="h-4 w-4" />
+          </IconButton>
+        )}
+        {isSpam && actions.notSpam && (
+          <IconButton label="Not spam" onClick={() => actions.notSpam!(ids)}>
+            <ShieldCheck className="h-4 w-4" />
+          </IconButton>
+        )}
         <IconButton label="Delete" onClick={() => actions.trash(ids)}>
           <Trash2 className="h-4 w-4" />
         </IconButton>
         <IconButton label={thread.unread ? "Mark as read" : "Mark as unread"} onClick={() => actions.setRead(thread.unread ? ids : [thread.latest.id], thread.unread)}>
           {thread.unread ? <MailOpen className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
         </IconButton>
+        {showTabs && actions.moveToTab && (
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger render={<DropdownMenuTrigger render={<button type="button" aria-label="Move to tab" className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-black/10 hover:text-foreground dark:hover:bg-white/10" />} />}>
+                <Inbox className="h-4 w-4" />
+              </TooltipTrigger>
+              <TooltipContent>Move to tab</TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent align="end"><DropdownMenuGroup>
+              <DropdownMenuLabel>Move to</DropdownMenuLabel>
+              <TabMoveItems current={currentTab} onMove={(t) => actions.moveToTab!(thread.messages, t)} Item={DropdownMenuItem} /></DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </div>
   );
 }
 
-export function MessageList({ threads, selected, cursor, meAddress, categories, onOpen, onToggleSelect, actions, hasMore, loadMore, isFetchingMore, isTrashOrSpam, busy }: { threads: Thread[]; selected: Set<string>; cursor: number; meAddress?: string; categories?: OutlookCategory[]; onOpen: (t: Thread) => void; onToggleSelect: (t: Thread) => void; actions: ListActions; hasMore?: boolean; loadMore?: () => void; isFetchingMore?: boolean; isTrashOrSpam?: boolean; busy?: boolean }) {
+const ctxItem = "flex cursor-default items-center gap-1.5 rounded-md px-2 py-1 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:opacity-50 [&_svg]:size-4";
+const ctxPopup = "z-50 min-w-44 rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-none";
+
+export function MessageList({ threads, selected, cursor, meAddress, categories, onOpen, onToggleSelect, actions, hasMore, loadMore, isFetchingMore, isTrashOrSpam, isSpam, showTabs, busy }: { threads: Thread[]; selected: Set<string>; cursor: number; meAddress?: string; categories?: OutlookCategory[]; onOpen: (t: Thread) => void; onToggleSelect: (t: Thread) => void; actions: ListActions; hasMore?: boolean; loadMore?: () => void; isFetchingMore?: boolean; isTrashOrSpam?: boolean; isSpam?: boolean; showTabs?: boolean; busy?: boolean }) {
   const parentRef = useRef<HTMLDivElement>(null);
+  // One right-click menu for the whole list, anchored at the pointer: the
+  // row is looked up by its data-conversation-id, so the virtualised rows
+  // stay light. A plain Menu (not Base UI's ContextMenu) because the rows'
+  // own hover menus may not sit inside a ContextMenu.Trigger.
+  const [ctx, setCtx] = useState<{ thread: Thread; x: number; y: number } | null>(null);
+  const ctxThread = ctx?.thread;
+  const ctxIds = ctxThread?.messages.map((m) => m.id) ?? [];
+  const anchor = { getBoundingClientRect: () => DOMRect.fromRect({ x: ctx?.x ?? 0, y: ctx?.y ?? 0, width: 0, height: 0 }) };
   const v = useVirtualizer({ count: threads.length + (hasMore ? 1 : 0), getScrollElement: () => parentRef.current, estimateSize: () => 40, overscan: 12 });
   const items = v.getVirtualItems();
   useEffect(() => {
@@ -113,22 +178,67 @@ export function MessageList({ threads, selected, cursor, meAddress, categories, 
   }, [cursor]);
 
   return (
-    <div ref={parentRef} role="grid" aria-label="Conversations" aria-busy={busy || undefined} className={cn("min-h-0 flex-1 overflow-y-auto", busy && "opacity-60 transition-opacity")}>
-      <div style={{ height: v.getTotalSize(), position: "relative" }}>
-        {items.map((it) => {
-          const t = threads[it.index];
-          return (
-            <div key={t?.conversationId ?? "more"} data-index={it.index} ref={v.measureElement} style={{ position: "absolute", top: 0, left: 0, width: "100%", transform: `translateY(${it.start}px)` }}>
-              {t ? (
-                <ThreadRow thread={t} selected={selected.has(t.conversationId)} focused={cursor === it.index} meAddress={meAddress} categories={categories} onOpen={() => onOpen(t)} onToggleSelect={() => onToggleSelect(t)} actions={actions} isTrashOrSpam={isTrashOrSpam} />
-              ) : (
-                <div className="flex h-10 items-center justify-center text-xs text-muted-foreground">Loading more</div>
-              )}
-            </div>
-          );
-        })}
+    <>
+      <div
+        ref={parentRef}
+        role="grid"
+        aria-label="Conversations"
+        aria-busy={busy || undefined}
+        className={cn("min-h-0 flex-1 overflow-y-auto", busy && "opacity-60 transition-opacity")}
+        onContextMenu={(e) => {
+          const row = (e.target as HTMLElement).closest<HTMLElement>("[data-conversation-id]");
+          const t = threads.find((x) => x.conversationId === row?.dataset.conversationId);
+          if (!t) return;
+          e.preventDefault();
+          setCtx({ thread: t, x: e.clientX, y: e.clientY });
+        }}
+      >
+        <div style={{ height: v.getTotalSize(), position: "relative" }}>
+          {items.map((it) => {
+            const t = threads[it.index];
+            return (
+              <div key={t?.conversationId ?? "more"} data-index={it.index} ref={v.measureElement} style={{ position: "absolute", top: 0, left: 0, width: "100%", transform: `translateY(${it.start}px)` }}>
+                {t ? (
+                  <ThreadRow thread={t} selected={selected.has(t.conversationId)} focused={cursor === it.index} meAddress={meAddress} categories={categories} onOpen={() => onOpen(t)} onToggleSelect={() => onToggleSelect(t)} actions={actions} isTrashOrSpam={isTrashOrSpam} isSpam={isSpam} showTabs={showTabs} />
+                ) : (
+                  <div className="flex h-10 items-center justify-center text-xs text-muted-foreground">Loading more</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
+      {ctxThread && (
+        <Menu.Root open onOpenChange={(open) => !open && setCtx(null)}>
+          <Menu.Portal>
+            <Menu.Positioner className="isolate z-50 outline-none" anchor={anchor} side="bottom" align="start">
+              <Menu.Popup className={ctxPopup} aria-label={`Actions for ${ctxThread.latest.subject || "(no subject)"}`}>
+                <Menu.Item className={ctxItem} onClick={() => onOpen(ctxThread)}>Open</Menu.Item>
+                <Menu.Item className={ctxItem} onClick={() => actions.setRead(ctxThread.unread ? ctxIds : [ctxThread.latest.id], ctxThread.unread)}>{ctxThread.unread ? "Mark as read" : "Mark as unread"}</Menu.Item>
+                <Menu.Item className={ctxItem} onClick={() => actions.setStar(ctxThread.starred ? ctxIds : [ctxThread.latest.id], !ctxThread.starred)}>{ctxThread.starred ? "Unstar" : "Star"}</Menu.Item>
+                <Menu.Separator className="my-1 h-px bg-border" />
+                {showTabs && actions.moveToTab && (
+                  <Menu.SubmenuRoot>
+                    <Menu.SubmenuTrigger className={cn(ctxItem, "data-popup-open:bg-accent")}>Move to tab</Menu.SubmenuTrigger>
+                    <Menu.Portal>
+                      <Menu.Positioner className="isolate z-50 outline-none" side="right" align="start">
+                        <Menu.Popup className={ctxPopup}>
+                          <TabMoveItems current={tabOf(ctxThread.latest)} onMove={(t) => actions.moveToTab!(ctxThread.messages, t)} Item={({ onClick, disabled, children }) => <Menu.Item className={ctxItem} onClick={onClick} disabled={disabled}>{children}</Menu.Item>} />
+                        </Menu.Popup>
+                      </Menu.Positioner>
+                    </Menu.Portal>
+                  </Menu.SubmenuRoot>
+                )}
+                {!isTrashOrSpam && <Menu.Item className={ctxItem} onClick={() => actions.archive(ctxIds)}><Archive /> Archive</Menu.Item>}
+                {!isTrashOrSpam && actions.spam && <Menu.Item className={ctxItem} onClick={() => actions.spam!(ctxIds)}><ShieldAlert /> Report spam</Menu.Item>}
+                {isSpam && actions.notSpam && <Menu.Item className={ctxItem} onClick={() => actions.notSpam!(ctxIds)}><ShieldCheck /> Not spam</Menu.Item>}
+                <Menu.Item className={ctxItem} onClick={() => actions.trash(ctxIds)}><Trash2 /> Delete</Menu.Item>
+              </Menu.Popup>
+            </Menu.Positioner>
+          </Menu.Portal>
+        </Menu.Root>
+      )}
+    </>
   );
 }
 
@@ -176,7 +286,7 @@ export function UpdatedAgo({ at }: { at?: number }) {
   return <span className="text-xs text-muted-foreground" data-testid="updated-ago">{label}</span>;
 }
 
-export function ListToolbar({ total, selectedCount, allSelected, onSelectAll, onClear, onRefresh, refreshing, updatedAt, onArchive, onTrash, onRead, onUnread, onSpam, onLabel, page, onPrev, onNext, hasPrev, hasNext, isTrashOrSpam, onInbox }: { total: number; selectedCount: number; allSelected: boolean; onSelectAll: () => void; onClear: () => void; onRefresh: () => void; refreshing?: boolean; updatedAt?: number; onArchive: () => void; onTrash: () => void; onRead: () => void; onUnread: () => void; onSpam: () => void; onLabel?: React.ReactNode; page: React.ReactNode; onPrev: () => void; onNext: () => void; hasPrev: boolean; hasNext: boolean; isTrashOrSpam?: boolean; onInbox: () => void }) {
+export function ListToolbar({ total, selectedCount, allSelected, onSelectAll, onClear, onRefresh, refreshing, updatedAt, onArchive, onTrash, onRead, onUnread, onSpam, onNotSpam, onMoveToTab, onLabel, page, onPrev, onNext, hasPrev, hasNext, isTrashOrSpam, isSpam, onInbox }: { total: number; selectedCount: number; allSelected: boolean; onSelectAll: () => void; onClear: () => void; onRefresh: () => void; refreshing?: boolean; updatedAt?: number; onArchive: () => void; onTrash: () => void; onRead: () => void; onUnread: () => void; onSpam: () => void; onNotSpam?: () => void; onMoveToTab?: (t: TabTarget) => void; onLabel?: React.ReactNode; page: React.ReactNode; onPrev: () => void; onNext: () => void; hasPrev: boolean; hasNext: boolean; isTrashOrSpam?: boolean; isSpam?: boolean; onInbox: () => void }) {
   return (
     <div className="flex h-12 shrink-0 items-center gap-1 border-b border-border px-3">
       <div className="flex w-6 items-center justify-center">
@@ -191,7 +301,11 @@ export function ListToolbar({ total, selectedCount, allSelected, onSelectAll, on
         </>
       ) : (
         <>
-          {isTrashOrSpam ? (
+          {isSpam && onNotSpam ? (
+            <IconButton label="Not spam" onClick={onNotSpam}>
+              <ShieldCheck className="h-4 w-4" />
+            </IconButton>
+          ) : isTrashOrSpam ? (
             <IconButton label="Move to Inbox" onClick={onInbox}>
               <Users className="h-4 w-4" />
             </IconButton>
@@ -202,7 +316,7 @@ export function ListToolbar({ total, selectedCount, allSelected, onSelectAll, on
           )}
           {!isTrashOrSpam && (
             <IconButton label="Report spam" onClick={onSpam}>
-              <Tag className="h-4 w-4 rotate-90" />
+              <ShieldAlert className="h-4 w-4" />
             </IconButton>
           )}
           <IconButton label="Delete" onClick={onTrash}>
@@ -216,6 +330,20 @@ export function ListToolbar({ total, selectedCount, allSelected, onSelectAll, on
             <Mail className="h-4 w-4" />
           </IconButton>
           {onLabel}
+          {onMoveToTab && (
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger render={<DropdownMenuTrigger render={<button type="button" aria-label="Move to tab" className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-black/10 hover:text-foreground dark:hover:bg-white/10" />} />}>
+                  <Inbox className="h-4 w-4" />
+                </TooltipTrigger>
+                <TooltipContent>Move to tab</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent><DropdownMenuGroup>
+                <DropdownMenuLabel>Move to</DropdownMenuLabel>
+                <TabMoveItems onMove={onMoveToTab} Item={DropdownMenuItem} /></DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           <span className="ml-2 text-xs text-muted-foreground">{selectedCount} selected</span>
         </>
       )}

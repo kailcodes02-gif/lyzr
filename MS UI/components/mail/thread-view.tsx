@@ -1,21 +1,39 @@
 "use client";
 
-import { Archive, ArrowLeft, ChevronDown, Download, ExternalLink, FolderInput, Forward, Mail, MoreVertical, Paperclip, Reply, ReplyAll, ShieldAlert, Star, Tag, Trash2 } from "lucide-react";
+import { Archive, ArrowLeft, ChevronDown, Download, ExternalLink, FolderInput, Forward, Inbox, Mail, MoreVertical, Paperclip, Printer, Reply, ReplyAll, ShieldAlert, ShieldCheck, Star, Tag, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { fileKind, KIND_COLOR, KIND_LABEL } from "@/lib/files";
 import { formatDateTime, initials } from "@/lib/format";
-import { useAttachments, useCreateRule, useDownloadAttachment, useMessage, useMessageActions, useThread } from "@/lib/mail/hooks";
+import { errorMessage, useAttachments, useCreateRule, useDownloadAttachment, useMessage, useMessageActions, usePrintMessages, useThread } from "@/lib/mail/hooks";
 import { moveScopeIds, orderFolders, presetHex, recipientsLabel, resolveFolderId, sortMessagesAsc, visibleFolders, WELL_KNOWN_LABEL, type WellKnown } from "@/lib/mail/logic";
+import { buildPrintDocument, printDocument } from "@/lib/mail/print";
+import { TAB_LABEL, TAB_TARGETS, tabOf } from "@/lib/mail/tabs";
 import type { Attachment, MailFolder, Message, OutlookCategory } from "@/lib/mail/types";
 import { cn } from "@/lib/utils";
 import { EmailFrame } from "./email-frame";
 import { MailErrorState } from "./consent-gate";
+
+// Builds the print document for the given messages (bodies fetched as
+// needed) and hands it to the print frame. Returns the frame for tests.
+export function usePrintThread() {
+  const fetchPrint = usePrintMessages();
+  return async (subject: string, messages: Message[]) => {
+    try {
+      const entries = await fetchPrint(messages, (iso) => formatDateTime(iso));
+      return printDocument(buildPrintDocument({ subject, messages: entries }));
+    } catch (e) {
+      toast.error(`Could not prepare the print view. ${errorMessage(e)}`);
+      return null;
+    }
+  };
+}
 
 export type ReplyKind = "createReply" | "createReplyAll" | "createForward";
 
@@ -72,7 +90,7 @@ function AttachmentChip({ messageId, att }: { messageId: string; att: Attachment
   );
 }
 
-function MessageCard({ message, expanded, onToggle, onReply, onClose, categories, isLast }: { message: Message; expanded: boolean; onToggle: () => void; onReply: (kind: ReplyKind, m: Message) => void; onClose: () => void; categories?: OutlookCategory[]; isLast: boolean }) {
+function MessageCard({ message, expanded, onToggle, onReply, onClose, onPrint, categories, isLast }: { message: Message; expanded: boolean; onToggle: () => void; onReply: (kind: ReplyKind, m: Message) => void; onClose: () => void; onPrint: (m: Message) => void; categories?: OutlookCategory[]; isLast: boolean }) {
   const full = useMessage(expanded ? message.id : undefined);
   const attachments = useAttachments(message.id, expanded && (!!message.hasAttachments || /cid:/i.test(full.data?.body?.content ?? "")));
   const download = useDownloadAttachment();
@@ -146,6 +164,7 @@ function MessageCard({ message, expanded, onToggle, onReply, onClose, categories
                     {/* Closes the pane like Gmail, so the open-thread read marking cannot undo it. */}
                     <DropdownMenuItem onClick={() => { actions.setRead([message.id], false); onClose(); }}><Mail /> Mark as unread</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => actions.trash([message.id])}><Trash2 /> Delete this message</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onPrint(message)}><Printer /> Print</DropdownMenuItem>
                     {message.webLink && (
                       <DropdownMenuItem onClick={() => window.open(message.webLink, "_blank", "noopener")}><ExternalLink /> Open in Outlook</DropdownMenuItem>
                     )}
@@ -287,10 +306,29 @@ function FilterDialog({ open, onOpenChange, sender, folders, categories }: { ope
 export function ThreadView({ conversationId, messageId, onBack, onReply, onOpenDraft, folders, categories, currentFolder }: { conversationId: string; messageId?: string; onBack: () => void; onReply: (kind: ReplyKind, m: Message) => void; onOpenDraft: (m: Message) => void; folders: MailFolder[]; categories: OutlookCategory[]; currentFolder: string }) {
   const thread = useThread(conversationId);
   const actions = useMessageActions();
+  const print = usePrintThread();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [filterOpen, setFilterOpen] = useState(false);
   const messages = useMemo(() => sortMessagesAsc(thread.data ?? []), [thread.data]);
   const latest = messages[messages.length - 1];
+  const subject = latest?.subject || "(no subject)";
+  const printThread = () => void print(subject, messages.filter((m) => !m.isDraft));
+  const printMessage = (m: Message) => void print(m.subject || subject, [m]);
+  // Ctrl/Cmd+P prints the conversation instead of the app shell.
+  const printRef = useRef(printThread);
+  useEffect(() => {
+    printRef.current = printThread;
+  });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        printRef.current();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   // `ids` (every folder) is for read/star/label state; move-type actions only
   // touch the copies in the current folder, never Sent/Archive siblings.
   const ids = messages.map((m) => m.id);
@@ -298,6 +336,12 @@ export function ThreadView({ conversationId, messageId, onBack, onReply, onOpenD
   const currentFolderId = resolveFolderId(currentFolder, folders);
   const canMove = moveIds.length > 0;
   const isTrashOrSpam = currentFolder === "deleteditems" || currentFolder === "junkemail";
+  const isSpam = currentFolder === "junkemail";
+  // Tab moves apply to the inbox copies (the rows the tabs list); shown for
+  // the Inbox and its virtual views (starred, label, search), never in Trash/Spam.
+  const inboxId = resolveFolderId("inbox", folders);
+  const tabMessages = useMemo(() => messages.filter((m) => !m.isDraft && (!inboxId || m.parentFolderId === inboxId)), [messages, inboxId]);
+  const currentTab = tabMessages.length ? tabOf(tabMessages[tabMessages.length - 1]) : undefined;
 
   // Expand the requested message, else the latest.
   const defaultExpanded = messages.length ? (messageId && messages.some((m) => m.id === messageId) ? messageId : messages[messages.length - 1].id) : undefined;
@@ -358,37 +402,51 @@ export function ThreadView({ conversationId, messageId, onBack, onReply, onOpenD
         <Tip label="Back to list"><button type="button" aria-label="Back to list" onClick={onBack} className={tb}><ArrowLeft className="h-4 w-4" /></button></Tip>
         {!isTrashOrSpam && <Tip label="Archive"><button type="button" aria-label="Archive" disabled={!canMove} onClick={doThen(() => actions.archive(moveIds))} className={cn(tb, "disabled:opacity-40")}><Archive className="h-4 w-4" /></button></Tip>}
         {!isTrashOrSpam && <Tip label="Report spam"><button type="button" aria-label="Report spam" disabled={!canMove} onClick={doThen(() => actions.spam(moveIds))} className={cn(tb, "disabled:opacity-40")}><ShieldAlert className="h-4 w-4" /></button></Tip>}
+        {isSpam && <Tip label="Not spam"><button type="button" aria-label="Not spam" disabled={!canMove} onClick={doThen(() => actions.notSpam(moveIds))} className={cn(tb, "disabled:opacity-40")}><ShieldCheck className="h-4 w-4" /></button></Tip>}
         <Tip label={isTrashOrSpam ? "Delete forever" : "Delete"}><button type="button" aria-label="Delete" disabled={!canMove} onClick={deleteThread} className={cn(tb, "disabled:opacity-40")}><Trash2 className="h-4 w-4" /></button></Tip>
         <span className="mx-1 h-5 w-px bg-border" />
         <Tip label="Mark as unread"><button type="button" aria-label="Mark as unread" onClick={doThen(() => actions.setRead(ids, false))} className={tb}><Mail className="h-4 w-4" /></button></Tip>
         <Tip label={allStarred ? "Unstar" : "Star"}><button type="button" aria-label={allStarred ? "Unstar" : "Star"} onClick={() => actions.setStar(allStarred || !anyStarred ? ids : [latest.id], !allStarred)} className={tb}><Star className={cn("h-4 w-4", anyStarred && "fill-[#f4b400] text-[#f4b400]")} /></button></Tip>
         <DropdownMenu>
           <Tip label="Move to"><DropdownMenuTrigger disabled={!canMove} render={<button aria-label="Move to" className={cn(tb, "disabled:opacity-40")} />}><FolderInput className="h-4 w-4" /></DropdownMenuTrigger></Tip>
-          <DropdownMenuContent>
+          <DropdownMenuContent><DropdownMenuGroup>
             <DropdownMenuLabel>Move to</DropdownMenuLabel>
             {isTrashOrSpam && <DropdownMenuItem onClick={doThen(() => actions.inbox(moveIds))}>Inbox</DropdownMenuItem>}
             {moveTargets.map((f) => (
               <DropdownMenuItem key={f.id} onClick={doThen(() => actions.moveTo(moveIds, f.id, WELL_KNOWN_LABEL[(f.wellKnownName ?? "").toLowerCase() as WellKnown] ?? f.displayName))}>
                 {WELL_KNOWN_LABEL[(f.wellKnownName ?? "").toLowerCase() as WellKnown] ?? f.displayName}
               </DropdownMenuItem>
-            ))}
+            ))}</DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
         <DropdownMenu>
           <Tip label="Labels"><DropdownMenuTrigger render={<button aria-label="Labels" className={tb} />}><Tag className="h-4 w-4" /></DropdownMenuTrigger></Tip>
-          <DropdownMenuContent>
+          <DropdownMenuContent><DropdownMenuGroup>
             <DropdownMenuLabel>Label as</DropdownMenuLabel>
             {categories.length === 0 && <div className="px-2 py-1 text-xs text-muted-foreground">No labels yet</div>}
             {categories.map((c) => (
               <DropdownMenuCheckboxItem key={c.id} checked={threadCategories.includes(c.displayName)} onCheckedChange={() => toggleCategory(c.displayName)}>
                 <span className="mr-1 h-2.5 w-2.5 rounded-full" style={{ background: presetHex(c.color) }} /> {c.displayName}
               </DropdownMenuCheckboxItem>
-            ))}
+            ))}</DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
         <DropdownMenu>
           <Tip label="More"><DropdownMenuTrigger render={<button aria-label="More actions" className={tb} />}><MoreVertical className="h-4 w-4" /></DropdownMenuTrigger></Tip>
           <DropdownMenuContent align="end">
+            {tabMessages.length > 0 && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger><Inbox /> Move to tab</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {TAB_TARGETS.map((t) => (
+                    <DropdownMenuItem key={t} disabled={t === currentTab} onClick={doThen(() => actions.moveToTab(tabMessages, t))}>
+                      {TAB_LABEL[t]}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
+            <DropdownMenuItem onClick={printThread}><Printer /> Print</DropdownMenuItem>
             <DropdownMenuItem onClick={() => setFilterOpen(true)}>Filter messages like this</DropdownMenuItem>
             {latest?.webLink && <DropdownMenuItem onClick={() => window.open(latest.webLink, "_blank", "noopener")}><ExternalLink /> Open in Outlook</DropdownMenuItem>}
             <DropdownMenuSeparator />
@@ -411,7 +469,7 @@ export function ThreadView({ conversationId, messageId, onBack, onReply, onOpenD
         {messages.length > 0 && (
           <div className="mx-auto max-w-5xl px-4 py-4">
             <div className="mb-3 flex flex-wrap items-center gap-2 px-4">
-              <h1 className="text-xl font-normal">{latest?.subject || "(no subject)"}</h1>
+              <h1 className="text-xl font-normal">{subject}</h1>
               {threadCategories.map((c) => (
                 <span key={c} className="rounded-sm px-1.5 text-[11px] font-medium text-white" style={{ background: presetHex(categories.find((x) => x.displayName === c)?.color) }}>{c}</span>
               ))}
@@ -425,6 +483,7 @@ export function ThreadView({ conversationId, messageId, onBack, onReply, onOpenD
                   isLast={i === messages.length - 1}
                   categories={categories}
                   onClose={onBack}
+                  onPrint={printMessage}
                   onReply={(kind, msg) => (msg.isDraft ? onOpenDraft(msg) : onReply(kind, msg))}
                   onToggle={() =>
                     setExpanded((s) => {

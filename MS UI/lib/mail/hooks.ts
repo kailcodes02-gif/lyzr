@@ -13,6 +13,8 @@ import { encodeFilter, escapeOData, folderByNamePath, inboxTabPath, labelListPat
 import { folderListPath, isVirtualFolderKey, resolveFolderId, searchListPath } from "./logic";
 import { PRESET_LABELS } from "./presets";
 import type { Attachment, MailFolder, Message, MessageRule, OutlookCategory } from "./types";
+import { alwaysSortSender, singleSender, TAB_LABEL, tabMoveUpdates, type TabTarget } from "./tabs";
+import { printMessageOf, type PrintMessage } from "./print";
 import { labelFromFolder, type MailTab } from "./url";
 
 export { errorMessage, type BackfillResult, type BatchOutcome, type GraphApi, type InstallResult } from "./install";
@@ -23,6 +25,10 @@ export const MAIL_SCOPES = ["Mail.ReadWrite"];
 export const SEND_SCOPES = ["Mail.ReadWrite", "Mail.Send"];
 export const SETTINGS_SCOPES = ["MailboxSettings.ReadWrite"];
 export const CONSENT_KEYS = ["mail", "send", "contacts", "settings"];
+// Undo window on the "Reported as spam" / "Not spam" toasts.
+export const UNDO_MS = 5_000;
+// How long the "Do this for all mail from X?" offer stays on screen.
+export const ALWAYS_OFFER_MS = 8_000;
 
 export const LIST_SELECT =
   "id,conversationId,conversationIndex,subject,bodyPreview,from,toRecipients,ccRecipients,receivedDateTime,isRead,hasAttachments,flag,categories,importance,inferenceClassification,isDraft,webLink,parentFolderId";
@@ -402,6 +408,32 @@ export function useDownloadAttachment() {
   };
 }
 
+// ---- Print -----------------------------------------------------------------
+
+// Full copies (body, attachments, inline images as data URLs) of the given
+// messages as print entries, through the query cache so an open message is
+// not fetched twice. A message whose body cannot load prints its preview.
+export function usePrintMessages() {
+  const { instance } = useMsal();
+  const qc = useQueryClient();
+  return async (messages: Message[], formatDate: (iso?: string) => string): Promise<PrintMessage[]> => {
+    const get = <T,>(path: string) => graphFetch<T>(instance, MAIL_SCOPES, path);
+    return Promise.all(
+      messages.map(async (m) => {
+        const full = await qc.fetchQuery({ queryKey: keys.message(m.id), staleTime: 5 * 60_000, queryFn: () => get<Message>(`/me/messages/${m.id}?$select=${LIST_SELECT},body,uniqueBody,bccRecipients,replyTo,sentDateTime`) }).catch(() => ({ ...m, body: { contentType: "text" as const, content: m.bodyPreview ?? "" } }));
+        const wantAtts = !!m.hasAttachments || /cid:/i.test(full.body?.content ?? "");
+        const atts = wantAtts ? await qc.fetchQuery({ queryKey: keys.attachments(m.id), staleTime: 5 * 60_000, queryFn: () => fetchAttachments(get, m.id) }).catch(() => [] as Attachment[]) : [];
+        const cidMap: Record<string, string> = {};
+        for (const a of atts.filter((x) => x.isInline && x.contentId)) {
+          const withBytes = await get<Attachment>(`/me/messages/${m.id}/attachments/${a.id}`).catch(() => null);
+          if (withBytes?.contentBytes) cidMap[a.contentId!.replace(/^<|>$/g, "")] = `data:${a.contentType ?? "application/octet-stream"};base64,${withBytes.contentBytes}`;
+        }
+        return printMessageOf(full, atts, cidMap, formatDate);
+      })
+    );
+  };
+}
+
 // ---- Cache helpers ---------------------------------------------------------
 
 // Previous copy of every message touched, keyed by id, so a failure can put
@@ -581,12 +613,15 @@ const detailOf = (r: BatchResponse) => {
 // sub-requests (429/503) on their own after Retry-After, twice at most.
 export function partitionBatch(requests: BatchRequest[], responses: BatchResponse[]): BatchOutcome {
   const byId = new Map(responses.map((r) => [r.id, r]));
-  const out: BatchOutcome = { ok: [], failed: [] };
+  const out: BatchOutcome = { ok: [], failed: [], bodies: {} };
   for (const req of requests) {
     const r = byId.get(req.id);
     if (!r) out.failed.push({ id: req.id, status: 0, detail: "no response" });
     else if (r.status >= 400) out.failed.push({ id: req.id, status: r.status, detail: detailOf(r) });
-    else out.ok.push(req.id);
+    else {
+      out.ok.push(req.id);
+      if (r.body !== undefined) out.bodies![req.id] = r.body;
+    }
   }
   return out;
 }
@@ -594,6 +629,7 @@ export function partitionBatch(requests: BatchRequest[], responses: BatchRespons
 export async function runBatch(send: (reqs: BatchRequest[]) => Promise<BatchResponse[]>, requests: BatchRequest[], sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))): Promise<BatchOutcome> {
   let pending = requests;
   const ok: string[] = [];
+  const bodies: Record<string, unknown> = {};
   let failed: BatchOutcome["failed"] = [];
   for (let attempt = 0; attempt < 3 && pending.length; attempt++) {
     let responses: BatchResponse[];
@@ -601,10 +637,11 @@ export async function runBatch(send: (reqs: BatchRequest[]) => Promise<BatchResp
       responses = await send(pending);
     } catch (e) {
       // The whole call failed (offline, consent): everything still pending failed.
-      return { ok, failed: [...failed, ...pending.map((r) => ({ id: r.id, status: 0, detail: errorMessage(e) }))] };
+      return { ok, failed: [...failed, ...pending.map((r) => ({ id: r.id, status: 0, detail: errorMessage(e) }))], bodies };
     }
     const part = partitionBatch(pending, responses);
     ok.push(...part.ok);
+    Object.assign(bodies, part.bodies);
     const throttled = new Set(part.failed.filter((f) => f.status === 429 || f.status === 503).map((f) => f.id));
     failed = [...failed, ...part.failed.filter((f) => !throttled.has(f.id))];
     if (!throttled.size || attempt === 2) {
@@ -615,7 +652,7 @@ export async function runBatch(send: (reqs: BatchRequest[]) => Promise<BatchResp
     await sleep(wait * 1000);
     pending = pending.filter((r) => throttled.has(r.id));
   }
-  return { ok, failed };
+  return { ok, failed, bodies };
 }
 
 // ---- Message actions -------------------------------------------------------
@@ -625,19 +662,25 @@ export type Update = { id: string; body: Partial<Message> };
 export function useMessageActions() {
   const { instance } = useMsal();
   const qc = useQueryClient();
+  const api = useGraphApi();
   const batch = (reqs: BatchRequest[]) => graphBatch(instance, MAIL_SCOPES, reqs);
 
   // Runs the requests (request id == message id) and throws PartialBatchError
-  // naming exactly the ids that did not go through.
-  const run = async (requests: BatchRequest[]) => {
+  // naming exactly the ids that did not go through. Resolves with each
+  // response body by request id (a move returns the message under its new id).
+  const run = async (requests: BatchRequest[]): Promise<Record<string, unknown>> => {
     if (requests.length === 1) {
       const r = requests[0];
-      await graphFetch(instance, MAIL_SCOPES, r.url, { method: r.method, body: r.body });
-      return;
+      const body = await graphFetch<unknown>(instance, MAIL_SCOPES, r.url, { method: r.method, body: r.body });
+      return body === undefined || body === null ? {} : { [r.id]: body };
     }
     const res = await runBatch(batch, requests);
     if (res.failed.length) throw new PartialBatchError(res.failed.map((f) => f.id), requests.length, res.failed[0]?.detail);
+    return res.bodies ?? {};
   };
+  // Ids the moved messages carry now: Graph moves by copy + delete, so the
+  // response id is the new one; a response without an id keeps the old.
+  const movedIds = (ids: string[], bodies: Record<string, unknown>) => ids.map((id) => (bodies[id] as { id?: string } | undefined)?.id || id);
 
   type Ctx = { prev: Prev; ctx: ActionContext };
   const onError = (verb: string, kind: ActionKind) => (e: unknown, ids: string[], c?: Ctx) => {
@@ -683,22 +726,69 @@ export function useMessageActions() {
     },
   });
 
+  // undo: offered on the toast for UNDO_MS; moves the (new) ids back to
+  // `undo.destinationId`, the folder the messages came from.
+  type MoveVars = { ids: string[]; destinationId: string; label?: string; kind: ActionKind; undo?: { destinationId: string; label: string; kind: ActionKind } };
   const move = useMutation({
-    mutationFn: ({ ids, destinationId }: { ids: string[]; destinationId: string; label?: string; kind: ActionKind }) => run(ids.map((id) => ({ id, method: "POST", url: `/me/messages/${id}/move`, body: { destinationId } }))),
+    mutationFn: ({ ids, destinationId }: MoveVars) => run(ids.map((id) => ({ id, method: "POST", url: `/me/messages/${id}/move`, body: { destinationId } }))),
     onMutate: ({ ids, destinationId }) => begin(ids, { destination: folderKeyOf(qc, destinationId) ?? destinationId.toLowerCase() }, () => null),
-    onSuccess: (_d, v, c) => {
-      toast.success(v.label ?? "Moved");
+    onSuccess: (bodies, v, c) => {
+      const undo = v.undo;
+      if (undo) {
+        const back = movedIds(v.ids, bodies);
+        toast.success(v.label ?? "Moved", { duration: UNDO_MS, action: { label: "Undo", onClick: () => move.mutate({ ids: back, destinationId: undo.destinationId, label: undo.label, kind: undo.kind }) } });
+      } else toast.success(v.label ?? "Moved");
       void settleAction(qc, v.kind, c.ctx, serverWinsOnce("move", v.ids.length, () => countUnmoved(qc, v.ids, c.ctx.sourceFolders ?? [])));
     },
     onError: (e, v, c) => onError("Move", v.kind)(e, v.ids, c),
   });
+
+  // Gmail's "Move to tab": a categories PATCH per message (the target
+  // sorting category in, the other out; Primary = neither), optimistic, then
+  // the source and destination tab lists refetch. The toast offers "always
+  // for this sender" when every message is from one address: one inbox rule
+  // on the exact address, placed before the sorting rules (alwaysSortSender).
+  type TabMoveVars = { messages: Message[]; target: TabTarget };
+  const tabMove = useMutation({
+    mutationFn: async ({ messages, target }: TabMoveVars) => {
+      const updates = tabMoveUpdates(messages, target);
+      if (updates.length) await run(updates.map((u) => ({ id: u.id, method: "PATCH", url: `/me/messages/${u.id}`, body: { categories: u.categories } })));
+      return updates;
+    },
+    onMutate: ({ messages, target }) => {
+      const next = new Map(tabMoveUpdates(messages, target).map((u) => [u.id, u.categories]));
+      return begin([...next.keys()], { labels: [SOCIAL_LABEL, PROMOTIONS_LABEL] }, (m) => ({ ...m, categories: next.get(m.id) ?? m.categories }));
+    },
+    onSuccess: (updates, v, c) => {
+      const sender = singleSender(v.messages);
+      const name = TAB_LABEL[v.target];
+      if (sender) {
+        toast.success(`Moved to ${name}. Do this for all mail from ${sender}?`, {
+          duration: ALWAYS_OFFER_MS,
+          action: { label: "Yes", onClick: () => void always(v.target, sender) },
+        });
+      } else toast.success(`Moved to ${name}`);
+      const asUpdates: Update[] = updates.map((u) => ({ id: u.id, body: { categories: u.categories } }));
+      void settleAction(qc, "label", c.ctx, serverWinsOnce("move", asUpdates.length, () => countUnapplied(qc, asUpdates)));
+    },
+    onError: (e, v, c) => onError("Move", "label")(e, v.messages.map((m) => m.id), c),
+  });
+  const always = async (target: TabTarget, sender: string) => {
+    try {
+      await alwaysSortSender(api, target, sender);
+      toast.success(target === "primary" ? `Mail from ${sender} will always stay in Primary` : `Mail from ${sender} will always go to ${TAB_LABEL[target]}`);
+    } catch (e) {
+      toast.error(`Could not create the rule. ${errorMessage(e)}`);
+    }
+    void settleAction(qc, "rules", viewContext(qc));
+  };
 
   const remove = useMutation({
     // allowedFolderId: defence in depth for a hard delete; any id whose cached
     // copy lives in another folder is dropped before the batch is built.
     mutationFn: ({ ids, allowedFolderId }: { ids: string[]; allowedFolderId?: string }) => {
       const safe = allowedFolderId ? ids.filter((id) => (cachedMessage(qc, id)?.parentFolderId ?? allowedFolderId) === allowedFolderId) : ids;
-      if (!safe.length) return Promise.resolve();
+      if (!safe.length) return Promise.resolve({});
       return run(safe.map((id) => ({ id, method: "DELETE", url: `/me/messages/${id}` })));
     },
     onMutate: ({ ids }) => begin(ids, {}, () => null),
@@ -719,11 +809,16 @@ export function useMessageActions() {
     // `conversations` drives the toast; ids may hold several messages of one conversation.
     archive: (ids: string[], conversations = 1) => move.mutate({ ids, destinationId: "archive", label: convLabel(conversations, "Conversation archived", "conversations archived"), kind: "archive" }),
     trash: (ids: string[], conversations = 1) => move.mutate({ ids, destinationId: "deleteditems", label: convLabel(conversations, "Conversation moved to Trash", "conversations moved to Trash"), kind: "trash" }),
-    spam: (ids: string[]) => move.mutate({ ids, destinationId: "junkemail", label: "Reported as spam", kind: "spam" }),
+    // Undo puts the messages back into the Inbox for UNDO_MS after the toast.
+    spam: (ids: string[]) => move.mutate({ ids, destinationId: "junkemail", label: "Reported as spam", kind: "spam", undo: { destinationId: "inbox", label: "Moved back to Inbox", kind: "inbox" } }),
+    notSpam: (ids: string[]) => move.mutate({ ids, destinationId: "inbox", label: "Marked as not spam", kind: "inbox", undo: { destinationId: "junkemail", label: "Moved back to Spam", kind: "spam" } }),
     inbox: (ids: string[]) => move.mutate({ ids, destinationId: "inbox", label: "Moved to Inbox", kind: "inbox" }),
     moveTo: (ids: string[], destinationId: string, name: string) => move.mutate({ ids, destinationId, label: `Moved to ${name}`, kind: "move" }),
+    // Primary / Social / Promotions; a no-op (toast only) when already there.
+    moveToTab: (messages: Message[], target: TabTarget) => messages.length && tabMove.mutate({ messages, target }),
+    alwaysSortSender: always,
     deleteForever: (ids: string[], allowedFolderId?: string) => remove.mutate({ ids, allowedFolderId }),
-    pending: patch.isPending || move.isPending || remove.isPending,
+    pending: patch.isPending || move.isPending || remove.isPending || tabMove.isPending,
   };
 }
 

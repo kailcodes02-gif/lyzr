@@ -89,6 +89,90 @@ test.describe("Labels, filters and inbox tabs in demo mode", () => {
   });
 });
 
+test.describe("Move to tab, always for this sender, and print in demo mode", () => {
+  test("Mayuri's LinkedIn mail moves from Social to Primary and Yes keeps it there with a visible rule", async ({ page }) => {
+    await openDemo(page, "/MS/outlook/");
+    const subject = "Partner marketing slot at LinkedIn Talent Connect";
+    await page.getByRole("button", { name: "Turn on inbox sorting" }).click();
+    await expect(page.getByText(/Inbox sorting on/)).toBeVisible();
+    await page.getByRole("tab", { name: /social/i }).click();
+    const row = page.getByRole("row").filter({ hasText: subject });
+    await expect(row).toBeVisible();
+    await row.hover();
+    await row.getByRole("button", { name: "Move to tab" }).click();
+    await page.getByRole("menuitem", { name: "Primary" }).click();
+    await expect(page.getByText(/Moved to Primary\. Do this for all mail from mayuri\.murthy@linkedin\.com\?/)).toBeVisible();
+    await page.getByRole("button", { name: "Yes" }).click();
+    await expect(page.getByText(/will always stay in Primary/)).toBeVisible();
+    // Gone from Social (the refetch after the PATCH settles is what removes it), listed in Primary.
+    await expect(row).toHaveCount(0);
+    await page.getByRole("tab", { name: /primary/i }).click();
+    await expect(page.getByRole("row").filter({ hasText: subject })).toBeVisible();
+    // The rule shows in Filters with a plain summary and can be deleted there.
+    await page.getByRole("button", { name: "Filters" }).click();
+    await expect(page.getByText("Sorting: Primary (mayuri.murthy@linkedin.com)")).toBeVisible();
+    await expect(page.getByText("Always keep mail from mayuri.murthy@linkedin.com in Primary.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Delete filter Sorting: Primary (mayuri.murthy@linkedin.com)" })).toBeEnabled();
+  });
+
+  test("bulk Move to tab sends selected Primary rows to Promotions", async ({ page }) => {
+    await openDemo(page, "/MS/outlook/");
+    // A recent row: the list is virtualised, older rows are not in the DOM until scrolled to.
+    const subject = "Webinar registration page live";
+    const row = page.getByRole("row").filter({ hasText: subject });
+    await row.hover();
+    await row.getByRole("checkbox", { name: `Select ${subject}` }).click();
+    // The toolbar's button (first in the DOM); the hovered row shows its own.
+    await page.getByRole("button", { name: "Move to tab" }).first().click();
+    await page.getByRole("menuitem", { name: "Promotions" }).click();
+    await expect(page.getByText(/Moved to Promotions/)).toBeVisible();
+    await expect(row).toHaveCount(0);
+    await page.getByRole("tab", { name: /promotions/i }).click();
+    await expect(page.getByRole("row").filter({ hasText: subject })).toBeVisible();
+  });
+
+  test("Print builds a script-free print document with the headers in a hidden frame; Ctrl+P does the same", async ({ page }) => {
+    await openDemo(page, "/MS/outlook/");
+    // Headless Chromium has no print dialog: print() is a no-op and the frame stays for inspection.
+    const subject = "TCS co-sell deck: legal review complete";
+    await page.getByRole("row").filter({ hasText: subject }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(subject);
+    await page.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Print" }).click();
+    const frame = page.getByTestId("print-frame");
+    await expect(frame).toHaveCount(1);
+    const html = await frame.evaluate((el) => (el as HTMLIFrameElement).srcdoc);
+    expect(html).toContain(`<h1>${subject}</h1>`);
+    expect(html).toContain("<b>From</b> Rahul Verma &lt;rahul.verma@tcs.com&gt;");
+    expect(html).toContain("<b>To</b>");
+    expect(html).toContain("<b>Date</b>");
+    expect(html).toContain("TCS-Lyzr-cosell-redline.docx");
+    expect(html).not.toMatch(/<script/i);
+    expect(html).toContain("default-src 'none'");
+    // Ctrl/Cmd+P from the reading pane replaces the frame with a fresh one.
+    await frame.evaluate((el) => el.setAttribute("data-old", "1"));
+    await page.keyboard.press(process.platform === "darwin" ? "Meta+p" : "Control+p");
+    await expect(page.getByTestId("print-frame")).toHaveCount(1);
+    await expect(page.locator('[data-testid="print-frame"][data-old="1"]')).toHaveCount(0);
+  });
+
+  test("Not spam in the Spam folder moves the message back to the Inbox with an Undo", async ({ page }) => {
+    await openDemo(page, "/MS/outlook/");
+    await page.getByRole("link", { name: /^Spam/ }).click();
+    await expect(page).toHaveURL(/f=junkemail/);
+    const subject = "You have won a free conference pass";
+    const row = page.getByRole("row").filter({ hasText: subject });
+    await expect(row).toBeVisible();
+    await row.hover();
+    await row.getByRole("button", { name: "Not spam" }).click();
+    await expect(page.getByText("Marked as not spam")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
+    await expect(row).toHaveCount(0);
+    await page.getByRole("link", { name: /^Inbox/ }).click();
+    await expect(page.getByRole("row").filter({ hasText: subject })).toBeVisible();
+  });
+});
+
 test.describe("Preset labels and skip-the-inbox in demo mode", () => {
   test("Set up my labels moves Siva's mail under Leadership and out of Primary", async ({ page }) => {
     await openDemo(page, "/MS/outlook/");

@@ -6,7 +6,9 @@ import { backfillTargets, folderByNamePath, hasCategory, matchesConditions, ownR
 import type { PresetLabel } from "./presets";
 import type { MailFolder, Message, MessageRule, OutlookCategory } from "./types";
 
-export type BatchOutcome = { ok: string[]; failed: { id: string; status: number; detail: string }[] };
+// bodies: the response body of each successful sub-request, by request id
+// (a move returns the moved message, whose id is new).
+export type BatchOutcome = { ok: string[]; failed: { id: string; status: number; detail: string }[]; bodies?: Record<string, unknown> };
 export type PageOf<T> = { value: T[]; "@odata.nextLink"?: string };
 
 export type GraphApi = {

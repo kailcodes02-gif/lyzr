@@ -457,6 +457,15 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-09-22, MS UI: Move to tab, always-for-sender rules, print, spam undo; menu crash fix (MS UI)
+- Any message can be moved to Primary / Social / Promotions (thread menu, hover, bulk, right-click, drag onto a
+  tab); a "Do this for all mail from <address>" prompt creates an Outlook rule for that exact address placed
+  before the sorting rules (Primary = stopProcessingRules only). Rules read as "Always keep mail from X in
+  Primary." in Filters. Print (thread, message, Cmd+P) builds a sanitised print document in a hidden frame.
+  "Not spam" in Spam; spam/move toasts with 5 s Undo.
+- Found and fixed a latent crash: Base UI menu labels must sit inside a menu group; six mail menus (Move to,
+  Label as, Sorting settings) would have crashed like the calendar "+" did. 333 unit + 36 browser tests green.
+
 ### 2026-09-22, MS UI: first real-mailbox fix-up after admin consent (MS UI)
 - Admin consent granted; user tested live. Two root causes found from screenshots: (1) every mailFolders
   request selected `wellKnownName`, which exists only in Graph beta; v1.0 returned 400, causing "Folders
