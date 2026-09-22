@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@5/lib/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@5/lib/redirect-bridge/msal-redirect-bridge.min.js"></script>
 <style>
 :root{
   --surface:#FAF6F0; --card:#FFFFFF; --ink:#1E1A16; --muted:#6B6257; --border:#E4DCCF; --hover:#FBF7EE;
@@ -286,6 +287,33 @@ footer{max-width:1320px;margin:30px auto 0;padding:16px 22px;color:var(--muted);
 <datalist id="emailSuggest"></datalist>
 
 <script>
+/* ============ MSAL v5 redirect bridge ============ */
+// The Microsoft login popup lands back on this same page (the registered
+// redirect URI) with the auth response in the URL hash. MSAL v5 no longer
+// reads the popup's URL from the opener window; the landing page itself must
+// broadcast the response back (BroadcastChannel), then the opener closes the
+// popup. So when this page loads inside the popup with a response, relay it
+// and skip booting the app. This page is served without a
+// Cross-Origin-Opener-Policy header (root _headers), which the bridge needs.
+window.__msalBridging=false;
+(function(){
+  const hasResponse=/[#?&](code|error)=/.test(location.hash+location.search);
+  const inPopup=!!window.opener||window.parent!==window;
+  if(hasResponse&&inPopup){
+    window.__msalBridging=true;
+    const gate=document.getElementById('gate');
+    gate.innerHTML='<div class="gatecard"><p style="margin:0">Completing sign-in…</p></div>';
+    if(!window.msalRedirectBridge){gate.innerHTML='<div class="gatecard"><p style="margin:0">Sign-in relay failed to load. Close this window and try again.</p></div>';return;}
+    msalRedirectBridge.broadcastResponseToMainFrame().catch(e=>{
+      gate.innerHTML='<div class="gatecard"><p style="margin:0">Sign-in relay failed: '+String((e&&(e.errorCode||e.message))||e)+'. Close this window and try again.</p></div>';
+    });
+  }else if(hasResponse){
+    // Stale response in a top-level tab (e.g. a popup that was left open):
+    // drop it so the gate shows normally.
+    history.replaceState(null,'',location.pathname);
+  }
+})();
+
 /* ============ config ============ */
 // Same Entra app registration as the MS UI project ("Lyzr MS UI"), single
 // tenant (Lyzr only) — Microsoft itself is the account-domain gate here.
@@ -668,8 +696,10 @@ function knownEmails(){
 function updateEmailSuggest(){const dl=$('emailSuggest');if(dl)dl.innerHTML=knownEmails().map(em=>`<option value="${esc(em)}">`).join('');}
 
 /* ============ boot ============ */
-bindControls();
-if(!restore()){/* show gate (default) */}
+if(!window.__msalBridging){
+  bindControls();
+  if(!restore()){/* show gate (default) */}
+}
 </script>
 </body>
 </html>
