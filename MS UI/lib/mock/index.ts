@@ -3,6 +3,7 @@
 // Mock mode: real Microsoft sign-in, fake Graph data. Lets every page be
 // exercised before the tenant admin approves the data permissions.
 // Turn on with ?mock=1 on any URL (persists in localStorage), off with ?mock=0.
+import { GraphError } from "../graph";
 import { clearDriveIndexes } from "../local-state";
 import { handleCalendar } from "./calendar";
 import { handleDrive } from "./drive";
@@ -78,6 +79,16 @@ export async function mockGraph(path: string, method: string, body: unknown): Pr
   const p = url.pathname.replace(/^\/v1\.0/, "");
   if (p === "/$batch" && method === "POST") {
     const reqs = ((body as { requests?: { id: string; method: string; url: string; body?: unknown }[] })?.requests ?? []);
+    // Exactly Graph's rules: at most 20 requests, and every request id
+    // unique (case-insensitive), else the WHOLE batch is a 400.
+    if (reqs.length > 20) throw new GraphError(400, "BadRequest", "The number of requests in the batch exceeds the maximum of 20.", "/$batch");
+    const seen = new Set<string>();
+    for (const r of reqs) {
+      const key = String(r.id ?? "").toLowerCase();
+      if (!key) throw new GraphError(400, "BadRequest", "Request Id is required in a batch.", "/$batch");
+      if (seen.has(key)) throw new GraphError(400, "BadRequest", `Request Id ${r.id} has to be unique in a batch`, "/$batch");
+      seen.add(key);
+    }
     const responses = [];
     for (const r of reqs) {
       try {

@@ -41,10 +41,10 @@ export function TabMoveItems({ current, onMove, Item }: { current?: TabTarget; o
   );
 }
 
-function IconButton({ label, onClick, children, className }: { label: string; onClick: (e: React.MouseEvent) => void; children: React.ReactNode; className?: string }) {
+function IconButton({ label, onClick, children, className, disabled }: { label: string; onClick: (e: React.MouseEvent) => void; children: React.ReactNode; className?: string; disabled?: boolean }) {
   return (
     <Tooltip>
-      <TooltipTrigger render={<button type="button" aria-label={label} onClick={onClick} className={cn("flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-black/10 hover:text-foreground dark:hover:bg-white/10", className)} />}>
+      <TooltipTrigger render={<button type="button" aria-label={label} onClick={onClick} disabled={disabled} className={cn("flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-black/10 hover:text-foreground dark:hover:bg-white/10 disabled:opacity-40", className)} />}>
         {children}
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
@@ -287,7 +287,7 @@ export function UpdatedAgo({ at }: { at?: number }) {
   return <span className="text-xs text-muted-foreground" data-testid="updated-ago">{label}</span>;
 }
 
-export function ListToolbar({ total, selectedCount, allSelected, onSelectAll, onClear, onRefresh, refreshing, updatedAt, onArchive, onTrash, onRead, onUnread, onSpam, onNotSpam, onMoveToTab, onLabel, page, onPrev, onNext, hasPrev, hasNext, isTrashOrSpam, isSpam, onInbox }: { total: number; selectedCount: number; allSelected: boolean; onSelectAll: () => void; onClear: () => void; onRefresh: () => void; refreshing?: boolean; updatedAt?: number; onArchive: () => void; onTrash: () => void; onRead: () => void; onUnread: () => void; onSpam: () => void; onNotSpam?: () => void; onMoveToTab?: (t: TabTarget) => void; onLabel?: React.ReactNode; page: React.ReactNode; onPrev: () => void; onNext: () => void; hasPrev: boolean; hasNext: boolean; isTrashOrSpam?: boolean; isSpam?: boolean; onInbox: () => void }) {
+export function ListToolbar({ total, selectedCount, allSelected, onSelectAll, onClear, onRefresh, refreshing, updatedAt, onArchive, onTrash, onRead, onUnread, onSpam, onNotSpam, onMoveToTab, onLabel, page, onPrev, onNext, hasPrev, hasNext, isTrashOrSpam, isSpam, onInbox, moveDisabled }: { total: number; selectedCount: number; allSelected: boolean; onSelectAll: () => void; onClear: () => void; onRefresh: () => void; refreshing?: boolean; updatedAt?: number; onArchive: () => void; onTrash: () => void; onRead: () => void; onUnread: () => void; onSpam: () => void; onNotSpam?: () => void; onMoveToTab?: (t: TabTarget) => void; onLabel?: React.ReactNode; page: React.ReactNode; onPrev: () => void; onNext: () => void; hasPrev: boolean; hasNext: boolean; isTrashOrSpam?: boolean; isSpam?: boolean; onInbox: () => void; moveDisabled?: boolean }) {
   return (
     <div className="flex h-12 shrink-0 items-center gap-1 border-b border-border px-3">
       <div className="flex w-6 items-center justify-center">
@@ -303,24 +303,24 @@ export function ListToolbar({ total, selectedCount, allSelected, onSelectAll, on
       ) : (
         <>
           {isSpam && onNotSpam ? (
-            <IconButton label="Not spam" onClick={onNotSpam}>
+            <IconButton label="Not spam" onClick={onNotSpam} disabled={moveDisabled}>
               <ShieldCheck className="h-4 w-4" />
             </IconButton>
           ) : isTrashOrSpam ? (
-            <IconButton label="Move to Inbox" onClick={onInbox}>
+            <IconButton label="Move to Inbox" onClick={onInbox} disabled={moveDisabled}>
               <Users className="h-4 w-4" />
             </IconButton>
           ) : (
-            <IconButton label="Archive" onClick={onArchive}>
+            <IconButton label="Archive" onClick={onArchive} disabled={moveDisabled}>
               <Archive className="h-4 w-4" />
             </IconButton>
           )}
           {!isTrashOrSpam && (
-            <IconButton label="Report spam" onClick={onSpam}>
+            <IconButton label="Report spam" onClick={onSpam} disabled={moveDisabled}>
               <ShieldAlert className="h-4 w-4" />
             </IconButton>
           )}
-          <IconButton label="Delete" onClick={onTrash}>
+          <IconButton label="Delete" onClick={onTrash} disabled={moveDisabled}>
             <Trash2 className="h-4 w-4" />
           </IconButton>
           <span className="mx-1 h-5 w-px bg-border" />

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { InteractionRequiredAuthError, type IPublicClientApplication } from "@azure/msal-browser";
-import { ConsentRequiredError, graphBatch, graphFetch, graphGetAll, GraphError, isConsentRequiredError, redirectMarkerKey, wantsImmutableIds } from "../graph";
+import { ConsentRequiredError, dedupeBatchRequests, graphBatch, graphFetch, graphGetAll, GraphError, isConsentRequiredError, redirectMarkerKey, wantsImmutableIds } from "../graph";
 
 const instance = {
   getActiveAccount: () => ({ homeAccountId: "x", username: "u" }),
@@ -106,6 +106,61 @@ describe("graphBatch", () => {
     // The outer $batch POST itself must not carry the mail Prefer.
     const outer = spy.mock.calls[0][1]!.headers as Record<string, string>;
     expect(outer.Prefer ?? "").not.toContain("ImmutableId");
+  });
+  it("sends sequential wire ids and maps responses back to the caller's ids", async () => {
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (_u, init) => {
+      const body = JSON.parse(init!.body as string) as { requests: { id: string }[] };
+      // Out of order, as Graph may answer.
+      return json({ responses: body.requests.map((r) => ({ id: r.id, status: 200, body: { wire: r.id } })).reverse() });
+    });
+    const out = await graphBatch(instance, ["Mail.ReadWrite"], [
+      { id: "AAMk-a", method: "PATCH", url: "/me/messages/AAMk-a", body: { isRead: true } },
+      { id: "AAMk-b", method: "PATCH", url: "/me/messages/AAMk-b", body: { isRead: true } },
+    ]);
+    const sent = JSON.parse(spy.mock.calls[0][1]!.body as string) as { requests: { id: string }[] };
+    expect(sent.requests.map((r) => r.id)).toEqual(["1", "2"]);
+    expect(out).toEqual([
+      { id: "AAMk-a", status: 200, body: { wire: "1" } },
+      { id: "AAMk-b", status: 200, body: { wire: "2" } },
+    ]);
+  });
+  it("de-duplicates identical requests with a repeated id and fans the one response out (the 'Request Id has to be unique' case)", async () => {
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (_u, init) => {
+      const body = JSON.parse(init!.body as string) as { requests: { id: string }[] };
+      const ids = body.requests.map((r) => r.id);
+      expect(new Set(ids).size).toBe(ids.length);
+      return json({ responses: body.requests.map((r) => ({ id: r.id, status: 201, body: { id: `new-${r.id}` } })) });
+    });
+    const move = (id: string) => ({ id, method: "POST", url: `/me/messages/${id}/move`, body: { destinationId: "archive" } });
+    // 100 selected ids, only 30 distinct: two $batch calls of 20 + 10.
+    const reqs = Array.from({ length: 100 }, (_, i) => move(`m${i % 30}`));
+    const out = await graphBatch(instance, ["Mail.ReadWrite"], reqs);
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(spy.mock.calls[0][1]!.body as string).requests).toHaveLength(20);
+    expect(JSON.parse(spy.mock.calls[1][1]!.body as string).requests).toHaveLength(10);
+    expect(out).toHaveLength(30);
+    expect(out.map((r) => r.id)).toEqual(Array.from({ length: 30 }, (_, i) => `m${i}`));
+    expect(out.every((r) => r.status === 201)).toBe(true);
+  });
+  it("keeps two different requests that share a caller id and answers both under that id", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (_u, init) => {
+      const body = JSON.parse(init!.body as string) as { requests: { id: string; url: string }[] };
+      return json({ responses: body.requests.map((r) => ({ id: r.id, status: 200, body: { url: r.url } })) });
+    });
+    const out = await graphBatch(instance, ["Mail.ReadWrite"], [
+      { id: "x", method: "GET", url: "/me/mailFolders/inbox" },
+      { id: "x", method: "GET", url: "/me/mailFolders/archive" },
+    ]);
+    expect(out.map((r) => [r.id, (r.body as { url: string }).url])).toEqual([["x", "/me/mailFolders/inbox"], ["x", "/me/mailFolders/archive"]]);
+  });
+  it("dedupeBatchRequests keys on method, url and body", () => {
+    const u = dedupeBatchRequests([
+      { id: "a", method: "PATCH", url: "/me/messages/a", body: { isRead: true } },
+      { id: "a", method: "PATCH", url: "/me/messages/a", body: { isRead: true } },
+      { id: "a", method: "PATCH", url: "/me/messages/a", body: { isRead: false } },
+      { id: "b", method: "PATCH", url: "/me/messages/a", body: { isRead: true } },
+    ]);
+    expect(u.map((e) => [e.req.body, e.callerIds])).toEqual([[{ isRead: true }, ["a", "b"]], [{ isRead: false }, ["a"]]]);
   });
   it("chunks into 20 and strips the Graph prefix", async () => {
     const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (_u, init) => {

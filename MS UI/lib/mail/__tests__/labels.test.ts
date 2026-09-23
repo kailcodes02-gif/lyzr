@@ -294,7 +294,9 @@ describe("mock: categories, rules and sorting", () => {
     expect(gsi.value.every((m) => m.categories?.includes("GSI"))).toBe(true);
     expect(gsi.value.some((m) => m.parentFolderId === "f-partners-acc")).toBe(true);
     const search = call<Page<Message>>("GET", labelListPath("GSI", "search"));
-    expect(search.value.map((m) => m.id).sort()).toEqual(gsi.value.map((m) => m.id).sort());
+    // $search answers with REST ids (no immutable Prefer on $search): same messages, other id format.
+    expect(search.value.every((m) => m.id.startsWith("rest:"))).toBe(true);
+    expect(search.value.map((m) => m.id.replace(/^rest:/, "")).sort()).toEqual(gsi.value.map((m) => m.id).sort());
     const primary = call<Page<Message>>("GET", inboxTabPath("primary"));
     expect(primary.value.length).toBeGreaterThan(10);
     expect(primary.value.every((m) => !m.categories?.includes("Social"))).toBe(true);

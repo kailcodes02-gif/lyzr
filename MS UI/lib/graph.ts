@@ -247,21 +247,49 @@ export async function graphGetAll<T>(instance: IPublicClientApplication, scopes:
 export type BatchRequest = { id: string; method: string; url: string; headers?: Record<string, string>; body?: unknown };
 export type BatchResponse = { id: string; status: number; headers?: Record<string, string>; body?: unknown };
 
+// One line per distinct request: the same (method, url, body) asked for
+// twice (a selection that lists one message under two views, a conversation
+// expanded twice) is sent once and its response fanned out to every caller id.
+export function dedupeBatchRequests(requests: BatchRequest[]): { req: BatchRequest; callerIds: string[] }[] {
+  const out: { req: BatchRequest; callerIds: string[] }[] = [];
+  const byKey = new Map<string, number>();
+  for (const r of requests) {
+    const key = `${r.method.toUpperCase()} ${r.url}\n${r.body === undefined ? "" : JSON.stringify(r.body)}`;
+    const i = byKey.get(key);
+    if (i === undefined) {
+      byKey.set(key, out.length);
+      out.push({ req: r, callerIds: [r.id] });
+    } else if (!out[i].callerIds.includes(r.id)) out[i].callerIds.push(r.id);
+  }
+  return out;
+}
+
 // JSON batching, 20 requests per call, in order. Failed sub-requests are
 // returned with their status rather than thrown. Headers on the outer POST
 // do not reach the sub-requests, so the immutable-id Prefer is added to each
 // mail sub-request here (ids must match what lists and threads carry).
+// Graph requires the request id to be unique in a batch ("Request Id X has
+// to be unique in a batch", 400 for the whole batch): the wire ids are
+// sequential ("1".."n") and responses are mapped back to the caller's ids,
+// so callers may keep using the message id as their correlation id.
 export async function graphBatch(instance: IPublicClientApplication, scopes: string[], requests: BatchRequest[]): Promise<BatchResponse[]> {
   const out: BatchResponse[] = [];
-  for (let i = 0; i < requests.length; i += 20) {
-    const chunk = requests.slice(i, i + 20).map((r) => {
+  const unique = dedupeBatchRequests(requests);
+  for (let i = 0; i < unique.length; i += 20) {
+    const slice = unique.slice(i, i + 20);
+    const chunk = slice.map(({ req: r }, j) => {
       let headers: Record<string, string> = { ...(r.headers ?? {}) };
       if (r.body !== undefined) headers = { "Content-Type": "application/json", ...headers };
       if (wantsImmutableIds(r.url)) headers = withImmutablePrefer(headers);
-      return { ...r, url: r.url.replace(GRAPH, ""), headers: Object.keys(headers).length ? headers : undefined };
+      return { ...r, id: String(j + 1), url: r.url.replace(GRAPH, ""), headers: Object.keys(headers).length ? headers : undefined };
     });
     const res = await graphFetch<{ responses: BatchResponse[] }>(instance, scopes, "/$batch", { method: "POST", body: { requests: chunk }, immutableIds: false });
-    out.push(...res.responses);
+    const byWireId = new Map(res.responses.map((r) => [String(r.id), r]));
+    slice.forEach((entry, j) => {
+      const r = byWireId.get(String(j + 1));
+      if (!r) return; // no response: the caller treats a missing id as failed
+      for (const id of entry.callerIds) out.push({ ...r, id });
+    });
   }
   return out;
 }

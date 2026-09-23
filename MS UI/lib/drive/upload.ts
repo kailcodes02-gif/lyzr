@@ -57,6 +57,7 @@ export function cancelUpload(id: string) {
 }
 
 type UploadSession = { uploadUrl: string; expirationDateTime?: string; nextExpectedRanges?: string[] };
+export const SESSION_GONE = "The upload session expired. Upload the file again.";
 
 async function uploadSmall(instance: IPublicClientApplication, task: UploadTask, file: File): Promise<DriveItem> {
   const path = `${itemPath(task.parentId)}:/${encodeURIComponent(file.name)}:/content?@microsoft.graph.conflictBehavior=rename`;
@@ -79,10 +80,12 @@ async function uploadLarge(instance: IPublicClientApplication, task: UploadTask,
     const current = tasks.find((t) => t.id === task.id);
     if (!current || current.cancelled) throw new Error("cancelled");
     try {
-      // Plain fetch: the upload URL is pre-authenticated, no bearer token.
+      // Plain fetch: the upload URL is pre-authenticated, no bearer token
+      // (Graph answers 401 if one is sent). Content-Length is a forbidden
+      // header in browsers; fetch sets it from the body.
       const res = await fetch(session.uploadUrl, {
         method: "PUT",
-        headers: { "Content-Range": contentRange(range, file.size), "Content-Length": String(range.length) },
+        headers: { "Content-Range": contentRange(range, file.size) },
         body: file.slice(range.start, range.end + 1),
       });
       if (res.status === 200 || res.status === 201) {
@@ -96,9 +99,12 @@ async function uploadLarge(instance: IPublicClientApplication, task: UploadTask,
         attempts = 0;
         continue;
       }
+      // 404: the session no longer exists (expired or cancelled); the docs say
+      // to start the whole upload over rather than retry.
+      if (res.status === 404) throw new Error(SESSION_GONE);
       throw new Error(`Upload chunk failed (${res.status})`);
     } catch (e) {
-      if ((e as Error).message === "cancelled") throw e;
+      if ((e as Error).message === "cancelled" || (e as Error).message === SESSION_GONE) throw e;
       if (++attempts > 5) throw e;
       await new Promise((r) => setTimeout(r, 1000 * attempts));
       // Ask the session where to resume.

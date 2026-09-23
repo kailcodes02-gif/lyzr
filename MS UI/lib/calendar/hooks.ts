@@ -5,7 +5,7 @@ import { useMsal } from "@azure/msal-react";
 import { useIsFetching, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { graphBatch, graphFetch, graphGetAll, GraphError, isConsentRequiredError, type Page } from "@/lib/graph";
+import { graphBatch, graphFetch, graphGetAll, GraphError, isConsentRequiredError, type BatchRequest, type Page } from "@/lib/graph";
 import { isMockMode } from "@/lib/mock";
 import { assignColors, loadAssignedColors, mineColor, pickColor, saveAssignedColors, type AssignedColors } from "./colors";
 import { DEFAULT_SETTINGS, effectiveTimeZone, loadHidden, loadSettings, saveHidden, saveSettings, type CalendarSettings } from "./settings";
@@ -139,7 +139,27 @@ export function collectBatch(responses: { id: string; status: number; body?: unk
   return { pages, failed };
 }
 
-async function fetchView(instance: ReturnType<typeof useMsal>["instance"], tz: string, start: string, end: string, ids: string[], groupOf?: GroupOf): Promise<ViewData> {
+// Graph rejects a $batch whose sub-request ids are not unique ("Request Id X
+// has to be unique in a batch", compared case-insensitively), so the calendar
+// list is de-duplicated and each sub-request is identified by its position;
+// the calendar id is put back on the responses before they are read.
+export function uniqueCalendarIds(ids: string[]): string[] {
+  return Array.from(new Set(ids));
+}
+export function viewBatchRequests(ids: string[], groupOf: GroupOf | undefined, startIso: string, endIso: string, prefer: Record<string, string>): BatchRequest[] {
+  return ids.map((id, i) => ({
+    id: String(i),
+    method: "GET",
+    url: `${calendarPath(id, groupOf)}/calendarView?startDateTime=${startIso}&endDateTime=${endIso}&${EVENT_SELECT}&$top=1000`,
+    headers: prefer,
+  }));
+}
+export function withCalendarIds<T extends { id: string }>(responses: T[], ids: string[]): T[] {
+  return responses.map((r) => ({ ...r, id: ids[Number(r.id)] ?? r.id }));
+}
+
+async function fetchView(instance: ReturnType<typeof useMsal>["instance"], tz: string, start: string, end: string, calendarIds: string[], groupOf?: GroupOf): Promise<ViewData> {
+  const ids = uniqueCalendarIds(calendarIds);
   if (!ids.length) return { events: [], failed: [] };
   const startIso = encodeURIComponent(wallToOffsetIso(start, tz));
   const endIso = encodeURIComponent(wallToOffsetIso(end, tz));
@@ -147,18 +167,7 @@ async function fetchView(instance: ReturnType<typeof useMsal>["instance"], tz: s
   // Every calendar of the range in ONE $batch (Graph runs the sub-requests
   // itself; the outer request counts once against the mailbox concurrency),
   // through the queue so nothing else runs alongside beyond the limit.
-  const responses = await queued(() =>
-    graphBatch(
-      instance,
-      CAL_SCOPES,
-      ids.map((id) => ({
-        id,
-        method: "GET",
-        url: `${calendarPath(id, groupOf)}/calendarView?startDateTime=${startIso}&endDateTime=${endIso}&${EVENT_SELECT}&$top=1000`,
-        headers: prefer,
-      })),
-    ),
-  );
+  const responses = withCalendarIds(await queued(() => graphBatch(instance, CAL_SCOPES, viewBatchRequests(ids, groupOf, startIso, endIso, prefer))), ids);
   const { pages, failed } = collectBatch(responses);
   // Only a consent problem on every calendar is a real failure; a single shared
   // calendar the sharer revoked (404) or that needs Calendars.Read.Shared (403)
@@ -186,7 +195,7 @@ export function useCalendarView(tz: string, view: ViewKind, date: string, weekSt
   const { instance } = useMsal();
   const qc = useQueryClient();
   const range = useMemo(() => visibleRange(view, date, weekStartsOn), [view, date, weekStartsOn]);
-  const ids = useMemo(() => [...calendarIds].sort(), [calendarIds]);
+  const ids = useMemo(() => uniqueCalendarIds(calendarIds).sort(), [calendarIds]);
   const groupKey = ids.map((id) => groupOf?.[id] ?? "").join("|");
   const q = useQuery({
     queryKey: viewKey(tz, range.start, range.end, ids),

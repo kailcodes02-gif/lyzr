@@ -457,6 +457,18 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-09-23, MS UI: bulk-action batch fix, full action audit, contacts-aware search (MS UI)
+- Real-mailbox bug: bulk move from search results failed with "Request Id ... has to be unique in a batch"
+  (message ids reused as $batch request ids; search pages overlap). graphBatch now uses sequential wire ids and
+  de-duplicates identical requests; every mail bulk action de-duplicates ids; move-type actions wait for the
+  folder list instead of silently doing nothing in virtual views. Mock $batch rejects duplicate ids.
+- Audit of every mail, drive and calendar action against Graph v1.0 docs (checklists in the agents' reports):
+  fixed calendar $batch duplicate ids, upload chunk PUT Content-Length header (forbidden) and 404 handling,
+  share-invite 207 partial failures. Note: Graph $search spans all folders, so moved mail can still appear in a
+  search view.
+- Mail search box now suggests people (recent, /me/people, directory, contacts), with from:/to:/cc:/subject:/
+  has:attachment/is:unread/after:/before: chips and the last 8 searches. 373 unit + 41 browser tests; deployed.
+
 ### 2026-09-23, MS UI: folder-backed label views, Outlook-style rule builder, diagnostics, polling fix (MS UI)
 - Real-mailbox finding: rules moved mail into label folders (Calendar invites 320 etc.) but label views searched by
   category and returned nothing. Label views now list the label's own folder (resolved from the rule's moveToFolder

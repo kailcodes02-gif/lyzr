@@ -1,5 +1,6 @@
 "use client";
 
+import { SearchBox } from "./search-box";
 import { useQueryClient } from "@tanstack/react-query";
 import { Menu, MoreVertical, Search, SlidersHorizontal, Tag, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -155,13 +156,25 @@ export function MailApp() {
       else n.add(t.conversationId);
       return n;
     });
+  // A virtual view (starred, label, search) lists copies from every folder
+  // and can only scope a move once the folder list is known: until then the
+  // move-type toolbar buttons are disabled and a click keeps the selection.
+  const moveReady = !isVirtualFolderKey(scopeKey) || (folders.data?.length ?? 0) > 0;
   const bulk = (fn: (ids: string[], conversations: number) => void, scope: "all" | "move" = "all") => () => {
+    if (scope === "move" && !moveReady) {
+      toast.error("Folders are still loading. Try again in a moment.");
+      return;
+    }
     const ids = scope === "move" ? selectedMoveIds() : selectedIds();
     if (ids.length) fn(ids, selected.size);
     setSelected(new Set());
   };
   const bulkDelete = () => {
     if (!isTrashOrSpam) return bulk(actions.trash, "move")();
+    if (!moveReady) {
+      toast.error("Folders are still loading. Try again in a moment.");
+      return;
+    }
     const ids = selectedMoveIds();
     if (!ids.length) return;
     if (!window.confirm(`Delete ${ids.length === 1 ? "this message" : `these ${ids.length} messages`} forever? This cannot be undone.`)) return;
@@ -348,10 +361,7 @@ export function MailApp() {
             className="flex h-12 max-w-3xl flex-1 items-center gap-2 rounded-full bg-muted px-4 focus-within:bg-card focus-within:shadow-md"
           >
             <Search className="h-5 w-5 shrink-0 text-muted-foreground" />
-            <input ref={searchRef} value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Search mail" aria-label="Search mail" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
-            {searchText && (
-              <button type="button" aria-label="Clear search" onClick={() => { setSearchText(""); if (state.query) runSearch(""); }} className="rounded-full p-1 hover:bg-black/10"><X className="h-4 w-4" /></button>
-            )}
+            <SearchBox ref={searchRef} query={state.query ?? ""} onSearch={runSearch} />
             <Popover>
               <PopoverTrigger render={<button type="button" aria-label="Search options" className="rounded-full p-1 text-muted-foreground hover:bg-black/10" />}>
                 <SlidersHorizontal className="h-4 w-4" />
@@ -410,6 +420,7 @@ export function MailApp() {
                 onNotSpam={isSpam ? bulk(actions.notSpam, "move") : undefined}
                 onMoveToTab={isInbox ? bulkMoveToTab : undefined}
                 onInbox={bulk(actions.inbox, "move")}
+                moveDisabled={!moveReady}
                 onRead={bulk((ids) => actions.setRead(ids, true))}
                 onUnread={bulk((ids) => actions.setRead(ids, false))}
                 onLabel={

@@ -1,0 +1,15 @@
+import { chromium } from "@playwright/test";
+const browser = await chromium.launch({ channel: "chrome" });
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+const errs = [];
+page.on("console", (m) => { if (m.type() === "error" && !/cloudflareinsights|about:srcdoc/.test(m.text())) errs.push(m.text().slice(0, 160)); });
+page.on("pageerror", (e) => errs.push("pageerror: " + e.message.slice(0, 160)));
+await page.goto("https://lyzr.kailash-gm.com/MS/login/?mock=1", { waitUntil: "load" });
+await page.waitForURL(/\/MS\/outlook\//, { timeout: 30000 }); await page.waitForTimeout(2500);
+console.log("tabs:", await page.getByRole("tab").allTextContents());
+await page.getByRole("link", { name: "Label GSI" }).click(); await page.waitForTimeout(1500);
+console.log("GSI label view rows:", await page.getByRole("row").count(), "| folder note:", await page.getByText(/Folder: GSI/).count());
+await page.goto("https://lyzr.kailash-gm.com/MS/calendar/?view=week"); await page.waitForTimeout(3000);
+console.log("calendar chips:", await page.locator(".msui-ev-solid").count());
+console.log("console errors:", errs.length, errs.slice(0, 3));
+await browser.close();

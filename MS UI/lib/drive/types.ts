@@ -35,6 +35,9 @@ export type Permission = {
   grantedToIdentitiesV2?: { user?: Identity; siteUser?: Identity }[];
   invitation?: { email?: string; signInRequired?: boolean };
   shareId?: string;
+  // invite answers 207 Multi-Status when the grant worked but the notification
+  // email could not be sent to this recipient.
+  error?: { code?: string; message?: string };
 };
 
 export type Crumb = { id: string; name: string };

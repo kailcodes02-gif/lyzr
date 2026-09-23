@@ -460,9 +460,17 @@ export function clientFilterFor(v: ListView, hiddenFolderIds?: Set<string>): ((m
   return undefined;
 }
 
+// Each message once: search pages ($skip over a ranked result set) and a
+// refetched page can list the same message twice, and a selection built
+// from those rows would otherwise ask Graph for the same id twice.
 export function flattenPages(data?: InfiniteData<ListPage>): Message[] {
-  return data?.pages.flatMap((p) => p.value) ?? [];
+  const seen = new Set<string>();
+  return (data?.pages.flatMap((p) => p.value) ?? []).filter((m) => (seen.has(m.id) ? false : (seen.add(m.id), true)));
 }
+
+// Message ids in first-seen order, each once: every bulk mutation goes
+// through this so one message never appears twice in a $batch.
+export const uniqueIds = (ids: string[]): string[] => [...new Set(ids)];
 
 // ---- Thread / single message / attachments --------------------------------
 
@@ -808,7 +816,10 @@ export function useMessageActions() {
   // Runs the requests (request id == message id) and throws PartialBatchError
   // naming exactly the ids that did not go through. Resolves with each
   // response body by request id (a move returns the message under its new id).
-  const run = async (requests: BatchRequest[]): Promise<Record<string, unknown>> => {
+  const run = async (input: BatchRequest[]): Promise<Record<string, unknown>> => {
+    const seen = new Set<string>();
+    const requests = input.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
+    if (!requests.length) return {};
     if (requests.length === 1) {
       const r = requests[0];
       const body = await graphFetch<unknown>(instance, MAIL_SCOPES, r.url, { method: r.method, body: r.body });
@@ -852,8 +863,10 @@ export function useMessageActions() {
     return [...out];
   };
 
+  // The last update for an id wins (a thread selected twice lists it twice).
+  const uniqueUpdates = (updates: Update[]): Update[] => [...new Map(updates.map((u) => [u.id, u])).values()];
   const patch = useMutation({
-    mutationFn: ({ updates }: { updates: Update[] }) => run(updates.map((u) => ({ id: u.id, method: "PATCH", url: `/me/messages/${u.id}`, body: u.body }))),
+    mutationFn: ({ updates }: { updates: Update[] }) => run(uniqueUpdates(updates).map((u) => ({ id: u.id, method: "PATCH", url: `/me/messages/${u.id}`, body: u.body }))),
     onMutate: ({ updates }) => {
       const bodies = new Map(updates.map((u) => [u.id, u.body]));
       return begin([...bodies.keys()], { labels: labelsOf(updates) }, (m) => ({ ...m, ...bodies.get(m.id) }));
@@ -870,12 +883,12 @@ export function useMessageActions() {
   // `undo.destinationId`, the folder the messages came from.
   type MoveVars = { ids: string[]; destinationId: string; label?: string; kind: ActionKind; undo?: { destinationId: string; label: string; kind: ActionKind } };
   const move = useMutation({
-    mutationFn: ({ ids, destinationId }: MoveVars) => run(ids.map((id) => ({ id, method: "POST", url: `/me/messages/${id}/move`, body: { destinationId } }))),
-    onMutate: ({ ids, destinationId }) => begin(ids, { destination: folderKeyOf(qc, destinationId) ?? destinationId.toLowerCase() }, () => null),
+    mutationFn: ({ ids, destinationId }: MoveVars) => run(uniqueIds(ids).map((id) => ({ id, method: "POST", url: `/me/messages/${id}/move`, body: { destinationId } }))),
+    onMutate: ({ ids, destinationId }) => begin(uniqueIds(ids), { destination: folderKeyOf(qc, destinationId) ?? destinationId.toLowerCase() }, () => null),
     onSuccess: (bodies, v, c) => {
       const undo = v.undo;
       if (undo) {
-        const back = movedIds(v.ids, bodies);
+        const back = movedIds(uniqueIds(v.ids), bodies);
         toast.success(v.label ?? "Moved", { duration: UNDO_MS, action: { label: "Undo", onClick: () => move.mutate({ ids: back, destinationId: undo.destinationId, label: undo.label, kind: undo.kind }) } });
       } else toast.success(v.label ?? "Moved");
       void settleAction(qc, v.kind, c.ctx, serverWinsOnce("move", v.ids.length, () => countUnmoved(qc, v.ids, c.ctx.sourceFolders ?? [])));
@@ -889,9 +902,10 @@ export function useMessageActions() {
   // for this sender" when every message is from one address: one inbox rule
   // on the exact address, placed before the sorting rules (alwaysSortSender).
   type TabMoveVars = { messages: Message[]; target: TabTarget };
+  const uniqueMessages = (messages: Message[]): Message[] => [...new Map(messages.map((m) => [m.id, m])).values()];
   const tabMove = useMutation({
     mutationFn: async ({ messages, target }: TabMoveVars) => {
-      const updates = tabMoveUpdates(messages, target);
+      const updates = tabMoveUpdates(uniqueMessages(messages), target);
       if (updates.length) await run(updates.map((u) => ({ id: u.id, method: "PATCH", url: `/me/messages/${u.id}`, body: { categories: u.categories } })));
       return updates;
     },
@@ -927,11 +941,11 @@ export function useMessageActions() {
     // allowedFolderId: defence in depth for a hard delete; any id whose cached
     // copy lives in another folder is dropped before the batch is built.
     mutationFn: ({ ids, allowedFolderId }: { ids: string[]; allowedFolderId?: string }) => {
-      const safe = allowedFolderId ? ids.filter((id) => (cachedMessage(qc, id)?.parentFolderId ?? allowedFolderId) === allowedFolderId) : ids;
+      const safe = uniqueIds(allowedFolderId ? ids.filter((id) => (cachedMessage(qc, id)?.parentFolderId ?? allowedFolderId) === allowedFolderId) : ids);
       if (!safe.length) return Promise.resolve({});
       return run(safe.map((id) => ({ id, method: "DELETE", url: `/me/messages/${id}` })));
     },
-    onMutate: ({ ids }) => begin(ids, {}, () => null),
+    onMutate: ({ ids }) => begin(uniqueIds(ids), {}, () => null),
     onSuccess: (_d, v, c) => {
       toast.success("Deleted forever");
       void settleAction(qc, "deleteForever", c.ctx, serverWinsOnce("delete", v.ids.length, () => countUndeleted(qc, v.ids)));

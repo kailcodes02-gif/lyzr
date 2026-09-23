@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { IPublicClientApplication } from "@azure/msal-browser";
-import { copyItem, fetchThumbnail, itemPath } from "../api";
+import { copyItem, fetchThumbnail, invite, itemPath } from "../api";
 import { indexKey, isUsableStore } from "../index";
 
 vi.mock("@azure/msal-react", () => ({ useMsal: () => ({ instance: {}, accounts: [] }) }));
@@ -110,5 +110,26 @@ describe("index store cache", () => {
     expect(isUsableStore({ items, rootId: "R", deltaLink: "https://evil.example/delta" }, false)).toBe(false);
     expect(isUsableStore({ items: {} }, false)).toBe(false);
     expect(isUsableStore(undefined, false)).toBe(false);
+  });
+});
+
+describe("invite", () => {
+  it("posts the documented body and keeps per-recipient errors from a 207 Multi-Status answer", async () => {
+    const calls = stubFetch(() =>
+      json(
+        {
+          value: [
+            { id: "p1", roles: ["write"], invitation: { email: "helga@contoso.com", signInRequired: true }, error: { code: "notAllowed", message: "Account verification needed to unblock sending emails." } },
+            { id: "p2", roles: ["write"], invitation: { email: "robin@contoso.com", signInRequired: true } },
+          ],
+        },
+        207
+      )
+    );
+    const res = await invite(instance, "01ABC", ["helga@contoso.com", "robin@contoso.com"], "write", "");
+    expect(calls[0].url).toBe("https://graph.microsoft.com/v1.0/me/drive/items/01ABC/invite");
+    expect(calls[0].init?.method).toBe("POST");
+    expect(JSON.parse(String(calls[0].init?.body))).toEqual({ recipients: [{ email: "helga@contoso.com" }, { email: "robin@contoso.com" }], roles: ["write"], requireSignIn: true, sendInvitation: true });
+    expect(res.value.filter((p) => p.error).map((p) => p.invitation?.email)).toEqual(["helga@contoso.com"]);
   });
 });

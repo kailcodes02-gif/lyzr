@@ -5,7 +5,7 @@ vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), err
 
 import { ConsentRequiredError, GraphError, type BatchRequest, type BatchResponse } from "@/lib/graph";
 import { handleMail, mockFolders } from "@/lib/mock/mail";
-import { ATTACHMENT_CAST_PATH, collectLabelMessages, deltaSeedPath, fetchAttachments, fetchLabelFolder, isConsentError, isDeadDeltaLink, labelEnrichment, labelFolderId, labelFolderNames, labelMessagesClientSide, mergeLabelRows, partitionBatch, runBatch, runLabelDiagnostics } from "../hooks";
+import { ATTACHMENT_CAST_PATH, collectLabelMessages, deltaSeedPath, fetchAttachments, fetchLabelFolder, flattenPages, isConsentError, isDeadDeltaLink, labelEnrichment, labelFolderId, labelFolderNames, labelMessagesClientSide, mergeLabelRows, partitionBatch, runBatch, runLabelDiagnostics, uniqueIds } from "../hooks";
 import { backfillLabel, ensureFolder } from "../install";
 import { simpleConditions as S } from "../labels";
 import type { Attachment, MessageRule } from "../types";
@@ -54,6 +54,15 @@ describe("batch results", () => {
     expect(out.ok).toEqual([]);
     expect(out.failed.map((f) => f.id)).toEqual(["a", "b", "c"]);
     expect(out.failed[0].detail).toBe("offline");
+  });
+});
+
+describe("flattenPages / uniqueIds", () => {
+  it("lists a message once when two search pages overlap, keeping first-seen order", () => {
+    const m = (id: string) => ({ id, subject: id }) as Message;
+    const data = { pages: [{ value: [m("a"), m("b")] }, { value: [m("b"), m("c"), m("a")] }], pageParams: ["", "next"] };
+    expect(flattenPages(data).map((x) => x.id)).toEqual(["a", "b", "c"]);
+    expect(uniqueIds(["a", "a", "b", "a"])).toEqual(["a", "b"]);
   });
 });
 

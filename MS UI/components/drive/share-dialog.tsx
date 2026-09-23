@@ -80,8 +80,15 @@ export function ShareDialog({ item, onClose }: { item: DriveItem | null; onClose
     if (!list.length) return;
     setBusy("invite");
     try {
-      await invite(instance, item.id, list, role, message);
-      toast.success(`Shared with ${list.length === 1 ? list[0] : `${list.length} people`}`);
+      const res = await invite(instance, item.id, list, role, message);
+      // 207 Multi-Status: access was granted, but Microsoft could not email
+      // some recipients (account verification, recipient limits, ...).
+      const problems = (res?.value ?? []).filter((p) => p.error);
+      if (problems.length) {
+        toast.warning(`Shared, but ${problems.length === 1 ? "one invitation email" : `${problems.length} invitation emails`} could not be sent`, {
+          description: problems.map((p) => `${p.invitation?.email ?? p.grantedToV2?.user?.displayName ?? "recipient"}: ${p.error?.message ?? p.error?.code ?? "failed"}`).join("; "),
+        });
+      } else toast.success(`Shared with ${list.length === 1 ? list[0] : `${list.length} people`}`);
       setEmails("");
       setMessage("");
       void refresh();

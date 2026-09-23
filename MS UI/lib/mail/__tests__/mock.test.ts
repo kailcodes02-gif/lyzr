@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ARRIVAL_SUBJECT, handleMail, mockRules, mockTiming } from "@/lib/mock/mail";
+import { GraphError } from "@/lib/graph";
+import { mockGraph } from "@/lib/mock";
+import { ARRIVAL_SUBJECT, handleMail, mockRules, mockTiming, REST_ID_PREFIX } from "@/lib/mock/mail";
 import type { Message, Page } from "./helpers";
 
 const call = <T,>(method: string, path: string, body?: unknown) => handleMail(method, new URL(`https://graph.microsoft.com/v1.0${path}`), body) as T;
@@ -23,6 +25,35 @@ describe("mock mail handler", () => {
     expect(res.value.every((m) => m.from?.emailAddress?.address?.includes("accenture"))).toBe(true);
     const full = call<Message>("GET", `/me/messages/${res.value[0].id}`);
     expect(full.body?.content).toContain("<");
+  });
+  it("search results carry REST ids (no immutable Prefer on $search) that differ from list ids, and every message URL accepts either format", () => {
+    const res = call<Page<Message>>("GET", '/me/messages?$search="from:accenture"&$top=50');
+    expect(res.value.every((m) => m.id.startsWith(REST_ID_PREFIX))).toBe(true);
+    const restId = res.value[0].id;
+    const immutableId = restId.slice(REST_ID_PREFIX.length);
+    const inbox = call<Page<Message>>("GET", "/me/mailFolders/inbox/messages?$top=50");
+    expect(inbox.value.some((m) => m.id === restId)).toBe(false);
+    expect(inbox.value.some((m) => m.id === immutableId)).toBe(true);
+    // Same conversationId in both formats (the Prefer only changes item ids).
+    expect(res.value[0].conversationId).toBe(inbox.value.find((m) => m.id === immutableId)!.conversationId);
+    // Star, label and move through the REST id.
+    call("PATCH", `/me/messages/${restId}`, { flag: { flagStatus: "flagged" }, categories: ["Urgent"] });
+    const full = call<Message>("GET", `/me/messages/${immutableId}`);
+    expect(full.flag?.flagStatus).toBe("flagged");
+    expect(full.categories).toContain("Urgent");
+    const moved = call<Message>("POST", `/me/messages/${restId}/move`, { destinationId: "archive" });
+    expect(moved.parentFolderId).toBe("f-archive");
+    expect(call<{ error?: { code: string } }>("GET", `/me/messages/${restId}`).error?.code).toBe("ErrorItemNotFound");
+    call("DELETE", `/me/messages/${REST_ID_PREFIX}${moved.id}`);
+    expect(call<{ error?: { code: string } }>("GET", `/me/messages/${moved.id}`).error?.code).toBe("ErrorItemNotFound");
+  });
+  it("$batch rejects a repeated request id for the whole batch, exactly like Graph", async () => {
+    const dup = { id: "AAMk-1", method: "PATCH", url: "/me/messages/x", body: { isRead: true } };
+    await expect(mockGraph("/$batch", "POST", { requests: [dup, { ...dup }] })).rejects.toMatchObject({ status: 400, code: "BadRequest", message: "Request Id AAMk-1 has to be unique in a batch" });
+    await expect(mockGraph("/$batch", "POST", { requests: [dup, { ...dup, id: "aamk-1" }] })).rejects.toBeInstanceOf(GraphError);
+    await expect(mockGraph("/$batch", "POST", { requests: Array.from({ length: 21 }, (_, i) => ({ ...dup, id: String(i) })) })).rejects.toMatchObject({ status: 400 });
+    const ok = (await mockGraph("/$batch", "POST", { requests: [{ id: "1", method: "GET", url: "/me/mailFolders/inbox" }, { id: "2", method: "GET", url: "/me/mailFolders/archive" }] })) as { responses: { id: string; status: number }[] };
+    expect(ok.responses.map((r) => [r.id, r.status])).toEqual([["1", 200], ["2", 200]]);
   });
   it("patches, moves and replies keeping state", () => {
     const inbox = call<Page<Message>>("GET", "/me/mailFolders/inbox/messages?$top=1");

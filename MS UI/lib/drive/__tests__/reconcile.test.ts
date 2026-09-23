@@ -49,12 +49,14 @@ describe("verifyItems", () => {
       "fetch",
       vi.fn(async (_url: string, init?: RequestInit) => {
         batchBody = JSON.parse(String(init?.body));
+        // graphBatch sends its own unique wire ids; answer under those, in order.
+        const wire = (batchBody?.requests ?? []).map((r) => r.id);
         return new Response(
           JSON.stringify({
             responses: [
-              { id: "0", status: 200, body: { id: "a", name: "A", parentReference: { id: "R" } } },
-              { id: "1", status: 404, body: { error: { code: "itemNotFound" } } },
-              { id: "2", status: 429, body: { error: { code: "TooManyRequests" } } },
+              { id: wire[0], status: 200, body: { id: "a", name: "A", parentReference: { id: "R" } } },
+              { id: wire[1], status: 404, body: { error: { code: "itemNotFound" } } },
+              { id: wire[2], status: 429, body: { error: { code: "TooManyRequests" } } },
             ],
           }),
           { status: 200, headers: { "Content-Type": "application/json" } }

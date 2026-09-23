@@ -547,9 +547,17 @@ function settleClock() {
   if (changed) recount();
 }
 
+// Search results carry REST ids (Graph drops Prefer: IdType="ImmutableId" on
+// $search), which differ from the immutable ids every list and thread
+// carries. The demo makes the difference visible ("rest:" prefix) and, like
+// Graph, accepts either format on a message URL.
+export const REST_ID_PREFIX = "rest:";
+export const restIdOf = (id: string) => (id.startsWith(REST_ID_PREFIX) ? id : `${REST_ID_PREFIX}${id}`);
+const withRestId = (m: Message): Message => ({ ...m, id: restIdOf(m.id) });
+
 export const handleMail: MockHandler = (method, url, body) => {
   settleClock();
-  const p = url.pathname.replace(/^\/v1\.0/, "");
+  const p = url.pathname.replace(/^\/v1\.0/, "").replace(/^\/me\/messages\/rest:/, "/me/messages/");
   const b = (body ?? {}) as Record<string, unknown>;
   let m: RegExpExecArray | null;
 
@@ -682,7 +690,8 @@ export const handleMail: MockHandler = (method, url, body) => {
     if (search) items = applySearch(mockMessages, search);
     items = applyFilter(items, url.searchParams.get("$filter"));
     items.sort(byDateDesc);
-    return page(items, url, `/v1.0${p}`);
+    const out = page(items, url, `/v1.0${p}`);
+    return search ? { ...out, value: out.value.map(withRestId) } : out;
   }
   if (p === "/me/messages" && method === "POST") return newDraft(b as Partial<Message>);
   // Type cast: fileAttachment-only properties such as contentId.

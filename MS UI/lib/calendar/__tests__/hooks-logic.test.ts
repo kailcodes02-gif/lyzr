@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@azure/msal-react", () => ({ useMsal: () => ({ instance: {}, accounts: [] }) }));
 
-import { collectBatch, draftToGraph, FOCUS_THROTTLE_MS, isConsentError, recurrenceProblem } from "../hooks";
+import { collectBatch, draftToGraph, FOCUS_THROTTLE_MS, isConsentError, recurrenceProblem, uniqueCalendarIds, viewBatchRequests, withCalendarIds } from "../hooks";
 import { POLL_INTERVAL_MS, SAFETY_INTERVAL_MS } from "../freshness";
 import { defaultForm } from "../recurrence";
 import { ConsentRequiredError, GraphError } from "@/lib/graph";
@@ -101,5 +101,28 @@ describe("viewFetching (delta round starvation guard)", () => {
     release2();
     await Promise.all([neighbour, same]);
     expect(viewFetching(qc, "UTC", range)).toBe(false);
+  });
+});
+
+describe("calendarView $batch ids", () => {
+  const long = "AAMkAGI2TG93AAA=";
+  it("gives every sub-request a unique positional id and addresses group calendars through their group", () => {
+    const reqs = viewBatchRequests([long, "cal2"], { cal2: "grp1" }, "2026-09-21T00%3A00%3A00%2B05%3A30", "2026-09-28T00%3A00%3A00%2B05%3A30", { Prefer: 'outlook.timezone="Asia/Kolkata"' });
+    expect(reqs.map((r) => r.id)).toEqual(["0", "1"]);
+    expect(new Set(reqs.map((r) => r.id.toLowerCase())).size).toBe(reqs.length);
+    expect(reqs[0].url).toBe("/me/calendars/AAMkAGI2TG93AAA%3D/calendarView?startDateTime=2026-09-21T00%3A00%3A00%2B05%3A30&endDateTime=2026-09-28T00%3A00%3A00%2B05%3A30&$select=" + reqs[0].url.split("$select=")[1].split("&")[0] + "&$top=1000");
+    expect(reqs[1].url.startsWith("/me/calendarGroups/grp1/calendars/cal2/calendarView?")).toBe(true);
+    expect(reqs[1].headers).toEqual({ Prefer: 'outlook.timezone="Asia/Kolkata"' });
+  });
+  it("drops duplicate calendar ids so Graph never sees two sub-requests with the same id", () => {
+    expect(uniqueCalendarIds(["a", "b", "a"])).toEqual(["a", "b"]);
+    expect(viewBatchRequests(uniqueCalendarIds(["a", "a"]), undefined, "s", "e", {})).toHaveLength(1);
+  });
+  it("maps positional response ids back to calendar ids before the responses are read", () => {
+    const out = withCalendarIds([{ id: "1", status: 200, body: { value: [] } }, { id: "0", status: 403 }], [long, "cal2"]);
+    expect(out.map((r) => r.id)).toEqual(["cal2", long]);
+    const { pages, failed } = collectBatch(out);
+    expect(pages[0].id).toBe("cal2");
+    expect(failed[0].id).toBe(long);
   });
 });

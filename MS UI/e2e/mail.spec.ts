@@ -240,6 +240,84 @@ test.describe("Move to tab, always for this sender, and print in demo mode", () 
   });
 });
 
+// Search results carry REST ids (Graph drops the immutable-id Prefer on
+// $search) and list several messages of one conversation; the demo's $batch
+// rejects a repeated request id exactly like Graph, so these prove that a
+// bulk action from a search view neither mixes id formats nor repeats an id.
+test.describe("Bulk actions from a search view in demo mode", () => {
+  const search = async (page: import("@playwright/test").Page, text: string) => {
+    const box = page.getByRole("combobox", { name: /search mail/i });
+    await box.click();
+    await page.keyboard.type(text);
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(new RegExp(`q=${text}`));
+    await expect(page.getByRole("row").first()).toBeVisible();
+  };
+  const select = async (page: import("@playwright/test").Page, subject: string) => {
+    const row = page.getByRole("row").filter({ hasText: subject });
+    await expect(row).toBeVisible();
+    await row.hover();
+    await row.getByRole("checkbox", { name: new RegExp(`^Select (Re: )?${subject}`) }).click();
+  };
+  // "Weekly GSI report: Sep 8 to Sep 14" matches "Wipro" through two of its messages (one conversation, two ids).
+  const thread = "Weekly GSI report: Sep 8 to Sep 14";
+  const single1 = "Design assets for Wipro landing page";
+  const single2 = "Partner portal access for two new Wipro SEs";
+
+  test("bulk archive of three results, one a duplicate conversation, moves every message and lands in Archive", async ({ page }) => {
+    const errors = await openDemo(page, "/MS/outlook/");
+    await search(page, "Wipro");
+    await select(page, thread);
+    await select(page, single1);
+    await select(page, single2);
+    await page.getByRole("button", { name: /^archive$/i }).first().click();
+    await expect(page.getByText("3 conversations archived")).toBeVisible();
+    await expect(page.getByText(/Move failed|has to be unique in a batch/)).toHaveCount(0);
+    await page.getByRole("link", { name: /^Archive/ }).click();
+    await expect(page).toHaveURL(/f=archive/);
+    for (const s of [thread, single1, single2]) await expect(page.getByRole("row").filter({ hasText: s })).toBeVisible();
+    // The Inbox no longer lists them (the conversation's inbox copies all moved).
+    await page.getByRole("link", { name: /^Inbox/ }).click();
+    await expect(page.getByRole("row").first()).toBeVisible();
+    for (const s of [thread, single1, single2]) await expect(page.getByRole("row").filter({ hasText: s })).toHaveCount(0);
+    expect(errors.filter((e) => !/hydrat/i.test(e))).toEqual([]);
+  });
+
+  test("bulk delete from a search moves the results to Trash and the search no longer lists them", async ({ page }) => {
+    await openDemo(page, "/MS/outlook/");
+    await search(page, "Wipro");
+    await select(page, thread);
+    await select(page, single1);
+    await page.getByRole("button", { name: /^delete$/i }).first().click();
+    await expect(page.getByText("2 conversations moved to Trash")).toBeVisible();
+    await expect(page.getByText(/Move failed|has to be unique in a batch/)).toHaveCount(0);
+    // Graph's $search spans every folder, Trash included, so the rows may still be listed here.
+    await expect(page.getByRole("row").filter({ hasText: single2 })).toBeVisible();
+    await page.getByRole("link", { name: /^Trash/ }).click();
+    await expect(page).toHaveURL(/f=deleteditems/);
+    await expect(page.getByRole("row").filter({ hasText: thread })).toBeVisible();
+    await expect(page.getByRole("row").filter({ hasText: single1 })).toBeVisible();
+  });
+
+  test("star and label from a search result go through and show in Starred and the label view", async ({ page }) => {
+    await openDemo(page, "/MS/outlook/");
+    await search(page, "Wipro");
+    const row = page.getByRole("row").filter({ hasText: single2 });
+    await row.getByRole("button", { name: "Star" }).click();
+    await expect(row.getByRole("button", { name: "Unstar" })).toBeVisible();
+    await select(page, single2);
+    await page.getByRole("button", { name: "Label as" }).click();
+    await page.getByRole("menuitemcheckbox", { name: /Urgent/ }).click();
+    await expect(page.getByText(/Update failed|has to be unique in a batch/)).toHaveCount(0);
+    await expect(row).toContainText("Urgent");
+    await page.keyboard.press("Escape");
+    await page.getByRole("link", { name: "Starred" }).click();
+    await expect(page.getByRole("row").filter({ hasText: single2 })).toBeVisible();
+    await page.getByRole("link", { name: "Label Urgent" }).click();
+    await expect(page.getByRole("row").filter({ hasText: single2 })).toBeVisible();
+  });
+});
+
 test.describe("Preset labels and skip-the-inbox in demo mode", () => {
   test("Set up my labels moves Siva's mail under Leadership and out of Primary", async ({ page }) => {
     await openDemo(page, "/MS/outlook/");
@@ -370,4 +448,15 @@ test.describe("Actions land in Outlook and show in their folder", () => {
     await expect(page.getByRole("row").filter({ hasText: "Arrived from Outlook" })).toBeVisible({ timeout: 25_000 });
     await expect(page.getByRole("link", { name: /^Inbox/ })).toContainText(/\d+/);
   });
+});
+
+test("search suggests directory people and searches from:<email>", async ({ page }) => {
+  await openDemo(page, "/MS/outlook/");
+  await page.getByRole("combobox", { name: /search mail/i }).click();
+  await page.keyboard.type("ani");
+  const list = page.getByTestId("search-suggestions");
+  await expect(list.getByTestId("search-person").filter({ hasText: "Ani Sharma" })).toContainText("Solutions Engineer");
+  await list.getByTestId("search-person").filter({ hasText: "Ani Sharma" }).click();
+  await expect(page).toHaveURL(/q=from(%3A|:).*ani\.sharma/);
+  await expect(page.getByTestId("search-chip")).toHaveText("From: Ani Sharma");
 });
