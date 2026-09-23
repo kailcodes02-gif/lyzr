@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GraphError } from "@/lib/graph";
 import { mockGraph } from "@/lib/mock";
-import { ARRIVAL_SUBJECT, handleMail, mockRules, mockTiming, REST_ID_PREFIX } from "@/lib/mock/mail";
+import { ARRIVAL_SUBJECT, handleMail, mockRules, mockSentMail, mockTiming, REST_ID_PREFIX } from "@/lib/mock/mail";
 import type { Message, Page } from "./helpers";
 
 const call = <T,>(method: string, path: string, body?: unknown) => handleMail(method, new URL(`https://graph.microsoft.com/v1.0${path}`), body) as T;
@@ -31,7 +31,7 @@ describe("mock mail handler", () => {
     expect(res.value.every((m) => m.id.startsWith(REST_ID_PREFIX))).toBe(true);
     const restId = res.value[0].id;
     const immutableId = restId.slice(REST_ID_PREFIX.length);
-    const inbox = call<Page<Message>>("GET", "/me/mailFolders/inbox/messages?$top=50");
+    const inbox = call<Page<Message>>("GET", "/me/mailFolders/inbox/messages?$top=500");
     expect(inbox.value.some((m) => m.id === restId)).toBe(false);
     expect(inbox.value.some((m) => m.id === immutableId)).toBe(true);
     // Same conversationId in both formats (the Prefer only changes item ids).
@@ -106,7 +106,7 @@ describe("mock mail handler", () => {
     expect(ok.value.length).toBeGreaterThan(0);
   });
   it("rejects contentId in the attachments $select and serves it through the fileAttachment cast", () => {
-    const inbox = call<Page<Message>>("GET", "/me/mailFolders/inbox/messages?$top=50");
+    const inbox = call<Page<Message>>("GET", "/me/mailFolders/inbox/messages?$top=500");
     const withInline = inbox.value.find((m) => /Wipro ai360/.test(m.subject ?? ""))!;
     expect(() => call("GET", `/me/messages/${withInline.id}/attachments?$select=id,name,contentType,size,isInline,contentId`)).toThrow(/contentId/);
     const base = call<Page<{ id: string; contentId?: string }>>("GET", `/me/messages/${withInline.id}/attachments?$select=id,name,contentType,size,isInline`);
@@ -177,5 +177,37 @@ describe("mock rules: Outlook vocabulary on arrival", () => {
     expect(gsi).toHaveLength(3);
     expect(gsi.filter((m) => m.categories?.includes("GSI"))).toHaveLength(1);
     expect(call<Page<{ displayName: string }>>("GET", "/me/mailFolders?$select=id,displayName").value.some((f) => f.displayName === "GSI")).toBe(true);
+  });
+});
+
+describe("mock unsubscribe surface", () => {
+  it("answers $select=internetMessageHeaders with the headers only, and the newsletters carry the three variants", () => {
+    const inbox = call<Page<Message>>("GET", "/me/mailFolders/inbox/messages?$top=500");
+    const hubspot = inbox.value.find((m) => m.subject?.startsWith("Your weekly HubSpot digest"))!;
+    const pulse = inbox.value.find((m) => m.subject?.startsWith("LinkedIn Pulse"))!;
+    const ph = inbox.value.find((m) => m.subject?.startsWith("Product Hunt Daily"))!;
+    const h = call<Message>("GET", `/me/messages/${hubspot.id}?$select=internetMessageHeaders`);
+    expect(Object.keys(h).sort()).toEqual(["id", "internetMessageHeaders"]);
+    expect(h.internetMessageHeaders?.map((x) => x.name)).toEqual(["List-Unsubscribe", "List-Unsubscribe-Post"]);
+    expect(call<Message>("GET", `/me/messages/${pulse.id}?$select=internetMessageHeaders`).internetMessageHeaders?.[0].value).toMatch(/^<mailto:/);
+    expect(call<Message>("GET", `/me/messages/${ph.id}?$select=internetMessageHeaders`).internetMessageHeaders).toEqual([]);
+    expect(call<Message>("GET", `/me/messages/${ph.id}`).body?.content).toMatch(/<a href="https:\/\/producthunt\.example\/opt-out[^"]*">Unsubscribe<\/a>/);
+  });
+  it("a conversation query lists Junk and Trash copies (Graph does), the plain list does not", () => {
+    const junk = call<Page<Message>>("GET", "/me/mailFolders/junkemail/messages?$top=5").value[0];
+    const thread = call<Page<Message>>("GET", `/me/messages?$filter=conversationId eq '${junk.conversationId}'&$top=100`);
+    expect(thread.value.map((m) => m.id)).toContain(junk.id);
+    const plain = call<Page<Message>>("GET", "/me/messages?$top=500");
+    expect(plain.value.some((m) => m.parentFolderId === "f-junk")).toBe(false);
+  });
+  it("POST /me/sendMail files a copy in Sent Items and logs it", () => {
+    const before = mockSentMail.length;
+    const res = call<unknown>("POST", "/me/sendMail", { message: { subject: "Unsubscribe", body: { contentType: "text", content: "bye" }, toRecipients: [{ emailAddress: { address: "unsub@example.com" } }] }, saveToSentItems: true });
+    expect(res).toBeNull();
+    expect(mockSentMail).toHaveLength(before + 1);
+    expect(mockSentMail[before].toRecipients?.[0].emailAddress.address).toBe("unsub@example.com");
+    const sent = call<Page<Message>>("GET", "/me/mailFolders/sentitems/messages?$top=5");
+    expect(sent.value.some((m) => m.subject === "Unsubscribe" && m.toRecipients?.[0].emailAddress.address === "unsub@example.com")).toBe(true);
+    expect(() => call("POST", "/me/sendMail", { message: { subject: "x" } })).toThrow(GraphError);
   });
 });

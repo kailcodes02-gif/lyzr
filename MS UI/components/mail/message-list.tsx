@@ -111,6 +111,20 @@ export function ThreadRow({ thread, selected, focused, meAddress, categories, on
         </span>
       </div>
       {thread.hasAttachments && <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Has attachment" />}
+      {isSpam && actions.notSpam && (
+        // Always visible (not hover-only): the way out of Spam must be obvious.
+        <button
+          type="button"
+          aria-label="Not spam"
+          onClick={(e) => {
+            e.stopPropagation();
+            actions.notSpam!(ids);
+          }}
+          className="mr-1 flex h-7 shrink-0 items-center gap-1 rounded-full border border-border bg-card px-2.5 text-xs font-medium text-foreground hover:bg-muted"
+        >
+          <ShieldCheck className="h-3.5 w-3.5" /> Not spam
+        </button>
+      )}
       <span className={cn("w-16 shrink-0 text-right text-xs group-hover:invisible", thread.unread ? "font-semibold" : "text-muted-foreground")}>{formatMailDate(thread.latest.receivedDateTime)}</span>
       <div className="absolute right-2 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 bg-inherit group-hover:flex" onClick={(e) => e.stopPropagation()}>
         {!isTrashOrSpam && (
@@ -121,11 +135,6 @@ export function ThreadRow({ thread, selected, focused, meAddress, categories, on
         {!isTrashOrSpam && actions.spam && (
           <IconButton label="Report spam" onClick={() => actions.spam!(ids)}>
             <ShieldAlert className="h-4 w-4" />
-          </IconButton>
-        )}
-        {isSpam && actions.notSpam && (
-          <IconButton label="Not spam" onClick={() => actions.notSpam!(ids)}>
-            <ShieldCheck className="h-4 w-4" />
           </IconButton>
         )}
         <IconButton label="Delete" onClick={() => actions.trash(ids)}>

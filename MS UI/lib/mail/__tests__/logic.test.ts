@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { inboxTabPath, labelListPath } from "../labels";
-import { buildKql, groupThreads, moveScopeIds, orderFolders, parseKql, participantLabel, folderListPath, searchListPath, SEARCH_ID } from "../logic";
+import { buildKql, groupThreads, moveScopeIds, orderFolders, parseKql, participantLabel, folderListPath, searchListPath, SEARCH_ID, wellKnownOfKey } from "../logic";
 import type { MailFolder, Message } from "../types";
 
 const msg = (p: Partial<Message>): Message => ({ id: p.id ?? Math.random().toString(36), isRead: true, ...p });
@@ -130,5 +130,28 @@ describe("moveScopeIds", () => {
   it("is empty until the folder list is known, so actions stay disabled instead of guessing", () => {
     expect(moveScopeIds(thread, "deleteditems", [])).toEqual([]);
     expect(moveScopeIds(thread, "starred", [])).toEqual([]);
+  });
+});
+
+describe("wellKnownOfKey", () => {
+  const folders: MailFolder[] = [
+    { id: "AAMkJunk==", displayName: "Junk Email", wellKnownName: "junkemail" },
+    { id: "AAMkTrash==", displayName: "Deleted Items", wellKnownName: "deleteditems" },
+    { id: "AAMkCustom==", displayName: "GSI", wellKnownName: null },
+  ];
+  it("accepts the well-known name (any case) without a folder list", () => {
+    expect(wellKnownOfKey("junkemail", [])).toBe("junkemail");
+    expect(wellKnownOfKey("JunkEmail", [])).toBe("junkemail");
+    expect(wellKnownOfKey("deleteditems", [])).toBe("deleteditems");
+  });
+  it("resolves a Graph folder id through the stamped list", () => {
+    expect(wellKnownOfKey("AAMkJunk==", folders)).toBe("junkemail");
+    expect(wellKnownOfKey("AAMkTrash==", folders)).toBe("deleteditems");
+  });
+  it("is undefined for custom folders, virtual views and unknown ids", () => {
+    expect(wellKnownOfKey("AAMkCustom==", folders)).toBeUndefined();
+    expect(wellKnownOfKey("starred", folders)).toBeUndefined();
+    expect(wellKnownOfKey("label:GSI", folders)).toBeUndefined();
+    expect(wellKnownOfKey("AAMkNope==", folders)).toBeUndefined();
   });
 });

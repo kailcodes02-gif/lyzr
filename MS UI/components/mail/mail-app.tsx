@@ -16,7 +16,7 @@ import { useMe } from "@/lib/hooks";
 import { clientFilterFor, errorMessage, flattenPages, useCategories, useDraftApi, useEnableSorting, useFolders, useLabelFolder, useMailPolling, useMessageActions, useMessageList, useRules, useSettlerLifecycle, useSortingEnabled } from "@/lib/mail/hooks";
 import { PROMOTIONS_LABEL, rulesOfLabel, SOCIAL_LABEL } from "@/lib/mail/labels";
 import { TAB_LABEL, type TabTarget } from "@/lib/mail/tabs";
-import { buildKql, groupThreads, isVirtualFolderKey, moveScopeIds, parseKql, presetHex, resolveFolderId, SEARCH_ID, WELL_KNOWN_LABEL, type WellKnown } from "@/lib/mail/logic";
+import { buildKql, groupThreads, isVirtualFolderKey, moveScopeIds, parseKql, presetHex, resolveFolderId, SEARCH_ID, WELL_KNOWN_LABEL, wellKnownOfKey, type WellKnown } from "@/lib/mail/logic";
 import type { Message, Thread } from "@/lib/mail/types";
 import { labelFromFolder, parseMailUrl, serializeMailUrl, type MailTab, type MailUrlState } from "@/lib/mail/url";
 import { isMockMode } from "@/lib/mock";
@@ -89,8 +89,10 @@ export function MailApp() {
     return clientFilter ? all.filter(clientFilter) : all;
   }, [list.data, clientFilter]);
   const threads = useMemo(() => groupThreads(messages), [messages]);
-  const isTrashOrSpam = state.folder === "deleteditems" || state.folder === "junkemail";
-  const isSpam = state.folder === "junkemail";
+  // The key may be the well-known name or the folder id (deep link, failed alias batch).
+  const folderWellKnown = wellKnownOfKey(state.folder, folders.data ?? []);
+  const isSpam = folderWellKnown === "junkemail";
+  const isTrashOrSpam = isSpam || folderWellKnown === "deleteditems";
   // Client-side exclusion can leave a short first page: keep fetching until 50 rows show.
   useEffect(() => {
     if (clientFilter && list.hasNextPage && !list.isFetchingNextPage && messages.length < 50) void list.fetchNextPage();

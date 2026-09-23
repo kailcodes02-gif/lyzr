@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, ArrowLeft, ChevronDown, Download, ExternalLink, FolderInput, Forward, Inbox, Mail, MoreVertical, Paperclip, Printer, Reply, ReplyAll, ShieldAlert, ShieldCheck, Star, Tag, Trash2 } from "lucide-react";
+import { Archive, ArrowLeft, ChevronDown, Download, ExternalLink, FolderInput, Forward, Inbox, Mail, MailMinus, MoreVertical, Paperclip, Printer, Reply, ReplyAll, ShieldAlert, ShieldCheck, Star, Tag, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { fileKind, KIND_COLOR, KIND_LABEL } from "@/lib/files";
 import { formatDateTime, initials } from "@/lib/format";
-import { errorMessage, useAttachments, useCreateRule, useDownloadAttachment, useMessage, useMessageActions, usePrintMessages, useThread } from "@/lib/mail/hooks";
-import { moveScopeIds, orderFolders, presetHex, recipientsLabel, resolveFolderId, sortMessagesAsc, visibleFolders, WELL_KNOWN_LABEL, type WellKnown } from "@/lib/mail/logic";
+import { errorMessage, useAttachments, useCreateRule, useDownloadAttachment, useMessage, useMessageActions, useMessageHeaders, usePrintMessages, useThread, useUnsubscribe } from "@/lib/mail/hooks";
+import { moveScopeIds, orderFolders, presetHex, recipientsLabel, resolveFolderId, sortMessagesAsc, visibleFolders, WELL_KNOWN_LABEL, wellKnownOfKey, type WellKnown } from "@/lib/mail/logic";
 import { buildPrintDocument, printDocument } from "@/lib/mail/print";
 import { TAB_LABEL, TAB_TARGETS, tabOf } from "@/lib/mail/tabs";
 import type { Attachment, MailFolder, Message, OutlookCategory } from "@/lib/mail/types";
+import { SOURCE_LABEL, unsubscribeInfoOf, type UnsubscribeInfo } from "@/lib/mail/unsubscribe";
 import { cn } from "@/lib/utils";
 import { EmailFrame } from "./email-frame";
 import { MailErrorState } from "./consent-gate";
@@ -90,8 +91,41 @@ function AttachmentChip({ messageId, att }: { messageId: string; att: Attachment
   );
 }
 
-function MessageCard({ message, expanded, onToggle, onReply, onClose, onPrint, categories, isLast }: { message: Message; expanded: boolean; onToggle: () => void; onReply: (kind: ReplyKind, m: Message) => void; onClose: () => void; onPrint: (m: Message) => void; categories?: OutlookCategory[]; isLast: boolean }) {
+// Runs the unsubscribe plan and reports; the toast offers a follow-up move
+// (Trash, plus Promotions for an inbox copy) like Gmail does.
+function useUnsubscribeFlow(message: Message, inInbox: boolean) {
+  const unsubscribe = useUnsubscribe();
+  const actions = useMessageActions();
+  const [busy, setBusy] = useState(false);
+  const from = message.from?.emailAddress;
+  const run = async (info: UnsubscribeInfo) => {
+    setBusy(true);
+    try {
+      const outcome = await unsubscribe(info, { from: from?.address });
+      if (outcome === "cancelled") return;
+      const label = outcome === "sent" ? `Unsubscribe request sent to ${info.mailto?.address}` : "Unsubscribe page opened in a new tab";
+      toast.success(label, {
+        description: "Also move this message?",
+        duration: 8_000,
+        action: { label: "Move to Trash", onClick: () => actions.trash([message.id]) },
+        ...(inInbox ? { cancel: { label: "Move to Promotions", onClick: () => actions.moveToTab([message], "promotions") } } : {}),
+      });
+    } catch (e) {
+      toast.error(`Could not send the unsubscribe email. ${errorMessage(e)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return { run, busy };
+}
+
+function MessageCard({ message, expanded, onToggle, onReply, onClose, onPrint, categories, isLast, inInbox }: { message: Message; expanded: boolean; onToggle: () => void; onReply: (kind: ReplyKind, m: Message) => void; onClose: () => void; onPrint: (m: Message) => void; categories?: OutlookCategory[]; isLast: boolean; inInbox?: boolean }) {
   const full = useMessage(expanded ? message.id : undefined);
+  // List-Unsubscribe lives in the internet headers, which the body query
+  // does not ask for; probed once per expanded message.
+  const headers = useMessageHeaders(message.id, expanded && !message.isDraft);
+  const unsub = useMemo(() => unsubscribeInfoOf(headers.data ?? message.internetMessageHeaders, full.data?.body?.contentType === "html" ? full.data.body.content : undefined), [headers.data, message.internetMessageHeaders, full.data]);
+  const unsubscribeFlow = useUnsubscribeFlow(message, !!inInbox);
   const attachments = useAttachments(message.id, expanded && (!!message.hasAttachments || /cid:/i.test(full.data?.body?.content ?? "")));
   const download = useDownloadAttachment();
   const [showQuoted, setShowQuoted] = useState(false);
@@ -140,6 +174,15 @@ function MessageCard({ message, expanded, onToggle, onReply, onClose, onPrint, c
           <div className="flex items-baseline gap-2">
             <span className={cn("truncate text-sm", message.isRead === false ? "font-semibold" : "font-medium")}>{from?.name || from?.address || "Unknown sender"}</span>
             {expanded && <span className="truncate text-xs text-muted-foreground">&lt;{from?.address}&gt;</span>}
+            {expanded && unsub && (
+              <span className="flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>
+                <Tip label={SOURCE_LABEL[unsub.source]}>
+                  <button type="button" data-testid="unsubscribe-link" data-source={unsub.source} aria-label="Unsubscribe" disabled={unsubscribeFlow.busy} onClick={() => void unsubscribeFlow.run(unsub)} className="rounded-sm border border-border px-1.5 text-[11px] font-normal leading-4 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50">
+                    Unsubscribe
+                  </button>
+                </Tip>
+              </span>
+            )}
             <span className="ml-auto shrink-0 text-xs text-muted-foreground">{formatDateTime(message.receivedDateTime)}</span>
             {expanded && (
               <span className="flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>
@@ -165,6 +208,7 @@ function MessageCard({ message, expanded, onToggle, onReply, onClose, onPrint, c
                     <DropdownMenuItem onClick={() => { actions.setRead([message.id], false); onClose(); }}><Mail /> Mark as unread</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => actions.trash([message.id])}><Trash2 /> Delete this message</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onPrint(message)}><Printer /> Print</DropdownMenuItem>
+                    {unsub && <DropdownMenuItem onClick={() => void unsubscribeFlow.run(unsub)}><MailMinus /> Unsubscribe</DropdownMenuItem>}
                     {message.webLink && (
                       <DropdownMenuItem onClick={() => window.open(message.webLink, "_blank", "noopener")}><ExternalLink /> Open in Outlook</DropdownMenuItem>
                     )}
@@ -335,8 +379,12 @@ export function ThreadView({ conversationId, messageId, onBack, onReply, onOpenD
   const moveIds = useMemo(() => moveScopeIds(messages, currentFolder, folders), [messages, currentFolder, folders]);
   const currentFolderId = resolveFolderId(currentFolder, folders);
   const canMove = moveIds.length > 0;
-  const isTrashOrSpam = currentFolder === "deleteditems" || currentFolder === "junkemail";
-  const isSpam = currentFolder === "junkemail";
+  // The URL key is the well-known name or, after a deep link or a failed
+  // alias batch, the folder id: both resolve through the stamped folder list.
+  const wellKnown = wellKnownOfKey(currentFolder, folders);
+  const isSpam = wellKnown === "junkemail";
+  const isTrash = wellKnown === "deleteditems";
+  const isTrashOrSpam = isSpam || isTrash;
   // Tab moves apply to the inbox copies (the rows the tabs list); shown for
   // the Inbox and its virtual views (starred, label, search), never in Trash/Spam.
   const inboxId = resolveFolderId("inbox", folders);
@@ -402,7 +450,8 @@ export function ThreadView({ conversationId, messageId, onBack, onReply, onOpenD
         <Tip label="Back to list"><button type="button" aria-label="Back to list" onClick={onBack} className={tb}><ArrowLeft className="h-4 w-4" /></button></Tip>
         {!isTrashOrSpam && <Tip label="Archive"><button type="button" aria-label="Archive" disabled={!canMove} onClick={doThen(() => actions.archive(moveIds))} className={cn(tb, "disabled:opacity-40")}><Archive className="h-4 w-4" /></button></Tip>}
         {!isTrashOrSpam && <Tip label="Report spam"><button type="button" aria-label="Report spam" disabled={!canMove} onClick={doThen(() => actions.spam(moveIds))} className={cn(tb, "disabled:opacity-40")}><ShieldAlert className="h-4 w-4" /></button></Tip>}
-        {isSpam && <Tip label="Not spam"><button type="button" aria-label="Not spam" disabled={!canMove} onClick={doThen(() => actions.notSpam(moveIds))} className={cn(tb, "disabled:opacity-40")}><ShieldCheck className="h-4 w-4" /></button></Tip>}
+        {isSpam && <button type="button" aria-label="Not spam" disabled={!canMove} onClick={doThen(() => actions.notSpam(moveIds))} className="flex h-8 items-center gap-1.5 rounded-full px-3 text-sm text-foreground hover:bg-black/10 disabled:opacity-40 dark:hover:bg-white/10"><ShieldCheck className="h-4 w-4" /> Not spam</button>}
+        {isTrash && <button type="button" aria-label="Move to Inbox" disabled={!canMove} onClick={doThen(() => actions.inbox(moveIds))} className="flex h-8 items-center gap-1.5 rounded-full px-3 text-sm text-foreground hover:bg-black/10 disabled:opacity-40 dark:hover:bg-white/10"><Inbox className="h-4 w-4" /> Move to Inbox</button>}
         <Tip label={isTrashOrSpam ? "Delete forever" : "Delete"}><button type="button" aria-label="Delete" disabled={!canMove} onClick={deleteThread} className={cn(tb, "disabled:opacity-40")}><Trash2 className="h-4 w-4" /></button></Tip>
         <span className="mx-1 h-5 w-px bg-border" />
         <Tip label="Mark as unread"><button type="button" aria-label="Mark as unread" onClick={doThen(() => actions.setRead(ids, false))} className={tb}><Mail className="h-4 w-4" /></button></Tip>
@@ -468,6 +517,20 @@ export function ThreadView({ conversationId, messageId, onBack, onReply, onOpenD
         )}
         {messages.length > 0 && (
           <div className="mx-auto max-w-5xl px-4 py-4">
+            {isSpam && (
+              <div role="status" data-testid="spam-banner" className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-[#f4b400]/60 bg-[#fef7e0] px-4 py-2 text-sm text-[#3c4043] dark:bg-[#4a3d12] dark:text-foreground">
+                <ShieldAlert className="h-4 w-4 shrink-0 text-[#b06000] dark:text-[#f4b400]" />
+                <span className="flex-1">This message is in Spam.</span>
+                <Button size="sm" variant="outline" disabled={!canMove} onClick={doThen(() => actions.notSpam(moveIds))} className="rounded-full bg-card">Not spam</Button>
+              </div>
+            )}
+            {isTrash && (
+              <div role="status" data-testid="trash-banner" className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted px-4 py-2 text-sm">
+                <Trash2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="flex-1">This message is in Trash.</span>
+                <Button size="sm" variant="outline" disabled={!canMove} onClick={doThen(() => actions.inbox(moveIds))} className="rounded-full bg-card">Move to Inbox</Button>
+              </div>
+            )}
             <div className="mb-3 flex flex-wrap items-center gap-2 px-4">
               <h1 className="text-xl font-normal">{subject}</h1>
               {threadCategories.map((c) => (
@@ -482,6 +545,7 @@ export function ThreadView({ conversationId, messageId, onBack, onReply, onOpenD
                   expanded={isExpanded(m.id)}
                   isLast={i === messages.length - 1}
                   categories={categories}
+                  inInbox={!!inboxId && m.parentFolderId === inboxId}
                   onClose={onBack}
                   onPrint={printMessage}
                   onReply={(kind, msg) => (msg.isDraft ? onOpenDraft(msg) : onReply(kind, msg))}

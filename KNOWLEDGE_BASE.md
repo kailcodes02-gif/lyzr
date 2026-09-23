@@ -458,6 +458,14 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-09-23, MS UI: visible Not spam, Spam/Trash banners, Gmail-style Unsubscribe (MS UI)
+- Spam folder: always-visible "Not spam" pill per row, yellow banner on opened spam mail, labelled toolbar
+  button; Trash gets a "Move to Inbox" banner. Folder detection now resolves both well-known names and raw ids.
+- Unsubscribe: parses List-Unsubscribe / List-Unsubscribe-Post headers (fetched on thread open) or an
+  unsubscribe link in the sanitised body; shows an Unsubscribe chip next to the sender; https opens in a new tab,
+  mailto sends via POST /me/sendMail after confirm; offers Move to Trash / Promotions. 396 unit + 48 browser
+  tests; deployed.
+
 ### 2026-09-23 (later), GSI Tracker: Google-Calendar-style date range + shared filters everywhere (GSI Tracker)
 - New `lib/date-range.ts` (presets: today/yesterday, this/last/next week and month, quarters, year,
   rolling 7/30/90, all time, custom; `resolveRange`, `shiftRange` for the arrows, `inRange`) with

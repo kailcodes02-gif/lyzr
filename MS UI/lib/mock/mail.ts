@@ -61,6 +61,7 @@ const P = {
   pulse: r("LinkedIn Pulse", "pulse@linkedin.com"),
   eventbrite: r("Eventbrite", "noreply@eventbrite.com"),
   gartnerNews: r("Gartner Newsletter", "newsletter@gartner.com"),
+  productHunt: r("Product Hunt Daily", "hello@producthunt.example"),
   linkedinNotify: r("LinkedIn", "notifications-noreply@linkedin.com"),
   linkedinInvites: r("LinkedIn", "invitations@linkedin.com"),
   facebook: r("Facebook", "notification@facebookmail.com"),
@@ -224,9 +225,11 @@ const SEEDS: Seed[] = [
   { subject: "Monthly partner sync notes", folder: "f-inbox", messages: [{ from: P.siva, hoursAgo: 170, paras: ["Notes from the September partner sync are in Notion. Action items assigned."], read: true }] },
   { subject: "New comment on GSI tracker", folder: "f-inbox", messages: [{ from: r("Notion", "notify@mail.notion.so"), hoursAgo: 28, paras: ["Anirudh commented: can we add the Wipro numbers to the September view?"], read: true, other: true }] },
   // Newsletters (List-Unsubscribe header) and social notifications, for the Social / Promotions sorting demo
-  { subject: "Your weekly HubSpot digest: 5 marketing plays for Q4", folder: "f-inbox", messages: [{ from: P.hubspotDigest, hoursAgo: 14, paras: ["This week: partner co-marketing playbooks, a new attribution report, and three webinars worth your time."], read: true, other: true, headers: [{ name: "List-Unsubscribe", value: "<mailto:unsubscribe@example.com>" }] }] },
+  // HubSpot: https + mailto with RFC 8058 One-Click; LinkedIn Pulse, Eventbrite and Gartner: mailto only; Product Hunt (oldest row, below): no header, an "Unsubscribe" link in the body.
+  { subject: "Your weekly HubSpot digest: 5 marketing plays for Q4", folder: "f-inbox", messages: [{ from: P.hubspotDigest, hoursAgo: 14, paras: ["This week: partner co-marketing playbooks, a new attribution report, and three webinars worth your time."], read: true, other: true, headers: [{ name: "List-Unsubscribe", value: "<https://hubspot.example/unsubscribe?u=kailash&c=digest>, <mailto:unsubscribe@example.com?subject=Unsubscribe%20digest>" }, { name: "List-Unsubscribe-Post", value: "List-Unsubscribe=One-Click" }] }] },
   { subject: "LinkedIn Pulse: The rise of agentic AI in the enterprise", folder: "f-inbox", messages: [{ from: P.pulse, hoursAgo: 22, paras: ["Top stories this week from people you follow: agent orchestration, GSI partnerships and AI governance."], read: true, other: true, headers: [{ name: "List-Unsubscribe", value: "<mailto:unsubscribe@example.com>" }] }] },
   { subject: "Events near you: AI meetups in Bengaluru this month", folder: "f-inbox", messages: [{ from: P.eventbrite, hoursAgo: 37, paras: ["Based on your interests: Agentic AI Builders Night, GenAI for BFSI, and the Cloud Partner Summit."], read: true, other: true, headers: [{ name: "List-Unsubscribe", value: "<mailto:unsubscribe@example.com>" }] }] },
+  { subject: "Product Hunt Daily: the top launches this week", folder: "f-inbox", messages: [{ from: P.productHunt, hoursAgo: 2000, paras: ["Top five this week: an agent evals suite, a prompt versioning tool and three no-code builders.", 'You are receiving this because you signed up at producthunt.example. <a href="https://producthunt.example/opt-out?u=kailash">Unsubscribe</a> or <a href="https://producthunt.example/prefs">manage your preferences</a>.'], read: true, other: true }] },
   { subject: "Gartner Newsletter: Top strategic technology trends", folder: "f-inbox", messages: [{ from: P.gartnerNews, hoursAgo: 58, paras: ["The September issue covers agentic AI, AI governance platforms and hybrid computing."], read: true, other: true, headers: [{ name: "List-Unsubscribe", value: "<mailto:unsubscribe@example.com>" }] }] },
   { subject: "Priya Raman reacted to your post", folder: "f-inbox", messages: [{ from: P.linkedinNotify, hoursAgo: 7, paras: ["Priya Raman and 14 others reacted to your post about the Accenture webinar."], read: false, other: true }] },
   { subject: "You have 3 new connection requests", folder: "f-inbox", messages: [{ from: P.linkedinInvites, hoursAgo: 31, paras: ["Daniel Okafor, Mei Chen and Arjun Nair want to connect."], read: true, other: true }] },
@@ -551,6 +554,10 @@ function settleClock() {
 // $search), which differ from the immutable ids every list and thread
 // carries. The demo makes the difference visible ("rest:" prefix) and, like
 // Graph, accepts either format on a message URL.
+// Every /me/sendMail the session made (the unsubscribe flow), for tests and
+// the demo's Sent folder.
+export const mockSentMail: Message[] = [];
+
 export const REST_ID_PREFIX = "rest:";
 export const restIdOf = (id: string) => (id.startsWith(REST_ID_PREFIX) ? id : `${REST_ID_PREFIX}${id}`);
 const withRestId = (m: Message): Message => ({ ...m, id: restIdOf(m.id) });
@@ -685,7 +692,10 @@ export const handleMail: MockHandler = (method, url, body) => {
   // ---- messages
   if (p === "/me/messages" && method === "GET") {
     assertSortableQuery(url);
-    let items = mockMessages.filter((x) => x.parentFolderId !== "f-deleted" && x.parentFolderId !== "f-junk");
+    // Graph lists every folder here; the demo keeps Trash and Junk out of the
+    // unfiltered list, but a conversation (thread) query sees them like Graph.
+    const filterParam = url.searchParams.get("$filter") ?? "";
+    let items = /conversationId eq/i.test(filterParam) ? [...mockMessages] : mockMessages.filter((x) => x.parentFolderId !== "f-deleted" && x.parentFolderId !== "f-junk");
     const search = url.searchParams.get("$search");
     if (search) items = applySearch(mockMessages, search);
     items = applyFilter(items, url.searchParams.get("$filter"));
@@ -694,6 +704,26 @@ export const handleMail: MockHandler = (method, url, body) => {
     return search ? { ...out, value: out.value.map(withRestId) } : out;
   }
   if (p === "/me/messages" && method === "POST") return newDraft(b as Partial<Message>);
+  // Send without a draft: files a copy in Sent Items (saveToSentItems defaults to true).
+  if (p === "/me/sendMail" && method === "POST") {
+    const req = b as { message?: Partial<Message>; saveToSentItems?: boolean };
+    if (!req.message?.toRecipients?.length) throw new GraphError(400, "ErrorInvalidRecipients", "At least one recipient isn't valid.", p);
+    const id = nid("msg");
+    const now = Date.now();
+    const sent: Message = {
+      id, conversationId: nid("conv"), conversationIndex: `${id}-000`, subject: req.message.subject ?? "", bodyPreview: (req.message.body?.content ?? "").replace(/<[^>]+>/g, "").slice(0, 200),
+      from: P.me, sender: P.me, toRecipients: req.message.toRecipients, ccRecipients: req.message.ccRecipients ?? [], bccRecipients: req.message.bccRecipients ?? [],
+      receivedDateTime: newestStamp(now), sentDateTime: newestStamp(now), isRead: true, hasAttachments: false, flag: { flagStatus: "notFlagged" }, categories: [], importance: "normal",
+      inferenceClassification: "focused", isDraft: false, parentFolderId: "f-sent", webLink: `https://outlook.office365.com/mail/id/${id}`, body: req.message.body ?? { contentType: "text", content: "" },
+    };
+    mockSentMail.push(sent);
+    if (req.saveToSentItems !== false) {
+      touch(sent, now);
+      mockMessages.push(sent);
+      recount();
+    }
+    return null;
+  }
   // Type cast: fileAttachment-only properties such as contentId.
   if ((m = /^\/me\/messages\/([^/]+)\/attachments\/microsoft\.graph\.fileAttachment$/.exec(p)) && method === "GET") {
     const list = (mockAttachments.get(m[1]) ?? []).filter((a) => a["@odata.type"] === "#microsoft.graph.fileAttachment");
@@ -787,7 +817,12 @@ export const handleMail: MockHandler = (method, url, body) => {
     const i = mockMessages.findIndex((x) => x.id === m![1]);
     if (i < 0) return { error: { code: "ErrorItemNotFound", message: "not found" } };
     const msg = mockMessages[i];
-    if (method === "GET") return msg;
+    if (method === "GET") {
+      // $select=internetMessageHeaders (the unsubscribe probe) answers just that, like Graph.
+      const select = url.searchParams.get("$select");
+      if (select && select.split(",").map((x) => x.trim().toLowerCase()).every((x) => x === "internetmessageheaders" || x === "id")) return { id: msg.id, internetMessageHeaders: msg.internetMessageHeaders ?? [] };
+      return msg;
+    }
     if (method === "PATCH") {
       Object.assign(msg, b);
       if (b.body) msg.bodyPreview = ((b.body as { content?: string }).content ?? "").replace(/<[^>]+>/g, "").slice(0, 200);

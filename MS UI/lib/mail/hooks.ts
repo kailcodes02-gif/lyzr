@@ -16,6 +16,7 @@ import type { Attachment, MailFolder, Message, MessageRule, OutlookCategory } fr
 import { alwaysSortSender, singleSender, TAB_LABEL, tabMoveUpdates, type TabTarget } from "./tabs";
 import { printMessageOf, type PrintMessage } from "./print";
 import { labelFromFolder, type MailTab } from "./url";
+import { planUnsubscribe, unsubscribeMailPayload, type UnsubscribeInfo } from "./unsubscribe";
 
 export { errorMessage, type BackfillResult, type BatchOutcome, type GraphApi, type InstallResult } from "./install";
 export { POLL_INTERVAL_MS, SETTLE_DELAY_MS } from "./freshness";
@@ -58,6 +59,7 @@ const calm = { retry: mailRetry, retryDelay: mailRetryDelay, refetchOnWindowFocu
 export const keys = {
   folders: ["mail", "folders"] as const,
   wellKnown: (accountId: string) => ["mail", "wellKnown", accountId] as const,
+  headers: (id: string) => ["mail", "headers", id] as const,
   children: (id: string) => ["mail", "childFolders", id] as const,
   list: (folder: string, tab?: string, query?: string) => ["mail", "list", folder, tab ?? "", query ?? ""] as const,
   thread: (conversationId: string) => ["mail", "thread", conversationId] as const,
@@ -499,6 +501,45 @@ export function useMessage(id?: string) {
     refetchOnWindowFocus: false,
     queryFn: () => graphFetch<Message>(instance, MAIL_SCOPES, `/me/messages/${id}?$select=${LIST_SELECT},body,uniqueBody,bccRecipients,replyTo,sentDateTime`),
   });
+}
+
+// The internet headers of one message (List-Unsubscribe and friends), fetched
+// on their own so the body query stays small; Graph only returns
+// internetMessageHeaders when asked for by name.
+export function useMessageHeaders(id?: string, enabled = true) {
+  const { instance } = useMsal();
+  return useQuery({
+    queryKey: keys.headers(id ?? ""),
+    enabled: !!id && enabled,
+    staleTime: 30 * 60_000,
+    retry: mailRetry,
+    retryDelay: mailRetryDelay,
+    refetchOnWindowFocus: false,
+    queryFn: () => graphFetch<Pick<Message, "internetMessageHeaders">>(instance, MAIL_SCOPES, `/me/messages/${id}?$select=internetMessageHeaders`).then((m) => m.internetMessageHeaders ?? []),
+  });
+}
+
+export type UnsubscribeOutcome = "opened" | "sent" | "cancelled";
+
+// Acts on an unsubscribe target: an https URL opens in a new tab (a
+// cross-origin POST is blocked by CORS even for One-Click), a mailto: sends a
+// mail through Graph after a confirm. Resolves with what happened; throws
+// when the send fails.
+export function useUnsubscribe() {
+  const { instance } = useMsal();
+  const qc = useQueryClient();
+  return async (info: UnsubscribeInfo, opts: { from?: string; confirm?: (text: string) => boolean } = {}): Promise<UnsubscribeOutcome> => {
+    const plan = planUnsubscribe(info);
+    if (plan.kind === "open") {
+      window.open(plan.url, "_blank", "noopener,noreferrer");
+      return "opened";
+    }
+    const ask = opts.confirm ?? ((text: string) => window.confirm(text));
+    if (!ask(`Send an unsubscribe email to ${plan.mailto.address}?`)) return "cancelled";
+    await graphFetch<void>(instance, SEND_SCOPES, "/me/sendMail", { method: "POST", body: unsubscribeMailPayload(plan.mailto, opts.from) });
+    void settleAction(qc, "send");
+    return "sent";
+  };
 }
 
 // contentId only exists on fileAttachment, and $select on the collection is

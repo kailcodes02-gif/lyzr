@@ -69,13 +69,26 @@ export function searchListPath(kql: string): string {
 
 // ---- Action scope -----------------------------------------------------------
 
+const WELL_KNOWN_KEYS = new Set<string>([...WELL_KNOWN_ORDER, ...HIDDEN]);
+
+// The well-known name behind a folder key, whether the key is the name
+// itself (the usual URL state) or the folder's opaque id (a deep link, or a
+// tree whose alias batch failed so the row fell back to its id). Undefined
+// for custom and virtual folders.
+export function wellKnownOfKey(key: string, folders: MailFolder[]): string | undefined {
+  const lc = key.toLowerCase();
+  if (isVirtualFolderKey(lc)) return undefined;
+  if (WELL_KNOWN_KEYS.has(lc)) return lc;
+  const wk = folders.find((f) => f.id === key)?.wellKnownName;
+  return wk ? wk.toLowerCase() : undefined;
+}
+
 // Well-known keys are URL state; Graph returns parentFolderId as the opaque id.
 export function resolveFolderId(key: string, folders: MailFolder[]): string | undefined {
   const lc = key.toLowerCase();
   return folders.find((f) => f.id === key || (f.wellKnownName ?? "").toLowerCase() === lc)?.id;
 }
 
-const WELL_KNOWN_KEYS = new Set<string>([...WELL_KNOWN_ORDER, ...HIDDEN]);
 const KEEP_OUT = ["sentitems", "drafts", "deleteditems", "junkemail", "outbox"];
 
 // Ids a move-type action (archive, trash, spam, move, delete forever) may

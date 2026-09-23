@@ -230,13 +230,143 @@ test.describe("Move to tab, always for this sender, and print in demo mode", () 
     const subject = "You have won a free conference pass";
     const row = page.getByRole("row").filter({ hasText: subject });
     await expect(row).toBeVisible();
-    await row.hover();
+    // Visible without hovering: the pointer is parked elsewhere first.
+    await page.mouse.move(5, 5);
+    await expect(row.getByRole("button", { name: "Not spam" })).toBeVisible();
+    await expect(row.getByRole("button", { name: "Not spam" })).toContainText("Not spam");
     await row.getByRole("button", { name: "Not spam" }).click();
     await expect(page.getByText("Marked as not spam")).toBeVisible();
     await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
     await expect(row).toHaveCount(0);
     await page.getByRole("link", { name: /^Inbox/ }).click();
     await expect(page.getByRole("row").filter({ hasText: subject })).toBeVisible();
+  });
+});
+
+test.describe("Spam and Trash banners in demo mode", () => {
+  test("an open Spam message shows the yellow banner and its Not spam button moves it to the Inbox", async ({ page }) => {
+    await openDemo(page, "/MS/outlook/");
+    await page.getByRole("link", { name: /^Spam/ }).click();
+    await expect(page).toHaveURL(/f=junkemail/);
+    const subject = "You have won a free conference pass";
+    await page.getByRole("row").filter({ hasText: subject }).click();
+    await expect(page).toHaveURL(/[?&]c=/);
+    const banner = page.getByTestId("spam-banner");
+    await expect(banner).toContainText("This message is in Spam.");
+    // The toolbar carries a labelled button too (icon + text).
+    await expect(page.getByRole("button", { name: "Not spam" }).first()).toContainText("Not spam");
+    await banner.getByRole("button", { name: "Not spam" }).click();
+    await expect(page.getByText("Marked as not spam")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
+    await expect(page).not.toHaveURL(/[?&]c=/);
+    await expect(page.getByRole("row").filter({ hasText: subject })).toHaveCount(0);
+    await page.getByRole("link", { name: /^Inbox/ }).click();
+    await expect(page.getByRole("row").filter({ hasText: subject })).toBeVisible();
+  });
+
+  test("the Spam folder opened by its Graph id (not the well-known name) still shows the banner and the row buttons", async ({ page }) => {
+    await openDemo(page, "/MS/outlook/?f=f-junk");
+    const subject = "You have won a free conference pass";
+    const row = page.getByRole("row").filter({ hasText: subject });
+    await expect(row.getByRole("button", { name: "Not spam" })).toBeVisible();
+    await row.click();
+    await expect(page.getByTestId("spam-banner")).toContainText("This message is in Spam.");
+  });
+
+  test("an open Trash message shows the Trash banner and Move to Inbox puts it back", async ({ page }) => {
+    await openDemo(page, "/MS/outlook/");
+    const subject = "Design assets for Wipro landing page";
+    await page.getByRole("row").filter({ hasText: subject }).click();
+    await page.getByRole("button", { name: "Delete" }).first().click();
+    await page.getByRole("link", { name: /^Trash/ }).click();
+    await expect(page).toHaveURL(/f=deleteditems/);
+    await page.getByRole("row").filter({ hasText: subject }).click();
+    const banner = page.getByTestId("trash-banner");
+    await expect(banner).toContainText("This message is in Trash.");
+    await banner.getByRole("button", { name: "Move to Inbox" }).click();
+    await expect(page.getByText("Moved to Inbox")).toBeVisible();
+    await expect(page).not.toHaveURL(/[?&]c=/);
+    await expect(page.getByRole("row").filter({ hasText: subject })).toHaveCount(0);
+    await page.getByRole("link", { name: /^Inbox/ }).click();
+    await expect(page.getByRole("row").filter({ hasText: subject })).toBeVisible();
+  });
+});
+
+test.describe("Unsubscribe in demo mode", () => {
+  test("a newsletter with an https List-Unsubscribe shows Unsubscribe next to the sender and opens the page in a new tab", async ({ page, context }) => {
+    await openDemo(page, "/MS/outlook/");
+    await page.getByRole("row").filter({ hasText: "Your weekly HubSpot digest" }).click();
+    await expect(page).toHaveURL(/[?&]c=/);
+    const link = page.getByTestId("unsubscribe-link");
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("data-source", "header");
+    // Sits in the sender line, right after the address.
+    await expect(page.locator("header", { has: link })).toContainText("marketing@hubspot.com");
+    // The follow-up offer needs the folder list (is this copy in the Inbox?): ready once Archive is enabled.
+    await expect(page.getByRole("button", { name: "Archive" }).first()).toBeEnabled();
+    // The demo's hosts do not resolve: answer them so the new tab keeps its URL.
+    await context.route("https://hubspot.example/**", (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<p>unsubscribed</p>" }));
+    const popup = context.waitForEvent("page");
+    await link.click();
+    const tab = await popup;
+    await tab.waitForLoadState();
+    expect(tab.url()).toMatch(/^https:\/\/hubspot\.example\/unsubscribe\?u=kailash/);
+    await tab.close();
+    await expect(page.getByText("Unsubscribe page opened in a new tab")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Move to Trash" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Move to Promotions" })).toBeVisible();
+  });
+
+  test("a mailto-only List-Unsubscribe asks first, then sends the mail through Graph and files it in Sent", async ({ page }) => {
+    await openDemo(page, "/MS/outlook/");
+    await page.getByRole("row").filter({ hasText: "LinkedIn Pulse: The rise of agentic AI" }).click();
+    const link = page.getByTestId("unsubscribe-link");
+    await expect(link).toBeVisible();
+    let asked = "";
+    page.once("dialog", (d) => {
+      asked = d.message();
+      void d.accept();
+    });
+    await link.click();
+    await expect(page.getByText("Unsubscribe request sent to unsubscribe@example.com")).toBeVisible();
+    expect(asked).toBe("Send an unsubscribe email to unsubscribe@example.com?");
+    // The message menu offers the same action.
+    await page.getByRole("button", { name: "More", exact: true }).first().click();
+    await expect(page.getByRole("menuitem", { name: "Unsubscribe" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page.getByRole("link", { name: /^Sent/ }).click();
+    await expect(page.getByRole("row").filter({ hasText: "Unsubscribe" }).first()).toBeVisible();
+  });
+
+  test("a mail with no header but an Unsubscribe link in the body shows the link and opens it", async ({ page, context }) => {
+    await openDemo(page, "/MS/outlook/");
+    // The oldest inbox row sits below the virtualised window: reach it through search.
+    const box = page.getByRole("combobox", { name: /search mail/i });
+    await box.click();
+    await page.keyboard.type("Product Hunt");
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/q=Product/);
+    await page.getByRole("row").filter({ hasText: "Product Hunt Daily" }).click();
+    const link = page.getByTestId("unsubscribe-link");
+    await expect(link).toBeVisible();
+    // The tooltip names the source ("Link found in the message").
+    await expect(link).toHaveAttribute("data-source", "body");
+    await context.route("https://producthunt.example/**", (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<p>unsubscribed</p>" }));
+    const popup = context.waitForEvent("page");
+    await link.click();
+    const tab = await popup;
+    await tab.waitForLoadState();
+    expect(tab.url()).toMatch(/^https:\/\/producthunt\.example\/opt-out\?u=kailash/);
+    await tab.close();
+    await expect(page.getByText("Unsubscribe page opened in a new tab")).toBeVisible();
+  });
+
+  test("a plain mail from a person shows no Unsubscribe", async ({ page }) => {
+    await openDemo(page, "/MS/outlook/");
+    await page.getByRole("row").filter({ hasText: "Webinar registration page live" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.locator("iframe[title='Message body']")).toBeVisible();
+    await expect(page.getByTestId("unsubscribe-link")).toHaveCount(0);
   });
 });
 
