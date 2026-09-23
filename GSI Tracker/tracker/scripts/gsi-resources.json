@@ -1,0 +1,15 @@
+[
+  { "group": "Account & Lead Data", "name": "GSI Accounts", "url": "https://docs.google.com/spreadsheets/d/1j34AfSe2I0FXY2x5Pju7_ZQEadtuaf6k2xES2K89Scg/edit?gid=0#gid=0" },
+  { "group": "Account & Lead Data", "name": "$500M+ Accounts", "url": "https://docs.google.com/spreadsheets/d/1E39yrA4JLuniim-UgAaMCTmVErGuuNjaCFao9c48VA0/edit?gid=1804009744#gid=1804009744" },
+  { "group": "Account & Lead Data", "name": "Ani's 1st degree connections", "url": "https://claude.ai/public/artifacts/c4087ea4-5b3a-46e8-b86d-83aa1b3c0c65" },
+  { "group": "Content & Assets", "name": "SEO & Content Repo", "url": "https://docs.google.com/spreadsheets/d/1n3Xaaa-L8M70kjVVbruXPM3L2P0o61P7hS_46hKqv5A/edit?gid=1245354028#gid=1245354028" },
+  { "group": "Content & Assets", "name": "GSI Dedicated live content", "url": "https://docs.google.com/spreadsheets/d/1rPtJWH1vXgmFv1jFlgFRHTjqOEgfDTWfqOc_cr1nyOw/edit?gid=0#gid=0" },
+  { "group": "Content & Assets", "name": "All gated assets", "url": "https://docs.google.com/spreadsheets/d/1V-02yoc7tP6emnay0-lmfmZMC_7Ht6GkJTD9j79xT3k/edit?gid=0#gid=0" },
+  { "group": "Content & Assets", "name": "All playbook PDFs", "url": "https://drive.google.com/drive/folders/1MEbXEk2WLUf_QwFU5DX8qlU6N85VPh1J" },
+  { "group": "Content & Assets", "name": "Live prototypes", "url": "https://docs.google.com/spreadsheets/d/1t6IDA3_6XDmtTM861ckthDOTfnVzwzSbVA_z8QpS5OM/edit?gid=0#gid=0" },
+  { "group": "Live GSI Pages", "name": "Events tracker", "url": "https://www.lyzr.ai/gsi-events/" },
+  { "group": "Live GSI Pages", "name": "GSI PR Team directory", "url": "https://www.lyzr.ai/gsi-pr-repo/" },
+  { "group": "Live GSI Pages", "name": "Community & Influencers", "url": "https://www.lyzr.ai/gsi-communities/" },
+  { "group": "Live GSI Pages", "name": "GSI landing page", "url": "https://www.lyzr.ai/gsi-si/" },
+  { "group": "Live GSI Pages", "name": "Accenture landing page", "url": "https://www.lyzr.ai/lyzr-and-accenture/" }
+]

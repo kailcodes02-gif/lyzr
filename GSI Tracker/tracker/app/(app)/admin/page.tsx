@@ -1,7 +1,12 @@
 'use client'
 
-import { useCurrentUser, useUsers, useBudgetPeriods, useCategories, useChannels, useChannelFields, useHubSpotConnection, usePendingInvites } from '@/lib/hooks/use-data'
-import { updateUserRole, createBudgetPeriod, upsertChannelField, deleteChannelField, disconnectHubSpot, createCategory, updateCategory, createChannel, updateChannel, inviteUser, cancelInvite } from '@/lib/actions'
+import { useCurrentUser, useUsers, useBudgetPeriods, useCategories, useChannels, useChannelFields, useHubSpotConnection, usePendingInvites, useVerticals } from '@/lib/hooks/use-data'
+import { TaxonomyManager } from '@/components/admin/taxonomy-manager'
+import { VerticalsTab } from '@/components/admin/verticals-tab'
+import { FunctionsTab } from '@/components/admin/functions-tab'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
+import { updateUserRole, createBudgetPeriod, upsertChannelField, deleteChannelField, disconnectHubSpot, inviteUser, cancelInvite } from '@/lib/actions'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -17,9 +22,18 @@ import { Badge } from '@/components/ui/badge'
 import { useState, useTransition } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Users, Landmark, Settings, ShieldAlert, Plus, DollarSign, RefreshCw, Sliders, Trash2, Edit3, Link2, Unlink, Folder, Network } from 'lucide-react'
+import { Users, Landmark, Settings, ShieldAlert, Plus, DollarSign, RefreshCw, Sliders, Trash2, Edit3, Link2, Unlink, Network, Building2, Workflow } from 'lucide-react'
 
 export default function AdminPage() {
+  return (
+    <Suspense fallback={<div className="p-8 bg-zinc-50 min-h-screen" />}>
+      <AdminContent />
+    </Suspense>
+  )
+}
+
+function AdminContent() {
+  const initialTab = useSearchParams().get('tab') || 'users'
   const queryClient = useQueryClient()
   const { data: currentUser, isLoading: userLoading } = useCurrentUser()
   const { data: users, isLoading: usersLoading } = useUsers()
@@ -29,10 +43,10 @@ export default function AdminPage() {
   const { data: channels } = useChannels()
 
   const [isPending, startTransition] = useTransition()
-  const [activeTab, setActiveTab] = useState('users')
+  const [activeTab, setActiveTab] = useState(initialTab)
 
   // Form State for creating Budget Period
-  const [scopeType, setScopeType] = useState<'global' | 'category' | 'channel'>('global')
+  const [scopeType, setScopeType] = useState<'global' | 'vertical' | 'category' | 'channel'>('global')
   const [scopeId, setScopeId] = useState('')
   const [periodType, setPeriodType] = useState<'one_time' | 'monthly' | 'quarterly' | 'annual'>('monthly')
   const [periodLabel, setPeriodLabel] = useState('')
@@ -66,21 +80,8 @@ export default function AdminPage() {
 
   const [filterChannelId, setFilterChannelId] = useState('all')
 
-  // Taxonomy Management States
-  const [catName, setCatName] = useState('')
-  const [catIcon, setCatIcon] = useState('folder')
-  const [catSortOrder, setCatSortOrder] = useState('0')
-  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
-  const [catIsActive, setCatIsActive] = useState(true)
-
-  const [chanName, setChanName] = useState('')
-  const [chanCategoryId, setChanCategoryId] = useState('')
-  const [chanParentId, setChanParentId] = useState('none')
-  const [chanSortOrder, setChanSortOrder] = useState('0')
-  const [editingChannelId, setEditingChannelId] = useState<string | null>(null)
-  const [chanIsActive, setChanIsActive] = useState(true)
-
-  const [filterTaxonomyChannelCategory, setFilterTaxonomyChannelCategory] = useState('all')
+  const { data: allVerticals } = useVerticals(true)
+  const [taxonomyVertical, setTaxonomyVertical] = useState('')
 
   if (userLoading || usersLoading || budgetsLoading || hubspotLoading) {
     return (
@@ -276,108 +277,6 @@ export default function AdminPage() {
     setActiveTab('custom_fields')
   }
 
-  // Taxonomy Handlers
-  const handleUpsertCategory = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!catName) {
-      toast.error('Category Name is required')
-      return
-    }
-
-    startTransition(async () => {
-      try {
-        if (editingCategoryId) {
-          await updateCategory({
-            id: editingCategoryId,
-            name: catName,
-            icon: catIcon,
-            sort_order: Number(catSortOrder) || 0,
-            is_active: catIsActive,
-          })
-          toast.success('Category updated successfully')
-        } else {
-          await createCategory({
-            name: catName,
-            icon: catIcon,
-            sort_order: Number(catSortOrder) || 0,
-          })
-          toast.success('Category created successfully')
-        }
-        queryClient.invalidateQueries({ queryKey: ['categories'] })
-        
-        // Reset form
-        setCatName('')
-        setCatIcon('folder')
-        setCatSortOrder('0')
-        setEditingCategoryId(null)
-        setCatIsActive(true)
-      } catch (err: any) {
-        console.error('upsertCategory failed:', err)
-        toast.error(`Failed to save category: ${err.message}`)
-      }
-    })
-  }
-
-  const handleUpsertChannel = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!chanCategoryId || !chanName) {
-      toast.error('Category and Channel Name are required')
-      return
-    }
-
-    startTransition(async () => {
-      try {
-        if (editingChannelId) {
-          await updateChannel({
-            id: editingChannelId,
-            name: chanName,
-            parent_channel_id: chanParentId === 'none' ? null : chanParentId,
-            sort_order: Number(chanSortOrder) || 0,
-            is_active: chanIsActive,
-          })
-          toast.success('Channel updated successfully')
-        } else {
-          await createChannel({
-            category_id: chanCategoryId,
-            parent_channel_id: chanParentId === 'none' ? null : chanParentId,
-            name: chanName,
-            sort_order: Number(chanSortOrder) || 0,
-          })
-          toast.success('Channel created successfully')
-        }
-        queryClient.invalidateQueries({ queryKey: ['channels'] })
-        
-        // Reset form
-        setChanName('')
-        setChanCategoryId('')
-        setChanParentId('none')
-        setChanSortOrder('0')
-        setEditingChannelId(null)
-        setChanIsActive(true)
-      } catch (err: any) {
-        console.error('upsertChannel failed:', err)
-        toast.error(`Failed to save channel: ${err.message}`)
-      }
-    })
-  }
-
-  const handleEditCategory = (cat: any) => {
-    setEditingCategoryId(cat.id)
-    setCatName(cat.name)
-    setCatIcon(cat.icon || 'folder')
-    setCatSortOrder(String(cat.sort_order))
-    setCatIsActive(cat.is_active)
-  }
-
-  const handleEditChannel = (ch: any) => {
-    setEditingChannelId(ch.id)
-    setChanCategoryId(ch.category_id)
-    setChanParentId(ch.parent_channel_id || 'none')
-    setChanName(ch.name)
-    setChanSortOrder(String(ch.sort_order))
-    setChanIsActive(ch.is_active)
-  }
-
   // HubSpot Handlers
   const handleSyncHubSpot = async () => {
     // Static build has no sync server; the OAuth/sync backend was removed.
@@ -399,11 +298,14 @@ export default function AdminPage() {
   }
 
   // Helper to flat channels list
+  const verticalNameOf = (id: string) => allVerticals?.find(v => v.id === id)?.name
   const getFlatChannelLabel = (chId: string) => {
     const ch = channels?.find(c => c.id === chId)
     if (!ch) return 'Unknown'
     const parent = channels?.find(p => p.id === ch.parent_channel_id)
-    return parent ? `${parent.name} > ${ch.name}` : ch.name
+    const base = parent ? `${parent.name} > ${ch.name}` : ch.name
+    const vn = verticalNameOf(ch.vertical_id)
+    return vn ? `${vn} · ${base}` : base
   }
 
   const filteredFieldsList = allFields?.filter(f => {
@@ -411,10 +313,6 @@ export default function AdminPage() {
     return f.channel_id === filterChannelId
   }) || []
 
-  const filteredChannelsList = channels?.filter(ch => {
-    if (filterTaxonomyChannelCategory === 'all') return true
-    return ch.category_id === filterTaxonomyChannelCategory
-  }) || []
 
   return (
     <div className="p-4 lg:p-8 space-y-6 max-w-6xl mx-auto bg-zinc-50 text-zinc-900 min-h-screen">
@@ -424,7 +322,7 @@ export default function AdminPage() {
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
           <Settings className="w-6 h-6 text-zinc-600" /> Admin Control Panel
         </h1>
-        <p className="text-sm text-zinc-500 mt-1">Manage system users, configuration, and budgets</p>
+        <p className="text-sm text-zinc-500 mt-1">Users, verticals, functions, taxonomy, custom fields and budgets for the whole workspace</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -438,8 +336,14 @@ export default function AdminPage() {
           <TabsTrigger value="custom_fields" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
             <Sliders className="w-4 h-4 mr-2" /> Custom Fields
           </TabsTrigger>
+          <TabsTrigger value="verticals" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
+            <Building2 className="w-4 h-4 mr-2" /> Verticals
+          </TabsTrigger>
+          <TabsTrigger value="functions" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
+            <Workflow className="w-4 h-4 mr-2" /> Functions
+          </TabsTrigger>
           <TabsTrigger value="taxonomy" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
-            <Network className="w-4 h-4 mr-2" /> Taxonomy Manager
+            <Network className="w-4 h-4 mr-2" /> Taxonomy
           </TabsTrigger>
           <TabsTrigger value="hubspot" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
             <RefreshCw className="w-4 h-4 mr-2" /> HubSpot Integration
@@ -576,7 +480,8 @@ export default function AdminPage() {
                       <SelectValue placeholder="Scope" />
                     </SelectTrigger>
                     <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
-                      <SelectItem value="global">Global (All Business Unit)</SelectItem>
+                      <SelectItem value="global">Global (whole workspace)</SelectItem>
+                      <SelectItem value="vertical">Vertical</SelectItem>
                       <SelectItem value="category">Category Specific</SelectItem>
                       <SelectItem value="channel">Channel Specific</SelectItem>
                     </SelectContent>
@@ -584,6 +489,22 @@ export default function AdminPage() {
                 </div>
 
                 {/* Conditional Scope Selector */}
+                {scopeType === 'vertical' && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-zinc-600">Vertical</Label>
+                    <Select value={scopeId} onValueChange={(val) => setScopeId(val || '')}>
+                      <SelectTrigger className="bg-zinc-200 border-zinc-300 text-xs h-9">
+                        <SelectValue placeholder="Select Vertical" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
+                        {(allVerticals || []).map(v => (
+                          <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 {scopeType === 'category' && (
                   <div className="space-y-1">
                     <Label className="text-xs text-zinc-600">Category Selection</Label>
@@ -593,7 +514,7 @@ export default function AdminPage() {
                       </SelectTrigger>
                       <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
                         {categories?.map(c => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          <SelectItem key={c.id} value={c.id}>{verticalNameOf(c.vertical_id) ? `${verticalNameOf(c.vertical_id)} · ` : ''}{c.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1049,328 +970,31 @@ export default function AdminPage() {
           </Card>
         </TabsContent>
 
-        {/* Taxonomy Manager Tab */}
-        <TabsContent value="taxonomy" className="mt-6 space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            {/* Categories Management Panel */}
-            <Card className="bg-white border-zinc-200 backdrop-blur-xl">
-              <CardHeader>
-                <CardTitle className="text-base font-semibold text-zinc-900">
-                  {editingCategoryId ? 'Edit Category' : 'Create Category'}
-                </CardTitle>
-                <CardDescription className="text-zinc-500 text-xs">
-                  Create and manage taxonomy categories.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <form onSubmit={handleUpsertCategory} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-zinc-600">Category Name *</Label>
-                      <Input
-                        type="text"
-                        value={catName}
-                        onChange={e => setCatName(e.target.value)}
-                        placeholder="e.g. Community"
-                        className="bg-zinc-200 border-zinc-300 text-xs h-9 text-zinc-800"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-zinc-600">Category Icon</Label>
-                      <Select value={catIcon} onValueChange={(val) => setCatIcon(val || 'folder')}>
-                        <SelectTrigger className="bg-zinc-200 border-zinc-300 text-xs h-9">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
-                          <SelectItem value="folder">Folder (Default)</SelectItem>
-                          <SelectItem value="share-2">Share2 (Social)</SelectItem>
-                          <SelectItem value="file-text">FileText (Content)</SelectItem>
-                          <SelectItem value="calendar">Calendar (Events)</SelectItem>
-                          <SelectItem value="handshake">Handshake (Partnerships)</SelectItem>
-                          <SelectItem value="zap">Zap (Automations)</SelectItem>
-                          <SelectItem value="send">Send (Outbound)</SelectItem>
-                          <SelectItem value="users">Users (Internal)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 items-center">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-zinc-600">Sort Order</Label>
-                      <Input
-                        type="number"
-                        value={catSortOrder}
-                        onChange={e => setCatSortOrder(e.target.value)}
-                        className="bg-zinc-200 border-zinc-300 text-xs h-9 text-zinc-800"
-                      />
-                    </div>
-                    {editingCategoryId && (
-                      <div className="flex items-center space-x-2 pt-4">
-                        <Checkbox
-                          id="cat_active"
-                          checked={catIsActive}
-                          onCheckedChange={checked => setCatIsActive(!!checked)}
-                          className="border-zinc-300 bg-zinc-100"
-                        />
-                        <Label htmlFor="cat_active" className="text-zinc-600 text-xs cursor-pointer">
-                          Category Active
-                        </Label>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2">
-                    {editingCategoryId && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => {
-                          setCatName('')
-                          setCatIcon('folder')
-                          setCatSortOrder('0')
-                          setEditingCategoryId(null)
-                          setCatIsActive(true)
-                        }}
-                        className="w-1/3 text-xs h-9"
-                      >
-                        Cancel
-                      </Button>
-                    )}
-                    <Button
-                      type="submit"
-                      disabled={isPending}
-                      className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs h-9"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      {editingCategoryId ? 'Update Category' : 'Create Category'}
-                    </Button>
-                  </div>
-                </form>
-
-                <Separator className="bg-zinc-100 my-4" />
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-zinc-200 bg-zinc-100/40 text-zinc-600 font-medium">
-                        <th className="text-left py-2 px-3">Name</th>
-                        <th className="text-left py-2 px-3">Slug</th>
-                        <th className="text-center py-2 px-3">Icon</th>
-                        <th className="text-center py-2 px-3">Sort</th>
-                        <th className="text-center py-2 px-3">Active</th>
-                        <th className="text-right py-2 px-3">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-200">
-                      {categories?.map(cat => (
-                        <tr key={cat.id} className="hover:bg-zinc-100 transition-colors">
-                          <td className="py-2 px-3 font-semibold text-zinc-800">{cat.name}</td>
-                          <td className="py-2 px-3 text-zinc-500 font-mono">{cat.slug}</td>
-                          <td className="py-2 px-3 text-center text-zinc-600 font-mono">{cat.icon || 'folder'}</td>
-                          <td className="py-2 px-3 text-center text-zinc-700">{cat.sort_order}</td>
-                          <td className="py-2 px-3 text-center">
-                            <span className={cat.is_active ? 'text-emerald-600' : 'text-zinc-600'}>
-                              {cat.is_active ? 'Yes' : 'No'}
-                            </span>
-                          </td>
-                          <td className="py-2 px-3 text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEditCategory(cat)}
-                              className="h-6 w-6 text-zinc-600 hover:text-zinc-900"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Channels Management Panel */}
-            <Card className="bg-white border-zinc-200 backdrop-blur-xl">
-              <CardHeader>
-                <CardTitle className="text-base font-semibold text-zinc-900">
-                  {editingChannelId ? 'Edit Channel' : 'Create Channel'}
-                </CardTitle>
-                <CardDescription className="text-zinc-500 text-xs">
-                  Create and nesting-structure channels under categories.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <form onSubmit={handleUpsertChannel} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-zinc-600">Target Category *</Label>
-                      <Select 
-                        value={chanCategoryId} 
-                        onValueChange={(val) => {
-                          setChanCategoryId(val || '')
-                          setChanParentId('none') // Reset parent channel when category changes
-                        }}
-                      >
-                        <SelectTrigger className="bg-zinc-200 border-zinc-300 text-xs h-9">
-                          <SelectValue placeholder="Select Category" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
-                          {categories?.map(c => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-zinc-600">Parent Channel (Optional)</Label>
-                      <Select value={chanParentId} onValueChange={(val) => setChanParentId(val || 'none')}>
-                        <SelectTrigger className="bg-zinc-200 border-zinc-300 text-xs h-9">
-                          <SelectValue placeholder="No Parent" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
-                          <SelectItem value="none">None (Top-Level Channel)</SelectItem>
-                          {channels?.filter(ch => ch.category_id === chanCategoryId && ch.id !== editingChannelId && !ch.parent_channel_id).map(ch => (
-                            <SelectItem key={ch.id} value={ch.id}>{ch.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-zinc-600">Channel Name *</Label>
-                      <Input
-                        type="text"
-                        value={chanName}
-                        onChange={e => setChanName(e.target.value)}
-                        placeholder="e.g. YouTube Ads"
-                        className="bg-zinc-200 border-zinc-300 text-xs h-9 text-zinc-800"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-zinc-600">Sort Order</Label>
-                      <Input
-                        type="number"
-                        value={chanSortOrder}
-                        onChange={e => setChanSortOrder(e.target.value)}
-                        className="bg-zinc-200 border-zinc-300 text-xs h-9 text-zinc-800"
-                      />
-                    </div>
-                  </div>
-
-                  {editingChannelId && (
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="chan_active"
-                        checked={chanIsActive}
-                        onCheckedChange={checked => setChanIsActive(!!checked)}
-                        className="border-zinc-300 bg-zinc-100"
-                      />
-                      <Label htmlFor="chan_active" className="text-zinc-600 text-xs cursor-pointer">
-                        Channel Active
-                      </Label>
-                    </div>
-                  )}
-
-                  <div className="flex gap-2">
-                    {editingChannelId && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => {
-                          setChanName('')
-                          setChanCategoryId('')
-                          setChanParentId('none')
-                          setChanSortOrder('0')
-                          setEditingChannelId(null)
-                          setChanIsActive(true)
-                        }}
-                        className="w-1/3 text-xs h-9"
-                      >
-                        Cancel
-                      </Button>
-                    )}
-                    <Button
-                      type="submit"
-                      disabled={isPending}
-                      className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs h-9"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      {editingChannelId ? 'Update Channel' : 'Create Channel'}
-                    </Button>
-                  </div>
-                </form>
-
-                <Separator className="bg-zinc-100 my-4" />
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs text-zinc-600">Filter list by Category</Label>
-                    <div className="w-36">
-                      <Select value={filterTaxonomyChannelCategory} onValueChange={(val) => setFilterTaxonomyChannelCategory(val || 'all')}>
-                        <SelectTrigger className="bg-zinc-200 border-zinc-300 text-xs h-7">
-                          <SelectValue placeholder="All Categories" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
-                          <SelectItem value="all">All Categories</SelectItem>
-                          {categories?.map(c => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="overflow-x-auto max-h-60 overflow-y-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-zinc-200 bg-zinc-100/40 text-zinc-600 font-medium">
-                          <th className="text-left py-2 px-3">Channel Name</th>
-                          <th className="text-left py-2 px-3">Parent Channel</th>
-                          <th className="text-center py-2 px-3">Sort</th>
-                          <th className="text-center py-2 px-3">Active</th>
-                          <th className="text-right py-2 px-3">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-200">
-                        {filteredChannelsList.map(ch => (
-                          <tr key={ch.id} className="hover:bg-zinc-100 transition-colors">
-                            <td className="py-2 px-3 font-semibold text-zinc-800">{ch.name}</td>
-                            <td className="py-2 px-3 text-zinc-500 font-mono">
-                              {ch.parent_channel_id ? getFlatChannelLabel(ch.parent_channel_id) : 'None'}
-                            </td>
-                            <td className="py-2 px-3 text-center text-zinc-700">{ch.sort_order}</td>
-                            <td className="py-2 px-3 text-center">
-                              <span className={ch.is_active ? 'text-emerald-600' : 'text-zinc-600'}>
-                                {ch.is_active ? 'Yes' : 'No'}
-                              </span>
-                            </td>
-                            <td className="py-2 px-3 text-right">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEditChannel(ch)}
-                                className="h-6 w-6 text-zinc-600 hover:text-zinc-900"
-                              >
-                                <Edit3 className="w-3 h-3" />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        {/* Taxonomy Manager Tab: per vertical */}
+        <TabsContent value="taxonomy" className="mt-6 space-y-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Label className="text-xs text-zinc-600">Vertical</Label>
+            <div className="w-56">
+              <Select value={taxonomyVertical} onValueChange={val => setTaxonomyVertical(val || '')}>
+                <SelectTrigger className="bg-white border-zinc-300 text-xs h-9"><SelectValue placeholder="Pick a vertical" /></SelectTrigger>
+                <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
+                  {(allVerticals || []).map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-zinc-500">Vertical owners can edit the same thing from their space under Vertical Settings.</p>
           </div>
+          {taxonomyVertical ? <TaxonomyManager verticalId={taxonomyVertical} /> : <p className="text-sm text-zinc-500">Pick a vertical to manage its categories and channels.</p>}
+        </TabsContent>
+
+        {/* Verticals Tab */}
+        <TabsContent value="verticals" className="mt-6">
+          <VerticalsTab />
+        </TabsContent>
+
+        {/* Functions Tab */}
+        <TabsContent value="functions" className="mt-6">
+          <FunctionsTab />
         </TabsContent>
 
         {/* HubSpot Tab */}

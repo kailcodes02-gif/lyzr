@@ -10,7 +10,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Building2, Download, Filter, Loader2, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, startOfWeek, startOfMonth } from 'date-fns'
-import { usePersisted, keyFor, writeRaw } from '@/lib/hooks/use-persisted'
+import { usePersisted, keyForVertical, writeRaw } from '@/lib/hooks/use-persisted'
+import { useVertical } from '@/lib/hooks/use-vertical'
 import { SortBar, SortableTh, applySorts, toggleSortLevel, type SortLevel, type SortColumn } from './sort-bar'
 import { MultiSelect } from './multi-select'
 import { useLeadTracking, TrackCells, TrackCellHeaders, stageRank, type Tracking } from './track-cells'
@@ -65,7 +66,8 @@ export function HubSpotLeads() {
   const { byRef, save } = useLeadTracking()
   // Pulled leads are customer PII — every persisted key is scoped to the
   // signed-in user, and all of them are purged on sign-out.
-  const k = (name: string) => keyFor(me?.id, name)
+  const { verticalId } = useVertical()
+  const k = (name: string) => keyForVertical(me?.id, verticalId, name)
 
   // --- extra companies (stored in our DB, extend the built-in rule) ---
   const { data: companies, error: companiesError } = useQuery({

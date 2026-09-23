@@ -7,7 +7,7 @@ export type TaskPriority = 'P0' | 'P1' | 'P2' | 'P3' | 'P4'
 export type AssignmentRole = 'primary' | 'secondary' | 'tertiary' | 'other'
 export type MentionSurface = 'task_description' | 'task_comment' | 'checklist_item' | 'blocked_description' | 'insight'
 export type BudgetPeriodType = 'one_time' | 'monthly' | 'quarterly' | 'half_yearly' | 'annual' | 'custom'
-export type BudgetScopeType = 'global' | 'category' | 'channel'
+export type BudgetScopeType = 'global' | 'vertical' | 'category' | 'channel'
 export type NotificationType = 'assigned' | 'mentioned' | 'comment' | 'status_change' | 'dependency_completed' | 'subtask_completed' | 'parent_blocked' | 'budget_overrun_warning' | 'overdue'
 export type FieldType = 'text' | 'long_text' | 'number' | 'currency' | 'date' | 'date_range' | 'dropdown' | 'multi_select' | 'checkbox' | 'url' | 'email' | 'phone' | 'person' | 'file'
 export type FieldSurface = 'planning' | 'tracker'
@@ -21,8 +21,90 @@ export interface User {
   created_at: string
 }
 
+// ============ VERTICALS & FUNCTIONS ============
+
+export interface VerticalSettings {
+  leads_pipeline: boolean
+  weekly_report_builder: boolean
+  resources: boolean
+  hubspot_contacts: boolean
+}
+
+export interface Vertical {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  icon: string | null
+  color: string | null
+  sort_order: number
+  is_active: boolean
+  settings: Partial<VerticalSettings>
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface VerticalOwner {
+  vertical_id: string
+  email: string
+  user_id: string | null
+  sort_order: number
+  created_at: string
+}
+
+export interface Fn {
+  id: string
+  name: string
+  slug: string
+  icon: string | null
+  sort_order: number
+  is_active: boolean
+  created_at: string
+}
+
+export interface FunctionOwner {
+  function_id: string
+  email: string
+  user_id: string | null
+  sort_order: number
+  created_at: string
+}
+
+export interface VerticalResource {
+  id: string
+  vertical_id: string
+  group_name: string
+  name: string
+  url: string
+  sort_order: number
+  added_by: string | null
+  created_at: string
+}
+
+export interface TaxonomyTemplate {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  body: Record<string, unknown>
+  source_vertical_id: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface EffectiveChannelOwner {
+  channel_id: string
+  email: string
+  user_id: string | null
+  sort_order: number
+  source: 'channel' | 'parent' | 'function'
+}
+
 export interface Category {
   id: string
+  vertical_id: string
   name: string
   slug: string
   icon: string | null
@@ -35,6 +117,8 @@ export type ChannelTier = 'gold' | 'silver' | 'bronze' | 'hygiene'
 
 export interface Channel {
   id: string
+  vertical_id: string
+  function_id: string | null
   category_id: string
   parent_channel_id: string | null
   name: string
@@ -195,6 +279,7 @@ export interface BudgetPeriod {
   created_by: string
   created_at: string
   notes: string | null
+  vertical_id: string | null
 }
 
 export interface BudgetPeriodSummary extends BudgetPeriod {
@@ -232,6 +317,7 @@ export interface Notification {
 export interface SavedView {
   id: string
   user_id: string
+  vertical_id: string | null
   page: string
   name: string
   config: Record<string, unknown>

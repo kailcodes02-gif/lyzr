@@ -3,6 +3,8 @@
 import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useCategories, useChannels, useTasks, useBudgetPeriods } from '@/lib/hooks/use-data'
+import { useSpaceHref } from '@/lib/hooks/use-space-href'
+import { useVertical } from '@/lib/hooks/use-vertical'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -19,14 +21,16 @@ import { taskInScope } from '@/lib/task-channels'
 
 function CategoryContent() {
   const slug = useSearchParams().get('slug') || ''
-  const { data: categories, isLoading: catsLoading } = useCategories()
+  const { verticalId } = useVertical()
+  const href = useSpaceHref()
+  const { data: categories, isLoading: catsLoading } = useCategories(verticalId)
   
   const category = categories?.find(c => c.slug === slug)
   const categoryId = category?.id
 
-  const { data: channels, isLoading: channelsLoading } = useChannels(categoryId)
-  const { data: tasks, isLoading: tasksLoading } = useTasks()
-  const { data: budgets } = useBudgetPeriods()
+  const { data: channels, isLoading: channelsLoading } = useChannels(verticalId, categoryId)
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId })
+  const { data: budgets } = useBudgetPeriods(verticalId)
 
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
@@ -100,7 +104,7 @@ function CategoryContent() {
               <div key={channel.id} className="space-y-0.5">
                 <div className="flex items-center justify-between rounded-lg hover:bg-zinc-100 px-2 py-1.5 transition-colors">
                   <Link
-                    href={`/channel/?id=${channel.id}`}
+                    href={href('/channel/', { id: channel.id })}
                     className="flex-1 text-sm text-zinc-600 hover:text-zinc-900 truncate"
                   >
                     {channel.tier && <span className="mr-1.5" title={TIER_CONFIG[channel.tier].label} aria-hidden>{TIER_CONFIG[channel.tier].emoji}</span>}
@@ -120,7 +124,7 @@ function CategoryContent() {
                     {children.map(child => (
                       <Link
                         key={child.id}
-                        href={`/channel/?id=${child.id}`}
+                        href={href('/channel/', { id: child.id })}
                         className="block px-2 py-1 text-xs text-zinc-500 hover:text-zinc-700 rounded hover:bg-zinc-100 truncate"
                       >
                         {child.name}
@@ -147,7 +151,7 @@ function CategoryContent() {
             <p className="text-sm text-zinc-500 mt-0.5">Campaigns, tasks, and budgets</p>
           </div>
           <div className="flex items-center gap-3 self-start">
-            <Link href={`/calendar?category=${category.id}`}>
+            <Link href={href('/calendar/', { category: category.id })}>
               <Button variant="outline" className="border-zinc-300 hover:bg-zinc-100 text-zinc-700">
                 <Calendar className="w-4 h-4 mr-2" /> Calendar View
               </Button>

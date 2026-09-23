@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import { AppSidebar, AppHeader } from '@/components/layout/app-shell'
 import { AuthGuard } from '@/components/layout/auth-guard'
+import { VerticalProvider } from '@/components/providers/vertical-provider'
 
 export default function AuthenticatedLayout({
   children,
@@ -9,18 +10,20 @@ export default function AuthenticatedLayout({
 }) {
   return (
     <AuthGuard>
-      <div className="flex h-screen overflow-hidden">
-        {/* Suspense: sidebar reads useSearchParams for channel highlighting */}
-        <Suspense fallback={<aside className="w-64 bg-white border-r border-zinc-200" />}>
-          <AppSidebar />
-        </Suspense>
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <AppHeader />
-          <main className="flex-1 overflow-y-auto">
-            {children}
-          </main>
-        </div>
-      </div>
+      {/* Suspense: the vertical provider and sidebar read useSearchParams */}
+      <Suspense fallback={<div className="min-h-screen bg-zinc-50" />}>
+        <VerticalProvider>
+          <div className="flex h-screen overflow-hidden">
+            <AppSidebar />
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <AppHeader />
+              <main className="flex-1 overflow-y-auto">
+                {children}
+              </main>
+            </div>
+          </div>
+        </VerticalProvider>
+      </Suspense>
     </AuthGuard>
   )
 }

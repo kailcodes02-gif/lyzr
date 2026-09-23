@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useUsers, useTasks } from '@/lib/hooks/use-data'
+import { useSpaceHref } from '@/lib/hooks/use-space-href'
+import { useVertical } from '@/lib/hooks/use-vertical'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardContent } from '@/components/ui/card'
 import { Users as UsersIcon, ListTodo, AlertTriangle, Radio, AtSign } from 'lucide-react'
@@ -58,8 +60,10 @@ const HIDDEN_EMAILS = new Set(['preview@lyzr.ai'])
 const OPEN_STATUSES = new Set(['not_started', 'in_progress', 'blocked'])
 
 export default function OwnersPage() {
+  const { verticalId } = useVertical()
+  const href = useSpaceHref()
   const { data: allUsers, isLoading: usersLoading } = useUsers()
-  const { data: tasks, isLoading: tasksLoading } = useTasks()
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId })
   const { data: mentions, isLoading: mentionsLoading } = useAllMentions()
   const { data: pendingOwners } = usePendingOwners()
   const users = allUsers?.filter(u => !HIDDEN_EMAILS.has(u.email))
@@ -146,7 +150,7 @@ export default function OwnersPage() {
             return (
               <Link
                 key={user.id}
-                href={`/owners/view/?email=${encodeURIComponent(user.email)}`}
+                href={href('/owners/view/', { email: user.email })}
                 className="group"
               >
                 <Card className="bg-white border-zinc-200 hover:border-zinc-300 hover:bg-white transition-all backdrop-blur-xl h-full">
@@ -210,7 +214,7 @@ export default function OwnersPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {pendingOwners.map(p => (
-              <Link key={p.email} href={`/owners/view/?email=${encodeURIComponent(p.email)}`} className="group">
+              <Link key={p.email} href={href('/owners/view/', { email: p.email })} className="group">
               <Card className="bg-white border-zinc-200 border-dashed backdrop-blur-xl h-full group-hover:border-zinc-300 transition-all">
                 <CardContent className="p-5 space-y-3">
                   <div className="flex items-center gap-3">
@@ -273,6 +277,7 @@ function StatPill({
 // They still inherit channel owners for display, but this list is the
 // operator's queue of work nobody has explicitly picked up.
 function UnassignedTasksSection({ tasks }: { tasks?: import('@/lib/types/database').Task[] }) {
+  const href = useSpaceHref()
   const unassigned = (tasks || []).filter(t =>
     t.status !== 'done' && t.status !== 'cancelled' &&
     !(t.assignments?.length) &&
@@ -290,7 +295,7 @@ function UnassignedTasksSection({ tasks }: { tasks?: import('@/lib/types/databas
       <Card className="bg-white border-zinc-200">
         <CardContent className="p-0 divide-y divide-zinc-200">
           {unassigned.map(t => (
-            <Link key={t.id} href={`/channel/?id=${t.channel_id}`}
+            <Link key={t.id} href={href('/channel/', { id: t.channel_id })}
               className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-zinc-50 transition-colors">
               <div className="min-w-0">
                 <p className="text-sm text-zinc-800 truncate">{t.title}</p>

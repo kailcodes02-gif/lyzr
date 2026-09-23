@@ -8,6 +8,8 @@ import { format, parseISO } from 'date-fns'
 import { ArrowLeft, CheckSquare, MessageSquare, Calendar as CalendarIcon, Activity, Clock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useUsers, useTasks, useRecentActivity, useAllChannelOwners } from '@/lib/hooks/use-data'
+import { useSpaceHref } from '@/lib/hooks/use-space-href'
+import { useVertical } from '@/lib/hooks/use-vertical'
 import { effectiveOwnerEmails } from '@/lib/effective-owners'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -48,11 +50,15 @@ const SURFACE_LABELS: Record<string, string> = {
 }
 
 function OwnerDetailContent() {
-  const email = useSearchParams().get('email') || ''
+  const params = useSearchParams()
+  const email = params.get('email') || ''
+  const initialTab = params.get('tab') || 'assigned'
+  const { verticalId } = useVertical()
+  const href = useSpaceHref()
 
   const { data: users, isLoading: usersLoading } = useUsers()
-  const { data: tasks, isLoading: tasksLoading } = useTasks()
-  const { data: activities } = useRecentActivity(200)
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId })
+  const { data: activities } = useRecentActivity(200, verticalId)
   const { data: channelOwners } = useAllChannelOwners()
 
   const signedInOwner = useMemo(
@@ -141,7 +147,7 @@ function OwnerDetailContent() {
   return (
     <div className="p-4 lg:p-8 space-y-6 max-w-7xl mx-auto bg-zinc-50 text-zinc-900 min-h-screen">
       <Link
-        href="/owners"
+        href={href('/owners/')}
         className="text-xs text-zinc-600 hover:text-zinc-900 inline-flex items-center gap-1.5"
       >
         <ArrowLeft className="w-3.5 h-3.5" /> Back to owners
@@ -167,7 +173,7 @@ function OwnerDetailContent() {
         </div>
       </div>
 
-      <Tabs defaultValue="assigned" className="w-full">
+      <Tabs defaultValue={initialTab} className="w-full">
         <TabsList className="bg-white border border-zinc-200 p-1 rounded-lg">
           <TabsTrigger value="assigned" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
             <CheckSquare className="w-4 h-4 mr-2" /> Assigned to me

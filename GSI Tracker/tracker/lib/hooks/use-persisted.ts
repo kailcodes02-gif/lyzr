@@ -39,6 +39,11 @@ export function keyFor(userId: string | undefined, name: string): string | null 
   return userId ? `${PREFIX}${userId}:${name}` : null
 }
 
+// Same, additionally scoped to one vertical (lead dashboards, filters).
+export function keyForVertical(userId: string | undefined, verticalId: string | undefined, name: string): string | null {
+  return userId && verticalId ? `${PREFIX}${userId}:v:${verticalId}:${name}` : null
+}
+
 // Called on sign-out: no dashboard state (least of all lead PII) may survive.
 export function purgePersisted() {
   for (const k of [...memory.keys()]) if (k.startsWith(PREFIX)) memory.delete(k)

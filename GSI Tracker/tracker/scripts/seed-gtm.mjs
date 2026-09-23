@@ -5,9 +5,15 @@
 // if they ever signed in; otherwise they must sign in once first).
 //
 // Usage:
-//   node scripts/seed-gtm.mjs               full seed (aborts if taxonomy already seeded)
-//   node scripts/seed-gtm.mjs --owners-only (re)apply owner mapping only — safe after
-//                                           scripts/owner-emails.json arrives or changes
+//   node scripts/seed-gtm.mjs [--vertical gsi] [--vertical-name "GSI"]
+//                              full seed of one vertical (aborts if THAT vertical already has categories)
+//   node scripts/seed-gtm.mjs --template          also snapshot the vertical as the "gsi-standard" taxonomy template
+//   node scripts/seed-gtm.mjs --create-lyzr empty | template:<template-slug>
+//                              also create the company-wide "Lyzr" vertical (empty, or cloned from a template)
+//   node scripts/seed-gtm.mjs --owners-only [--vertical gsi]
+//                              (re)apply owner mapping only — safe after scripts/owner-emails.json changes
+//
+// Typical go-live: node scripts/seed-gtm.mjs --vertical gsi --template --create-lyzr template:gsi-standard
 //
 // Owner mapping: scripts/owner-emails.json = { "Rishabh": "rishabh@lyzr.ai", ... }.
 // Names missing from the mapping seed unowned and are listed at the end, as are
@@ -24,7 +30,27 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const OWNERS_ONLY = process.argv.includes('--owners-only')
+const argv = process.argv.slice(2)
+const argValue = (flag) => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] : undefined }
+const OWNERS_ONLY = argv.includes('--owners-only')
+const VERTICAL_SLUG = (argValue('--vertical') || 'gsi').toLowerCase()
+const VERTICAL_NAME = argValue('--vertical-name') || (VERTICAL_SLUG === 'gsi' ? 'GSI' : VERTICAL_SLUG.toUpperCase())
+const MAKE_TEMPLATE = argv.includes('--template')
+const CREATE_LYZR = argValue('--create-lyzr') // 'empty' | 'template:<slug>' | undefined
+
+// GSI ships with every feature flag on (its integrations exist); other
+// verticals start with them off.
+const GSI_FLAGS = { leads_pipeline: true, weekly_report_builder: true, resources: true, hubspot_contacts: true }
+const NO_FLAGS = { leads_pipeline: false, weekly_report_builder: false, resources: false, hubspot_contacts: false }
+
+// Blueprint top channel -> workspace function (the cross-vertical roll-up).
+const FUNCTION_BY_BP = {
+  c1: 'paid', c2: 'outbound', c3: 'social', c4: 'content', c5: 'events', c6: 'analyst-pr',
+  c7: 'content', c8: 'community', c9: 'referrals', c10: 'btl', c11: 'partnerships', c12: 'abm',
+}
+// Blueprint ids are namespaced per vertical so a second vertical cloned
+// from the same blueprint cannot collide in --owners-only.
+const bp = (id) => `${VERTICAL_SLUG}:${id}`
 
 // ---------- env / clients ----------
 const env = Object.fromEntries(
@@ -120,11 +146,22 @@ const insert = async (table, rows, opts = {}) => {
 
 // ---------- owners-only mode helpers ----------
 // Maps blueprint node id (c1, c1s1) -> channel row, via extra.bp_id stored at seed time.
-const loadChannelsByBpId = async () => {
-  const { data, error } = await db.from('channels').select('id, name, extra')
+const loadVertical = async () => {
+  const { data, error } = await db.from('verticals').select('id, slug').eq('slug', VERTICAL_SLUG).maybeSingle()
+  if (error) die('reading verticals failed — did RESET_ALL.sql (with migration 014) run?', error)
+  return data
+}
+
+const loadChannelsByBpId = async (verticalId) => {
+  const { data, error } = await db.from('channels').select('id, name, extra').eq('vertical_id', verticalId)
   if (error) die('reading channels failed', error)
   const map = new Map()
-  for (const ch of data) if (ch.extra?.bp_id) map.set(ch.extra.bp_id, ch)
+  const prefix = `${VERTICAL_SLUG}:`
+  for (const ch of data) {
+    const id = ch.extra?.bp_id
+    if (!id) continue
+    map.set(id.startsWith(prefix) ? id.slice(prefix.length) : id, ch)
+  }
   return map
 }
 
@@ -155,7 +192,10 @@ const seedOwners = async (byBpId, adminId) => {
   }
 
   // pre-assign each sub-channel's tasks to its owners (primary = first owner)
-  const { data: tasks, error: tErr } = await db.from('tasks').select('id, channel_id')
+  const channelIds = [...byBpId.values()].map(c => c.id)
+  const { data: tasks, error: tErr } = channelIds.length
+    ? await db.from('tasks').select('id, channel_id').in('channel_id', channelIds)
+    : { data: [], error: null }
   if (tErr) die('reading tasks failed', tErr)
   const byChannel = new Map()
   for (const t of tasks) {
@@ -203,17 +243,37 @@ if (adminErr) die('cannot read users table — did RESET_ALL.sql run?', adminErr
 if (!admin) die('kailash.gm@lyzr.ai not found in public.users. Run RESET_ALL.sql (it backfills from auth.users), or sign in once, then re-run.')
 
 if (OWNERS_ONLY) {
-  await seedOwners(await loadChannelsByBpId(), admin.id)
+  const v = await loadVertical()
+  if (!v) die(`vertical "${VERTICAL_SLUG}" not found — run the full seed first`)
+  await seedOwners(await loadChannelsByBpId(v.id), admin.id)
   if (unmappedNames.size) console.log('UNMAPPED owner names (seeded unowned):', [...unmappedNames].sort().join(', '))
   if (nonPeopleHits.size) console.log('Non-person owner labels (kept as extra.owner_note, no assignment):', [...nonPeopleHits].sort().join(', '))
   process.exit(0)
 }
 
-const { count } = await db.from('categories').select('*', { count: 'exact', head: true })
-if (count > 0) die(`categories table already has ${count} rows — this script seeds a CLEAN db only. Run RESET_ALL.sql first (or use --owners-only).`)
+// 0. the vertical itself (upsert: re-running after a partial failure is safe)
+let vertical = await loadVertical()
+if (!vertical) {
+  const { data, error } = await db.from('verticals').insert({
+    name: VERTICAL_NAME, slug: VERTICAL_SLUG, sort_order: 1,
+    settings: VERTICAL_SLUG === 'gsi' ? GSI_FLAGS : NO_FLAGS,
+    created_by: admin.id,
+  }).select('id, slug').single()
+  if (error) die('insert into verticals failed', error)
+  vertical = data
+}
+const verticalId = vertical.id
+
+const { count } = await db.from('categories').select('*', { count: 'exact', head: true }).eq('vertical_id', verticalId)
+if (count > 0) die(`vertical "${VERTICAL_SLUG}" already has ${count} categories — this script seeds an EMPTY vertical only. Run RESET_ALL.sql first (or use --owners-only).`)
+
+// functions (seeded by migration 014) for the channel -> function link
+const { data: fnRows, error: fnErr } = await db.from('functions').select('id, slug')
+if (fnErr) die('reading functions failed — did migration 014 run?', fnErr)
+const fnBySlug = new Map(fnRows.map(f => [f.slug, f.id]))
 
 // 1. categories
-const catRows = await insert('categories', CATEGORIES.map(c => ({ ...c, is_active: true })))
+const catRows = await insert('categories', CATEGORIES.map(c => ({ ...c, vertical_id: verticalId, is_active: true })))
 const catBySlug = new Map(catRows.map(c => [c.slug, c.id]))
 
 // 2. channels + sub-channels
@@ -221,26 +281,29 @@ const byBpId = new Map()
 for (const ch of blueprint.channels) {
   const [parent] = await insert('channels', [{
     category_id: catBySlug.get(ch.cat === 'events' ? 'events' : ch.cat),
+    vertical_id: verticalId,
+    function_id: fnBySlug.get(FUNCTION_BY_BP[ch.id]) || null,
     name: ch.name,
     slug: slugify(ch.name),
     sort_order: ch.num,
     tier: ch.tier || null,
     goal: ch.goal || null,
     budget_note: ch.budget || null,
-    extra: { bp_id: ch.id, num: ch.num, color: ch.color || null, ...ownerNote(ch.owners) },
+    extra: { bp_id: bp(ch.id), num: ch.num, color: ch.color || null, ...ownerNote(ch.owners) },
   }])
   byBpId.set(ch.id, parent)
 
   const subRows = (ch.subs || []).map((sub, i) => ({
     category_id: parent.category_id,
-    parent_channel_id: parent.id,
+    vertical_id: verticalId,
+    parent_channel_id: parent.id, // function_id inherited from the parent by trigger
     name: sub.name,
     slug: slugify(sub.name),
     sort_order: i + 1,
     target: sub.target || null,
     budget_note: sub.budget || null,
     extra: {
-      bp_id: sub.id,
+      bp_id: bp(sub.id),
       ...(sub.opp != null ? { opp_target: sub.opp } : {}),
       ...(sub.isNew ? { is_new: true } : {}),
       ...(sub.onote ? { onote: sub.onote } : {}),
@@ -302,7 +365,7 @@ for (const ch of blueprint.channels) {
           ...(act.k ? { kpi_target: act.k } : {}),
           ...(act.grade ? { grade: act.grade } : {}),
           ...(act.opp != null ? { opp_target: act.opp } : {}),
-          bp_id: act.id,
+          bp_id: bp(act.id),
         },
       }])
       taskCount++
@@ -319,7 +382,7 @@ for (const ch of blueprint.channels) {
           status: 'not_started',
           due_date: due,
           created_by: admin.id,
-          planning_fields: { bp_id: `${act.id}-sa${i + 1}` },
+          planning_fields: { bp_id: bp(`${act.id}-sa${i + 1}`) },
         })))
         subTaskCount += saList.length
       }
@@ -374,10 +437,67 @@ for (const ch of blueprint.channels) {
 }
 await insert('budget_periods', budgetRows)
 
+// 6b. vertical-level resources (the old hardcoded GSI Resources page)
+let resourceCount = 0
+const vResPath = join(root, 'scripts', `${VERTICAL_SLUG}-resources.json`)
+if (existsSync(vResPath)) {
+  const links = JSON.parse(readFileSync(vResPath, 'utf8'))
+  await insert('vertical_resources', links.map((l, i) => ({
+    vertical_id: verticalId, group_name: l.group, name: l.name, url: l.url, sort_order: i, added_by: admin.id,
+  })))
+  resourceCount = links.length
+}
+
 // 7. owners + task assignments
 await seedOwners(byBpId, admin.id)
 
-console.log(`\nSEED COMPLETE:
+// 8. vertical owners: the blueprint's top-level channel owners who are also
+// mapped by email get vertical ownership? No: that is a people decision.
+// Only the admin is seeded as a vertical owner; add others from Admin > Verticals.
+{
+  const { error } = await db.from('vertical_owners').upsert(
+    { vertical_id: verticalId, email: 'kailash.gm@lyzr.ai', user_id: admin.id, sort_order: 0 },
+    { onConflict: 'vertical_id,email' })
+  if (error) die('upsert vertical_owners failed', error)
+}
+
+// 9. template snapshot (taxonomy only: no activities, owners, budgets)
+let templateId = null
+if (MAKE_TEMPLATE) {
+  const { data, error } = await db.rpc('save_vertical_as_template', {
+    p_vertical_id: verticalId, p_name: `${VERTICAL_NAME} Standard`, p_slug: `${VERTICAL_SLUG}-standard`,
+    p_description: `Categories, channels, sub-channels and custom fields cloned from the ${VERTICAL_NAME} vertical.`,
+  })
+  if (error) die('save_vertical_as_template failed', error)
+  templateId = data
+}
+
+// 10. company-wide "Lyzr" vertical
+let lyzrNote = ''
+if (CREATE_LYZR) {
+  const { data: existing } = await db.from('verticals').select('id').eq('slug', 'lyzr').maybeSingle()
+  if (existing) {
+    lyzrNote = 'lyzr vertical already exists (left untouched)'
+  } else {
+    let tpl = null
+    if (CREATE_LYZR.startsWith('template:')) {
+      const tslug = CREATE_LYZR.slice('template:'.length)
+      const { data: t } = await db.from('taxonomy_templates').select('id').eq('slug', tslug).maybeSingle()
+      if (!t) die(`template "${tslug}" not found (pass --template to create ${VERTICAL_SLUG}-standard first)`)
+      tpl = t.id
+    } else if (CREATE_LYZR !== 'empty') {
+      die('--create-lyzr expects "empty" or "template:<slug>"')
+    }
+    const { data: lyzrId, error } = await db.rpc('create_vertical', {
+      p_name: 'Lyzr', p_slug: 'lyzr', p_settings: NO_FLAGS, p_template_id: tpl,
+      p_owner_emails: ['kailash.gm@lyzr.ai'], p_description: 'Company-wide marketing not tied to one vertical',
+    })
+    if (error) die('create_vertical(lyzr) failed', error)
+    lyzrNote = `lyzr vertical created (${tpl ? 'from template' : 'empty'}): ${lyzrId}`
+  }
+}
+
+console.log(`\nSEED COMPLETE (vertical "${VERTICAL_SLUG}" = ${verticalId}):
   categories:        ${catRows.length}
   channels:          ${byBpId.size} (12 top + 38 sub)
   activity tasks:    ${taskCount}
@@ -386,7 +506,10 @@ console.log(`\nSEED COMPLETE:
   resources:         ${resourceRows.length}
   learnings:         ${learningRows.length}
   channel_fields:    ${fieldRows.length}
-  budget periods:    ${budgetRows.length}`)
+  budget periods:    ${budgetRows.length}
+  vertical resources:${resourceCount}
+  template:          ${templateId || '(not requested)'}
+  lyzr:              ${lyzrNote || '(not requested)'}`)
 if (unmappedNames.size) {
   console.log(`\nUNMAPPED owner names (seeded unowned — add to scripts/owner-emails.json and re-run with --owners-only):\n  ${[...unmappedNames].sort().join(', ')}`)
 }

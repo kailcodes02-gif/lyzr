@@ -289,8 +289,9 @@ Per `pipeline/README.md`: drop a new `tracker.xlsx` into the pipeline folder and
 
 ## 8. Component: GSI Tracker (Next.js app)
 
-The largest in-progress piece. Internal task/tracker/budget tool for Lyzr's GSI/SI
-marketing team (~10-50 `@lyzr.ai` users). Source lives at `GSI Tracker/tracker/`;
+The largest in-progress piece. Now the **Lyzr Marketing Tracker**: a multi-vertical
+task/tracker/budget tool for the whole marketing team (verticals + functions layer,
+see DECISIONS D13 and the 2026-09-23 build-log entry). Source lives at `GSI Tracker/tracker/`;
 it is a static export (`output: "export"`, basePath `/GSI_Tracker`) whose built `out/`
 is committed at the repo root as `GSI_Tracker/` and served by the Pages deploy at
 `/GSI_Tracker/`. To ship a change: `npm run build` in the tracker, replace the root
@@ -316,7 +317,7 @@ said "local only"; corrected 2026-09-07.)
 
 ### Data flow
 
-- **Writes:** Next.js Server Actions in `lib/actions/index.ts` using the Supabase **service role key** (admin checks inside).
+- **Writes:** `lib/actions/index.ts` runs in the browser with the user's JWT (static export, no server); RLS is the boundary. Corrected 2026-09-23.
 - **Reads:** client-side Supabase JS + query hooks in `lib/hooks/use-data.ts` (anon key, gated by RLS).
 - **Timezone:** stored UTC, displayed Asia/Kolkata (IST). **Currency:** USD only.
 - **Auth:** Google SSO restricted to `@lyzr.ai`. Roles: `admin` | `member` only. Admin seeded at first run: `kailash.gm@lyzr.ai`.
@@ -456,6 +457,45 @@ Access if the data ever becomes confidential.
 
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
+
+### 2026-09-23, GSI Tracker becomes the Lyzr Marketing Tracker: verticals + functions layer (GSI Tracker)
+- **Why:** the tracker was GSI-only; the whole marketing team now uses it. Verticals (GSI,
+  Emerging Partners, per-product, company-wide "Lyzr") sit above categories; functions
+  (Content, Social, Paid...) link the same discipline across verticals. Jira-like nav:
+  `/` is the workspace home with vertical cards; clicking a vertical enters its space
+  (`?v=<slug>` on every route, `?v=all` = workspace views).
+- **Data:** migrations `014_verticals_and_functions.sql` (verticals, vertical_owners,
+  functions, function_owners, vertical_resources, `vertical_id` on categories/channels/
+  budgets/reports/snapshots/saved_views, `effective_channel_owners` view, triggers),
+  `015_verticals_rls.sql` (`can_manage_vertical()`: admin or vertical owner writes),
+  `016_taxonomy_templates.sql` (templates + RPCs `create_vertical`,
+  `save_vertical_as_template`, `apply_taxonomy_template`). All three verified end to end on a
+  scratch Supabase project (`tracker-verticals-scratch`, org Lyzr AI; can be deleted).
+  `RESET_ALL.sql` regenerated (was stale, now 001-016). Migration 013 (weekly reports) was
+  never applied live; the reset fixes that.
+- **Tooling:** `scripts/seed-gtm.mjs --vertical gsi --template --create-lyzr template:gsi-standard`
+  (function links, namespaced bp_ids, GSI resources from `scripts/gsi-resources.json`);
+  new `scripts/export-live.mjs` (backup, run 2026-09-23: 135 tasks = 98 blueprint + 37
+  user-created, in `tracker/backups/`, git-ignored) and `scripts/restore-live.mjs`
+  (`--roles`, `--vertical-owners`, `--tasks --merge-blueprint-state`). Runbook in
+  `tracker/RESTRUCTURE.md`.
+- **App:** `VerticalProvider` + `useVertical()`; every hook takes a vertical scope; new
+  pages `/` (workspace home), `/dashboard` (space dashboard, the old `/`), `/workspace/tasks`,
+  `/workspace/weekly` (done / not done / overdue carried, by due date, grouped
+  Vertical > Channel > Owner), `/functions`, `/function`, `/settings` (vertical owners),
+  table-driven `/resources`; Admin gains Verticals + Functions tabs and a per-vertical
+  Taxonomy manager (`components/admin/*`); create-task dialog gets a vertical step;
+  "Also shows in" can target another vertical; Leads Pipeline / report builder / HubSpot
+  tab / Resources are per-vertical feature flags (GSI on, others off). Branding renamed
+  to "Lyzr Marketing Tracker"; URL stays `/GSI_Tracker`.
+- **Verification:** `tsc` clean, vitest 26/26 (new `lib/week-logic.test.ts`), `next build`
+  25 static routes. Lint debt unchanged (pre-existing).
+- **Corrections to this doc:** section 8 said writes go through Server Actions with the
+  service role; since the Aug 2026 static switch `lib/actions/index.ts` runs in the browser
+  and RLS is the only boundary. DECISIONS D5/D9 marked superseded; D13 added.
+- **Cutover still to run by the user** (destructive, needs the SQL Editor): paste
+  `RESET_ALL.sql`, run the seed, run restore, push. Until then the deployed UI runs in a
+  single-vertical fallback mode.
 
 ### 2026-09-23, MS UI: bulk-action batch fix, full action audit, contacts-aware search (MS UI)
 - Real-mailbox bug: bulk move from search results failed with "Request Id ... has to be unique in a batch"

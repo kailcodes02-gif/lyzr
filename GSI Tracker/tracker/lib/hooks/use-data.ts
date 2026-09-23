@@ -5,7 +5,13 @@ import { useQuery } from '@tanstack/react-query'
 import type {
   User, Category, Channel,
   ChannelOwner, ChannelResource, ChannelLearning, ChannelTarget,
+  Vertical, VerticalOwner, Fn, FunctionOwner, VerticalResource, TaxonomyTemplate,
+  EffectiveChannelOwner,
 } from '@/lib/types/database'
+import { taskChannelIds } from '@/lib/task-channels'
+
+// A vertical scope: a vertical id, or 'all' for workspace-wide views.
+export type VerticalScope = string | 'all'
 
 // ============ AUTH ============
 
@@ -28,30 +34,179 @@ export function useCurrentUser() {
   })
 }
 
-// ============ TAXONOMY ============
+// ============ VERTICALS ============
 
-export function useCategories() {
+export function useVerticals(includeInactive = false) {
   const supabase = createClient()
   return useQuery({
-    queryKey: ['categories'],
+    queryKey: ['verticals', includeInactive],
+    staleTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      let q = supabase.from('verticals').select('*').order('sort_order').order('name')
+      if (!includeInactive) q = q.eq('is_active', true)
+      const { data, error } = await q
+      if (error) throw error
+      return data as Vertical[]
+    },
+  })
+}
+
+export function useVertical(slug?: string | null) {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['vertical', slug],
+    enabled: !!slug && slug !== 'all',
+    staleTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('verticals').select('*').eq('slug', slug!).maybeSingle()
+      if (error) throw error
+      return data as Vertical | null
+    },
+  })
+}
+
+export function useVerticalOwners(verticalId?: string) {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['verticalOwners', verticalId],
+    enabled: !!verticalId && verticalId !== 'all',
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('vertical_owners').select('*').eq('vertical_id', verticalId!).order('sort_order').order('created_at')
+      if (error) throw error
+      return data as VerticalOwner[]
+    },
+  })
+}
+
+export function useAllVerticalOwners() {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['verticalOwners', 'all'],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('vertical_owners').select('*').order('sort_order')
+      if (error) throw error
+      return data as VerticalOwner[]
+    },
+  })
+}
+
+// Ids of the verticals the signed-in user owns (admins manage every vertical
+// but this only lists explicit ownership rows).
+export function useMyVerticalIds() {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['myVerticalIds'],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return [] as string[]
+      const { data, error } = await supabase.from('vertical_owners').select('vertical_id').eq('user_id', user.id)
+      if (error) throw error
+      return (data || []).map(r => r.vertical_id as string)
+    },
+  })
+}
+
+export function useVerticalResources(verticalId?: string) {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['verticalResources', verticalId],
+    enabled: !!verticalId && verticalId !== 'all',
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('vertical_resources').select('*').eq('vertical_id', verticalId!).order('sort_order').order('created_at')
+      if (error) throw error
+      return data as VerticalResource[]
+    },
+  })
+}
+
+export function useTaxonomyTemplates() {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['taxonomyTemplates'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('taxonomy_templates').select('*').order('name')
+      if (error) throw error
+      return data as TaxonomyTemplate[]
+    },
+  })
+}
+
+// ============ FUNCTIONS ============
+
+export function useFunctions(includeInactive = false) {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['functions', includeInactive],
+    staleTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      let q = supabase.from('functions').select('*').order('sort_order').order('name')
+      if (!includeInactive) q = q.eq('is_active', true)
+      const { data, error } = await q
+      if (error) throw error
+      return data as Fn[]
+    },
+  })
+}
+
+export function useFunctionOwners(functionId?: string) {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['functionOwners', functionId],
+    enabled: !!functionId,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('function_owners').select('*').eq('function_id', functionId!).order('sort_order').order('created_at')
+      if (error) throw error
+      return data as FunctionOwner[]
+    },
+  })
+}
+
+export function useAllFunctionOwners() {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['functionOwners', 'all'],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('function_owners').select('*').order('sort_order')
+      if (error) throw error
+      return data as FunctionOwner[]
+    },
+  })
+}
+
+// ============ TAXONOMY ============
+
+export function useCategories(verticalId: VerticalScope = 'all') {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['categories', verticalId],
     // Taxonomy rarely changes; keep it fresh for 10 minutes to avoid refetches on every nav.
     staleTime: 10 * 60 * 1000,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('categories')
         .select('*')
         .eq('is_active', true)
         .order('sort_order')
+      if (verticalId !== 'all') query = query.eq('vertical_id', verticalId)
+      const { data, error } = await query
       if (error) throw error
       return data as Category[]
     },
   })
 }
 
-export function useChannels(categoryId?: string) {
+export function useChannels(verticalId: VerticalScope = 'all', categoryId?: string) {
   const supabase = createClient()
   return useQuery({
-    queryKey: ['channels', categoryId],
+    queryKey: ['channels', verticalId, categoryId],
     staleTime: 10 * 60 * 1000,
     queryFn: async () => {
       let query = supabase
@@ -59,9 +214,8 @@ export function useChannels(categoryId?: string) {
         .select('*')
         .eq('is_active', true)
         .order('sort_order')
-      if (categoryId) {
-        query = query.eq('category_id', categoryId)
-      }
+      if (verticalId !== 'all') query = query.eq('vertical_id', verticalId)
+      if (categoryId) query = query.eq('category_id', categoryId)
       const { data, error } = await query
       if (error) throw error
       return data as Channel[]
@@ -90,6 +244,29 @@ export function buildChannelTree(channels: Channel[]): Channel[] {
   return roots
 }
 
+// Memo-friendly lookup maps across the WHOLE workspace: which vertical a
+// channel/category/task belongs to. Cheap (a few hundred rows).
+export function useVerticalLookup() {
+  const { data: verticals } = useVerticals(true)
+  const { data: channels } = useChannels('all')
+  const { data: categories } = useCategories('all')
+  const verticalById = new Map<string, Vertical>()
+  verticals?.forEach(v => verticalById.set(v.id, v))
+  const channelById = new Map<string, Channel>()
+  channels?.forEach(c => channelById.set(c.id, c))
+  const categoryById = new Map<string, Category>()
+  categories?.forEach(c => categoryById.set(c.id, c))
+  return {
+    verticals: verticals || [],
+    verticalById,
+    channelById,
+    categoryById,
+    verticalOfChannel: (channelId: string | null | undefined) =>
+      channelId ? verticalById.get(channelById.get(channelId)?.vertical_id || '') || null : null,
+    ready: !!verticals && !!channels && !!categories,
+  }
+}
+
 // ============ CHANNEL METADATA (GTM blueprint) ============
 
 export function useChannelOwners(channelId?: string) {
@@ -111,6 +288,23 @@ export function useChannelOwners(channelId?: string) {
   })
 }
 
+// Owners as the app should treat them: explicit channel owners, else the
+// parent channel's, else the channel function's owners (DB view).
+export function useEffectiveChannelOwners(channelId?: string) {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['effectiveChannelOwners', channelId],
+    enabled: !!channelId,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('effective_channel_owners').select('*').eq('channel_id', channelId!).order('sort_order')
+      if (error) throw error
+      return data as EffectiveChannelOwner[]
+    },
+  })
+}
+
 export function useChannelResources(channelId?: string) {
   const supabase = createClient()
   return useQuery({
@@ -128,8 +322,10 @@ export function useChannelResources(channelId?: string) {
   })
 }
 
-// Every owner on every channel — used for owner inheritance on task cards
-// (task -> its sub-channel's owners -> its channel's owners).
+// Every effective owner on every channel — used for owner inheritance on
+// task cards (task -> its sub-channel's owners -> its channel's owners ->
+// its function's owners). Reads the effective_channel_owners view so the
+// function fallback comes for free.
 export function useAllChannelOwners() {
   const supabase = createClient()
   return useQuery({
@@ -137,9 +333,9 @@ export function useAllChannelOwners() {
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('channel_owners').select('*').order('sort_order').order('created_at')
+        .from('effective_channel_owners').select('*').order('sort_order')
       if (error) throw error
-      return data as ChannelOwner[]
+      return data as EffectiveChannelOwner[]
     },
   })
 }
@@ -152,21 +348,23 @@ const EXTRA_KNOWN_EMAILS = [
   'skanda@lyzr.ai',
 ]
 
-// Union of every email the tracker knows (signed-in users, channel owners,
-// pending assignees) — feeds the owner-suggestion datalists.
+// Union of every email the tracker knows (signed-in users, channel /
+// vertical / function owners, pending assignees) — feeds the owner-suggestion datalists.
 export function useKnownEmails() {
   const supabase = createClient()
   return useQuery({
     queryKey: ['knownEmails'],
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const [u, co, pa] = await Promise.all([
+      const [u, co, pa, vo, fo] = await Promise.all([
         supabase.from('users').select('email'),
         supabase.from('channel_owners').select('email'),
         supabase.from('pending_assignments').select('email'),
+        supabase.from('vertical_owners').select('email'),
+        supabase.from('function_owners').select('email'),
       ])
       const all = [
-        ...(u.data || []), ...(co.data || []), ...(pa.data || []),
+        ...(u.data || []), ...(co.data || []), ...(pa.data || []), ...(vo.data || []), ...(fo.data || []),
       ].map(r => r.email.toLowerCase()).filter(e => e !== 'preview@lyzr.ai')
       return [...new Set([...all, ...EXTRA_KNOWN_EMAILS])].sort()
     },
@@ -209,6 +407,14 @@ export function useChannelLearnings(channelId?: string) {
 
 // ============ TASKS ============
 
+// Channel ids belonging to a vertical (used to scope tasks client-side so
+// tasks multi-homed INTO the vertical via also_channels still show up).
+async function verticalChannelIds(supabase: ReturnType<typeof createClient>, verticalId: string) {
+  const { data, error } = await supabase.from('channels').select('id').eq('vertical_id', verticalId)
+  if (error) throw error
+  return new Set((data || []).map(r => r.id as string))
+}
+
 export function useTasks(filters?: {
   channelId?: string
   categoryId?: string
@@ -216,6 +422,7 @@ export function useTasks(filters?: {
   assignedTo?: string
   createdBy?: string
   parentTaskId?: string | null
+  verticalId?: VerticalScope
 }) {
   const supabase = createClient()
   return useQuery({
@@ -236,9 +443,6 @@ export function useTasks(filters?: {
       if (filters?.channelId) {
         query = query.eq('channel_id', filters.channelId)
       }
-      if (filters?.categoryId) {
-        query = query.eq('channel.category_id', filters.categoryId)
-      }
       if (filters?.status) {
         query = query.eq('status', filters.status)
       }
@@ -250,7 +454,18 @@ export function useTasks(filters?: {
 
       const { data, error } = await query
       if (error) throw error
-      return data as Task[]
+      let tasks = data as Task[]
+
+      // Category filter used to target the embedded resource without an
+      // inner join, which never removed rows. Filter client-side instead.
+      if (filters?.categoryId) {
+        tasks = tasks.filter(t => t.channel?.category_id === filters.categoryId)
+      }
+      if (filters?.verticalId && filters.verticalId !== 'all') {
+        const ids = await verticalChannelIds(supabase, filters.verticalId)
+        tasks = tasks.filter(t => taskChannelIds(t).some(id => ids.has(id)))
+      }
+      return tasks
     },
   })
 }
@@ -344,15 +559,18 @@ export function usePendingInvites() {
 
 // ============ BUDGETS ============
 
-export function useBudgetPeriods() {
+// Scoped: the vertical's own rows PLUS workspace-global rows (vertical_id NULL).
+export function useBudgetPeriods(verticalId: VerticalScope = 'all') {
   const supabase = createClient()
   return useQuery({
-    queryKey: ['budgetPeriods'],
+    queryKey: ['budgetPeriods', verticalId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('budget_period_summary')
         .select('*')
         .order('starts_on', { ascending: false })
+      if (verticalId !== 'all') query = query.or(`vertical_id.eq.${verticalId},vertical_id.is.null`)
+      const { data, error } = await query
       if (error) throw error
       return data as BudgetPeriodSummary[]
     },
@@ -385,18 +603,24 @@ export function useNotifications() {
 
 // ============ ACTIVITY ============
 
-export function useRecentActivity(limit = 20) {
+export function useRecentActivity(limit = 20, verticalId: VerticalScope = 'all') {
   const supabase = createClient()
   return useQuery({
-    queryKey: ['activity', limit],
+    queryKey: ['activity', limit, verticalId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('activity_log')
-        .select('*, actor:users!actor_id(id, display_name, avatar_url), task:tasks(id, title)')
+        .select('*, actor:users!actor_id(id, display_name, avatar_url), task:tasks(id, title, channel_id)')
         .order('created_at', { ascending: false })
-        .limit(limit)
+        // Over-fetch when scoping so a busy sibling vertical cannot starve the list.
+        .limit(verticalId === 'all' ? limit : limit * 4)
       if (error) throw error
-      return data as ActivityLog[]
+      let rows = data as ActivityLog[]
+      if (verticalId !== 'all') {
+        const ids = await verticalChannelIds(supabase, verticalId)
+        rows = rows.filter(r => !r.task?.channel_id || ids.has(r.task.channel_id)).slice(0, limit)
+      }
+      return rows
     },
   })
 }
@@ -421,40 +645,43 @@ export function useMentionsForUser() {
   })
 }
 
-export function useChannelFields(channelId?: string) {
+export function useChannelFields(channelId?: string, verticalId: VerticalScope = 'all') {
   const supabase = createClient()
   return useQuery({
-    queryKey: ['channelFields', channelId],
+    queryKey: ['channelFields', channelId, verticalId],
     queryFn: async () => {
       let query = supabase
         .from('channel_fields')
-        .select('*')
+        .select(verticalId === 'all' ? '*' : '*, channel:channels!channel_id!inner(vertical_id)')
         .order('sort_order')
       if (channelId) {
         query = query.eq('channel_id', channelId)
       }
+      if (verticalId !== 'all') query = query.eq('channel.vertical_id', verticalId)
       const { data, error } = await query
       if (error) throw error
-      return data as ChannelField[]
+      return data as unknown as ChannelField[]
     },
   })
 }
 
 // ============ SAVED VIEWS ============
 
-export function useSavedViews(page: string) {
+export function useSavedViews(page: string, verticalId: VerticalScope = 'all') {
   const supabase = createClient()
   return useQuery({
-    queryKey: ['savedViews', page],
+    queryKey: ['savedViews', page, verticalId],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return []
-      const { data, error } = await supabase
+      let query = supabase
         .from('saved_views')
         .select('*')
         .eq('user_id', user.id)
         .eq('page', page)
         .order('created_at', { ascending: true })
+      query = verticalId === 'all' ? query.is('vertical_id', null) : query.eq('vertical_id', verticalId)
+      const { data, error } = await query
       if (error) throw error
       return data as SavedView[]
     },
@@ -497,6 +724,3 @@ export function useHubSpotSyncedContacts() {
 import type {
   Task, BudgetPeriodSummary, Notification, ActivityLog, Mention, ChannelField, SavedView
 } from '@/lib/types/database'
-
-
-

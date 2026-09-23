@@ -1,6 +1,7 @@
 'use client'
 
 import { useBudgetPeriods, useTasks, useCategories, useChannels } from '@/lib/hooks/use-data'
+import { useVertical } from '@/lib/hooks/use-vertical'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
@@ -12,10 +13,11 @@ import { DollarSign, Landmark, Layers, Tag, HelpCircle } from 'lucide-react'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 
 export default function BudgetsPage() {
-  const { data: budgets, isLoading: budgetsLoading } = useBudgetPeriods()
-  const { data: tasks, isLoading: tasksLoading } = useTasks()
-  const { data: categories } = useCategories()
-  const { data: channels } = useChannels()
+  const { verticalId, vertical } = useVertical()
+  const { data: budgets, isLoading: budgetsLoading } = useBudgetPeriods(verticalId)
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId })
+  const { data: categories } = useCategories(verticalId)
+  const { data: channels } = useChannels(verticalId)
 
   const [selectedPeriodLabel, setSelectedPeriodLabel] = useState<string>('')
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
@@ -56,7 +58,8 @@ export default function BudgetsPage() {
   const activeBudgets = periodsMap.get(activeLabel) || []
   
   // Find global budget for active period
-  const globalBudget = activeBudgets.find(b => b.scope_type === 'global')
+  // The vertical's own cap comes first; a workspace-wide global cap is the fallback
+  const globalBudget = activeBudgets.find(b => b.scope_type === 'vertical') || activeBudgets.find(b => b.scope_type === 'global')
   const totalGlobalBudget = globalBudget ? Number(globalBudget.total_budget) : 0
   const allocatedGlobalBudget = globalBudget ? Number(globalBudget.allocated) : 0
   const remainingGlobalBudget = Math.max(0, totalGlobalBudget - allocatedGlobalBudget)
@@ -81,7 +84,7 @@ export default function BudgetsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
             <Landmark className="w-6 h-6 text-emerald-600" /> Budgets
           </h1>
-          <p className="text-sm text-zinc-500 mt-1">GSI/SI marketing budget allocations and scope limits</p>
+          <p className="text-sm text-zinc-500 mt-1">{vertical?.name || 'Marketing'} budget allocations and scope limits</p>
         </div>
 
         {/* Period Selector */}
@@ -111,7 +114,7 @@ export default function BudgetsPage() {
           <CardHeader className="pb-3 border-b border-zinc-200">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-semibold text-zinc-900 flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-emerald-600" /> Global Budget Summary
+                <DollarSign className="w-4 h-4 text-emerald-600" /> {globalBudget.scope_type === 'vertical' ? `${vertical?.name || 'Vertical'} Budget Summary` : 'Global Budget Summary'}
               </CardTitle>
               <Badge className="bg-emerald-50 text-emerald-600 border-emerald-200">
                 Active Limit

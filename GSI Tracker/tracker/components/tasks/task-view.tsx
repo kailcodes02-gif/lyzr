@@ -30,10 +30,12 @@ interface TaskViewProps {
   tasks: Task[]
   onTaskClick: (task: Task) => void
   showChannelColumn?: boolean
+  showVerticalColumn?: boolean
+  defaultView?: 'kanban' | 'table'
 }
 
-export function TaskView({ tasks: allTasks, onTaskClick, showChannelColumn }: TaskViewProps) {
-  const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban')
+export function TaskView({ tasks: allTasks, onTaskClick, showChannelColumn, showVerticalColumn, defaultView = 'kanban' }: TaskViewProps) {
+  const [viewMode, setViewMode] = useState<'kanban' | 'table'>(defaultView)
   const [showCancelled, setShowCancelled] = useState(false)
   // Sub-activities render nested INSIDE their parent activity card, so the
   // board/table lists only top-level activities — EXCEPT orphans: on filtered
@@ -78,7 +80,7 @@ export function TaskView({ tasks: allTasks, onTaskClick, showChannelColumn }: Ta
       {viewMode === 'kanban' ? (
         <KanbanBoard tasks={tasks} onTaskClick={onTaskClick} showCancelled={showCancelled} />
       ) : (
-        <TaskTable tasks={tasks} onTaskClick={onTaskClick} showCancelled={showCancelled} showChannelColumn={showChannelColumn} />
+        <TaskTable tasks={tasks} onTaskClick={onTaskClick} showCancelled={showCancelled} showChannelColumn={showChannelColumn} showVerticalColumn={showVerticalColumn} />
       )}
     </div>
   )
@@ -165,11 +167,12 @@ function KanbanBoard({ tasks, onTaskClick, showCancelled }: {
   )
 }
 
-function TaskTable({ tasks, onTaskClick, showCancelled, showChannelColumn }: {
+function TaskTable({ tasks, onTaskClick, showCancelled, showChannelColumn, showVerticalColumn }: {
   tasks: Task[]
   onTaskClick: (task: Task) => void
   showCancelled: boolean
   showChannelColumn?: boolean
+  showVerticalColumn?: boolean
 }) {
   const queryClient = useQueryClient()
   const { data: users } = useUsers()
@@ -262,7 +265,7 @@ function TaskTable({ tasks, onTaskClick, showCancelled, showChannelColumn }: {
     }
   }
 
-  const colSpan = (showChannelColumn ? 5 : 4) + 1
+  const colSpan = (showChannelColumn ? 5 : 4) + 1 + (showVerticalColumn ? 1 : 0)
 
   return (
     <div className="space-y-3">
@@ -351,6 +354,9 @@ function TaskTable({ tasks, onTaskClick, showCancelled, showChannelColumn }: {
               {showChannelColumn && (
                 <th className="text-left text-xs font-medium text-zinc-600 py-3 px-4">Channel</th>
               )}
+              {showVerticalColumn && (
+                <th className="text-left text-xs font-medium text-zinc-600 py-3 px-4">Vertical</th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -363,6 +369,7 @@ function TaskTable({ tasks, onTaskClick, showCancelled, showChannelColumn }: {
                 selected={selectedIds.has(task.id)}
                 onSelectChange={checked => toggleOne(task.id, checked)}
                 parentLabel={task.parent_task_id ? titleById.get(task.parent_task_id) : undefined}
+                showVerticalColumn={showVerticalColumn}
               />
             ))}
             {filteredTasks.length === 0 && (

@@ -40,6 +40,9 @@ import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { toZonedTime, format as formatTz } from 'date-fns-tz'
 import { TaskOwnersEditor } from './task-owners-editor'
+import { useVertical } from '@/lib/hooks/use-vertical'
+import { withVertical } from '@/lib/hooks/use-space-href'
+import Link from 'next/link'
 import { RecurrencePicker, DEFAULT_RECURRENCE, type RecurrenceValue } from './recurrence-picker'
 import { recurrenceLabel, type RecurrenceRule, type RecurrenceEnd } from '@/lib/task-logic'
 
@@ -375,8 +378,9 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
           ) : task ? (
             <div className="p-6">
               <SheetHeader className="mb-4">
-                {/* Context breadcrumb: Category › Channel › Sub-channel */}
+                {/* Context breadcrumb: Vertical › Category › Channel › Sub-channel */}
                 <div className="flex items-center gap-1.5 text-xs text-zinc-500 mb-2 flex-wrap">
+                  <TaskVerticalCrumb verticalId={(task.channel as any)?.vertical_id} />
                   {(task.channel as any)?.category?.name && (
                     <><span>{(task.channel as any).category.name}</span><span className="text-zinc-300">›</span></>
                   )}
@@ -1493,26 +1497,43 @@ function RecurrenceSection({ task, onChanged }: { task: Task; onChanged: () => v
 }
 
 
-// "Also in" channels: multi-home a task onto other channels' boards.
+// Vertical name in the drawer breadcrumb, linking into that vertical's space.
+function TaskVerticalCrumb({ verticalId }: { verticalId?: string }) {
+  const { verticals } = useVertical()
+  const v = verticals.find(x => x.id === verticalId)
+  if (!v) return null
+  return (
+    <><Link href={withVertical('/dashboard/', v.slug)} className="hover:text-blue-700">{v.name}</Link><span className="text-zinc-300">›</span></>
+  )
+}
+
+// "Also in" channels: multi-home a task onto other channels' boards, in this
+// vertical or another one (company-wide work often shows in several).
 // Home stays fixed (tasks.channel_id); extras live in planning_fields.also_channels.
 function AlsoChannelsEditor({ homeChannelId, planningFields, onSave }: {
   homeChannelId: string
   planningFields: Record<string, unknown>
   onSave: (fields: Record<string, unknown>) => void
 }) {
-  const { data: channels } = useChannels()
+  const { data: channels } = useChannels('all')
+  const { verticals } = useVertical()
+  const homeVertical = channels?.find(c => c.id === homeChannelId)?.vertical_id
+  const [pickedVertical, setPickedVertical] = useState<string>('')
   const [pickedChannel, setPickedChannel] = useState('')
   const also = (planningFields?.also_channels as string[] | undefined) || []
+  const verticalName = (id?: string) => verticals.find(v => v.id === id)?.name
 
   const label = (id: string) => {
     const ch = channels?.find(c => c.id === id)
     if (!ch) return 'Unknown channel'
     const parent = channels?.find(c => c.id === ch.parent_channel_id)
-    return parent ? `${parent.name} › ${ch.name}` : ch.name
+    const base = parent ? `${parent.name} › ${ch.name}` : ch.name
+    return ch.vertical_id !== homeVertical && verticalName(ch.vertical_id) ? `${verticalName(ch.vertical_id)} · ${base}` : base
   }
 
+  const activeVertical = pickedVertical || homeVertical || ''
   const topChannels = (channels || [])
-    .filter(c => !c.parent_channel_id)
+    .filter(c => !c.parent_channel_id && (!activeVertical || c.vertical_id === activeVertical))
     .sort((a, b) => a.sort_order - b.sort_order)
   const subOptions = (channels || [])
     .filter(c => c.parent_channel_id === pickedChannel && c.id !== homeChannelId && !also.includes(c.id))
@@ -1549,8 +1570,17 @@ function AlsoChannelsEditor({ homeChannelId, planningFields, onSave }: {
           </span>
         ))}
       </div>
-      {/* Two clicks: 1) channel, 2) sub-channel — adds instantly on the second pick */}
-      <div className="flex items-center gap-2">
+      {/* Vertical (defaults to home) → channel → sub-channel; adds instantly on the last pick */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {verticals.length > 1 && (
+          <select
+            value={activeVertical}
+            onChange={e => { setPickedVertical(e.target.value); setPickedChannel('') }}
+            className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-zinc-700 w-36"
+          >
+            {verticals.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+          </select>
+        )}
         <select
           value={pickedChannel}
           onChange={e => setPickedChannel(e.target.value)}

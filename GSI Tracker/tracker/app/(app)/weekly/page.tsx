@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useWeeklySnapshot, useRecentWeeklySnapshots, type WeeklySnapshot } from '@/lib/hooks/use-weekly'
 import { useTasks, useBudgetPeriods, useCategories, useUsers } from '@/lib/hooks/use-data'
+import { useVertical } from '@/lib/hooks/use-vertical'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { ReportBuilder } from '@/components/weekly/report-builder'
 import type { Task } from '@/lib/types/database'
@@ -148,11 +149,12 @@ export default function WeeklyReviewPage() {
   const selectedWeek = weeks.find(w => w.key === selectedKey) || weeks[0]
   const isCurrentWeek = selectedKey === weeks[0].key
 
-  const { data: snapshot, isLoading: snapLoading } = useWeeklySnapshot(isCurrentWeek ? null : selectedKey)
-  const { data: recentSnapshots } = useRecentWeeklySnapshots(WEEK_COUNT)
-  const { data: tasks, isLoading: tasksLoading } = useTasks()
-  const { data: budgets } = useBudgetPeriods()
-  const { data: categories } = useCategories()
+  const { verticalId, vertical, flags } = useVertical()
+  const { data: snapshot, isLoading: snapLoading } = useWeeklySnapshot(isCurrentWeek ? null : selectedKey, verticalId)
+  const { data: recentSnapshots } = useRecentWeeklySnapshots(WEEK_COUNT, verticalId)
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId })
+  const { data: budgets } = useBudgetPeriods(verticalId)
+  const { data: categories } = useCategories(verticalId)
   const { data: users } = useUsers()
 
   const snapshotKeySet = useMemo(
@@ -328,7 +330,7 @@ export default function WeeklyReviewPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
-          <CalendarIcon className="w-6 h-6 text-blue-600" /> Weekly Review
+          <CalendarIcon className="w-6 h-6 text-blue-600" /> {vertical ? `${vertical.name} ` : ''}Weekly Review
         </h1>
         <p className="text-sm text-zinc-500 mt-1">
           Time travel through completed ISO weeks. Pick a week to reconstruct the state of the world at end of week.
@@ -408,7 +410,7 @@ export default function WeeklyReviewPage() {
 
       {/* Weekly Report — its own date range, independent of the ISO-week
           picker above (which drives the task/budget review further down) */}
-      <ReportBuilder />
+      {flags.weekly_report_builder && verticalId !== 'all' && <ReportBuilder verticalId={verticalId} slug={vertical?.slug || 'report'} />}
 
       {/* Content */}
       {!isLoading && hasSnapshot && totals && (

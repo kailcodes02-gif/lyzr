@@ -5,6 +5,31 @@ import type { TaskStatus, TaskPriority, AssignmentRole, BudgetScopeType, BudgetP
 import { format } from 'date-fns'
 import { advanceRecurrence, legacyPatternFields, normalizeEmail, incompleteBlockers } from '@/lib/task-logic'
 import type { RecurrenceRule, RecurrenceEnd } from '@/lib/task-logic'
+import type { VerticalSettings } from '@/lib/types/database'
+
+// UX-level gate mirroring the RLS helper can_manage_vertical(): global admin
+// or explicit owner of the vertical. RLS remains the real boundary; this just
+// produces a readable error instead of a silent 0-row update.
+async function assertCanManage(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  verticalId: string | null | undefined,
+  what = 'this vertical',
+) {
+  const { data: profile } = await supabase.from('users').select('role').eq('id', userId).single()
+  if (profile?.role === 'admin') return
+  if (verticalId) {
+    const { data } = await supabase
+      .from('vertical_owners').select('vertical_id').eq('vertical_id', verticalId).eq('user_id', userId).maybeSingle()
+    if (data) return
+  }
+  throw new Error(`Only admins or owners of ${what} can do that`)
+}
+
+async function verticalOfChannel(supabase: ReturnType<typeof createClient>, channelId: string) {
+  const { data } = await supabase.from('channels').select('vertical_id').eq('id', channelId).maybeSingle()
+  return data?.vertical_id as string | undefined
+}
 
 // The row shape recurring_templates needs for interval_count/unit/weekdays/
 // end-condition, shared by createTask, makeTaskRecurring, and the auto-spawn
@@ -711,14 +736,16 @@ export async function createBudgetPeriod(data: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  // Check admin
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') throw new Error('Only admin can create budget periods')
+  // Global budgets are admin-only; scoped budgets need the vertical's manager.
+  let verticalId: string | null | undefined = null
+  if (data.scope_type === 'vertical') verticalId = data.scope_id
+  else if (data.scope_type === 'category' && data.scope_id) {
+    const { data: cat } = await supabase.from('categories').select('vertical_id').eq('id', data.scope_id).maybeSingle()
+    verticalId = cat?.vertical_id
+  } else if (data.scope_type === 'channel' && data.scope_id) {
+    verticalId = await verticalOfChannel(supabase, data.scope_id)
+  }
+  await assertCanManage(supabase, user.id, data.scope_type === 'global' ? null : verticalId, 'this budget scope')
 
   const { data: budget, error } = await supabase
     .from('budget_periods')
@@ -803,19 +830,17 @@ export async function importLeads(leads: {
   lead_status: string
   notes?: string
   extra_fields?: Record<string, unknown>
-}[], dedup: boolean = true) {
+}[], dedup: boolean = true, verticalId?: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  // Get the "All leads" channel
-  const { data: channel } = await supabase
-    .from('channels')
-    .select('id')
-    .eq('slug', 'all-leads')
-    .single()
+  // Get THIS vertical's "All leads" channel (every vertical may have one).
+  let q = supabase.from('channels').select('id').eq('slug', 'all-leads')
+  if (verticalId && verticalId !== 'all') q = q.eq('vertical_id', verticalId)
+  const { data: channel } = await q.limit(1).maybeSingle()
 
-  if (!channel) throw new Error('All leads channel not found')
+  if (!channel) throw new Error('This vertical has no "All leads" channel yet. Add one under Leads Pipeline first.')
 
   let importedCount = 0
   let skippedCount = 0
@@ -999,22 +1024,16 @@ export async function disconnectHubSpot() {
   if (error) throw error
 }
 
-export async function createCategory(data: { name: string; icon?: string; sort_order?: number }) {
+export async function createCategory(data: { vertical_id: string; name: string; icon?: string; sort_order?: number }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-  if (profile?.role !== 'admin') {
-    throw new Error('Unauthorized: Admin role required')
-  }
+  if (!data.vertical_id) throw new Error('A vertical is required')
+  await assertCanManage(supabase, user.id, data.vertical_id)
 
   let slug = data.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-')
-  const { data: existing } = await supabase.from('categories').select('id').eq('slug', slug).maybeSingle()
+  const { data: existing } = await supabase
+    .from('categories').select('id').eq('vertical_id', data.vertical_id).eq('slug', slug).maybeSingle()
   if (existing) {
     slug = `${slug}-${Math.floor(Math.random() * 1000)}`
   }
@@ -1022,6 +1041,7 @@ export async function createCategory(data: { name: string; icon?: string; sort_o
   const { error } = await supabase
     .from('categories')
     .insert({
+      vertical_id: data.vertical_id,
       name: data.name,
       slug,
       icon: data.icon || 'folder',
@@ -1037,14 +1057,8 @@ export async function updateCategory(data: { id: string; name: string; icon?: st
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-  if (profile?.role !== 'admin') {
-    throw new Error('Unauthorized: Admin role required')
-  }
+  const { data: cat } = await supabase.from('categories').select('vertical_id').eq('id', data.id).maybeSingle()
+  await assertCanManage(supabase, user.id, cat?.vertical_id)
 
   const { error } = await supabase
     .from('categories')
@@ -1059,19 +1073,22 @@ export async function updateCategory(data: { id: string; name: string; icon?: st
   if (error) throw error
 }
 
-export async function createChannel(data: { category_id: string; parent_channel_id?: string | null; name: string; sort_order?: number }) {
+export async function createChannel(data: {
+  category_id: string
+  parent_channel_id?: string | null
+  name: string
+  sort_order?: number
+  function_id?: string | null
+  tier?: string | null
+  goal?: string | null
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-  if (profile?.role !== 'admin') {
-    throw new Error('Unauthorized: Admin role required')
-  }
+  const { data: cat } = await supabase.from('categories').select('vertical_id').eq('id', data.category_id).maybeSingle()
+  if (!cat) throw new Error('Category not found')
+  await assertCanManage(supabase, user.id, cat.vertical_id)
 
   let slug = data.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-')
   let query = supabase.from('channels').select('id').eq('category_id', data.category_id).eq('slug', slug)
@@ -1093,25 +1110,29 @@ export async function createChannel(data: { category_id: string; parent_channel_
       name: data.name,
       slug,
       sort_order: data.sort_order ?? 0,
-      is_active: true
+      is_active: true,
+      // Sub-channels inherit the parent's function in the DB trigger when null.
+      function_id: data.function_id || null,
+      ...(data.tier !== undefined ? { tier: data.tier || null } : {}),
+      ...(data.goal !== undefined ? { goal: data.goal || null } : {}),
     })
 
   if (error) throw error
 }
 
-export async function updateChannel(data: { id: string; name: string; parent_channel_id?: string | null; sort_order?: number; is_active?: boolean }) {
+export async function updateChannel(data: {
+  id: string
+  name: string
+  parent_channel_id?: string | null
+  sort_order?: number
+  is_active?: boolean
+  function_id?: string | null
+  tier?: string | null
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-  if (profile?.role !== 'admin') {
-    throw new Error('Unauthorized: Admin role required')
-  }
+  await assertCanManage(supabase, user.id, await verticalOfChannel(supabase, data.id))
 
   const { error } = await supabase
     .from('channels')
@@ -1119,11 +1140,25 @@ export async function updateChannel(data: { id: string; name: string; parent_cha
       name: data.name,
       parent_channel_id: data.parent_channel_id === 'none' ? null : data.parent_channel_id,
       sort_order: data.sort_order,
-      is_active: data.is_active
+      is_active: data.is_active,
+      ...(data.function_id !== undefined ? { function_id: data.function_id || null } : {}),
+      ...(data.tier !== undefined ? { tier: data.tier || null } : {}),
     })
     .eq('id', data.id)
 
   if (error) throw error
+}
+
+export async function setChannelFunction(channelId: string, functionId: string | null) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  await assertCanManage(supabase, user.id, await verticalOfChannel(supabase, channelId))
+  const { data, error } = await supabase
+    .from('channels').update({ function_id: functionId }).eq('id', channelId).select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('Nothing updated')
+  return { updated: true }
 }
 
 // ============ INVITES ============
@@ -1283,6 +1318,7 @@ export async function saveView(args: {
   page: string
   name: string
   config: Record<string, unknown>
+  verticalId?: string | null   // null / 'all' = workspace-level view
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -1292,21 +1328,19 @@ export async function saveView(args: {
   if (!name) throw new Error('View name is required')
   if (!args.page.trim()) throw new Error('Page is required')
 
-  // Upsert so re-saving under an existing name overwrites that view.
-  const { data, error } = await supabase
-    .from('saved_views')
-    .upsert(
-      {
-        user_id: user.id,
-        page: args.page,
-        name,
-        config: args.config,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'user_id,page,name' }
-    )
-    .select()
-    .single()
+  const verticalId = args.verticalId && args.verticalId !== 'all' ? args.verticalId : null
+
+  // Re-saving under an existing name overwrites that view. The unique index
+  // is expression-based (COALESCE on vertical_id) so it cannot be an upsert
+  // target: look up, then update or insert.
+  let existingQ = supabase.from('saved_views').select('id').eq('user_id', user.id).eq('page', args.page).eq('name', name)
+  existingQ = verticalId ? existingQ.eq('vertical_id', verticalId) : existingQ.is('vertical_id', null)
+  const { data: existing } = await existingQ.maybeSingle()
+
+  const row = { user_id: user.id, page: args.page, name, config: args.config, vertical_id: verticalId, updated_at: new Date().toISOString() }
+  const { data, error } = existing
+    ? await supabase.from('saved_views').update(row).eq('id', existing.id).select().single()
+    : await supabase.from('saved_views').insert(row).select().single()
 
   if (error) throw error
   return data
@@ -1524,7 +1558,7 @@ export async function updateChannelDescription(channelId: string, goal: string |
 
   if (error) throw error
   // RLS silently matches 0 rows for non-admins — surface that as an error.
-  if (!data?.length) throw new Error('Only admins can edit channel details')
+  if (!data?.length) throw new Error('Only admins or this vertical\'s owners can edit channel details')
   return { updated: true }
 }
 
@@ -1553,7 +1587,7 @@ export async function addChannelOwner(channelId: string, email: string, makePrim
       { onConflict: 'channel_id,email' }
     )
   if (error) {
-    if (error.code === '42501' || /policy/i.test(error.message)) throw new Error('Only admins can edit channel owners')
+    if (error.code === '42501' || /policy/i.test(error.message)) throw new Error('Only admins or this vertical\'s owners can edit channel owners')
     throw error
   }
   return { added: clean, primary: makePrimary }
@@ -1568,7 +1602,7 @@ export async function removeChannelOwner(channelId: string, email: string) {
     .from('channel_owners').delete().eq('channel_id', channelId).eq('email', email.toLowerCase())
     .select('email')
   if (error) throw error
-  if (!data?.length) throw new Error('Nothing removed — only admins can edit channel owners')
+  if (!data?.length) throw new Error('Nothing removed: only admins or this vertical\'s owners can edit channel owners')
   return { removed: true }
 }
 
@@ -1590,7 +1624,7 @@ export async function setPrimaryChannelOwner(channelId: string, email: string) {
     .eq('email', email.toLowerCase())
     .select('email')
   if (error) throw error
-  if (!data?.length) throw new Error('Nothing updated — only admins can edit channel owners')
+  if (!data?.length) throw new Error('Nothing updated: only admins or this vertical\'s owners can edit channel owners')
   return { primary: email }
 }
 
@@ -1612,7 +1646,7 @@ export async function setSecondaryChannelOwner(channelId: string, email: string)
     .eq('email', email.toLowerCase())
     .select('email')
   if (error) throw error
-  if (!data?.length) throw new Error('Nothing updated — only admins can edit channel owners')
+  if (!data?.length) throw new Error('Nothing updated: only admins or this vertical\'s owners can edit channel owners')
   return { secondary: email }
 }
 
@@ -1728,4 +1762,296 @@ export async function stopTaskRecurring(taskId: string) {
   if (error) throw error
   if (!data?.length) throw new Error('Only the template creator or an admin can stop it')
   return { stopped: true }
+}
+
+
+// ============ VERTICALS ============
+// The workspace's top level. Admins create verticals (via the create_vertical
+// RPC so the optional template clone is atomic); admins or the vertical's
+// owners edit them. RLS (migration 015) enforces all of this server-side.
+
+export async function createVertical(args: {
+  name: string
+  slug?: string
+  description?: string
+  settings?: Partial<VerticalSettings>
+  templateId?: string | null
+  ownerEmails?: string[]
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  if (!args.name.trim()) throw new Error('Vertical name is required')
+
+  const { data, error } = await supabase.rpc('create_vertical', {
+    p_name: args.name.trim(),
+    p_slug: args.slug?.trim() || null,
+    p_settings: args.settings ? { leads_pipeline: false, weekly_report_builder: false, resources: false, hubspot_contacts: false, ...args.settings } : null,
+    p_template_id: args.templateId || null,
+    p_owner_emails: (args.ownerEmails || []).map(e => e.trim().toLowerCase()).filter(Boolean),
+    p_description: args.description?.trim() || null,
+  })
+  if (error) {
+    if (/forbidden/i.test(error.message)) throw new Error('Only admins can create verticals')
+    if (/verticals_slug_key|duplicate key/i.test(error.message)) throw new Error('A vertical with that slug already exists')
+    throw error
+  }
+  return data as string
+}
+
+export async function updateVertical(args: {
+  id: string
+  name?: string
+  slug?: string
+  description?: string | null
+  icon?: string | null
+  color?: string | null
+  sort_order?: number
+  is_active?: boolean
+  settings?: Partial<VerticalSettings>
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  await assertCanManage(supabase, user.id, args.id)
+
+  const patch: Record<string, unknown> = {}
+  for (const k of ['name', 'slug', 'description', 'icon', 'color', 'sort_order', 'is_active'] as const) {
+    if (args[k] !== undefined) patch[k] = args[k]
+  }
+  if (args.settings) {
+    const { data: current } = await supabase.from('verticals').select('settings').eq('id', args.id).single()
+    patch.settings = { ...(current?.settings || {}), ...args.settings }
+  }
+  const { data, error } = await supabase.from('verticals').update(patch).eq('id', args.id).select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('Nothing updated')
+  return { updated: true }
+}
+
+async function upsertOwnerRow(
+  supabase: ReturnType<typeof createClient>,
+  table: 'vertical_owners' | 'function_owners',
+  keyCol: 'vertical_id' | 'function_id',
+  keyVal: string,
+  email: string,
+  makePrimary: boolean,
+) {
+  const clean = email.trim().toLowerCase()
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) throw new Error('Enter a valid email')
+  const { data: existing, error: readErr } = await supabase.from(table).select('email, sort_order').eq(keyCol, keyVal)
+  if (readErr) throw readErr
+  const sortOrder = makePrimary
+    ? (existing?.length ? Math.min(0, ...existing.map(o => o.sort_order)) - 1 : 0)
+    : (existing?.length ? Math.max(1, ...existing.map(o => o.sort_order + 1)) : 1)
+  const { data: matched } = await supabase.from('users').select('id').eq('email', clean).maybeSingle()
+  const { error } = await supabase.from(table).upsert(
+    { [keyCol]: keyVal, email: clean, user_id: matched?.id ?? null, sort_order: sortOrder },
+    { onConflict: `${keyCol},email` },
+  )
+  if (error) {
+    if (error.code === '42501' || /policy/i.test(error.message)) throw new Error('Only admins can edit these owners')
+    throw error
+  }
+  return { added: clean, primary: makePrimary }
+}
+
+async function removeOwnerRow(
+  supabase: ReturnType<typeof createClient>,
+  table: 'vertical_owners' | 'function_owners',
+  keyCol: 'vertical_id' | 'function_id',
+  keyVal: string,
+  email: string,
+) {
+  const { data, error } = await supabase.from(table).delete().eq(keyCol, keyVal).eq('email', email.toLowerCase()).select('email')
+  if (error) throw error
+  if (!data?.length) throw new Error('Nothing removed: only admins can edit these owners')
+  return { removed: true }
+}
+
+async function promoteOwnerRow(
+  supabase: ReturnType<typeof createClient>,
+  table: 'vertical_owners' | 'function_owners',
+  keyCol: 'vertical_id' | 'function_id',
+  keyVal: string,
+  email: string,
+) {
+  const { data: existing, error: readErr } = await supabase.from(table).select('email, sort_order').eq(keyCol, keyVal)
+  if (readErr) throw readErr
+  if (!existing?.length) throw new Error('No owners yet')
+  const minOrder = Math.min(0, ...existing.map(o => o.sort_order))
+  const { data, error } = await supabase.from(table).update({ sort_order: minOrder - 1 })
+    .eq(keyCol, keyVal).eq('email', email.toLowerCase()).select('email')
+  if (error) throw error
+  if (!data?.length) throw new Error('Nothing updated: only admins can edit these owners')
+  return { primary: email }
+}
+
+export async function addVerticalOwner(verticalId: string, email: string, makePrimary: boolean) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  return upsertOwnerRow(supabase, 'vertical_owners', 'vertical_id', verticalId, email, makePrimary)
+}
+
+export async function removeVerticalOwner(verticalId: string, email: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  return removeOwnerRow(supabase, 'vertical_owners', 'vertical_id', verticalId, email)
+}
+
+export async function setPrimaryVerticalOwner(verticalId: string, email: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  return promoteOwnerRow(supabase, 'vertical_owners', 'vertical_id', verticalId, email)
+}
+
+// ============ VERTICAL RESOURCES ============
+
+export async function addVerticalResource(verticalId: string, groupName: string, name: string, url: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  if (!groupName.trim() || !name.trim() || !url.trim()) throw new Error('Group, name and URL are required')
+  await assertCanManage(supabase, user.id, verticalId)
+  const clean = url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`
+  const { data: existing } = await supabase.from('vertical_resources').select('sort_order').eq('vertical_id', verticalId)
+  const { data, error } = await supabase
+    .from('vertical_resources')
+    .insert({
+      vertical_id: verticalId, group_name: groupName.trim(), name: name.trim(), url: clean,
+      sort_order: existing?.length ? Math.max(0, ...existing.map(r => r.sort_order)) + 1 : 0,
+      added_by: user.id,
+    })
+    .select('*').single()
+  if (error) throw error
+  return data
+}
+
+export async function updateVerticalResource(id: string, patch: { group_name?: string; name?: string; url?: string; sort_order?: number }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const { data, error } = await supabase.from('vertical_resources').update(patch).eq('id', id).select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('Nothing updated: only admins or this vertical\'s owners can edit resources')
+  return { updated: true }
+}
+
+export async function deleteVerticalResource(id: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const { data, error } = await supabase.from('vertical_resources').delete().eq('id', id).select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('Nothing removed: only admins or this vertical\'s owners can edit resources')
+  return { deleted: true }
+}
+
+// ============ FUNCTIONS (workspace-wide, admin) ============
+
+export async function createFunction(data: { name: string; icon?: string; sort_order?: number }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  if (!data.name.trim()) throw new Error('Function name is required')
+  await assertCanManage(supabase, user.id, null, 'the workspace')
+  const slug = data.name.toLowerCase().trim().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  const { data: row, error } = await supabase
+    .from('functions')
+    .insert({ name: data.name.trim(), slug, icon: data.icon || null, sort_order: data.sort_order ?? 0, is_active: true })
+    .select('*').single()
+  if (error) {
+    if (/duplicate key/i.test(error.message)) throw new Error('A function with that name already exists')
+    throw error
+  }
+  return row
+}
+
+export async function updateFunction(data: { id: string; name?: string; icon?: string | null; sort_order?: number; is_active?: boolean }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  await assertCanManage(supabase, user.id, null, 'the workspace')
+  const { id, ...patch } = data
+  const { data: rows, error } = await supabase.from('functions').update(patch).eq('id', id).select('id')
+  if (error) throw error
+  if (!rows?.length) throw new Error('Nothing updated')
+  return { updated: true }
+}
+
+export async function deleteFunction(id: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  await assertCanManage(supabase, user.id, null, 'the workspace')
+  const { data, error } = await supabase.from('functions').delete().eq('id', id).select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('Nothing deleted')
+  return { deleted: true }
+}
+
+export async function addFunctionOwner(functionId: string, email: string, makePrimary: boolean) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  return upsertOwnerRow(supabase, 'function_owners', 'function_id', functionId, email, makePrimary)
+}
+
+export async function removeFunctionOwner(functionId: string, email: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  return removeOwnerRow(supabase, 'function_owners', 'function_id', functionId, email)
+}
+
+export async function setPrimaryFunctionOwner(functionId: string, email: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  return promoteOwnerRow(supabase, 'function_owners', 'function_id', functionId, email)
+}
+
+// ============ TAXONOMY TEMPLATES ============
+
+export async function saveVerticalAsTemplate(verticalId: string, name: string, slug?: string, description?: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  if (!name.trim()) throw new Error('Template name is required')
+  const { data, error } = await supabase.rpc('save_vertical_as_template', {
+    p_vertical_id: verticalId,
+    p_name: name.trim(),
+    p_slug: slug?.trim() || null,
+    p_description: description?.trim() || null,
+  })
+  if (error) {
+    if (/forbidden/i.test(error.message)) throw new Error('Only admins or this vertical\'s owners can save it as a template')
+    throw error
+  }
+  return data as string
+}
+
+export async function applyTaxonomyTemplate(verticalId: string, templateId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const { data, error } = await supabase.rpc('apply_taxonomy_template', { p_vertical_id: verticalId, p_template_id: templateId })
+  if (error) {
+    if (/forbidden/i.test(error.message)) throw new Error('Only admins or this vertical\'s owners can apply a template')
+    throw error
+  }
+  return data as { categories: number; channels: number }
+}
+
+export async function deleteTaxonomyTemplate(id: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const { data, error } = await supabase.from('taxonomy_templates').delete().eq('id', id).select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('Nothing deleted: only the creator or an admin can delete a template')
+  return { deleted: true }
 }

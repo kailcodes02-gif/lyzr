@@ -1,7 +1,8 @@
 'use client'
 
 import { useTasks, useChannels, useCurrentUser } from '@/lib/hooks/use-data'
-import { usePersisted, keyFor } from '@/lib/hooks/use-persisted'
+import { usePersisted, keyForVertical } from '@/lib/hooks/use-persisted'
+import { useVertical } from '@/lib/hooks/use-vertical'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -90,8 +91,9 @@ function autoSuggestMapping(headers: string[]): Record<string, LeadField | ''> {
 
 function CsvImportSection() {
   const queryClient = useQueryClient()
-  const { data: tasks, isLoading: tasksLoading } = useTasks()
-  useChannels()
+  const { verticalId } = useVertical()
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId })
+  useChannels(verticalId)
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [uploadOpen, setUploadOpen] = useState(false)
@@ -149,7 +151,7 @@ function CsvImportSection() {
     )
   }
 
-  const leadsTasks = tasks?.filter(t => t.channel?.slug === 'all-leads') || []
+  const leadsTasks = tasks?.filter(t => t.channel?.slug === 'all-leads' && (verticalId === 'all' || t.channel?.vertical_id === verticalId)) || []
   const totalLeads = leadsTasks.length
   const newLeads = leadsTasks.filter(t => (t.planning_fields?.lead_status || t.planning_fields?.status) === 'new').length
   const qualifiedLeads = leadsTasks.filter(t => t.planning_fields?.lead_status === 'qualified').length
@@ -242,7 +244,7 @@ function CsvImportSection() {
 
     startTransition(async () => {
       try {
-        const res = await importLeads(formattedLeads, dedup)
+        const res = await importLeads(formattedLeads, dedup, verticalId)
         queryClient.invalidateQueries({ queryKey: ['tasks'] })
         queryClient.invalidateQueries({ queryKey: ['activity'] })
         toast.success(
@@ -630,9 +632,18 @@ export default function LeadsPage() {
 
 function LeadsTabs() {
   const { data: me } = useCurrentUser()
+  const { verticalId, vertical, flags, resolving } = useVertical()
   // Persisted with the rest of the view state — otherwise a refresh silently
   // returns you to HubSpot while your Email Interactions filters sit unused.
-  const [tab, setTab] = usePersisted<'hubspot' | 'email' | 'csv'>(keyFor(me?.id, 'leads:tab'), 'hubspot')
+  const [tab, setTab] = usePersisted<'hubspot' | 'email' | 'csv'>(keyForVertical(me?.id, verticalId, 'leads:tab'), 'hubspot')
+  if (!resolving && !flags.leads_pipeline) {
+    return (
+      <div className="pl-12 lg:pl-0 py-16 text-center space-y-2">
+        <h1 className="text-xl font-semibold text-zinc-900">Leads Pipeline is not enabled for {vertical?.name || 'this vertical'}</h1>
+        <p className="text-sm text-zinc-500 max-w-md mx-auto">The HubSpot pull rule, Instantly tag and lead CSV import are configured for GSI today. An admin can switch this on in Vertical Settings once an integration exists for this vertical.</p>
+      </div>
+    )
+  }
   return (
     <div className="space-y-5">
       <div className="pl-12 lg:pl-0 flex items-center justify-between flex-wrap gap-3">

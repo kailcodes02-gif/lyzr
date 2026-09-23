@@ -3,6 +3,8 @@
 import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useCategories, useChannels, useTasks, useBudgetPeriods, useChannelFields, useHubSpotSyncedContacts } from '@/lib/hooks/use-data'
+import { useSpaceHref } from '@/lib/hooks/use-space-href'
+import { useVertical } from '@/lib/hooks/use-vertical'
 import { getFieldsForChannel } from '@/components/tasks/channel-fields'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,10 +22,12 @@ import { taskInScope } from '@/lib/task-channels'
 
 function ChannelContent() {
   const channelId = useSearchParams().get('id') || ''
-  const { data: categories, isLoading: catsLoading } = useCategories()
-  const { data: allChannels, isLoading: channelsLoading } = useChannels()
-  const { data: tasks, isLoading: tasksLoading } = useTasks()
-  const { data: budgets } = useBudgetPeriods()
+  const { verticalId, vertical, flags } = useVertical()
+  const href = useSpaceHref()
+  const { data: categories, isLoading: catsLoading } = useCategories(verticalId)
+  const { data: allChannels, isLoading: channelsLoading } = useChannels(verticalId)
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId })
+  const { data: budgets } = useBudgetPeriods(verticalId)
 
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
@@ -33,8 +37,9 @@ function ChannelContent() {
   const [defaultTitle, setDefaultTitle] = useState('')
   const [defaultDescription, setDefaultDescription] = useState('')
 
-  const { data: allFields } = useChannelFields()
+  const { data: allFields } = useChannelFields(undefined, verticalId)
   const { data: syncedContacts } = useHubSpotSyncedContacts()
+  const showHubSpotTab = flags.hubspot_contacts
 
   if (catsLoading || channelsLoading || tasksLoading) {
     return (
@@ -121,7 +126,7 @@ function ChannelContent() {
                 Channel
               </h3>
               <Link
-                href={`/channel/?id=${topChannel.id}`}
+                href={href('/channel/', { id: topChannel.id })}
                 className={`flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-semibold truncate transition-colors mb-3 ${
                   topChannel.id === channel.id ? 'bg-zinc-200/70 text-zinc-900' : 'text-zinc-700 hover:bg-zinc-100'
                 }`}
@@ -138,7 +143,7 @@ function ChannelContent() {
                   return (
                     <Link
                       key={sub.id}
-                      href={`/channel/?id=${sub.id}`}
+                      href={href('/channel/', { id: sub.id })}
                       className={`block rounded-lg px-2 py-1.5 text-[13px] truncate transition-colors ${
                         isCurrent ? 'bg-zinc-200/70 text-zinc-900 font-medium' : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
                       }`}
@@ -163,6 +168,7 @@ function ChannelContent() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-xs text-zinc-500 mb-1">
+              {vertical && <><span>{vertical.name}</span><span>/</span></>}
               {category && <span>{category.name}</span>}
               {parentChannel && (
                 <>
@@ -189,7 +195,7 @@ function ChannelContent() {
             </div>
           </div>
           <div className="flex items-center gap-3 self-start">
-            <Link href={`/calendar?category=${channel.category_id}&channel=${channel.id}`}>
+            <Link href={href('/calendar/', { category: channel.category_id, channel: channel.id })}>
               <Button variant="outline" className="border-zinc-300 hover:bg-zinc-100 text-zinc-700">
                 <Calendar className="w-4 h-4 mr-2" /> Calendar View
               </Button>
@@ -253,7 +259,7 @@ function ChannelContent() {
             <TabsTrigger value="resources" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
               <Lightbulb className="w-4 h-4 mr-2" /> Targets & Resources
             </TabsTrigger>
-            {channel.slug === 'hubspot' && (
+            {channel.slug === 'hubspot' && showHubSpotTab && (
               <TabsTrigger value="hubspot-contacts" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
                 <Users className="w-4 h-4 mr-2" /> HubSpot Synced Contacts
               </TabsTrigger>
@@ -408,7 +414,7 @@ function ChannelContent() {
           </TabsContent>
 
           {/* HubSpot Synced Contacts Tab */}
-          {channel.slug === 'hubspot' && (
+          {channel.slug === 'hubspot' && showHubSpotTab && (
             <TabsContent value="hubspot-contacts" className="mt-6">
               <Card className="bg-white border-zinc-200 backdrop-blur-xl">
                 <CardContent className="p-0 overflow-x-auto">

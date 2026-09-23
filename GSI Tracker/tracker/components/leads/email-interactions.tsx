@@ -11,7 +11,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ChevronDown, ChevronRight, FileUp, Filter, Loader2, MousePointerClick, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
-import { usePersisted, keyFor } from '@/lib/hooks/use-persisted'
+import { usePersisted, keyForVertical } from '@/lib/hooks/use-persisted'
+import { useVertical } from '@/lib/hooks/use-vertical'
 import { SortBar, SortableTh, applySorts, toggleSortLevel, type SortLevel, type SortColumn } from './sort-bar'
 import { MultiSelect } from './multi-select'
 import { useLeadTracking, TrackCells, TrackCellHeaders, stageRank, type Tracking } from './track-cells'
@@ -143,7 +144,8 @@ export function EmailInteractions() {
   const queryClient = useQueryClient()
   const { data: me } = useCurrentUser()
   const { byRef, save } = useLeadTracking()
-  const k = (name: string) => keyFor(me?.id, name)
+  const { verticalId } = useVertical()
+  const k = (name: string) => keyForVertical(me?.id, verticalId, name)
   const fileRef = useRef<HTMLInputElement>(null)
   const [importing, setImporting] = useState(false)
 

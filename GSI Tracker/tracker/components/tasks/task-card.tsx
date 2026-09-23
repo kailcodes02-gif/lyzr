@@ -9,6 +9,7 @@ import { Calendar, MessageSquare, CheckSquare, Layers, DollarSign, Target, Repea
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { useAllChannelOwners, useChannels } from '@/lib/hooks/use-data'
+import { useVertical } from '@/lib/hooks/use-vertical'
 import { updateTask } from '@/lib/actions'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -118,6 +119,7 @@ interface TaskRowProps extends TaskCardProps {
   onSelectChange?: (checked: boolean) => void
   // Title of the parent activity, for sub-activity rows
   parentLabel?: string
+  showVerticalColumn?: boolean
 }
 
 // Budget + KPI-target + frequency chips, on both activity and sub-activity cards
@@ -298,7 +300,9 @@ export function TaskCard({ task, onClick, compact, onSubtaskClick }: TaskCardPro
 }
 
 // Table row version
-export function TaskRow({ task, onClick, selectable, selected, onSelectChange, parentLabel }: TaskRowProps) {
+export function TaskRow({ task, onClick, selectable, selected, onSelectChange, parentLabel, showVerticalColumn }: TaskRowProps) {
+  const { verticals } = useVertical()
+  const verticalName = verticals.find(v => v.id === task.channel?.vertical_id)?.name
   const statusConfig = STATUS_CONFIG[task.status]
   const priorityColor = PRIORITY_COLORS[task.priority]
   const assignments = task.assignments || []
@@ -369,6 +373,9 @@ export function TaskRow({ task, onClick, selectable, selected, onSelectChange, p
       <td className="py-3 px-4 text-xs text-zinc-500">
         {task.channel?.name || '-'}
       </td>
+      {showVerticalColumn && (
+        <td className="py-3 px-4 text-xs text-zinc-500">{verticalName || '-'}</td>
+      )}
     </tr>
   )
 }

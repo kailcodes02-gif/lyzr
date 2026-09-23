@@ -1,6 +1,7 @@
 'use client'
 
 import { useCurrentUser, useTasks, useMentionsForUser, useRecentActivity, useAllChannelOwners } from '@/lib/hooks/use-data'
+import { useVertical } from '@/lib/hooks/use-vertical'
 import { effectiveOwnerEmails } from '@/lib/effective-owners'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TaskView } from '@/components/tasks/task-view'
@@ -14,10 +15,11 @@ import { CheckSquare, MessageSquare, Clock, Activity, User as UserIcon, Plus } f
 import { format } from 'date-fns'
 
 export default function MyTasksPage() {
+  const { verticalId } = useVertical()
   const { data: user, isLoading: userLoading } = useCurrentUser()
-  const { data: tasks, isLoading: tasksLoading } = useTasks()
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId })
   const { data: mentions } = useMentionsForUser()
-  const { data: activities } = useRecentActivity(50)
+  const { data: activities } = useRecentActivity(50, verticalId)
   const { data: channelOwners } = useAllChannelOwners()
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)

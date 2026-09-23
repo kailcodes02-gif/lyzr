@@ -9,8 +9,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'GSI Marketing Tracker - Lyzr',
-  description: 'Internal marketing operations tracker for Lyzr GSI/SI business unit',
+  title: 'Lyzr Marketing Tracker',
+  description: 'Internal marketing operations tracker for every Lyzr vertical',
 }
 
 export default function RootLayout({

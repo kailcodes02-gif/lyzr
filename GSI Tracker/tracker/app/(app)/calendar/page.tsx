@@ -26,6 +26,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { useTasks, useCategories, useChannels, useUsers } from '@/lib/hooks/use-data'
+import { useVertical } from '@/lib/hooks/use-vertical'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -66,12 +67,14 @@ function CalendarContent() {
   }, [channelParam])
 
   // Fetch all taxonomy + users for filters
-  const { data: categories } = useCategories()
-  const { data: channels } = useChannels(selectedCategory !== 'all' ? selectedCategory : undefined)
+  const { verticalId, verticals } = useVertical()
+  const [selectedVertical, setSelectedVertical] = useState<string>('all')
+  const { data: categories } = useCategories(verticalId)
+  const { data: channels } = useChannels(verticalId, selectedCategory !== 'all' ? selectedCategory : undefined)
   const { data: users } = useUsers()
 
   // Fetch tasks
-  const { data: tasks, isLoading, refetch } = useTasks()
+  const { data: tasks, isLoading, refetch } = useTasks({ verticalId })
 
   // Calendar dates generation
   const monthStart = startOfMonth(currentDate)
@@ -91,6 +94,11 @@ function CalendarContent() {
   // Filter tasks client side
   const filteredTasks = tasks?.filter(task => {
     if (!task.due_date) return false
+
+    // Vertical filter (workspace mode only)
+    if (verticalId === 'all' && selectedVertical !== 'all') {
+      if (task.channel?.vertical_id !== selectedVertical) return false
+    }
 
     // Category filter
     if (selectedCategory !== 'all') {
@@ -182,6 +190,21 @@ function CalendarContent() {
           Filters
         </div>
 
+        {/* Vertical Filter (workspace mode) */}
+        {verticalId === 'all' && (
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] text-zinc-500 font-medium">Vertical</label>
+            <select
+              value={selectedVertical}
+              onChange={e => { setSelectedVertical(e.target.value); setSelectedCategory('all'); setSelectedChannel('all') }}
+              className="bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-violet-500"
+            >
+              <option value="all">All Verticals</option>
+              {verticals.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+            </select>
+          </div>
+        )}
+
         {/* Category Filter */}
         <div className="flex flex-col gap-1">
           <label className="text-[10px] text-zinc-500 font-medium">Category</label>
@@ -194,7 +217,7 @@ function CalendarContent() {
             className="bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-violet-500"
           >
             <option value="all">All Categories</option>
-            {categories?.map(cat => (
+            {categories?.filter(c => selectedVertical === 'all' || c.vertical_id === selectedVertical).map(cat => (
               <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
           </select>
@@ -209,7 +232,7 @@ function CalendarContent() {
             className="bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-violet-500"
           >
             <option value="all">All Channels</option>
-            {channels?.map(ch => (
+            {channels?.filter(c => selectedVertical === 'all' || c.vertical_id === selectedVertical).map(ch => (
               <option key={ch.id} value={ch.id}>{ch.name}</option>
             ))}
           </select>

@@ -22,6 +22,7 @@ import Papa from 'papaparse'
 import { toast } from 'sonner'
 
 import { useTasks, useCategories, useChannels, useSavedViews } from '@/lib/hooks/use-data'
+import { useVertical } from '@/lib/hooks/use-vertical'
 import { saveView, deleteSavedView } from '@/lib/actions'
 import { useQueryClient } from '@tanstack/react-query'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
@@ -96,8 +97,9 @@ function getPrimaryOwnerName(task: Task): string {
 }
 
 export default function TrackerPage() {
-  const { data: tasks, isLoading, refetch } = useTasks()
-  const { data: categories } = useCategories()
+  const { verticalId } = useVertical()
+  const { data: tasks, isLoading, refetch } = useTasks({ verticalId })
+  const { data: categories } = useCategories(verticalId)
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedChannel, setSelectedChannel] = useState<string>('all')
@@ -110,12 +112,12 @@ export default function TrackerPage() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
 
   const { data: channels } = useChannels(
-    selectedCategory !== 'all' ? selectedCategory : undefined
+    verticalId, selectedCategory !== 'all' ? selectedCategory : undefined
   )
 
   // ---- Saved views ----
   const queryClient = useQueryClient()
-  const { data: savedViews } = useSavedViews(SAVED_VIEW_PAGE)
+  const { data: savedViews } = useSavedViews(SAVED_VIEW_PAGE, verticalId)
   const [activeViewId, setActiveViewId] = useState<string>('')
   const [isSavingView, setIsSavingView] = useState(false)
 

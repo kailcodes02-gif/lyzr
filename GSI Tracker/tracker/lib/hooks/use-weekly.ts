@@ -30,16 +30,17 @@ export interface WeeklySnapshot {
   created_at: string
 }
 
-export function useWeeklySnapshot(weekStarting: string | null) {
+export function useWeeklySnapshot(weekStarting: string | null, verticalId?: string | null) {
   const supabase = createClient()
   return useQuery({
-    queryKey: ['weeklySnapshot', weekStarting],
-    enabled: !!weekStarting,
+    queryKey: ['weeklySnapshot', weekStarting, verticalId],
+    enabled: !!weekStarting && !!verticalId && verticalId !== 'all',
     queryFn: async () => {
       const { data, error } = await supabase
         .from('weekly_snapshots')
         .select('*')
         .eq('week_starting', weekStarting!)
+        .eq('vertical_id', verticalId!)
         .maybeSingle()
       if (error) throw error
       return data as WeeklySnapshot | null
@@ -47,14 +48,16 @@ export function useWeeklySnapshot(weekStarting: string | null) {
   })
 }
 
-export function useRecentWeeklySnapshots(limit: number) {
+export function useRecentWeeklySnapshots(limit: number, verticalId?: string | null) {
   const supabase = createClient()
   return useQuery({
-    queryKey: ['weeklySnapshots', 'recent', limit],
+    queryKey: ['weeklySnapshots', 'recent', limit, verticalId],
+    enabled: !!verticalId && verticalId !== 'all',
     queryFn: async () => {
       const { data, error } = await supabase
         .from('weekly_snapshots')
         .select('id, week_starting, total_tasks, completed_tasks, blocked_tasks, live_tasks, created_at')
+        .eq('vertical_id', verticalId!)
         .order('week_starting', { ascending: false })
         .limit(limit)
       if (error) throw error

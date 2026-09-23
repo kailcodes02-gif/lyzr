@@ -1,16 +1,17 @@
-import type { Task, ChannelOwner } from './types/database'
+import type { Task, ChannelOwner, EffectiveChannelOwner } from './types/database'
 
 // The ownership inheritance chain, shared by My Tasks / Owner pages / cards:
 //   1. the task's own owners (signed-in assignments + pending emails)
 //   2. else its parent activity's effective owners
 //   3. else its sub-channel's owners
 //   4. else its channel's owners
+//   5. else its channel function's owners (folded in by the DB view)
 export type OwnerSource = 'direct' | 'activity' | 'channel' | 'none'
 
 export function effectiveOwnerEmails(
   task: Task,
   tasksById: Map<string, Task>,
-  channelOwners: ChannelOwner[],
+  channelOwners: (ChannelOwner | EffectiveChannelOwner)[],
   emailByUserId: Map<string, string>,
   depth = 0
 ): { emails: Set<string>; source: OwnerSource } {

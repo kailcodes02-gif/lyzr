@@ -1,4 +1,30 @@
-# GTM blueprint restructure — go-live runbook
+# Runbooks: verticals cutover (Sep 2026) and GTM blueprint restructure
+
+## Verticals cutover (2026-09-23) — reset + reseed under the multi-vertical model
+
+Run in this order. Step 1 and 5 to 6 run from this folder with `.env.local`
+(service role); step 2 is a paste into the Supabase SQL Editor.
+
+1. Backup (read-only): `node scripts/export-live.mjs` -> `backups/<timestamp>/`.
+   The summary prints blueprint vs user-created task counts.
+2. Reset: paste the ENTIRE `supabase/RESET_ALL.sql` (now replays 001-016) into
+   Supabase Dashboard > SQL Editor > Run. DESTRUCTIVE. Sanity rows at the end
+   should read `verticals 0`, `functions 12`, `admin present 1`.
+3. Seed GSI + template + Lyzr:
+   `node scripts/seed-gtm.mjs --vertical gsi --template --create-lyzr template:gsi-standard`
+   (use `--create-lyzr empty` for an empty company-wide vertical instead).
+4. Roles and vertical owners from the backup:
+   `node scripts/restore-live.mjs --roles backups/<timestamp>`
+   `node scripts/restore-live.mjs --vertical-owners gsi=kailash.gm@lyzr.ai,<other owners>`
+5. Bring back user-created tasks and live state of blueprint tasks:
+   `node scripts/restore-live.mjs --tasks backups/<timestamp> --vertical gsi --merge-blueprint-state`
+6. Verify in the app (workspace home shows GSI + Lyzr cards; GSI space has
+   Leads Pipeline, Resources and the Report builder; Lyzr does not), then deploy
+   (see Deployment below). Users hard-refresh once.
+
+Owner emails: `--owners-only --vertical gsi` still re-applies `scripts/owner-emails.json`.
+
+## GTM blueprint restructure — original go-live runbook (Aug 2026)
 
 The tracker's taxonomy and content are now seeded from the GSI_GTM_2 blueprint
 (4 categories → 12 channels → 38 sub-channels → 94 activity tasks, with tiers,
@@ -22,7 +48,7 @@ This file is the exact sequence to bring the restructured database live.
 
 3. **Seed the blueprint**:
    ```bash
-   node scripts/seed-gtm.mjs
+   node scripts/seed-gtm.mjs --vertical gsi
    ```
    Expected output: 4 categories, 50 channels (12 top + 38 sub), 94 tasks,
    resources, learnings, channel_fields, budget periods, then the owner pass.
@@ -36,7 +62,7 @@ This file is the exact sequence to bring the restructured database live.
 Re-apply owners only (safe, idempotent — never touches tasks/taxonomy):
 
 ```bash
-node scripts/seed-gtm.mjs --owners-only
+node scripts/seed-gtm.mjs --owners-only --vertical gsi
 ```
 
 People who have never signed in are held in `pending_assignments` /

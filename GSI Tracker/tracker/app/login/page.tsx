@@ -50,7 +50,7 @@ function LoginContent() {
                 <path d="M6 20v-4" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-zinc-900 mb-1">GSI Marketing Tracker</h1>
+            <h1 className="text-2xl font-bold text-zinc-900 mb-1">Lyzr Marketing Tracker</h1>
             <p className="text-sm text-zinc-600">Lyzr internal operations tool</p>
           </div>
 

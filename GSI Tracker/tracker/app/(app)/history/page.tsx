@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRecentActivity, useUsers } from '@/lib/hooks/use-data'
+import { useVertical } from '@/lib/hooks/use-vertical'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardContent } from '@/components/ui/card'
@@ -36,7 +37,8 @@ function changeSummary(from: unknown, to: unknown): string | null {
 }
 
 export default function HistoryPage() {
-  const { data: activities, isLoading } = useRecentActivity(300)
+  const { verticalId } = useVertical()
+  const { data: activities, isLoading } = useRecentActivity(300, verticalId)
   const { data: users } = useUsers()
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [actorFilter, setActorFilter] = useState<string>('')

@@ -36,11 +36,11 @@ function presetRange(preset: Preset, customFrom: string, customTo: string): { st
   return { start: startOfISOWeek(subWeeks(now, 1)), end: endOfISOWeek(subWeeks(now, 1)) } // last_week (default)
 }
 
-export function ReportBuilder() {
+export function ReportBuilder({ verticalId, slug = 'report' }: { verticalId: string; slug?: string }) {
   const supabase = createClient()
   const queryClient = useQueryClient()
   const { data: me } = useCurrentUser()
-  const { data: allTasks } = useTasks()
+  const { data: allTasks } = useTasks({ verticalId })
 
   // ---------- date range: presets + custom, defaults to last week ----------
   const [preset, setPreset] = useState<Preset>('last_week')
@@ -74,10 +74,10 @@ export function ReportBuilder() {
 
   // ---------- custom "done" items (report-only — never a tasks row) ----------
   const { data: customDone } = useQuery({
-    queryKey: ['reportDoneItems', rangeKeyStart],
+    queryKey: ['reportDoneItems', verticalId, rangeKeyStart],
     queryFn: async () => {
       const { data, error } = await supabase.from('report_done_items')
-        .select('*').eq('week_starting', rangeKeyStart).order('sort_order')
+        .select('*').eq('vertical_id', verticalId).eq('week_starting', rangeKeyStart).order('sort_order')
       if (error) throw error
       return data as { id: string; task_title: string; subtask_title: string | null }[]
     },
@@ -87,6 +87,7 @@ export function ReportBuilder() {
   const addDoneItem = async () => {
     if (!taskDraft.trim()) return
     const { error } = await supabase.from('report_done_items').insert({
+      vertical_id: verticalId,
       week_starting: rangeKeyStart,
       task_title: taskDraft.trim(),
       subtask_title: subtaskDraft.trim() || null,
@@ -95,19 +96,19 @@ export function ReportBuilder() {
     })
     if (error) { toast.error(error.message); return }
     setTaskDraft(''); setSubtaskDraft('')
-    queryClient.invalidateQueries({ queryKey: ['reportDoneItems', rangeKeyStart] })
+    queryClient.invalidateQueries({ queryKey: ['reportDoneItems', verticalId, rangeKeyStart] })
   }
   const removeDoneItem = async (id: string) => {
     await supabase.from('report_done_items').delete().eq('id', id)
-    queryClient.invalidateQueries({ queryKey: ['reportDoneItems', rangeKeyStart] })
+    queryClient.invalidateQueries({ queryKey: ['reportDoneItems', verticalId, rangeKeyStart] })
   }
 
   // ---------- ad spend: manual entry OR CSV/XLS upload (replaces this week's rows) ----------
   const { data: adRows } = useQuery({
-    queryKey: ['reportAdSpend', rangeKeyStart],
+    queryKey: ['reportAdSpend', verticalId, rangeKeyStart],
     queryFn: async () => {
       const { data, error } = await supabase.from('report_ad_spend')
-        .select('*').eq('week_starting', rangeKeyStart).order('created_at')
+        .select('*').eq('vertical_id', verticalId).eq('week_starting', rangeKeyStart).order('created_at')
       if (error) throw error
       return data as { id: string; platform: string; campaign: string | null; spend: number; leads: number | null; notes: string | null }[]
     },
@@ -120,6 +121,7 @@ export function ReportBuilder() {
   const addAdRow = async () => {
     if (!adPlatform.trim() || !adSpendVal.trim()) { toast.error('Platform and spend are required'); return }
     const { error } = await supabase.from('report_ad_spend').insert({
+      vertical_id: verticalId,
       week_starting: rangeKeyStart,
       platform: adPlatform.trim(),
       campaign: adCampaign.trim() || null,
@@ -130,11 +132,11 @@ export function ReportBuilder() {
     })
     if (error) { toast.error(error.message); return }
     setAdPlatform(''); setAdCampaign(''); setAdSpendVal(''); setAdLeads(''); setAdNotes('')
-    queryClient.invalidateQueries({ queryKey: ['reportAdSpend', rangeKeyStart] })
+    queryClient.invalidateQueries({ queryKey: ['reportAdSpend', verticalId, rangeKeyStart] })
   }
   const removeAdRow = async (id: string) => {
     await supabase.from('report_ad_spend').delete().eq('id', id)
-    queryClient.invalidateQueries({ queryKey: ['reportAdSpend', rangeKeyStart] })
+    queryClient.invalidateQueries({ queryKey: ['reportAdSpend', verticalId, rangeKeyStart] })
   }
   const adTotal = (adRows || []).reduce((s, r) => s + (Number(r.spend) || 0), 0)
 
@@ -177,9 +179,10 @@ export function ReportBuilder() {
       if (!parsedRows.length) { toast.error('No usable rows found — expected columns like Platform, Campaign, Spend, Leads'); return }
 
       // The file is the source of truth for this week: replace, don't append.
-      await supabase.from('report_ad_spend').delete().eq('week_starting', rangeKeyStart)
+      await supabase.from('report_ad_spend').delete().eq('vertical_id', verticalId).eq('week_starting', rangeKeyStart)
       const { error } = await supabase.from('report_ad_spend').insert(
         parsedRows.map(r => ({
+          vertical_id: verticalId,
           week_starting: rangeKeyStart,
           platform: r.platform || 'Unknown',
           campaign: r.campaign || null,
@@ -190,7 +193,7 @@ export function ReportBuilder() {
         }))
       )
       if (error) throw error
-      queryClient.invalidateQueries({ queryKey: ['reportAdSpend', rangeKeyStart] })
+      queryClient.invalidateQueries({ queryKey: ['reportAdSpend', verticalId, rangeKeyStart] })
       toast.success(`Ads data updated from ${file.name} — ${parsedRows.length} rows for ${rangeLabel}`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Import failed')
@@ -307,10 +310,10 @@ export function ReportBuilder() {
 
   // ---------- existing generated report for this exact range ----------
   const { data: existingReport } = useQuery({
-    queryKey: ['weeklyReport', rangeKeyStart, rangeKeyEnd],
+    queryKey: ['weeklyReport', verticalId, rangeKeyStart, rangeKeyEnd],
     queryFn: async () => {
       const { data, error } = await supabase.from('weekly_reports')
-        .select('id, html, generated_at').eq('week_starting', rangeKeyStart).eq('week_ending', rangeKeyEnd).maybeSingle()
+        .select('id, html, generated_at').eq('vertical_id', verticalId).eq('week_starting', rangeKeyStart).eq('week_ending', rangeKeyEnd).maybeSingle()
       if (error) throw error
       return data as { id: string; html: string; generated_at: string } | null
     },
@@ -329,7 +332,7 @@ export function ReportBuilder() {
     const blob = new Blob([html], { type: 'text/html' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `gsi-report-${rangeKeyStart}.html`
+    a.download = `${slug}-report-${rangeKeyStart}.html`
     a.click()
     URL.revokeObjectURL(a.href)
   }
@@ -362,16 +365,17 @@ export function ReportBuilder() {
       const html = buildReportHtml(data)
 
       const { error } = await supabase.from('weekly_reports').upsert({
+        vertical_id: verticalId,
         week_starting: rangeKeyStart,
         week_ending: rangeKeyEnd,
         html,
         summary: data as unknown as Record<string, unknown>,
         generated_by: me?.id,
         generated_at: new Date().toISOString(),
-      }, { onConflict: 'week_starting,week_ending' })
+      }, { onConflict: 'vertical_id,week_starting,week_ending' })
       if (error) throw error
 
-      queryClient.invalidateQueries({ queryKey: ['weeklyReport', rangeKeyStart, rangeKeyEnd] })
+      queryClient.invalidateQueries({ queryKey: ['weeklyReport', verticalId, rangeKeyStart, rangeKeyEnd] })
       toast.success('Weekly report created')
       openHtml(html)
     } catch (err) {

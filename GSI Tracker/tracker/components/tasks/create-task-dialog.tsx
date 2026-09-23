@@ -15,6 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { useCategories, useChannels, useUsers, useKnownEmails, buildChannelTree } from '@/lib/hooks/use-data'
+import { useVertical } from '@/lib/hooks/use-vertical'
 import { createTask, assignTaskByEmail, addChecklistItem } from '@/lib/actions'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -37,6 +38,7 @@ interface CreateTaskDialogProps {
   onOpenChange: (open: boolean) => void
   defaultChannelId?: string
   defaultCategoryId?: string
+  defaultVerticalId?: string
   defaultTitle?: string
   defaultDescription?: string
   parentTaskId?: string
@@ -45,9 +47,16 @@ interface CreateTaskDialogProps {
 }
 
 export function CreateTaskDialog({
-  open, onOpenChange, defaultChannelId, defaultCategoryId, defaultTitle, defaultDescription, parentTaskId, nestingLevel = 0, onSuccess
+  open, onOpenChange, defaultChannelId, defaultCategoryId, defaultVerticalId, defaultTitle, defaultDescription, parentTaskId, nestingLevel = 0, onSuccess
 }: CreateTaskDialogProps) {
   const queryClient = useQueryClient()
+  // Vertical: the current space by default; in workspace mode the user picks one.
+  const { verticalId: currentVerticalId, verticals } = useVertical()
+  const { data: allChannelsForDefault } = useChannels('all')
+  const [pickedVertical, setPickedVertical] = useState<string>(
+    defaultVerticalId || (currentVerticalId !== 'all' ? currentVerticalId : '')
+  )
+  const showVerticalPicker = !defaultChannelId && currentVerticalId === 'all' && !defaultVerticalId
   const [isPending, startTransition] = useTransition()
 
   const priorityLabels = {
@@ -65,8 +74,9 @@ export function CreateTaskDialog({
     other: 'Other'
   }
 
-  const { data: categories } = useCategories()
-  const { data: channels } = useChannels()
+  const effectiveVertical = pickedVertical || (defaultChannelId ? allChannelsForDefault?.find(c => c.id === defaultChannelId)?.vertical_id : undefined) || 'all'
+  const { data: categories } = useCategories(effectiveVertical)
+  const { data: channels } = useChannels(effectiveVertical)
   const { data: users } = useUsers()
   
   // Recurrence state
@@ -334,6 +344,21 @@ export function CreateTaskDialog({
             </div>
           </div>
 
+          {/* Vertical (workspace mode only) */}
+          {showVerticalPicker && (
+            <div>
+              <Label className="text-zinc-600 text-xs">0 · Vertical *</Label>
+              <select
+                value={pickedVertical}
+                onChange={e => { setPickedVertical(e.target.value); setPickedTop(''); setValue('channel_id', '') }}
+                className="mt-1 w-full text-sm rounded-lg border border-zinc-300 bg-zinc-100 px-3 h-9 text-zinc-900"
+              >
+                <option value="">Select vertical…</option>
+                {verticals.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+              </select>
+            </div>
+          )}
+
           {/* Channel → Sub-channel (2 clicks) */}
           {!defaultChannelId && (
             <div className="grid grid-cols-2 gap-3">
@@ -341,10 +366,11 @@ export function CreateTaskDialog({
                 <Label className="text-zinc-600 text-xs">1 · Channel *</Label>
                 <select
                   value={pickedTop}
+                  disabled={showVerticalPicker && !pickedVertical}
                   onChange={e => { setPickedTop(e.target.value); setValue('channel_id', e.target.value || '') }}
-                  className="mt-1 w-full text-sm rounded-lg border border-zinc-300 bg-zinc-100 px-3 h-9 text-zinc-900"
+                  className="mt-1 w-full text-sm rounded-lg border border-zinc-300 bg-zinc-100 px-3 h-9 text-zinc-900 disabled:opacity-50"
                 >
-                  <option value="">Select channel…</option>
+                  <option value="">{showVerticalPicker && !pickedVertical ? 'Pick a vertical first' : 'Select channel…'}</option>
                   {(channels || []).filter(c => !c.parent_channel_id).sort((a, b) => a.sort_order - b.sort_order).map(c => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
