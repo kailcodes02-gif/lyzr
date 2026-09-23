@@ -10,6 +10,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useUsers, useTasks, useRecentActivity, useAllChannelOwners } from '@/lib/hooks/use-data'
 import { useSpaceHref } from '@/lib/hooks/use-space-href'
 import { useVertical } from '@/lib/hooks/use-vertical'
+import { TaskFilterBar, EMPTY_FILTERS, applyTaskFilters, filterContextFrom, type TaskFilters } from '@/components/filters/task-filter-bar'
+import { useChannels } from '@/lib/hooks/use-data'
 import { effectiveOwnerEmails } from '@/lib/effective-owners'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -80,6 +82,9 @@ function OwnerDetailContent() {
   const { data: mentions, isLoading: mentionsLoading } = useMentionsByUserId(owner?.id)
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [filters, setFilters] = useState<TaskFilters>(EMPTY_FILTERS)
+  const { data: allChannels } = useChannels('all')
+  const fctx = filterContextFrom(allChannels)
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date())
   const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined)
 
@@ -109,7 +114,7 @@ function OwnerDetailContent() {
     return eff.source !== 'direct' && eff.emails.has(owner.email)
   }
 
-  const assignedTasks = tasks?.filter(t => ownsTask(t) || inheritsTask(t)) ?? []
+  const assignedTasks = applyTaskFilters(tasks?.filter(t => ownsTask(t) || inheritsTask(t)) ?? [], filters, fctx)
 
   const getTasksByRole = (role?: string) => {
     if (!role) return assignedTasks
@@ -190,6 +195,7 @@ function OwnerDetailContent() {
         </TabsList>
 
         <TabsContent value="assigned" className="mt-6 space-y-6">
+          <TaskFilterBar value={filters} onChange={setFilters} show={{ owner: false, status: true, priority: true, search: true, channel: true }} dateFields={['due_date', 'completed_at', 'created_at']} count={assignedTasks.length} />
           <Tabs defaultValue="all" className="w-full">
             <div className="flex justify-between items-center mb-4">
               <TabsList className="bg-zinc-100 border border-zinc-200 p-0.5 rounded-lg">

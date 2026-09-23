@@ -458,6 +458,21 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-09-23 (later), GSI Tracker: Google-Calendar-style date range + shared filters everywhere (GSI Tracker)
+- New `lib/date-range.ts` (presets: today/yesterday, this/last/next week and month, quarters, year,
+  rolling 7/30/90, all time, custom; `resolveRange`, `shiftRange` for the arrows, `inRange`) with
+  tests, and `components/ui/date-range-picker.tsx` (prev/next arrows, preset list, two-month range
+  calendar, from/to inputs, Apply/Clear). New `components/filters/task-filter-bar.tsx`: one filter
+  model for task lists (date on due/completed/created/went-live, owner incl. pending and Unassigned,
+  status, priority, vertical, function, category, channel, search) + `applyTaskFilters`.
+- Applied to: HubSpot leads pull window, Email Interactions (latest click), CSV leads (generated
+  date + source + status + search), Tracker (range + owner; saved views migrate old dateFrom/dateTo),
+  Calendar (picker jumps the view), History (when + person), My Tasks, Owner detail, Channel Tasks
+  tab, workspace All Tasks, workspace Weekly (any period), space Weekly Review (any period, live),
+  Function weekly tab.
+- Cutover status: reset + seed + `--finish` (new flag: template + Lyzr + owner steps on an already
+  seeded vertical) done on the live project; GSI and Lyzr verticals exist. Roles pending from user.
+
 ### 2026-09-23, GSI Tracker becomes the Lyzr Marketing Tracker: verticals + functions layer (GSI Tracker)
 - **Why:** the tracker was GSI-only; the whole marketing team now uses it. Verticals (GSI,
   Emerging Partners, per-product, company-wide "Lyzr") sit above categories; functions

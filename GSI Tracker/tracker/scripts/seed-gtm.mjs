@@ -10,6 +10,8 @@
 //   node scripts/seed-gtm.mjs --template          also snapshot the vertical as the "gsi-standard" taxonomy template
 //   node scripts/seed-gtm.mjs --create-lyzr empty | template:<template-slug>
 //                              also create the company-wide "Lyzr" vertical (empty, or cloned from a template)
+//   node scripts/seed-gtm.mjs --finish --vertical gsi --template --create-lyzr template:gsi-standard
+//                              vertical already seeded: only run the template / Lyzr / owner steps
 //   node scripts/seed-gtm.mjs --owners-only [--vertical gsi]
 //                              (re)apply owner mapping only — safe after scripts/owner-emails.json changes
 //
@@ -33,6 +35,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const argv = process.argv.slice(2)
 const argValue = (flag) => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] : undefined }
 const OWNERS_ONLY = argv.includes('--owners-only')
+const FINISH_ONLY = argv.includes('--finish') // skip seeding; run template + lyzr + vertical owner steps on an already-seeded vertical
 const VERTICAL_SLUG = (argValue('--vertical') || 'gsi').toLowerCase()
 const VERTICAL_NAME = argValue('--vertical-name') || (VERTICAL_SLUG === 'gsi' ? 'GSI' : VERTICAL_SLUG.toUpperCase())
 const MAKE_TEMPLATE = argv.includes('--template')
@@ -265,19 +268,22 @@ if (!vertical) {
 const verticalId = vertical.id
 
 const { count } = await db.from('categories').select('*', { count: 'exact', head: true }).eq('vertical_id', verticalId)
-if (count > 0) die(`vertical "${VERTICAL_SLUG}" already has ${count} categories — this script seeds an EMPTY vertical only. Run RESET_ALL.sql first (or use --owners-only).`)
+if (count > 0 && !FINISH_ONLY) die(`vertical "${VERTICAL_SLUG}" already has ${count} categories — this script seeds an EMPTY vertical only. Run RESET_ALL.sql first, or use --finish to run only the template / Lyzr / owner steps.`)
+if (FINISH_ONLY && count === 0) die(`vertical "${VERTICAL_SLUG}" is empty — run the full seed instead of --finish`)
 
 // functions (seeded by migration 014) for the channel -> function link
 const { data: fnRows, error: fnErr } = await db.from('functions').select('id, slug')
 if (fnErr) die('reading functions failed — did migration 014 run?', fnErr)
 const fnBySlug = new Map(fnRows.map(f => [f.slug, f.id]))
 
+let catRows = [], byBpId = new Map(), taskCount = 0, subTaskCount = 0, targetRows = [], resourceRows = [], learningRows = [], fieldRows = [], budgetRows = [], resourceCount = 0
+if (!FINISH_ONLY) {
 // 1. categories
-const catRows = await insert('categories', CATEGORIES.map(c => ({ ...c, vertical_id: verticalId, is_active: true })))
+catRows = await insert('categories', CATEGORIES.map(c => ({ ...c, vertical_id: verticalId, is_active: true })))
 const catBySlug = new Map(catRows.map(c => [c.slug, c.id]))
 
 // 2. channels + sub-channels
-const byBpId = new Map()
+
 for (const ch of blueprint.channels) {
   const [parent] = await insert('channels', [{
     category_id: catBySlug.get(ch.cat === 'events' ? 'events' : ch.cat),
@@ -316,8 +322,8 @@ for (const ch of blueprint.channels) {
 }
 
 // 3. resources + learnings (channel- and sub-channel-level)
-const resourceRows = []
-const learningRows = []
+resourceRows = []
+learningRows = []
 for (const ch of blueprint.channels) {
   const nodes = [[ch.id, ch], ...(ch.subs || []).map(s => [s.id, s])]
   for (const [bpId, node] of nodes) {
@@ -331,7 +337,7 @@ await insert('channel_learnings', learningRows)
 
 // 3b. targets — the board writes multiple targets in one string separated by
 // "•"; split them into individual channel_targets rows (multi-target support)
-const targetRows = []
+targetRows = []
 for (const ch of blueprint.channels) {
   for (const sub of ch.subs || []) {
     if (!sub.target) continue
@@ -344,7 +350,7 @@ await insert('channel_targets', targetRows)
 
 // 4. activities -> tasks; sub-activities -> CHILD tasks (level 4 of the
 // hierarchy, each with its own description/status/priority, per user reqs)
-let taskCount = 0, subTaskCount = 0
+
 for (const ch of blueprint.channels) {
   for (const sub of ch.subs || []) {
     const channelId = byBpId.get(sub.id).id
@@ -401,7 +407,7 @@ const fieldDefs = [
   { name: 'Spend', slug: 'spend', field_type: 'currency', surface: 'tracker', sort_order: 3 },
   { name: 'Evidence URL', slug: 'evidence_url', field_type: 'url', surface: 'tracker', sort_order: 4 },
 ]
-const fieldRows = []
+fieldRows = []
 for (const ch of blueprint.channels) {
   const parent = byBpId.get(ch.id)
   for (const f of fieldDefs) {
@@ -420,7 +426,7 @@ const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
 const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0))
 const iso = (d) => d.toISOString().slice(0, 10)
 const label = monthStart.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
-const budgetRows = []
+budgetRows = []
 for (const ch of blueprint.channels) {
   const nodes = [[ch.id, ch.budget], ...(ch.subs || []).map(s => [s.id, s.budget])]
   for (const [bpId, budgetStr] of nodes) {
@@ -438,7 +444,7 @@ for (const ch of blueprint.channels) {
 await insert('budget_periods', budgetRows)
 
 // 6b. vertical-level resources (the old hardcoded GSI Resources page)
-let resourceCount = 0
+
 const vResPath = join(root, 'scripts', `${VERTICAL_SLUG}-resources.json`)
 if (existsSync(vResPath)) {
   const links = JSON.parse(readFileSync(vResPath, 'utf8'))
@@ -450,6 +456,11 @@ if (existsSync(vResPath)) {
 
 // 7. owners + task assignments
 await seedOwners(byBpId, admin.id)
+
+} else {
+  byBpId = await loadChannelsByBpId(verticalId)
+  console.log(`--finish: vertical "${VERTICAL_SLUG}" already seeded (${byBpId.size} channels); running remaining steps only`)
+}
 
 // 8. vertical owners: the blueprint's top-level channel owners who are also
 // mapped by email get vertical ownership? No: that is a people decision.

@@ -2,6 +2,8 @@
 
 import { useCurrentUser, useTasks, useMentionsForUser, useRecentActivity, useAllChannelOwners } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
+import { TaskFilterBar, EMPTY_FILTERS, applyTaskFilters, filterContextFrom, type TaskFilters } from '@/components/filters/task-filter-bar'
+import { useChannels } from '@/lib/hooks/use-data'
 import { effectiveOwnerEmails } from '@/lib/effective-owners'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TaskView } from '@/components/tasks/task-view'
@@ -24,6 +26,9 @@ export default function MyTasksPage() {
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
+  const [filters, setFilters] = useState<TaskFilters>(EMPTY_FILTERS)
+  const { data: allChannels } = useChannels('all')
+  const fctx = filterContextFrom(allChannels)
 
   if (userLoading || tasksLoading) {
     return (
@@ -57,8 +62,8 @@ export default function MyTasksPage() {
 
   // Split by role (direct assignments only — inherited tasks have no role)
   const getTasksByRole = (role?: string) => {
-    if (!role) return myAssignedTasks
-    return myAssignedTasks.filter(t =>
+    if (!role) return applyTaskFilters(myAssignedTasks, filters, fctx)
+    return applyTaskFilters(myAssignedTasks, filters, fctx).filter(t =>
       t.assignments?.some(a => a.user_id === user.id && a.role === role) ||
       (t.pending_assignments || []).some(p => !p.resolved_user_id && p.email.toLowerCase() === myEmail && p.role === role)
     )
@@ -113,6 +118,7 @@ export default function MyTasksPage() {
 
         {/* Assigned Tasks Tab */}
         <TabsContent value="assigned" className="mt-6 space-y-6">
+          <TaskFilterBar value={filters} onChange={setFilters} show={{ owner: false, status: true, priority: true, search: true, channel: true }} dateFields={['due_date', 'completed_at', 'created_at']} />
           <Tabs defaultValue="all" className="w-full">
             <div className="flex justify-between items-center mb-4 overflow-x-auto -mx-1 px-1">
               <TabsList className="bg-zinc-100 border border-zinc-200 p-0.5 rounded-lg inline-flex w-auto min-w-max">
@@ -150,7 +156,7 @@ export default function MyTasksPage() {
                   Tasks with no direct owner that fall to you through the chain: sub-activity → activity owner → sub-channel owner → channel owner.
                 </p>
               </div>
-              <TaskView tasks={myInheritedTasks} onTaskClick={(t) => setSelectedTaskId(t.id)} showChannelColumn />
+              <TaskView tasks={applyTaskFilters(myInheritedTasks, filters, fctx)} onTaskClick={(t) => setSelectedTaskId(t.id)} showChannelColumn />
             </div>
           )}
         </TabsContent>

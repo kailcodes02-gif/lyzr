@@ -3,6 +3,9 @@
 import { useTasks, useChannels, useCurrentUser } from '@/lib/hooks/use-data'
 import { usePersisted, keyForVertical } from '@/lib/hooks/use-persisted'
 import { useVertical } from '@/lib/hooks/use-vertical'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { MultiSelect } from '@/components/leads/multi-select'
+import { ALL_TIME, inRange, resolveRange, type DateRangeValue } from '@/lib/date-range'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -97,6 +100,10 @@ function CsvImportSection() {
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [leadRange, setLeadRange] = useState<DateRangeValue>(ALL_TIME)
+  const [fSource, setFSource] = useState<string[]>([])
+  const [fStatus, setFStatus] = useState<string[]>([])
+  const [fSearch, setFSearch] = useState('')
   const [csvData, setCsvData] = useState<Record<string, string>[] | null>(null)
   const [headers, setHeaders] = useState<string[]>([])
   // columnMapping[csvHeader] = leadField | '' (ignore)
@@ -151,7 +158,22 @@ function CsvImportSection() {
     )
   }
 
-  const leadsTasks = tasks?.filter(t => t.channel?.slug === 'all-leads' && (verticalId === 'all' || t.channel?.vertical_id === verticalId)) || []
+  const allLeadsTasks = tasks?.filter(t => t.channel?.slug === 'all-leads' && (verticalId === 'all' || t.channel?.vertical_id === verticalId)) || []
+  const pf = (t: { planning_fields: Record<string, unknown> }, k: string) => String(t.planning_fields?.[k] || '').trim()
+  const sourceOptions = [...new Set(allLeadsTasks.map(t => pf(t, 'source')).filter(Boolean))].sort()
+  const statusOptions = [...new Set(allLeadsTasks.map(t => pf(t, 'lead_status') || 'new'))].sort()
+  const rr = resolveRange(leadRange)
+  const leadsTasks = allLeadsTasks.filter(t => {
+    if ((rr.from || rr.to) && !inRange(pf(t, 'generated_date') || null, rr)) return false
+    if (fSource.length && !fSource.includes(pf(t, 'source'))) return false
+    if (fStatus.length && !fStatus.includes(pf(t, 'lead_status') || 'new')) return false
+    if (fSearch.trim()) {
+      const q = fSearch.toLowerCase()
+      if (![t.title, pf(t, 'email'), pf(t, 'company')].some(v => v.toLowerCase().includes(q))) return false
+    }
+    return true
+  })
+  const leadFiltersActive = leadRange.preset !== 'all' || fSource.length > 0 || fStatus.length > 0 || !!fSearch.trim()
   const totalLeads = leadsTasks.length
   const newLeads = leadsTasks.filter(t => (t.planning_fields?.lead_status || t.planning_fields?.status) === 'new').length
   const qualifiedLeads = leadsTasks.filter(t => t.planning_fields?.lead_status === 'qualified').length
@@ -311,6 +333,18 @@ function CsvImportSection() {
         </Card>
       </div>
 
+      {/* Filters */}
+      <div className="bg-zinc-100 border border-zinc-300 rounded-xl p-3 flex flex-wrap items-center gap-2">
+        <DateRangePicker label="Generated" value={leadRange} onChange={setLeadRange} />
+        <MultiSelect label="Source" options={sourceOptions} selected={fSource} onChange={setFSource} width="w-[170px]" />
+        <MultiSelect label="Status" options={statusOptions} selected={fStatus} onChange={setFStatus} width="w-[150px]" />
+        <Input value={fSearch} onChange={e => setFSearch(e.target.value)} placeholder="Search name / email / company" className="h-8 w-56 text-xs bg-white border-zinc-300" />
+        {leadFiltersActive && (
+          <button onClick={() => { setLeadRange(ALL_TIME); setFSource([]); setFStatus([]); setFSearch('') }} className="text-xs text-blue-600 hover:text-blue-500 font-medium">Clear ✕</button>
+        )}
+        <span className="ml-auto text-[11px] text-zinc-500">{leadsTasks.length} of {allLeadsTasks.length} leads</span>
+      </div>
+
       {/* Leads Grid */}
       <Card className="bg-white border-zinc-200 backdrop-blur-xl">
         <CardContent className="p-0 overflow-x-auto">
@@ -356,7 +390,7 @@ function CsvImportSection() {
               {leadsTasks.length === 0 && (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-zinc-500">
-                    No leads found in pipeline. Click Upload CSV to add leads.
+                    {allLeadsTasks.length ? 'No leads match the current filters.' : 'No leads found in pipeline. Click Upload CSV to add leads.'}
                   </td>
                 </tr>
               )}

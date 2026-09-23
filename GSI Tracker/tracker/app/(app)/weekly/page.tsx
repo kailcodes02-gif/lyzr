@@ -14,6 +14,8 @@ import {
 import { useWeeklySnapshot, useRecentWeeklySnapshots, type WeeklySnapshot } from '@/lib/hooks/use-weekly'
 import { useTasks, useBudgetPeriods, useCategories, useUsers } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { customRange, resolveRange, type DateRangeValue } from '@/lib/date-range'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { ReportBuilder } from '@/components/weekly/report-builder'
 import type { Task } from '@/lib/types/database'
@@ -145,9 +147,23 @@ export default function WeeklyReviewPage() {
   const weeks = useMemo(() => buildWeeks(WEEK_COUNT), [])
   const [selectedKey, setSelectedKey] = useState<string>(weeks[0].key)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  // Any period (month, quarter, custom) is reviewed live from tasks; the ISO
+  // week chips below additionally offer stored snapshots for past weeks.
+  const [customPeriod, setCustomPeriod] = useState<DateRangeValue | null>(null)
 
-  const selectedWeek = weeks.find(w => w.key === selectedKey) || weeks[0]
-  const isCurrentWeek = selectedKey === weeks[0].key
+  const listedWeek = weeks.find(w => w.key === selectedKey) || weeks[0]
+  const selectedWeek = useMemo(() => {
+    if (!customPeriod) return listedWeek
+    const r = resolveRange(customPeriod)
+    const start = r.from || listedWeek.start, end = r.to || listedWeek.end
+    return { start, end, key: format(start, ISO_DATE), label: r.label }
+  }, [customPeriod, listedWeek])
+  const isCurrentWeek = !!customPeriod || selectedKey === weeks[0].key
+  const pickPeriod = (v: DateRangeValue) => {
+    const r = resolveRange(v)
+    const match = r.from && r.to ? weeks.find(w => format(w.start, ISO_DATE) === format(r.from!, ISO_DATE) && format(w.end, ISO_DATE) === format(r.to!, ISO_DATE)) : undefined
+    if (match) { setSelectedKey(match.key); setCustomPeriod(null) } else setCustomPeriod(v)
+  }
 
   const { verticalId, vertical, flags } = useVertical()
   const { data: snapshot, isLoading: snapLoading } = useWeeklySnapshot(isCurrentWeek ? null : selectedKey, verticalId)
@@ -337,7 +353,10 @@ export default function WeeklyReviewPage() {
         </p>
       </div>
 
-      {/* Week picker */}
+      {/* Any period: week, month, quarter or custom (live from tasks) */}
+      <DateRangePicker label="Period" value={customPeriod || customRange(listedWeek.start, listedWeek.end)} onChange={pickPeriod} allowAll={false} />
+
+      {/* ISO week picker (past weeks can use stored snapshots) */}
       <div className="overflow-x-auto pb-2 -mx-1 px-1">
         <div className="flex items-center gap-2 min-w-max">
           {weeks.map((w, i) => {
@@ -347,10 +366,10 @@ export default function WeeklyReviewPage() {
             return (
               <button
                 key={w.key}
-                onClick={() => setSelectedKey(w.key)}
+                onClick={() => { setSelectedKey(w.key); setCustomPeriod(null) }}
                 className={[
                   'group relative shrink-0 rounded-xl border px-4 py-2.5 text-xs font-medium transition-all',
-                  isActive
+                  isActive && !customPeriod
                     ? 'border-blue-400 bg-blue-50 text-blue-800 shadow-md shadow-blue-200/50'
                     : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-100',
                 ].join(' ')}
@@ -371,11 +390,11 @@ export default function WeeklyReviewPage() {
       {/* Selected week meta */}
       <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500">
         <span>
-          ISO week {format(selectedWeek.start, "RRRR-'W'II")} ·{' '}
+          {customPeriod ? 'Period' : `ISO week ${format(selectedWeek.start, "RRRR-'W'II")}`} ·{' '}
           {format(selectedWeek.start, 'EEE d MMM')} to {format(selectedWeek.end, 'EEE d MMM, yyyy')}
         </span>
         {isCurrentWeek ? (
-          <Badge className="bg-blue-500/15 text-blue-600 border-blue-300">Live (current week)</Badge>
+          <Badge className="bg-blue-500/15 text-blue-600 border-blue-300">{customPeriod ? 'Live (custom period)' : 'Live (current week)'}</Badge>
         ) : hasSnapshot ? (
           <Badge className="bg-emerald-50 text-emerald-600 border-emerald-200">Snapshot</Badge>
         ) : (

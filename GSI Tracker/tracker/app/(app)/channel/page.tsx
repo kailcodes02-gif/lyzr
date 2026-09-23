@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useCategories, useChannels, useTasks, useBudgetPeriods, useChannelFields, useHubSpotSyncedContacts } from '@/lib/hooks/use-data'
 import { useSpaceHref } from '@/lib/hooks/use-space-href'
+import { TaskFilterBar, EMPTY_FILTERS, applyTaskFilters, filterContextFrom, type TaskFilters } from '@/components/filters/task-filter-bar'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { getFieldsForChannel } from '@/components/tasks/channel-fields'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -32,6 +33,7 @@ function ChannelContent() {
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [expandedChannels, setExpandedChannels] = useState<Record<string, boolean>>({})
+  const [filters, setFilters] = useState<TaskFilters>(EMPTY_FILTERS)
 
   // Default values for contact conversion
   const [defaultTitle, setDefaultTitle] = useState('')
@@ -267,9 +269,10 @@ function ChannelContent() {
           </TabsList>
 
           {/* Tasks Tab */}
-          <TabsContent value="tasks" className="mt-6">
+          <TabsContent value="tasks" className="mt-6 space-y-4">
+            <TaskFilterBar value={filters} onChange={setFilters} tasks={channelTasks} show={{ priority: true, search: true }} dateFields={['due_date', 'completed_at', 'created_at']} count={applyTaskFilters(channelTasks, filters, filterContextFrom(allChannels)).length} />
             <TaskView 
-              tasks={channelTasks} 
+              tasks={applyTaskFilters(channelTasks, filters, filterContextFrom(allChannels))} 
               onTaskClick={(t) => setSelectedTaskId(t.id)} 
               showChannelColumn={scopeChannelIds.length > 1} 
             />

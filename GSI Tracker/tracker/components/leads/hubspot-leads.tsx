@@ -11,6 +11,8 @@ import { Building2, Download, Filter, Loader2, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, startOfWeek, startOfMonth } from 'date-fns'
 import { usePersisted, keyForVertical, writeRaw } from '@/lib/hooks/use-persisted'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { resolveRange, type DateRangeValue } from '@/lib/date-range'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { SortBar, SortableTh, applySorts, toggleSortLevel, type SortLevel, type SortColumn } from './sort-bar'
 import { MultiSelect } from './multi-select'
@@ -94,9 +96,7 @@ export function HubSpotLeads() {
 
   // --- date range + pull ---
   // Persisted so leaving the page (or refreshing) never forces a re-pull
-  const [range, setRange] = usePersisted<'all' | 'today' | 'week' | 'month' | 'custom'>(k('hs:range'), 'month')
-  const [customFrom, setCustomFrom] = usePersisted(k('hs:from'), '')
-  const [customTo, setCustomTo] = usePersisted(k('hs:to'), '')
+  const [range, setRange] = usePersisted<DateRangeValue>(k('hs:range2'), { preset: 'this_month' })
   // One record: a stored "last pulled" time can never describe rows that aren't there.
   const [pull0, setPull0] = usePersisted<{ leads: Lead[]; at: string } | null>(k('hs:pull'), null)
   const leads = pull0?.leads ?? []
@@ -107,10 +107,8 @@ export function HubSpotLeads() {
 
   const rangeDates = (): { from?: string; to?: string } => {
     const today = new Date()
-    if (range === 'today') return { from: format(today, 'yyyy-MM-dd') }
-    if (range === 'week') return { from: format(startOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd') }
-    if (range === 'month') return { from: format(startOfMonth(today), 'yyyy-MM-dd') }
-    if (range === 'custom') return { from: customFrom || undefined, to: customTo || undefined }
+    const r = resolveRange(range)
+    return { from: r.from ? format(r.from, 'yyyy-MM-dd') : undefined, to: r.to ? format(r.to, 'yyyy-MM-dd') : undefined }
     return {}
   }
 
@@ -356,23 +354,7 @@ export function HubSpotLeads() {
 
       {/* Range + pull */}
       <div className="flex flex-wrap items-center gap-2">
-        <select value={range} onChange={e => setRange(e.target.value as typeof range)}
-          className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-2 text-zinc-700">
-          <option value="today">Today</option>
-          <option value="week">This week</option>
-          <option value="month">This month</option>
-          <option value="all">All time</option>
-          <option value="custom">Custom range…</option>
-        </select>
-        {range === 'custom' && (
-          <>
-            <Input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
-              className="h-8 w-36 text-xs bg-white border-zinc-300 text-zinc-800" />
-            <span className="text-xs text-zinc-500">to</span>
-            <Input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
-              className="h-8 w-36 text-xs bg-white border-zinc-300 text-zinc-800" />
-          </>
-        )}
+        <DateRangePicker label="Created" value={range} onChange={setRange} />
         <Button onClick={pull} disabled={pulling} className="bg-emerald-600 hover:bg-emerald-500 text-white h-8 text-xs">
           {pulling ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
           Pull from HubSpot

@@ -10,10 +10,11 @@ import { useFunctions, useFunctionOwners, useChannels, useTasks, useUsers, useVe
 import { TaskView } from '@/components/tasks/task-view'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { WeekDoneBoard } from '@/components/weekly/week-done-board'
-import { buildWeeks, OPEN_STATUSES } from '@/lib/week-logic'
+import { OPEN_STATUSES } from '@/lib/week-logic'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { resolveRange, type DateRangeValue } from '@/lib/date-range'
 import { withVertical } from '@/lib/hooks/use-space-href'
 import { taskChannelIds } from '@/lib/task-channels'
-import { format } from 'date-fns'
 
 function FunctionContent() {
   const id = useSearchParams().get('id') || ''
@@ -23,8 +24,8 @@ function FunctionContent() {
   const { data: tasks, isLoading } = useTasks({ verticalId: 'all' })
   const { data: users } = useUsers()
   const lookup = useVerticalLookup()
-  const weeks = useMemo(() => buildWeeks(8), [])
-  const [weekKey, setWeekKey] = useState(weeks[0].key)
+  const [weekRange, setWeekRange] = useState<DateRangeValue>({ preset: 'this_week' })
+  const weekBounds = useMemo(() => { const r = resolveRange(weekRange); return { start: r.from || new Date(), end: r.to || new Date() } }, [weekRange])
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
 
   const fn = functions?.find(f => f.id === id)
@@ -118,15 +119,8 @@ function FunctionContent() {
         </TabsContent>
 
         <TabsContent value="weekly" className="mt-6 space-y-4">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
-            {weeks.map((w, i) => (
-              <button key={w.key} onClick={() => setWeekKey(w.key)}
-                className={['shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium', w.key === weekKey ? 'border-blue-400 bg-blue-50 text-blue-800' : 'border-zinc-200 bg-white text-zinc-700'].join(' ')}>
-                {i === 0 ? 'This week' : format(w.start, 'MMM d')}
-              </button>
-            ))}
-          </div>
-          <WeekDoneBoard tasks={fnTasks} week={weeks.find(w => w.key === weekKey) || weeks[0]} groupBy={['vertical', 'owner']} ctx={ctx} onTaskClick={t => setSelectedTaskId(t.id)} />
+          <DateRangePicker label="Period" value={weekRange} onChange={setWeekRange} allowAll={false} />
+          <WeekDoneBoard tasks={fnTasks} week={weekBounds} groupBy={['vertical', 'owner']} ctx={ctx} onTaskClick={t => setSelectedTaskId(t.id)} />
         </TabsContent>
       </Tabs>
 

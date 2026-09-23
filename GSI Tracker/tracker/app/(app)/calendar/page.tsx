@@ -27,6 +27,9 @@ import {
 } from 'lucide-react'
 import { useTasks, useCategories, useChannels, useUsers } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { customRange, resolveRange, type DateRangeValue } from '@/lib/date-range'
+import { differenceInCalendarDays } from 'date-fns'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -88,6 +91,14 @@ function CalendarContent() {
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 })
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd })
 
+  // The range control mirrors the visible period; picking any range jumps there.
+  const rangeValue: DateRangeValue = viewMode === 'week' ? customRange(weekStart, weekEnd) : customRange(monthStart, monthEnd)
+  const jumpToRange = (v: DateRangeValue) => {
+    const r = resolveRange(v)
+    if (!r.from) return
+    setCurrentDate(r.from)
+    setViewMode(r.to && differenceInCalendarDays(r.to, r.from) <= 7 ? 'week' : 'month')
+  }
   const goNext = () => setCurrentDate(viewMode === 'week' ? addWeeks(currentDate, 1) : addMonths(currentDate, 1))
   const goPrev = () => setCurrentDate(viewMode === 'week' ? subWeeks(currentDate, 1) : subMonths(currentDate, 1))
 
@@ -174,6 +185,7 @@ function CalendarContent() {
           >
             Today
           </button>
+          <DateRangePicker value={rangeValue} onChange={jumpToRange} allowAll={false} />
           <button
             onClick={() => refetch()}
             className="p-2 bg-zinc-100 border border-zinc-300 rounded-lg hover:bg-zinc-200/70 transition-colors ml-2"

@@ -17,7 +17,7 @@ import {
   Save,
   Trash2,
 } from 'lucide-react'
-import { format, parseISO, isAfter, isBefore } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import Papa from 'papaparse'
 import { toast } from 'sonner'
 
@@ -35,6 +35,11 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { STATUS_CONFIG, type Task, type TaskStatus } from '@/lib/types/database'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { MultiSelect } from '@/components/leads/multi-select'
+import { ALL_TIME, inRange, resolveRange, type DateRangeValue } from '@/lib/date-range'
+import { ownerKeysOf } from '@/components/filters/task-filter-bar'
+import { useUsers } from '@/lib/hooks/use-data'
 import { cn } from '@/lib/utils'
 
 type SortKey = 'completed' | 'channel' | 'owner'
@@ -59,8 +64,10 @@ type TrackerViewConfig = {
   selectedChannel: string
   selectedStatus: 'all' | TaskStatus
   hideCancelled: boolean
-  dateFrom: string
-  dateTo: string
+  dateFrom?: string
+  dateTo?: string
+  range?: DateRangeValue
+  owners?: string[]
   sortKey: SortKey
   sortDir: SortDir
 }
@@ -105,8 +112,9 @@ export default function TrackerPage() {
   const [selectedChannel, setSelectedChannel] = useState<string>('all')
   const [selectedStatus, setSelectedStatus] = useState<'all' | TaskStatus>('all')
   const [hideCancelled, setHideCancelled] = useState(true)
-  const [dateFrom, setDateFrom] = useState<string>('')
-  const [dateTo, setDateTo] = useState<string>('')
+  const [range, setRange] = useState<DateRangeValue>(ALL_TIME)
+  const [selectedOwners, setSelectedOwners] = useState<string[]>([])
+  const { data: users } = useUsers()
   const [sortKey, setSortKey] = useState<SortKey>('completed')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
@@ -126,8 +134,9 @@ export default function TrackerPage() {
     setSelectedChannel(config.selectedChannel ?? 'all')
     setSelectedStatus(config.selectedStatus ?? 'all')
     setHideCancelled(config.hideCancelled ?? true)
-    setDateFrom(config.dateFrom ?? '')
-    setDateTo(config.dateTo ?? '')
+    // Older saved views stored dateFrom/dateTo; map them onto the range model.
+    setRange(config.range ?? (config.dateFrom || config.dateTo ? { preset: 'custom', from: config.dateFrom || undefined, to: config.dateTo || undefined } : ALL_TIME))
+    setSelectedOwners(config.owners ?? [])
     setSortKey(config.sortKey ?? 'completed')
     setSortDir(config.sortDir ?? 'desc')
   }
@@ -147,8 +156,8 @@ export default function TrackerPage() {
       selectedChannel,
       selectedStatus,
       hideCancelled,
-      dateFrom,
-      dateTo,
+      range,
+      owners: selectedOwners,
       sortKey,
       sortDir,
     }
@@ -206,26 +215,13 @@ export default function TrackerPage() {
       rows = rows.filter(t => t.status === selectedStatus)
     }
 
-    if (dateFrom) {
-      try {
-        const from = parseISO(dateFrom)
-        rows = rows.filter(t => {
-          const compRaw = getCompletedDate(t)
-          if (!compRaw) return false
-          return !isBefore(parseISO(compRaw), from)
-        })
-      } catch {}
+    const rr = resolveRange(range)
+    if (rr.from || rr.to) {
+      rows = rows.filter(t => inRange(getCompletedDate(t), rr))
     }
 
-    if (dateTo) {
-      try {
-        const to = parseISO(dateTo)
-        rows = rows.filter(t => {
-          const compRaw = getCompletedDate(t)
-          if (!compRaw) return false
-          return !isAfter(parseISO(compRaw), to)
-        })
-      } catch {}
+    if (selectedOwners.length) {
+      rows = rows.filter(t => ownerKeysOf(t).some(k => selectedOwners.includes(k)))
     }
 
     const sorted = [...rows].sort((a, b) => {
@@ -249,8 +245,8 @@ export default function TrackerPage() {
     selectedCategory,
     selectedChannel,
     selectedStatus,
-    dateFrom,
-    dateTo,
+    range,
+    selectedOwners,
     sortKey,
     sortDir,
   ])
@@ -458,22 +454,18 @@ export default function TrackerPage() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] text-zinc-500 font-medium">Started / Completed From</label>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={e => setDateFrom(e.target.value)}
-            className="bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-violet-500"
-          />
+          <label className="text-[10px] text-zinc-500 font-medium">Started / Completed</label>
+          <DateRangePicker value={range} onChange={setRange} />
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] text-zinc-500 font-medium">To</label>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={e => setDateTo(e.target.value)}
-            className="bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-violet-500"
+          <label className="text-[10px] text-zinc-500 font-medium">Owner</label>
+          <MultiSelect
+            label="Owner"
+            options={(users || []).filter(u => u.email !== 'preview@lyzr.ai').map(u => u.display_name || u.email)}
+            selected={selectedOwners.map(id => users?.find(u => u.id === id)?.display_name || users?.find(u => u.id === id)?.email || id)}
+            onChange={labels => setSelectedOwners(labels.map(l => users?.find(u => (u.display_name || u.email) === l)?.id || l))}
+            width="w-[170px]"
           />
         </div>
 

@@ -12,6 +12,8 @@ import { ChevronDown, ChevronRight, FileUp, Filter, Loader2, MousePointerClick, 
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { usePersisted, keyForVertical } from '@/lib/hooks/use-persisted'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { resolveRange, inRange, type DateRangeValue } from '@/lib/date-range'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { SortBar, SortableTh, applySorts, toggleSortLevel, type SortLevel, type SortColumn } from './sort-bar'
 import { MultiSelect } from './multi-select'
@@ -258,18 +260,16 @@ export function EmailInteractions() {
   }
 
   // --- date range on the latest book-a-demo click date ---
-  const [range, setRange] = usePersisted<'all' | 'month' | 'custom'>(k('csv:range'), 'all')
-  const [customFrom, setCustomFrom] = usePersisted(k('csv:from'), '')
-  const [customTo, setCustomTo] = usePersisted(k('csv:to'), '')
+  const [range, setRange] = usePersisted<DateRangeValue>(k('csv:range2'), { preset: 'all' })
 
   // --- filters ---
   const [fCompany, setFCompany] = usePersisted<string[]>(k('csv:fCompanyM'), [])
   const [fSequence, setFSequence] = usePersisted<string[]>(k('csv:fSequenceM'), [])
   const [fSearch, setFSearch] = usePersisted(k('csv:fSearch'), '')
-  const hasFilters = !!(fCompany.length || fSequence.length || fSearch || range !== 'all' || customFrom || customTo)
+  const hasFilters = !!(fCompany.length || fSequence.length || fSearch || range.preset !== 'all')
   const clearFilters = () => {
     setFCompany([]); setFSequence([]); setFSearch('')
-    setRange('all'); setCustomFrom(''); setCustomTo('') // the range can hide every row too
+    setRange({ preset: 'all' }) // the range can hide every row too
   }
 
   const opts = useMemo(() => {
@@ -293,13 +293,8 @@ export function EmailInteractions() {
 
   const filtered = useMemo(() => {
     let arr = rows || []
-    if (range === 'month') {
-      const start = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd')
-      arr = arr.filter(r => r.demo_click_date && r.demo_click_date >= start)
-    } else if (range === 'custom') {
-      if (customFrom) arr = arr.filter(r => r.demo_click_date && r.demo_click_date >= customFrom)
-      if (customTo) arr = arr.filter(r => r.demo_click_date && r.demo_click_date <= customTo)
-    }
+    const rr = resolveRange(range)
+    if (rr.from || rr.to) arr = arr.filter(r => inRange(r.demo_click_date, rr))
     if (fCompany.length) arr = arr.filter(r => fCompany.includes((r.company || '').trim()))
     if (fSequence.length) arr = arr.filter(r => fSequence.includes(((r.extra || {}).sequence || '').trim()))
     if (fSearch) {
@@ -307,7 +302,7 @@ export function EmailInteractions() {
       arr = arr.filter(r => [r.name, r.email, r.company, (r.extra || {}).sequence].some(v => (v || '').toLowerCase().includes(q)))
     }
     return arr
-  }, [rows, range, customFrom, customTo, fCompany, fSequence, fSearch])
+  }, [rows, range, fCompany, fSequence, fSearch])
 
   // --- sorting (Excel-style: multiple levels applied in order) ---
   type SortKey =
@@ -403,21 +398,7 @@ export function EmailInteractions() {
           className="h-8 text-xs border-zinc-300 text-zinc-700 hover:bg-zinc-100">
           Download Sample CSV
         </Button>
-        <select value={range} onChange={e => setRange(e.target.value as typeof range)}
-          className="text-xs rounded-md border border-zinc-300 bg-white px-2 py-2 text-zinc-700">
-          <option value="all">All time</option>
-          <option value="month">This month (latest click)</option>
-          <option value="custom">Custom range (latest click)…</option>
-        </select>
-        {range === 'custom' && (
-          <>
-            <Input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
-              className="h-8 w-36 text-xs bg-white border-zinc-300 text-zinc-800" />
-            <span className="text-xs text-zinc-500">to</span>
-            <Input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
-              className="h-8 w-36 text-xs bg-white border-zinc-300 text-zinc-800" />
-          </>
-        )}
+        <DateRangePicker label="Latest click" value={range} onChange={setRange} />
         <span className="text-[11px] text-zinc-500">
           {rows?.length || 0} saved contact{(rows?.length || 0) === 1 ? '' : 's'} · uploads merge by email and are kept forever
         </span>

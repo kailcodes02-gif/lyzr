@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRecentActivity, useUsers } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { ALL_TIME, inRange, resolveRange, type DateRangeValue } from '@/lib/date-range'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardContent } from '@/components/ui/card'
@@ -42,8 +44,10 @@ export default function HistoryPage() {
   const { data: users } = useUsers()
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [actorFilter, setActorFilter] = useState<string>('')
+  const [range, setRange] = useState<DateRangeValue>(ALL_TIME)
+  const rr = resolveRange(range)
 
-  const filtered = (activities || []).filter(a => !actorFilter || a.actor_id === actorFilter)
+  const filtered = (activities || []).filter(a => (!actorFilter || a.actor_id === actorFilter) && inRange(a.created_at, rr))
 
   return (
     <div className="p-4 lg:p-8 space-y-6 max-w-5xl mx-auto bg-zinc-50 text-zinc-900 min-h-screen">
@@ -56,6 +60,8 @@ export default function HistoryPage() {
             Every logged edit across the tracker — who did what, and when.
           </p>
         </div>
+        <div className="flex items-center gap-2 flex-wrap">
+        <DateRangePicker label="When" value={range} onChange={setRange} />
         <select
           value={actorFilter}
           onChange={e => setActorFilter(e.target.value)}
@@ -66,6 +72,7 @@ export default function HistoryPage() {
             <option key={u.id} value={u.id}>{u.display_name || u.email}</option>
           ))}
         </select>
+        </div>
       </div>
 
       <Card className="bg-white border-zinc-200">
