@@ -139,6 +139,52 @@ export default function GuidePage() {
           ))}
         </div>
         <p className="text-xs text-zinc-500">Everyone can read everything. Roles only change what you can <em>change</em>. People who have not signed in yet can still be named as owners; it attaches on their first Google sign-in.</p>
+
+        {/* Permission matrix */}
+        <Card className="bg-white border-zinc-200">
+          <CardContent className="p-4 overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-zinc-500 border-b border-zinc-200">
+                  <th className="text-left py-2 pr-3 font-medium">Can they…</th>
+                  {['Admin', 'Vertical owner', 'Function owner', 'Channel owner', 'Member'].map(h => <th key={h} className="text-center py-2 px-2 font-medium">{h}</th>)}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 text-zinc-700">
+                {([
+                  ['Create a vertical, name its owners', [1, 0, 0, 0, 0]],
+                  ['Create or edit functions and their default owners', [1, 0, 0, 0, 0]],
+                  ['Add users, change admin / member', [1, 0, 0, 0, 0]],
+                  ['Categories, channels, sub-channels in a vertical', [1, 2, 0, 0, 0]],
+                  ['Channel owners, budgets, custom fields, resources', [1, 2, 0, 0, 0]],
+                  ['Switch a vertical\u2019s modules on or off', [1, 0, 0, 0, 0]],
+                  ['Create tasks, sub-activities, checklists, comments', [1, 1, 1, 1, 1]],
+                  ['Edit any task, move status, assign owners', [1, 1, 1, 1, 1]],
+                  ['Delete a task', [1, 3, 3, 3, 3]],
+                  ['See every vertical and every task', [1, 1, 1, 1, 1]],
+                ] as [string, number[]][]).map(([label, cells]) => (
+                  <tr key={label}>
+                    <td className="py-2 pr-3">{label}</td>
+                    {cells.map((c, i) => (
+                      <td key={i} className="text-center py-2 px-2">
+                        {c === 1 && <CheckSquare className="w-4 h-4 text-emerald-600 inline" />}
+                        {c === 2 && <span className="inline-flex items-center gap-1 text-emerald-700"><CheckSquare className="w-4 h-4" /><span className="text-[10px]">own vertical</span></span>}
+                        {c === 3 && <span className="text-[10px] text-zinc-500">own tasks</span>}
+                        {c === 0 && <span className="text-zinc-300">—</span>}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-zinc-600">
+          <div className="rounded-lg bg-zinc-50 p-3"><strong className="text-zinc-800">Roles stack.</strong> One person can be vertical owner of Emerging Partners, function owner of Content, and a plain member inside GSI, all at once. An admin is everything everywhere.</div>
+          <div className="rounded-lg bg-zinc-50 p-3"><strong className="text-zinc-800">Owning a channel is not editing rights.</strong> A channel or sub-channel owner does not get to add sub-channels or set budgets. They get the work: their tasks, and any unowned task on that channel, show under them.</div>
+          <div className="rounded-lg bg-zinc-50 p-3"><strong className="text-zinc-800">New vertical, step by step.</strong> Admin creates it and names owners. Those owners build the channel tree. Any member can then add tasks on any channel. Reads are open to everyone.</div>
+        </div>
       </section>
 
       {/* 4. Quick start */}
