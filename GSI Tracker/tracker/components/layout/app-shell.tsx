@@ -231,6 +231,7 @@ export function AppSidebar() {
     { href: '/workspace/weekly/', icon: CalendarRange, label: 'Weekly', match: '/workspace/weekly' },
     { href: '/functions/', icon: Workflow, label: 'Functions', match: '/functions' },
     { href: withVertical('/history/', 'all'), icon: History, label: 'History', match: '/history' },
+    { href: '/guide/', icon: BookOpen, label: 'Guide', match: '/guide' },
   ]
 
   const spaceNav: NavItem[] = [
@@ -245,6 +246,7 @@ export function AppSidebar() {
     { href: withVertical('/history/', slug), icon: History, label: 'History', match: '/history' },
     ...(flags.resources ? [{ href: withVertical('/resources/', slug), icon: BookOpen, label: `${vertical?.name || ''} Resources`.trim(), match: '/resources' }] : []),
     ...(canManage ? [{ href: withVertical('/settings/', slug), icon: Settings, label: 'Vertical Settings', match: '/settings' }] : []),
+    { href: withVertical('/guide/', slug), icon: BookOpen, label: 'Guide', match: '/guide' },
   ]
 
   // Clear lead data written by the earlier, un-scoped version of persistence.

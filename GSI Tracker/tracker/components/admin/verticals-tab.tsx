@@ -21,6 +21,7 @@ import {
 import { FLAG_LABELS, resolveFlags } from '@/lib/vertical-flags'
 import { withVertical } from '@/lib/hooks/use-space-href'
 import { OwnersEditor } from '@/components/vertical/owners-editor'
+import { InfoTip } from '@/components/ui/info-tip'
 import type { Vertical, VerticalSettings } from '@/lib/types/database'
 
 const errMsg = (err: unknown) => (err instanceof Error ? err.message : 'unknown error')
@@ -69,7 +70,7 @@ export function VerticalsTab() {
     <div className="space-y-6">
       <Card className="bg-white border-zinc-200">
         <CardHeader>
-          <CardTitle className="text-base font-semibold text-zinc-900 flex items-center gap-2"><Building2 className="w-4 h-4 text-blue-600" /> New vertical</CardTitle>
+          <CardTitle className="text-base font-semibold text-zinc-900 flex items-center gap-2"><Building2 className="w-4 h-4 text-blue-600" /> New vertical <InfoTip k="vertical" /></CardTitle>
           <CardDescription className="text-zinc-500 text-xs">A vertical is a business line (GSI, Emerging Partners, a product) or the company-wide &quot;Lyzr&quot; space. Clone a template to start with the standard channel tree, or start empty.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -122,7 +123,7 @@ export function VerticalsTab() {
 
       <Card className="bg-white border-zinc-200">
         <CardHeader>
-          <CardTitle className="text-base font-semibold text-zinc-900 flex items-center gap-2"><LayoutTemplate className="w-4 h-4 text-violet-600" /> Taxonomy templates</CardTitle>
+          <CardTitle className="text-base font-semibold text-zinc-900 flex items-center gap-2"><LayoutTemplate className="w-4 h-4 text-violet-600" /> Taxonomy templates <InfoTip k="template" /></CardTitle>
           <CardDescription className="text-zinc-500 text-xs">Snapshots of a vertical&apos;s categories, channels, sub-channels and custom fields. Save one from any vertical above.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -208,7 +209,7 @@ function VerticalEditor({ vertical, owners, channelCount, templates, onChanged }
         </div>
 
         <div>
-          <Label className="text-xs text-zinc-600">Features</Label>
+          <Label className="text-xs text-zinc-600 inline-flex items-center gap-1">Features <InfoTip k="feature_flags" /></Label>
           <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
             {(Object.keys(FLAG_LABELS) as (keyof VerticalSettings)[]).map(key => (
               <label key={key} className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 px-3 py-2 cursor-pointer" title={FLAG_LABELS[key].hint}>

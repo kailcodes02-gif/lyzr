@@ -2,6 +2,7 @@
 
 import { useCurrentUser, useTasks, useMentionsForUser, useBudgetPeriods, useRecentActivity } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
+import { InfoTip } from '@/components/ui/info-tip'
 import { useSpaceHref } from '@/lib/hooks/use-space-href'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
@@ -140,7 +141,7 @@ export default function DashboardPage() {
             Welcome back, {user.display_name?.split(' ')[0]}
           </h1>
           <p className="text-sm text-zinc-600 mt-1">
-            Here&apos;s what&apos;s happening in {vertical?.name || 'marketing'} today
+            Here&apos;s what&apos;s happening in {vertical?.name || 'marketing'} today <InfoTip k="space_dashboard" />
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -314,7 +315,7 @@ export default function DashboardPage() {
           {/* Budget Progress */}
           <Card className="bg-white border-zinc-200 backdrop-blur-xl">
             <CardHeader>
-              <CardTitle className="text-lg font-semibold text-zinc-900">Budget Overview</CardTitle>
+              <CardTitle className="text-lg font-semibold text-zinc-900">Budget Overview <InfoTip k="budgets" /></CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {budgets && budgets.length > 0 ? (

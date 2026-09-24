@@ -16,6 +16,7 @@ import {
   createFunction, updateFunction, deleteFunction, addFunctionOwner, removeFunctionOwner, setPrimaryFunctionOwner, setChannelFunction,
 } from '@/lib/actions'
 import { OwnersEditor } from '@/components/vertical/owners-editor'
+import { InfoTip } from '@/components/ui/info-tip'
 
 const errMsg = (err: unknown) => (err instanceof Error ? err.message : 'unknown error')
 
@@ -54,7 +55,7 @@ export function FunctionsTab() {
     <div className="space-y-6">
       <Card className="bg-white border-zinc-200">
         <CardHeader>
-          <CardTitle className="text-base font-semibold text-zinc-900 flex items-center gap-2"><Workflow className="w-4 h-4 text-emerald-600" /> Functions</CardTitle>
+          <CardTitle className="text-base font-semibold text-zinc-900 flex items-center gap-2"><Workflow className="w-4 h-4 text-emerald-600" /> Functions <InfoTip k="function" /></CardTitle>
           <CardDescription className="text-zinc-500 text-xs">
             A function (Content, Social, Paid…) is the same discipline across verticals. Its owners are inherited by every vertical&apos;s channel of that function unless the vertical sets its own, and the function owner gets one roll-up view across verticals.
           </CardDescription>

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRecentActivity, useUsers } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { InfoTip } from '@/components/ui/info-tip'
 import { ALL_TIME, inRange, resolveRange, type DateRangeValue } from '@/lib/date-range'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -54,7 +55,7 @@ export default function HistoryPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
-            <HistoryIcon className="w-6 h-6 text-blue-600" /> History
+            <HistoryIcon className="w-6 h-6 text-blue-600" /> History <InfoTip k="history" />
           </h1>
           <p className="text-sm text-zinc-500 mt-1">
             Every logged edit across the tracker — who did what, and when.

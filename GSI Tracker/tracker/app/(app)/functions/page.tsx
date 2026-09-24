@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useMemo } from 'react'
 import { Workflow, ArrowRight, Crown } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { InfoTip } from '@/components/ui/info-tip'
 import { useFunctions, useAllFunctionOwners, useChannels, useTasks, useUsers, useCurrentUser } from '@/lib/hooks/use-data'
 import { OPEN_STATUSES } from '@/lib/week-logic'
 import { taskChannelIds } from '@/lib/task-channels'
@@ -44,7 +45,7 @@ export default function FunctionsPage() {
     <div className="p-4 lg:p-8 space-y-6 max-w-7xl mx-auto bg-zinc-50 text-zinc-900 min-h-screen">
       <div className="pl-12 lg:pl-0">
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
-          <Workflow className="w-6 h-6 text-emerald-600" /> Functions
+          <Workflow className="w-6 h-6 text-emerald-600" /> Functions <InfoTip k="functions_view" />
         </h1>
         <p className="text-sm text-zinc-500 mt-1">
           One discipline across every vertical: Content, Social, Paid and so on. Open a function to see its work everywhere it runs.

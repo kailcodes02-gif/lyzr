@@ -7,6 +7,7 @@ import { type GroupKey } from '@/lib/week-logic'
 import { WeekDoneBoard } from '@/components/weekly/week-done-board'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { InfoTip } from '@/components/ui/info-tip'
 import { resolveRange, type DateRangeValue } from '@/lib/date-range'
 import { TaskFilterBar, EMPTY_FILTERS, applyTaskFilters, filterContextFrom, type TaskFilters } from '@/components/filters/task-filter-bar'
 
@@ -42,7 +43,7 @@ export default function WorkspaceWeeklyPage() {
       <div className="pl-12 lg:pl-0 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
-            <CalendarRange className="w-6 h-6 text-blue-600" /> Weekly, across the workspace
+            <CalendarRange className="w-6 h-6 text-blue-600" /> Weekly, across the workspace <InfoTip k="weekly" />
           </h1>
           <p className="text-sm text-zinc-500 mt-1">
             What was planned for the period (by due date) and whether it got done, for every vertical. Step week by week, month by month, or pick any range.

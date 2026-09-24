@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useUsers, useTasks } from '@/lib/hooks/use-data'
 import { useSpaceHref } from '@/lib/hooks/use-space-href'
 import { useVertical } from '@/lib/hooks/use-vertical'
+import { InfoTip } from '@/components/ui/info-tip'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardContent } from '@/components/ui/card'
 import { Users as UsersIcon, ListTodo, AlertTriangle, Radio, AtSign } from 'lucide-react'
@@ -129,7 +130,7 @@ export default function OwnersPage() {
     <div className="p-4 lg:p-8 space-y-6 max-w-7xl mx-auto bg-zinc-50 text-zinc-900 min-h-screen">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
-          <UsersIcon className="w-6 h-6 text-blue-600" /> Owners
+          <UsersIcon className="w-6 h-6 text-blue-600" /> Owners <InfoTip k="owners" />
         </h1>
         <p className="text-sm text-zinc-500 mt-1">
           People on the marketing team and what they own
@@ -207,7 +208,7 @@ export default function OwnersPage() {
       {pendingOwners && pendingOwners.length > 0 && (
         <div className="space-y-3">
           <div>
-            <h2 className="text-sm font-semibold text-zinc-700">Awaiting first sign-in</h2>
+            <h2 className="text-sm font-semibold text-zinc-700 inline-flex items-center gap-1">Awaiting first sign-in <InfoTip k="pending_owner" /></h2>
             <p className="text-xs text-zinc-500 mt-0.5">
               Already own channels and tasks — everything attaches automatically the first time they sign in with Google.
             </p>

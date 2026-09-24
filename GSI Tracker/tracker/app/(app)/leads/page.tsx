@@ -4,6 +4,7 @@ import { useTasks, useChannels, useCurrentUser } from '@/lib/hooks/use-data'
 import { usePersisted, keyForVertical } from '@/lib/hooks/use-persisted'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { InfoTip } from '@/components/ui/info-tip'
 import { MultiSelect } from '@/components/leads/multi-select'
 import { ALL_TIME, inRange, resolveRange, type DateRangeValue } from '@/lib/date-range'
 import { Card, CardContent } from '@/components/ui/card'
@@ -682,7 +683,7 @@ function LeadsTabs() {
     <div className="space-y-5">
       <div className="pl-12 lg:pl-0 flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Leads Pipeline</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 inline-flex items-center gap-2">Leads Pipeline <InfoTip k="leads_pipeline" /></h1>
           <p className="text-sm text-zinc-500 mt-1">
             Pull target-account leads from HubSpot (read-only) and track your outreach here.
           </p>

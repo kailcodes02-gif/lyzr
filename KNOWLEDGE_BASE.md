@@ -466,6 +466,17 @@ Access if the data ever becomes confidential.
   mailto sends via POST /me/sendMail after confirm; offers Move to Trash / Promotions. 396 unit + 48 browser
   tests; deployed.
 
+### 2026-09-24, GSI Tracker: tree taxonomy editor, hover help everywhere, Guide page (GSI Tracker)
+- `components/admin/taxonomy-manager.tsx` rewritten as a tree: Category › Channel › Sub-channel rows
+  with inline rename, add-child from the row, move up/down, hide/show (no hard delete), inline
+  function and tier selects. Used by Admin › Taxonomy and Vertical Settings › Taxonomy.
+- `lib/help-text.ts` (one map of hover explanations) + `components/ui/info-tip.tsx`; info icons on
+  every main heading (workspace home, dashboard, tracker, budgets, owners, weekly, all tasks,
+  functions, history, settings, resources, leads, filter bar, admin tabs, week board).
+- New `/guide` page in both navs: hierarchy strip, workspace vs space, roles, a channel owner's
+  week, task lifecycle, every screen in one line, filters and dates, admin setup.
+- `tsc` clean, 36 tests, build 26 routes, staged in `GSI_Tracker/`.
+
 ### 2026-09-23 (later), GSI Tracker: Google-Calendar-style date range + shared filters everywhere (GSI Tracker)
 - New `lib/date-range.ts` (presets: today/yesterday, this/last/next week and month, quarters, year,
   rolling 7/30/90, all time, custom; `resolveRange`, `shiftRange` for the arrows, `inRange`) with

@@ -1,317 +1,305 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  ChevronDown, ChevronRight, Plus, Pencil, Check, X, ArrowUp, ArrowDown, EyeOff, Eye, Folder, GitBranch, Layers,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Edit3, Plus } from 'lucide-react'
+import { InfoTip } from '@/components/ui/info-tip'
 import { useCategories, useChannels, useFunctions } from '@/lib/hooks/use-data'
 import { createCategory, updateCategory, createChannel, updateChannel } from '@/lib/actions'
-import type { Category, Channel } from '@/lib/types/database'
+import { TIER_CONFIG, type Category, type Channel, type ChannelTier } from '@/lib/types/database'
+import { cn } from '@/lib/utils'
 
 const errMsg = (err: unknown) => (err instanceof Error ? err.message : 'unknown error')
 
-// Categories + channels editor for ONE vertical. Used by Admin > Taxonomy
-// (with a vertical selector above it) and by the in-space Vertical Settings.
+// Tree editor for one vertical's taxonomy:
+//   Category
+//   └─ Channel  [function] [tier]
+//      └─ Sub-channel
+// Everything is inline: rename in place, add a child from the row it belongs
+// to, reorder with arrows, hide instead of delete (tasks keep their history).
+
+type Node = Channel & { children: Channel[] }
+
 export function TaxonomyManager({ verticalId }: { verticalId: string }) {
   const queryClient = useQueryClient()
   const { data: categories } = useCategories(verticalId)
   const { data: channels } = useChannels(verticalId)
   const { data: functions } = useFunctions()
-  const [isPending, startTransition] = useTransition()
+  const [showHidden, setShowHidden] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [adding, setAdding] = useState<{ kind: 'category' } | { kind: 'channel'; categoryId: string; parentId: string | null } | null>(null)
+  const [newName, setNewName] = useState('')
 
-  const [catName, setCatName] = useState('')
-  const [catIcon, setCatIcon] = useState('folder')
-  const [catSortOrder, setCatSortOrder] = useState('0')
-  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
-  const [catIsActive, setCatIsActive] = useState(true)
+  // useCategories/useChannels only return active rows; hidden ones come from a second, unfiltered read.
+  const { data: allCategories } = useCategoriesAll(verticalId, showHidden)
+  const { data: allChannels } = useChannelsAll(verticalId, showHidden)
+  const cats = (showHidden ? allCategories : categories) || []
+  const chans = (showHidden ? allChannels : channels) || []
 
-  const [chanName, setChanName] = useState('')
-  const [chanCategoryId, setChanCategoryId] = useState('')
-  const [chanParentId, setChanParentId] = useState('none')
-  const [chanFunctionId, setChanFunctionId] = useState('inherit')
-  const [chanTier, setChanTier] = useState('none')
-  const [chanSortOrder, setChanSortOrder] = useState('0')
-  const [editingChannelId, setEditingChannelId] = useState<string | null>(null)
-  const [chanIsActive, setChanIsActive] = useState(true)
-  const [filterCategory, setFilterCategory] = useState('all')
+  const tree = useMemo(() => {
+    const byCat = new Map<string, Node[]>()
+    const nodes = new Map<string, Node>()
+    chans.forEach(c => nodes.set(c.id, { ...c, children: [] }))
+    chans.forEach(c => {
+      const n = nodes.get(c.id)!
+      if (c.parent_channel_id && nodes.has(c.parent_channel_id)) nodes.get(c.parent_channel_id)!.children.push(n)
+      else { if (!byCat.has(c.category_id)) byCat.set(c.category_id, []); byCat.get(c.category_id)!.push(n) }
+    })
+    for (const list of byCat.values()) list.sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
+    for (const n of nodes.values()) n.children.sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
+    return byCat
+  }, [chans])
 
-  const invalidate = () => {
+  const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ['categories'] })
     queryClient.invalidateQueries({ queryKey: ['channels'] })
+    queryClient.invalidateQueries({ queryKey: ['taxonomyAll'] })
+  }
+  const run = async (fn: () => Promise<unknown>, ok?: string) => {
+    if (busy) return
+    setBusy(true)
+    try { await fn(); refresh(); if (ok) toast.success(ok) } catch (err) { toast.error(errMsg(err)) } finally { setBusy(false) }
+  }
+  const toggle = (id: string) => setCollapsed(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
+
+  const submitAdd = () => {
+    if (!adding || !newName.trim()) return
+    const name = newName.trim()
+    if (adding.kind === 'category') {
+      run(() => createCategory({ vertical_id: verticalId, name, sort_order: cats.length + 1 }), `Category "${name}" added`)
+    } else {
+      const siblings = adding.parentId ? (chans.find(c => c.id === adding.parentId) ? tree.get(adding.categoryId)?.find(n => n.id === adding.parentId)?.children || [] : []) : (tree.get(adding.categoryId) || [])
+      run(() => createChannel({ category_id: adding.categoryId, parent_channel_id: adding.parentId, name, sort_order: siblings.length + 1 }), `${adding.parentId ? 'Sub-channel' : 'Channel'} "${name}" added`)
+    }
+    setAdding(null); setNewName('')
   }
 
-  const resetCat = () => { setCatName(''); setCatIcon('folder'); setCatSortOrder('0'); setEditingCategoryId(null); setCatIsActive(true) }
-  const resetChan = () => {
-    setChanName(''); setChanCategoryId(''); setChanParentId('none'); setChanFunctionId('inherit'); setChanTier('none')
-    setChanSortOrder('0'); setEditingChannelId(null); setChanIsActive(true)
-  }
-
-  const handleUpsertCategory = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!catName) { toast.error('Category name is required'); return }
-    startTransition(async () => {
-      try {
-        if (editingCategoryId) {
-          await updateCategory({ id: editingCategoryId, name: catName, icon: catIcon, sort_order: Number(catSortOrder) || 0, is_active: catIsActive })
-          toast.success('Category updated')
-        } else {
-          await createCategory({ vertical_id: verticalId, name: catName, icon: catIcon, sort_order: Number(catSortOrder) || 0 })
-          toast.success('Category created')
-        }
-        invalidate(); resetCat()
-      } catch (err) { toast.error(`Failed to save category: ${errMsg(err)}`) }
+  const move = (list: { id: string; sort_order: number }[], idx: number, dir: -1 | 1, kind: 'category' | 'channel') => {
+    const j = idx + dir
+    if (j < 0 || j >= list.length) return
+    const a = list[idx], b = list[j]
+    // Swap positions; give distinct numbers if the seed left ties.
+    const aOrder = b.sort_order === a.sort_order ? a.sort_order + dir : b.sort_order
+    const bOrder = b.sort_order === a.sort_order ? a.sort_order : a.sort_order
+    run(async () => {
+      if (kind === 'category') {
+        const ca = cats.find(c => c.id === a.id)!, cb = cats.find(c => c.id === b.id)!
+        await updateCategory({ id: ca.id, name: ca.name, icon: ca.icon || undefined, sort_order: aOrder, is_active: ca.is_active })
+        await updateCategory({ id: cb.id, name: cb.name, icon: cb.icon || undefined, sort_order: bOrder, is_active: cb.is_active })
+      } else {
+        const ca = chans.find(c => c.id === a.id)!, cb = chans.find(c => c.id === b.id)!
+        await updateChannel({ id: ca.id, name: ca.name, parent_channel_id: ca.parent_channel_id, sort_order: aOrder, is_active: ca.is_active })
+        await updateChannel({ id: cb.id, name: cb.name, parent_channel_id: cb.parent_channel_id, sort_order: bOrder, is_active: cb.is_active })
+      }
     })
   }
 
-  const handleUpsertChannel = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!chanCategoryId || !chanName) { toast.error('Category and channel name are required'); return }
-    const fn = chanFunctionId === 'inherit' ? null : chanFunctionId
-    const tier = chanTier === 'none' ? null : chanTier
-    startTransition(async () => {
-      try {
-        if (editingChannelId) {
-          await updateChannel({
-            id: editingChannelId, name: chanName, parent_channel_id: chanParentId === 'none' ? null : chanParentId,
-            sort_order: Number(chanSortOrder) || 0, is_active: chanIsActive, function_id: fn, tier,
-          })
-          toast.success('Channel updated')
-        } else {
-          await createChannel({
-            category_id: chanCategoryId, parent_channel_id: chanParentId === 'none' ? null : chanParentId,
-            name: chanName, sort_order: Number(chanSortOrder) || 0, function_id: fn, tier,
-          })
-          toast.success('Channel created')
-        }
-        invalidate(); resetChan()
-      } catch (err) { toast.error(`Failed to save channel: ${errMsg(err)}`) }
-    })
-  }
-
-  const editCategory = (cat: Category) => {
-    setEditingCategoryId(cat.id); setCatName(cat.name); setCatIcon(cat.icon || 'folder')
-    setCatSortOrder(String(cat.sort_order)); setCatIsActive(cat.is_active)
-  }
-  const editChannel = (ch: Channel) => {
-    setEditingChannelId(ch.id); setChanCategoryId(ch.category_id); setChanParentId(ch.parent_channel_id || 'none')
-    setChanName(ch.name); setChanSortOrder(String(ch.sort_order)); setChanIsActive(ch.is_active)
-    setChanFunctionId(ch.function_id || 'inherit'); setChanTier(ch.tier || 'none')
-  }
-
-  const label = (chId: string) => {
-    const ch = channels?.find(c => c.id === chId)
-    if (!ch) return 'Unknown'
-    const parent = channels?.find(p => p.id === ch.parent_channel_id)
-    return parent ? `${parent.name} > ${ch.name}` : ch.name
-  }
-  const fnName = (id: string | null) => functions?.find(f => f.id === id)?.name
-  const visibleChannels = (channels || []).filter(ch => filterCategory === 'all' || ch.category_id === filterCategory)
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Categories */}
-      <Card className="bg-white border-zinc-200">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-zinc-900">{editingCategoryId ? 'Edit Category' : 'Create Category'}</CardTitle>
-          <CardDescription className="text-zinc-500 text-xs">Top-level groups inside this vertical (Paid, Organic, Events…).</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form onSubmit={handleUpsertCategory} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs text-zinc-600">Category name *</Label>
-                <Input value={catName} onChange={e => setCatName(e.target.value)} placeholder="e.g. Community" className="bg-zinc-100 border-zinc-300 text-xs h-9" required />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-zinc-600">Icon</Label>
-                <Select value={catIcon} onValueChange={val => setCatIcon(val || 'folder')}>
-                  <SelectTrigger className="bg-zinc-100 border-zinc-300 text-xs h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
-                    <SelectItem value="folder">Folder</SelectItem>
-                    <SelectItem value="zap">Zap (Paid)</SelectItem>
-                    <SelectItem value="send">Send (Outbound)</SelectItem>
-                    <SelectItem value="sprout">Sprout (Organic)</SelectItem>
-                    <SelectItem value="calendar">Calendar (Events)</SelectItem>
-                    <SelectItem value="share-2">Share (Social)</SelectItem>
-                    <SelectItem value="file-text">File (Content)</SelectItem>
-                    <SelectItem value="handshake">Handshake (Partnerships)</SelectItem>
-                    <SelectItem value="users">Users (Community)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3 items-center">
-              <div className="space-y-1">
-                <Label className="text-xs text-zinc-600">Sort order</Label>
-                <Input type="number" value={catSortOrder} onChange={e => setCatSortOrder(e.target.value)} className="bg-zinc-100 border-zinc-300 text-xs h-9" />
-              </div>
-              {editingCategoryId && (
-                <div className="flex items-center space-x-2 pt-4">
-                  <Checkbox id="tm_cat_active" checked={catIsActive} onCheckedChange={c => setCatIsActive(!!c)} className="border-zinc-300" />
-                  <Label htmlFor="tm_cat_active" className="text-zinc-600 text-xs cursor-pointer">Active</Label>
-                </div>
-              )}
-            </div>
-            <div className="flex gap-2">
-              {editingCategoryId && <Button type="button" variant="ghost" onClick={resetCat} className="w-1/3 text-xs h-9">Cancel</Button>}
-              <Button type="submit" disabled={isPending} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs h-9">
-                <Plus className="w-4 h-4 mr-2" />{editingCategoryId ? 'Update Category' : 'Create Category'}
-              </Button>
-            </div>
-          </form>
-          <Separator className="bg-zinc-100" />
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-zinc-200 bg-zinc-100/40 text-zinc-600 font-medium">
-                  <th className="text-left py-2 px-3">Name</th><th className="text-left py-2 px-3">Slug</th>
-                  <th className="text-center py-2 px-3">Sort</th><th className="text-center py-2 px-3">Active</th><th className="text-right py-2 px-3"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-200">
-                {(categories || []).map(cat => (
-                  <tr key={cat.id} className="hover:bg-zinc-100 transition-colors">
-                    <td className="py-2 px-3 font-semibold text-zinc-800">{cat.name}</td>
-                    <td className="py-2 px-3 text-zinc-500 font-mono">{cat.slug}</td>
-                    <td className="py-2 px-3 text-center text-zinc-700">{cat.sort_order}</td>
-                    <td className="py-2 px-3 text-center"><span className={cat.is_active ? 'text-emerald-600' : 'text-zinc-600'}>{cat.is_active ? 'Yes' : 'No'}</span></td>
-                    <td className="py-2 px-3 text-right">
-                      <Button variant="ghost" size="icon" onClick={() => editCategory(cat)} className="h-6 w-6 text-zinc-600 hover:text-zinc-900" aria-label={`Edit ${cat.name}`}><Edit3 className="w-3 h-3" /></Button>
-                    </td>
-                  </tr>
-                ))}
-                {(categories || []).length === 0 && <tr><td colSpan={5} className="py-6 text-center text-zinc-500">No categories yet. Create one, or clone a template from Admin › Verticals.</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Channels */}
-      <Card className="bg-white border-zinc-200">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-zinc-900">{editingChannelId ? 'Edit Channel' : 'Create Channel'}</CardTitle>
-          <CardDescription className="text-zinc-500 text-xs">Channels and sub-channels. Link each channel to a workspace function so it rolls up across verticals.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form onSubmit={handleUpsertChannel} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs text-zinc-600">Category *</Label>
-                <Select value={chanCategoryId} onValueChange={val => { setChanCategoryId(val || ''); setChanParentId('none') }}>
-                  <SelectTrigger className="bg-zinc-100 border-zinc-300 text-xs h-9"><SelectValue placeholder="Select category" /></SelectTrigger>
-                  <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
-                    {(categories || []).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-zinc-600">Parent channel</Label>
-                <Select value={chanParentId} onValueChange={val => setChanParentId(val || 'none')}>
-                  <SelectTrigger className="bg-zinc-100 border-zinc-300 text-xs h-9"><SelectValue placeholder="None" /></SelectTrigger>
-                  <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
-                    <SelectItem value="none">None (top-level channel)</SelectItem>
-                    {(channels || []).filter(ch => ch.category_id === chanCategoryId && ch.id !== editingChannelId && !ch.parent_channel_id).map(ch => (
-                      <SelectItem key={ch.id} value={ch.id}>{ch.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs text-zinc-600">Channel name *</Label>
-                <Input value={chanName} onChange={e => setChanName(e.target.value)} placeholder="e.g. YouTube Ads" className="bg-zinc-100 border-zinc-300 text-xs h-9" required />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-zinc-600">Function</Label>
-                <Select value={chanFunctionId} onValueChange={val => setChanFunctionId(val || 'inherit')}>
-                  <SelectTrigger className="bg-zinc-100 border-zinc-300 text-xs h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
-                    <SelectItem value="inherit">{chanParentId === 'none' ? 'None' : 'Inherit from parent'}</SelectItem>
-                    {(functions || []).map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs text-zinc-600">Tier</Label>
-                <Select value={chanTier} onValueChange={val => setChanTier(val || 'none')}>
-                  <SelectTrigger className="bg-zinc-100 border-zinc-300 text-xs h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
-                    <SelectItem value="none">No tier</SelectItem>
-                    <SelectItem value="gold">Gold</SelectItem><SelectItem value="silver">Silver</SelectItem>
-                    <SelectItem value="bronze">Bronze</SelectItem><SelectItem value="hygiene">Hygiene</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-zinc-600">Sort order</Label>
-                <Input type="number" value={chanSortOrder} onChange={e => setChanSortOrder(e.target.value)} className="bg-zinc-100 border-zinc-300 text-xs h-9" />
-              </div>
-            </div>
-            {editingChannelId && (
-              <div className="flex items-center space-x-2">
-                <Checkbox id="tm_chan_active" checked={chanIsActive} onCheckedChange={c => setChanIsActive(!!c)} className="border-zinc-300" />
-                <Label htmlFor="tm_chan_active" className="text-zinc-600 text-xs cursor-pointer">Active</Label>
-              </div>
-            )}
-            <div className="flex gap-2">
-              {editingChannelId && <Button type="button" variant="ghost" onClick={resetChan} className="w-1/3 text-xs h-9">Cancel</Button>}
-              <Button type="submit" disabled={isPending} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs h-9">
-                <Plus className="w-4 h-4 mr-2" />{editingChannelId ? 'Update Channel' : 'Create Channel'}
-              </Button>
-            </div>
-          </form>
-          <Separator className="bg-zinc-100" />
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs text-zinc-600">Filter by category</Label>
-              <div className="w-40">
-                <Select value={filterCategory} onValueChange={val => setFilterCategory(val || 'all')}>
-                  <SelectTrigger className="bg-zinc-100 border-zinc-300 text-xs h-7"><SelectValue placeholder="All" /></SelectTrigger>
-                  <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
-                    <SelectItem value="all">All categories</SelectItem>
-                    {(categories || []).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="overflow-x-auto max-h-72 overflow-y-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-zinc-200 bg-zinc-100/40 text-zinc-600 font-medium">
-                    <th className="text-left py-2 px-3">Channel</th><th className="text-left py-2 px-3">Parent</th>
-                    <th className="text-left py-2 px-3">Function</th><th className="text-center py-2 px-3">Active</th><th className="text-right py-2 px-3"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-200">
-                  {visibleChannels.map(ch => (
-                    <tr key={ch.id} className="hover:bg-zinc-100 transition-colors">
-                      <td className="py-2 px-3 font-semibold text-zinc-800">{ch.name}</td>
-                      <td className="py-2 px-3 text-zinc-500">{ch.parent_channel_id ? label(ch.parent_channel_id) : '—'}</td>
-                      <td className="py-2 px-3 text-zinc-600">{fnName(ch.function_id) || <span className="text-zinc-400">none</span>}</td>
-                      <td className="py-2 px-3 text-center"><span className={ch.is_active ? 'text-emerald-600' : 'text-zinc-600'}>{ch.is_active ? 'Yes' : 'No'}</span></td>
-                      <td className="py-2 px-3 text-right">
-                        <Button variant="ghost" size="icon" onClick={() => editChannel(ch)} className="h-6 w-6 text-zinc-600 hover:text-zinc-900" aria-label={`Edit ${ch.name}`}><Edit3 className="w-3 h-3" /></Button>
-                      </td>
-                    </tr>
-                  ))}
-                  {visibleChannels.length === 0 && <tr><td colSpan={5} className="py-6 text-center text-zinc-500">No channels yet.</td></tr>}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+  const AddRow = ({ placeholder, depth }: { placeholder: string; depth: number }) => (
+    <div className={cn('flex items-center gap-2 py-1.5', depth === 1 && 'pl-8', depth === 2 && 'pl-16')}>
+      <Input autoFocus value={newName} onChange={e => setNewName(e.target.value)} placeholder={placeholder}
+        onKeyDown={e => { if (e.key === 'Enter') submitAdd(); if (e.key === 'Escape') { setAdding(null); setNewName('') } }}
+        className="h-8 text-xs bg-white border-blue-300 max-w-xs" />
+      <Button size="sm" onClick={submitAdd} disabled={!newName.trim() || busy} className="h-8 text-xs bg-blue-600 hover:bg-blue-500 text-white"><Check className="w-3.5 h-3.5 mr-1" /> Add</Button>
+      <Button size="sm" variant="ghost" onClick={() => { setAdding(null); setNewName('') }} className="h-8 text-xs text-zinc-500"><X className="w-3.5 h-3.5" /></Button>
     </div>
   )
+
+  return (
+    <div className="space-y-4">
+      {/* Legend + actions */}
+      <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-600">
+        <span className="inline-flex items-center gap-1"><Folder className="w-3.5 h-3.5 text-zinc-500" /> Category <InfoTip k="category" /></span>
+        <span className="text-zinc-300">›</span>
+        <span className="inline-flex items-center gap-1"><Layers className="w-3.5 h-3.5 text-blue-600" /> Channel <InfoTip k="channel" /></span>
+        <span className="text-zinc-300">›</span>
+        <span className="inline-flex items-center gap-1"><GitBranch className="w-3.5 h-3.5 text-violet-600" /> Sub-channel <InfoTip k="sub_channel" /></span>
+        <span className="flex-1" />
+        <button onClick={() => setShowHidden(v => !v)} className="inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-800">
+          {showHidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />} {showHidden ? 'Hiding hidden items' : 'Show hidden items'}
+        </button>
+        <Button size="sm" onClick={() => { setAdding({ kind: 'category' }); setNewName('') }} className="h-8 text-xs bg-blue-600 hover:bg-blue-500 text-white">
+          <Plus className="w-3.5 h-3.5 mr-1" /> New category
+        </Button>
+      </div>
+      {adding?.kind === 'category' && <AddRow placeholder="Category name (e.g. Paid)" depth={0} />}
+
+      <div className="rounded-xl border border-zinc-200 bg-white divide-y divide-zinc-100">
+        {cats.length === 0 && (
+          <div className="p-8 text-center text-sm text-zinc-500 space-y-2">
+            <p>No categories yet. A category is just a group for channels: start with one like &quot;Paid&quot; or &quot;Organic&quot;.</p>
+            <p className="text-xs">Or clone a template from Admin › Verticals to get the standard tree.</p>
+          </div>
+        )}
+        {cats.map((cat, ci) => {
+          const list = tree.get(cat.id) || []
+          const open = !collapsed.has(cat.id)
+          return (
+            <div key={cat.id} className={cn(!cat.is_active && 'opacity-50')}>
+              <Row
+                depth={0} icon={<Folder className="w-4 h-4 text-zinc-500" />}
+                name={cat.name} hidden={!cat.is_active}
+                open={open} onToggle={list.length ? () => toggle(cat.id) : undefined}
+                count={`${list.length} channel${list.length === 1 ? '' : 's'}`}
+                onRename={name => run(() => updateCategory({ id: cat.id, name, icon: cat.icon || undefined, sort_order: cat.sort_order, is_active: cat.is_active }), 'Renamed')}
+                onUp={ci > 0 ? () => move(cats, ci, -1, 'category') : undefined}
+                onDown={ci < cats.length - 1 ? () => move(cats, ci, 1, 'category') : undefined}
+                onHide={() => run(() => updateCategory({ id: cat.id, name: cat.name, icon: cat.icon || undefined, sort_order: cat.sort_order, is_active: !cat.is_active }), cat.is_active ? 'Category hidden' : 'Category shown')}
+                addLabel="Add channel"
+                onAdd={() => { setAdding({ kind: 'channel', categoryId: cat.id, parentId: null }); setNewName(''); setCollapsed(s => { const n = new Set(s); n.delete(cat.id); return n }) }}
+                busy={busy}
+              />
+              {adding?.kind === 'channel' && adding.categoryId === cat.id && adding.parentId === null && <AddRow placeholder="Channel name (e.g. Paid Ads)" depth={1} />}
+              {open && list.map((ch, i) => (
+                <ChannelRows key={ch.id} node={ch} depth={1} siblings={list} index={i}
+                  functions={functions || []} busy={busy} run={run} move={move}
+                  collapsed={collapsed} toggle={toggle}
+                  adding={adding} setAdding={setAdding} setNewName={setNewName} AddRow={AddRow} categoryId={cat.id} />
+              ))}
+            </div>
+          )
+        })}
+      </div>
+      <p className="text-[11px] text-zinc-500">
+        Hiding keeps history: tasks on a hidden channel stay, the channel just leaves the sidebar and pickers. Channels cannot move between categories or verticals.
+      </p>
+    </div>
+  )
+}
+
+function ChannelRows({ node, depth, siblings, index, functions, busy, run, move, collapsed, toggle, adding, setAdding, setNewName, AddRow, categoryId }: {
+  node: Node; depth: 1 | 2; siblings: Node[]; index: number
+  functions: { id: string; name: string }[]
+  busy: boolean
+  run: (fn: () => Promise<unknown>, ok?: string) => void
+  move: (list: { id: string; sort_order: number }[], idx: number, dir: -1 | 1, kind: 'category' | 'channel') => void
+  collapsed: Set<string>; toggle: (id: string) => void
+  adding: { kind: 'category' } | { kind: 'channel'; categoryId: string; parentId: string | null } | null
+  setAdding: (a: { kind: 'channel'; categoryId: string; parentId: string | null } | null) => void
+  setNewName: (s: string) => void
+  AddRow: (p: { placeholder: string; depth: number }) => React.ReactElement
+  categoryId: string
+}) {
+  const open = !collapsed.has(node.id)
+  const fnName = functions.find(f => f.id === node.function_id)?.name
+  const base = { id: node.id, name: node.name, parent_channel_id: node.parent_channel_id, sort_order: node.sort_order, is_active: node.is_active }
+  return (
+    <div className={cn(!node.is_active && 'opacity-50')}>
+      <Row
+        depth={depth}
+        icon={depth === 1 ? <Layers className="w-4 h-4 text-blue-600" /> : <GitBranch className="w-4 h-4 text-violet-600" />}
+        name={node.name} hidden={!node.is_active}
+        open={open} onToggle={node.children.length ? () => toggle(node.id) : undefined}
+        count={depth === 1 ? `${node.children.length} sub-channel${node.children.length === 1 ? '' : 's'}` : undefined}
+        badges={
+          <>
+            <select
+              value={node.function_id || ''} disabled={busy}
+              onChange={e => run(() => updateChannel({ ...base, function_id: e.target.value || null }), 'Function updated')}
+              className="h-6 text-[11px] rounded-md border border-zinc-200 bg-zinc-50 px-1.5 text-zinc-600"
+              title="Function: the same discipline across verticals"
+            >
+              <option value="">{depth === 2 ? 'Function: inherit' : 'Function: none'}</option>
+              {functions.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+            {depth === 2 && !node.function_id && fnName === undefined && null}
+            <select
+              value={node.tier || ''} disabled={busy}
+              onChange={e => run(() => updateChannel({ ...base, tier: e.target.value || null }), 'Tier updated')}
+              className="h-6 text-[11px] rounded-md border border-zinc-200 bg-zinc-50 px-1.5 text-zinc-600"
+              title="Tier: gold must win, silver important, bronze nice to have, hygiene keep running"
+            >
+              <option value="">Tier: none</option>
+              {(Object.keys(TIER_CONFIG) as ChannelTier[]).map(t => <option key={t} value={t}>{TIER_CONFIG[t].emoji} {TIER_CONFIG[t].label}</option>)}
+            </select>
+          </>
+        }
+        onRename={name => run(() => updateChannel({ ...base, name }), 'Renamed')}
+        onUp={index > 0 ? () => move(siblings, index, -1, 'channel') : undefined}
+        onDown={index < siblings.length - 1 ? () => move(siblings, index, 1, 'channel') : undefined}
+        onHide={() => run(() => updateChannel({ ...base, is_active: !node.is_active }), node.is_active ? 'Hidden' : 'Shown')}
+        addLabel={depth === 1 ? 'Add sub-channel' : undefined}
+        onAdd={depth === 1 ? () => { setAdding({ kind: 'channel', categoryId, parentId: node.id }); setNewName(''); if (collapsed.has(node.id)) toggle(node.id) } : undefined}
+        busy={busy}
+      />
+      {adding?.kind === 'channel' && adding.parentId === node.id && <AddRow placeholder="Sub-channel name (e.g. LinkedIn Ads)" depth={2} />}
+      {open && depth === 1 && node.children.map((c, i) => (
+        <ChannelRows key={c.id} node={c as Node} depth={2} siblings={node.children as Node[]} index={i}
+          functions={functions} busy={busy} run={run} move={move} collapsed={collapsed} toggle={toggle}
+          adding={adding} setAdding={setAdding} setNewName={setNewName} AddRow={AddRow} categoryId={categoryId} />
+      ))}
+    </div>
+  )
+}
+
+function Row({ depth, icon, name, hidden, open, onToggle, count, badges, onRename, onUp, onDown, onHide, addLabel, onAdd, busy }: {
+  depth: number; icon: React.ReactNode; name: string; hidden: boolean
+  open: boolean; onToggle?: () => void; count?: string; badges?: React.ReactNode
+  onRename: (name: string) => void; onUp?: () => void; onDown?: () => void; onHide: () => void
+  addLabel?: string; onAdd?: () => void; busy: boolean
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(name)
+  const commit = () => { const v = draft.trim(); setEditing(false); if (v && v !== name) onRename(v) }
+  return (
+    <div className={cn('group flex items-center gap-2 py-1.5 pr-2 hover:bg-zinc-50', depth === 0 && 'pl-2 bg-zinc-50/60', depth === 1 && 'pl-8', depth === 2 && 'pl-16')}>
+      <button onClick={onToggle} disabled={!onToggle} className={cn('w-5 h-5 flex items-center justify-center text-zinc-400', !onToggle && 'opacity-0')} aria-label="Toggle">
+        {open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+      </button>
+      {icon}
+      {editing ? (
+        <Input autoFocus value={draft} onChange={e => setDraft(e.target.value)} onBlur={commit}
+          onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setDraft(name); setEditing(false) } }}
+          className="h-7 text-sm bg-white border-blue-300 max-w-xs" />
+      ) : (
+        <button onClick={() => { setDraft(name); setEditing(true) }} className={cn('text-left', depth === 0 ? 'text-sm font-semibold text-zinc-800' : 'text-sm text-zinc-800')} title="Click to rename">
+          {name}
+        </button>
+      )}
+      {hidden && <span className="text-[10px] uppercase tracking-wider text-zinc-400 border border-zinc-200 rounded px-1">hidden</span>}
+      {count && <span className="text-[11px] text-zinc-400">{count}</span>}
+      <span className="flex-1" />
+      <div className="flex items-center gap-1.5">{badges}</div>
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+        {onAdd && (
+          <Button size="sm" variant="ghost" onClick={onAdd} disabled={busy} className="h-7 text-xs text-blue-600 px-2"><Plus className="w-3.5 h-3.5 mr-1" />{addLabel}</Button>
+        )}
+        <Button size="icon" variant="ghost" onClick={() => { setDraft(name); setEditing(true) }} className="h-7 w-7 text-zinc-500" aria-label="Rename"><Pencil className="w-3.5 h-3.5" /></Button>
+        <Button size="icon" variant="ghost" onClick={onUp} disabled={!onUp || busy} className="h-7 w-7 text-zinc-500" aria-label="Move up"><ArrowUp className="w-3.5 h-3.5" /></Button>
+        <Button size="icon" variant="ghost" onClick={onDown} disabled={!onDown || busy} className="h-7 w-7 text-zinc-500" aria-label="Move down"><ArrowDown className="w-3.5 h-3.5" /></Button>
+        <Button size="icon" variant="ghost" onClick={onHide} disabled={busy} className="h-7 w-7 text-zinc-500" aria-label={hidden ? 'Show' : 'Hide'}>{hidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}</Button>
+      </div>
+    </div>
+  )
+}
+
+// Unfiltered reads (including hidden rows) for the "show hidden" toggle.
+import { useQuery } from '@tanstack/react-query'
+import { createClient } from '@/lib/supabase/client'
+function useCategoriesAll(verticalId: string, enabled: boolean) {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['taxonomyAll', 'categories', verticalId], enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('categories').select('*').eq('vertical_id', verticalId).order('sort_order')
+      if (error) throw error
+      return data as Category[]
+    },
+  })
+}
+function useChannelsAll(verticalId: string, enabled: boolean) {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['taxonomyAll', 'channels', verticalId], enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('channels').select('*').eq('vertical_id', verticalId).order('sort_order')
+      if (error) throw error
+      return data as Channel[]
+    },
+  })
 }

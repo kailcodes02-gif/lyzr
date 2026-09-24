@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { Filter, Search, X } from 'lucide-react'
+import { InfoTip } from '@/components/ui/info-tip'
 import { Input } from '@/components/ui/input'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { MultiSelect } from '@/components/leads/multi-select'
@@ -122,7 +123,7 @@ export function TaskFilterBar({ value, onChange, show, dateFields, tasks, count,
   return (
     <div className={cn('bg-zinc-100 border border-zinc-300 rounded-xl p-3 flex flex-wrap items-center gap-2', className)}>
       <span className="inline-flex items-center gap-1.5 text-zinc-600 text-xs font-medium uppercase tracking-wider mr-1">
-        <Filter className="w-3.5 h-3.5" /> Filters
+        <Filter className="w-3.5 h-3.5" /> Filters <InfoTip k="date_field" />
       </span>
 
       {s.date && (

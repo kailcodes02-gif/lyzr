@@ -5,6 +5,7 @@ import { format, parseISO } from 'date-fns'
 import { ChevronDown, ChevronRight, CheckSquare, CircleDashed, AlertTriangle, Ban } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { InfoTip } from '@/components/ui/info-tip'
 import { STATUS_CONFIG, type Task, type Channel, type Vertical } from '@/lib/types/database'
 import { bucketWeek, groupTasks, type Group, type GroupKey, type WeekRange } from '@/lib/week-logic'
 import { cn } from '@/lib/utils'
@@ -97,6 +98,7 @@ export function WeekDoneBoard({ tasks, week, groupBy, ctx, onTaskClick }: {
         <span><strong className="text-zinc-900">{buckets.done.length}</strong> of <strong className="text-zinc-900">{planned}</strong> planned tasks done ({pct}%)</span>
         <div className="h-1.5 w-40 rounded-full bg-zinc-200 overflow-hidden"><div className="h-full bg-emerald-500" style={{ width: `${pct}%` }} /></div>
         {buckets.overdueCarried.length > 0 && <span className="text-red-600">{buckets.overdueCarried.length} overdue from earlier weeks</span>}
+        <InfoTip k="weekly" />
       </div>
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {sections.filter(s => s.key !== 'cancelled' || s.items.length > 0).map(s => (

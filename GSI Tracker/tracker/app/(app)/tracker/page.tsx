@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/popover'
 import { STATUS_CONFIG, type Task, type TaskStatus } from '@/lib/types/database'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { InfoTip } from '@/components/ui/info-tip'
 import { MultiSelect } from '@/components/leads/multi-select'
 import { ALL_TIME, inRange, resolveRange, type DateRangeValue } from '@/lib/date-range'
 import { ownerKeysOf } from '@/components/filters/task-filter-bar'

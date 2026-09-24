@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { BookOpen, ExternalLink, FileSpreadsheet, Globe, FolderOpen, Plus, Trash2, X } from 'lucide-react'
 import { useVertical } from '@/lib/hooks/use-vertical'
+import { InfoTip } from '@/components/ui/info-tip'
 import { useVerticalResources } from '@/lib/hooks/use-data'
 import { addVerticalResource, deleteVerticalResource } from '@/lib/actions'
 import { toast } from 'sonner'
@@ -71,7 +72,7 @@ export default function ResourcesPage() {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-blue-600" /> {vertical?.name || ''} Resources
+            <BookOpen className="w-6 h-6 text-blue-600" /> {vertical?.name || ''} Resources <InfoTip k="resources" />
           </h1>
           <p className="text-sm text-zinc-500 mt-1">
             The team&apos;s shared sheets, asset repositories and live pages for {vertical?.name || 'this vertical'}, one click away.

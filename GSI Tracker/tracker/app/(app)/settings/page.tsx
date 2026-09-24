@@ -16,6 +16,7 @@ import { useVertical } from '@/lib/hooks/use-vertical'
 import { useVerticalOwners, useVerticalResources } from '@/lib/hooks/use-data'
 import { updateVertical, addVerticalOwner, removeVerticalOwner, setPrimaryVerticalOwner, addVerticalResource, deleteVerticalResource } from '@/lib/actions'
 import { TaxonomyManager } from '@/components/admin/taxonomy-manager'
+import { InfoTip } from '@/components/ui/info-tip'
 import { OwnersEditor } from '@/components/vertical/owners-editor'
 import { FLAG_LABELS, resolveFlags } from '@/lib/vertical-flags'
 import type { VerticalSettings } from '@/lib/types/database'
@@ -83,7 +84,7 @@ function SettingsForm({ vertical, isAdmin, owners, resources, refresh }: {
     <div className="p-4 lg:p-8 space-y-6 max-w-6xl mx-auto bg-zinc-50 text-zinc-900 min-h-screen">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
-          <Settings className="w-6 h-6 text-zinc-600" /> {vertical.name} Settings
+          <Settings className="w-6 h-6 text-zinc-600" /> {vertical.name} Settings <InfoTip k="vertical_owner" />
         </h1>
         <p className="text-sm text-zinc-500 mt-1">Owners, taxonomy, resources and features for this vertical.</p>
       </div>
@@ -106,7 +107,7 @@ function SettingsForm({ vertical, isAdmin, owners, resources, refresh }: {
               </div>
               <div className="space-y-1"><Label className="text-xs text-zinc-600">Description</Label><Textarea rows={2} value={description} onChange={e => setDescription(e.target.value)} className="bg-zinc-100 border-zinc-300 text-xs" /></div>
               <div>
-                <Label className="text-xs text-zinc-600">Features {isAdmin ? '' : '(admins change these)'}</Label>
+                <Label className="text-xs text-zinc-600 inline-flex items-center gap-1">Features {isAdmin ? '' : '(admins change these)'} <InfoTip k="feature_flags" /></Label>
                 <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {(Object.keys(FLAG_LABELS) as (keyof VerticalSettings)[]).map(key => (
                     <label key={key} className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 px-3 py-2" title={FLAG_LABELS[key].hint}>
@@ -124,7 +125,7 @@ function SettingsForm({ vertical, isAdmin, owners, resources, refresh }: {
         <TabsContent value="owners" className="mt-6">
           <Card className="bg-white border-zinc-200">
             <CardHeader>
-              <CardTitle className="text-base font-semibold">Vertical owners</CardTitle>
+              <CardTitle className="text-base font-semibold inline-flex items-center gap-1">Vertical owners <InfoTip k="vertical_owner" /></CardTitle>
               <CardDescription className="text-xs text-zinc-500">Owners manage this vertical&apos;s channels, budgets, custom fields and resources. Only admins can change who the owners are.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -146,7 +147,7 @@ function SettingsForm({ vertical, isAdmin, owners, resources, refresh }: {
         <TabsContent value="resources" className="mt-6">
           <Card className="bg-white border-zinc-200">
             <CardHeader>
-              <CardTitle className="text-base font-semibold">Resources</CardTitle>
+              <CardTitle className="text-base font-semibold inline-flex items-center gap-1">Resources <InfoTip k="resources" /></CardTitle>
               <CardDescription className="text-xs text-zinc-500">Link groups shown on this vertical&apos;s Resources page{flags.resources ? '' : ' (page hidden until the Resources feature is on)'}.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">

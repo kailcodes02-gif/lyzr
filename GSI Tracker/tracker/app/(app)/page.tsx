@@ -10,6 +10,7 @@ import {
 } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { KpiTile } from '@/components/ui/kpi-tile'
+import { InfoTip } from '@/components/ui/info-tip'
 import { VerticalCard } from '@/components/workspace/vertical-card'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -87,8 +88,8 @@ export default function WorkspaceHomePage() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-zinc-900 via-zinc-700 to-zinc-500 bg-clip-text text-transparent">
             Welcome back, {user?.display_name?.split(' ')[0]}
           </h1>
-          <p className="text-sm text-zinc-600 mt-1">
-            Everything the marketing team is doing, across {verticals.length} vertical{verticals.length === 1 ? '' : 's'}
+          <p className="text-sm text-zinc-600 mt-1 inline-flex items-center gap-1">
+            <InfoTip k="workspace_home" /> Everything the marketing team is doing, across {verticals.length} vertical{verticals.length === 1 ? '' : 's'}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -128,7 +129,7 @@ export default function WorkspaceHomePage() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-blue-600" /> Verticals
+            <Building2 className="w-4 h-4 text-blue-600" /> Verticals <InfoTip k="vertical" />
           </h2>
           <Link href="/workspace/tasks/" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
             <Table2 className="w-3.5 h-3.5" /> All tasks table

@@ -1,0 +1,50 @@
+// One place for every hover explanation in the product. Keys are stable ids
+// used by <InfoTip k="..." />. Keep entries to one or two plain sentences.
+
+export const HELP: Record<string, string> = {
+  // Taxonomy
+  vertical: 'A business line (GSI, a product, or the company-wide Lyzr space). Everything below it belongs to that vertical: channels, tasks, budgets, reports.',
+  category: 'A grouping label for channels inside a vertical (Paid, Organic, Events). Nothing is assigned to a category; it only organises the channel list and can carry a budget.',
+  channel: 'A marketing motion with owners, targets, budget and tasks (Paid Ads, Email, Content). Channels can have sub-channels.',
+  sub_channel: 'A channel nested under a parent (LinkedIn Ads under Paid Ads). It has everything a channel has and inherits the parent function.',
+  function: 'The same discipline across verticals (Content, Social, Paid). Linking a channel to a function lets its owner see that work in every vertical at once.',
+  tier: 'Priority of the channel in the plan: Gold = must win, Silver = important, Bronze = nice to have, Hygiene = keep the lights on.',
+  category_icon: 'Optional pictogram for the category. Cosmetic only.',
+  task: 'A piece of work on a channel: an activity with owners, a due date, priority and status. Can hold sub-activities and a checklist.',
+  sub_activity: 'A child task under an activity. Has its own owners, status and due date.',
+  checklist: 'Small steps inside a task. Tick them off; they do not have owners or dates.',
+  also_shows_in: 'Multi-homing: the task keeps one home channel but also appears on other channels, even in another vertical.',
+
+  // People and permissions
+  admin: 'Global administrator. Creates verticals and functions, manages users, edits everything everywhere.',
+  vertical_owner: 'Manages one vertical: its channels, owners, budgets, custom fields and resources. Set by an admin.',
+  function_owner: 'Default owner for every channel of that function across verticals, unless a vertical sets its own channel owners.',
+  channel_owner: 'Owns a channel and its tasks. Primary owners are marked with a crown; a task without an owner inherits the channel owners.',
+  member: 'Everyone who signs in. Members see everything and can create and update tasks, comments and checklists.',
+  pending_owner: 'This person has not signed in yet. Their ownership and assignments attach automatically on first Google sign-in.',
+
+  // Views
+  workspace_home: 'The founder view: every vertical at a glance, your day across verticals, and recent activity.',
+  space_dashboard: 'This vertical only: your tasks, what goes live this week, budget and activity.',
+  calendar: 'Tasks by due date. Use the arrows or pick any range; filter by owner, channel and status.',
+  tracker: 'Results view: tasks that went live or finished, with their tracker fields (KPI actual, spend, evidence).',
+  weekly: 'Planned versus delivered: everything due in the period, split into done, not done and overdue carried in from earlier.',
+  owners: 'Each person with open, overdue and live counts. Click through for their tasks, mentions, calendar and activity.',
+  budgets: 'Budget periods at vertical, category or channel level, and how much tasks have allocated against each.',
+  leads_pipeline: 'Read-only HubSpot lead pull, email-interaction CSVs and lead imports, with per-lead outreach tracking. Enabled per vertical.',
+  history: 'Every logged change, who made it and when.',
+  functions_view: 'One discipline across all verticals: its channels, tasks and weekly results everywhere it runs.',
+  resources: 'Curated links for this vertical: sheets, asset folders, live pages.',
+  saved_views: 'Save the current filters and sort under a name so you can reload them later.',
+  feature_flags: 'Which optional modules this vertical shows. GSI integrations (HubSpot pull, Instantly report) are wired for GSI today.',
+  template: 'A snapshot of a vertical’s categories, channels, sub-channels and custom fields (no tasks or owners). New verticals can start from one.',
+  date_range: 'Pick a preset, or two dates on the calendar. The arrows step forward and back by the same length.',
+  date_field: 'Which date the range applies to: when the task is due, was completed, was created, or went live.',
+  status: 'Not started, In progress, Live (running in market), Blocked, Done, Cancelled.',
+  priority: 'P0 critical, P1 high, P2 medium, P3 low, P4 backlog. Blueprint star grades map gold=P0, silver=P1, bronze=P2.',
+  tracker_fields: 'Results captured once a task is live or done. They lock 45 days after completion; admins can override.',
+  custom_fields: 'Extra planning or tracker fields per channel (text, number, currency, date, dropdown...). Cascade to sub-channels.',
+  recurring: 'Google-Calendar-style repeat: every N days, weeks or months, on chosen weekdays, ending never, on a date or after N times.',
+}
+
+export type HelpKey = keyof typeof HELP

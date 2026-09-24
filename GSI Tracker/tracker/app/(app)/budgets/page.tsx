@@ -2,6 +2,7 @@
 
 import { useBudgetPeriods, useTasks, useCategories, useChannels } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
+import { InfoTip } from '@/components/ui/info-tip'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
@@ -82,7 +83,7 @@ export default function BudgetsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
-            <Landmark className="w-6 h-6 text-emerald-600" /> Budgets
+            <Landmark className="w-6 h-6 text-emerald-600" /> Budgets <InfoTip k="budgets" />
           </h1>
           <p className="text-sm text-zinc-500 mt-1">{vertical?.name || 'Marketing'} budget allocations and scope limits</p>
         </div>

@@ -15,6 +15,7 @@ import { useWeeklySnapshot, useRecentWeeklySnapshots, type WeeklySnapshot } from
 import { useTasks, useBudgetPeriods, useCategories, useUsers } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { InfoTip } from '@/components/ui/info-tip'
 import { customRange, resolveRange, type DateRangeValue } from '@/lib/date-range'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { ReportBuilder } from '@/components/weekly/report-builder'
@@ -346,7 +347,7 @@ export default function WeeklyReviewPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
-          <CalendarIcon className="w-6 h-6 text-blue-600" /> {vertical ? `${vertical.name} ` : ''}Weekly Review
+          <CalendarIcon className="w-6 h-6 text-blue-600" /> {vertical ? `${vertical.name} ` : ''}Weekly Review <InfoTip k="weekly" />
         </h1>
         <p className="text-sm text-zinc-500 mt-1">
           Time travel through completed ISO weeks. Pick a week to reconstruct the state of the world at end of week.
