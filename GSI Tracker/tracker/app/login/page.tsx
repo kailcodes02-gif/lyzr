@@ -19,7 +19,7 @@ function LoginContent() {
   // Which buttons to show, in order. Each provider must also be switched on
   // in Supabase › Authentication › Providers, or Supabase answers
   // "provider is not enabled" and we show that under the buttons.
-  const providers = (process.env.NEXT_PUBLIC_AUTH_PROVIDERS || 'slack_oidc,azure,google').split(',').map(s => s.trim()).filter(Boolean)
+  const providers = (process.env.NEXT_PUBLIC_AUTH_PROVIDERS || 'azure').split(',').map(s => s.trim()).filter(Boolean)
   const [failed, setFailed] = useState<string | null>(null)
 
   const signIn = async (provider: 'google' | 'azure' | 'slack_oidc') => {
@@ -87,7 +87,7 @@ function LoginContent() {
           {failed && <p className="mt-3 text-xs text-center text-red-600">{failed}</p>}
 
           <p className="mt-6 text-xs text-center text-zinc-500">
-            Restricted to Lyzr accounts (lyzr.ai or lyzr.com)
+            Sign in with your Lyzr Microsoft account
           </p>
         </div>
       </div>

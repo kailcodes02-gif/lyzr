@@ -1,7 +1,7 @@
 # Sign-in providers (Slack, Microsoft, Google)
 
 The tracker signs people in through Supabase Auth. The login page shows a button per
-provider listed in `NEXT_PUBLIC_AUTH_PROVIDERS` (default `slack_oidc,azure,google`).
+provider listed in `NEXT_PUBLIC_AUTH_PROVIDERS` (default `azure`; set to `slack_oidc,azure,google` to show all three).
 A button only works once that provider is switched on in the Supabase dashboard.
 Whatever the provider, the database (`handle_new_user`, migration 021) rejects any
 account that is not `@lyzr.ai` or `@lyzr.com`, and treats `name@lyzr.ai` and
