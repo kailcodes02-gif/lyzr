@@ -134,6 +134,21 @@ export const CAMPAIGN_KIND: Record<CampaignKind, { label: string; emoji: string;
   campaign: { label: 'Campaign', emoji: '🎯', className: 'from-blue-600 to-cyan-600' },
 }
 
+export interface VerticalMember { vertical_id: string; email: string; user_id: string | null; added_by: string | null; created_at: string }
+
+export interface TaskSuggestion {
+  id: string
+  task_id: string
+  suggested_by: string
+  patch: Record<string, unknown>
+  note: string | null
+  status: 'pending' | 'accepted' | 'rejected'
+  resolved_by: string | null
+  resolved_at: string | null
+  created_at: string
+  suggester?: { id: string; email: string; display_name: string | null; avatar_url: string | null }
+}
+
 export interface EffectiveChannelOwner {
   channel_id: string
   email: string

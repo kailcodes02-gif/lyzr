@@ -107,7 +107,7 @@ function NavList({ items, onNavigate }: { items: NavItem[]; onNavigate: () => vo
 function VerticalSwitcher() {
   const { mode, vertical, verticals, ownedVerticalIds, setVertical } = useVertical()
   const pathname = usePathname()
-  const label = mode === 'space' && vertical ? vertical.name : 'Workspace'
+  const label = mode === 'space' && vertical ? vertical.name : 'Company'
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-left transition-colors">
@@ -117,7 +117,7 @@ function VerticalSwitcher() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-60 bg-white border-zinc-300">
         <DropdownMenuItem onClick={() => setVertical('all')} className="text-zinc-700">
-          <Home className="w-4 h-4 mr-2 text-violet-600" /> Workspace (all verticals)
+          <Home className="w-4 h-4 mr-2 text-violet-600" /> Company (all verticals)
         </DropdownMenuItem>
         <DropdownMenuSeparator className="bg-zinc-200/70" />
         {verticals.map(v => (
@@ -201,7 +201,7 @@ function MyFunctionRows({ onNavigate }: { onNavigate: () => void }) {
   if (!mine.length) return null
   return (
     <div>
-      <p className="px-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">My functions</p>
+      <p className="px-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">My domains</p>
       <div className="space-y-0.5">
         {mine.map(f => (
           <Link key={f.id} href={`/function/?id=${f.id}`} onClick={onNavigate}
@@ -232,7 +232,8 @@ export function AppSidebar() {
     { href: withVertical('/my-tasks/', 'all'), icon: ListTodo, label: 'My Tasks', match: '/my-tasks' },
     { href: withVertical('/owners/', 'all'), icon: UserCircle, label: 'Owners', match: '/owners' },
     { href: '/workspace/weekly/', icon: CalendarRange, label: 'Weekly', match: '/workspace/weekly' },
-    { href: '/functions/', icon: Workflow, label: 'Functions', match: '/functions' },
+    { href: '/functions/', icon: Workflow, label: 'Domains', match: '/functions' },
+    { href: '/members/', icon: UserCircle, label: 'Members', match: '/members' },
     { href: withVertical('/history/', 'all'), icon: History, label: 'History', match: '/history' },
     { href: '/guide/', icon: BookOpen, label: 'Guide', match: '/guide' },
   ]
@@ -344,7 +345,7 @@ export function AppSidebar() {
             </DropdownMenuItem>
             <DropdownMenuItem className="p-0">
               <Link href="/functions/" className="flex items-center w-full px-2 py-1.5 text-zinc-700 hover:text-zinc-900 select-none outline-none">
-                <Layers className="w-4 h-4 mr-2" /> Functions
+                <Layers className="w-4 h-4 mr-2" /> Domains
               </Link>
             </DropdownMenuItem>
             {user?.role === 'admin' && (
@@ -409,12 +410,12 @@ export function AppHeader() {
       <div className="flex-1 flex items-center gap-2 text-xs text-zinc-500 pl-2">
         {mode === 'space' && vertical ? (
           <>
-            <Link href="/" className="hover:text-zinc-800">Workspace</Link>
+            <Link href="/" className="hover:text-zinc-800">Company</Link>
             <span className="text-zinc-300">›</span>
             <span className="font-medium text-zinc-800">{vertical.name}</span>
           </>
         ) : (
-          <span className="font-medium text-zinc-800">Workspace</span>
+          <span className="font-medium text-zinc-800">Company</span>
         )}
       </div>
       <div className="flex items-center gap-2">

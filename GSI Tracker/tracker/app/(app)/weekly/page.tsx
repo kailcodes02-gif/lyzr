@@ -56,7 +56,7 @@ function normalizeCounts(input: WeeklySnapshot['by_category'] | WeeklySnapshot['
 
 interface LiveAggregate {
   totals: { total: number; completed: number; blocked: number; live: number }
-  byCategory: CountEntry[]
+  byGroup: CountEntry[]
   byOwner: CountEntry[]
   completedTasks: Task[]
   blockedTasks: Task[]
@@ -122,7 +122,7 @@ function computeLiveAggregate(
 
   return {
     totals: { total, completed, blocked, live },
-    byCategory: Array.from(catMap.entries())
+    byGroup: Array.from(catMap.entries())
       .map(([name, v]) => ({ name, count: v.count, by_status: v.by_status }))
       .sort((a, b) => b.count - a.count),
     byOwner: Array.from(ownerMap.entries())
@@ -213,8 +213,8 @@ export default function WeeklyReviewPage() {
     return null
   }, [isCurrentWeek, live, snapshot])
 
-  const byCategory = useMemo(() => {
-    if (isCurrentWeek && live) return live.byCategory
+  const byGroup = useMemo(() => {
+    if (isCurrentWeek && live) return live.byGroup
     if (snapshot) return normalizeCounts(snapshot.by_category)
     return []
   }, [isCurrentWeek, live, snapshot])
@@ -339,7 +339,7 @@ export default function WeeklyReviewPage() {
     return { totalAllocated, buckets, unspentCallouts }
   }, [isCurrentWeek, snapshot, budgets, selectedWeek.start, selectedWeek.end])
 
-  const maxCategory = byCategory.reduce((m, c) => Math.max(m, c.count), 0) || 1
+  const maxGroup = byGroup.reduce((m, c) => Math.max(m, c.count), 0) || 1
   const maxOwner = byOwner.reduce((m, c) => Math.max(m, c.count), 0) || 1
 
   return (
@@ -449,15 +449,15 @@ export default function WeeklyReviewPage() {
             <Card className="bg-white border-zinc-200 backdrop-blur-xl">
               <CardHeader>
                 <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-600 flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-blue-600" /> Tasks by Category
+                  <Layers className="w-4 h-4 text-blue-600" /> Tasks by Group
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {byCategory.length === 0 ? (
+                {byGroup.length === 0 ? (
                   <p className="text-xs text-zinc-600 text-center py-6">No data.</p>
                 ) : (
-                  byCategory.map(c => {
-                    const pct = (c.count / maxCategory) * 100
+                  byGroup.map(c => {
+                    const pct = (c.count / maxGroup) * 100
                     const segments = c.by_status
                       ? Object.entries(c.by_status).filter(([, n]) => n > 0)
                       : []
@@ -487,7 +487,7 @@ export default function WeeklyReviewPage() {
                     )
                   })
                 )}
-                {byCategory.some(c => c.by_status) && (
+                {byGroup.some(c => c.by_status) && (
                   <div className="flex flex-wrap gap-3 pt-2 text-[10px] text-zinc-500">
                     <LegendDot color="bg-emerald-500" label="Done" />
                     <LegendDot color="bg-blue-500" label="Live" />

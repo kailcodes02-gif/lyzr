@@ -4,6 +4,7 @@ import { useCurrentUser, useTasks, useMentionsForUser, useBudgetPeriods, useRece
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { InfoTip } from '@/components/ui/info-tip'
 import { CampaignBanner } from '@/components/campaigns/campaign-banner'
+import { PeopleMap } from '@/components/members/people-map'
 import { useSpaceHref } from '@/lib/hooks/use-space-href'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
@@ -216,6 +217,8 @@ export default function DashboardPage() {
       </div>
 
       <CampaignBanner />
+
+      <PeopleMap verticalId={verticalId} compact />
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -11,7 +11,7 @@ import { ALL_FLAGS_ON, resolveFlags } from '@/lib/vertical-flags'
 import type { Vertical } from '@/lib/types/database'
 
 // Routes that live at the workspace level and never need ?v=.
-const WORKSPACE_PREFIXES = ['/workspace', '/functions', '/function', '/admin', '/notifications', '/guide', '/campaign', '/campaigns', '/my-board']
+const WORKSPACE_PREFIXES = ['/workspace', '/functions', '/function', '/admin', '/notifications', '/guide', '/campaign', '/campaigns', '/my-board', '/members']
 // Routes that only make sense inside one vertical (no ?v=all).
 const SPACE_ONLY = ['/dashboard', '/weekly', '/budgets', '/leads', '/resources', '/settings', '/channel', '/category']
 

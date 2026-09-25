@@ -114,7 +114,7 @@ export function TaxonomyManager({ verticalId }: { verticalId: string }) {
     <div className="space-y-4">
       {/* Legend + actions */}
       <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-600">
-        <span className="inline-flex items-center gap-1"><Folder className="w-3.5 h-3.5 text-zinc-500" /> Category <InfoTip k="category" /></span>
+        <span className="inline-flex items-center gap-1"><Folder className="w-3.5 h-3.5 text-zinc-500" /> Group <InfoTip k="category" /></span>
         <span className="text-zinc-300">›</span>
         <span className="inline-flex items-center gap-1"><Layers className="w-3.5 h-3.5 text-blue-600" /> Channel <InfoTip k="channel" /></span>
         <span className="text-zinc-300">›</span>
@@ -124,10 +124,10 @@ export function TaxonomyManager({ verticalId }: { verticalId: string }) {
           {showHidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />} {showHidden ? 'Hiding hidden items' : 'Show hidden items'}
         </button>
         <Button size="sm" onClick={() => { setAdding({ kind: 'category' }); setNewName('') }} className="h-8 text-xs bg-blue-600 hover:bg-blue-500 text-white">
-          <Plus className="w-3.5 h-3.5 mr-1" /> New category
+          <Plus className="w-3.5 h-3.5 mr-1" /> New group
         </Button>
       </div>
-      {adding?.kind === 'category' && <AddRow placeholder="Category name (e.g. Paid)" depth={0} />}
+      {adding?.kind === 'category' && <AddRow placeholder="Group name (e.g. Paid)" depth={0} />}
 
       <div className="rounded-xl border border-zinc-200 bg-white divide-y divide-zinc-100">
         {cats.length === 0 && (
@@ -149,7 +149,7 @@ export function TaxonomyManager({ verticalId }: { verticalId: string }) {
                 onRename={name => run(() => updateCategory({ id: cat.id, name, icon: cat.icon || undefined, sort_order: cat.sort_order, is_active: cat.is_active }), 'Renamed')}
                 onUp={ci > 0 ? () => move(cats, ci, -1, 'category') : undefined}
                 onDown={ci < cats.length - 1 ? () => move(cats, ci, 1, 'category') : undefined}
-                onHide={() => run(() => updateCategory({ id: cat.id, name: cat.name, icon: cat.icon || undefined, sort_order: cat.sort_order, is_active: !cat.is_active }), cat.is_active ? 'Category hidden' : 'Category shown')}
+                onHide={() => run(() => updateCategory({ id: cat.id, name: cat.name, icon: cat.icon || undefined, sort_order: cat.sort_order, is_active: !cat.is_active }), cat.is_active ? 'Group hidden' : 'Group shown')}
                 addLabel="Add channel"
                 onAdd={() => { setAdding({ kind: 'channel', categoryId: cat.id, parentId: null }); setNewName(''); setCollapsed(s => { const n = new Set(s); n.delete(cat.id); return n }) }}
                 busy={busy}
@@ -202,9 +202,9 @@ function ChannelRows({ node, depth, siblings, index, functions, busy, run, move,
               value={node.function_id || ''} disabled={busy}
               onChange={e => run(() => updateChannel({ ...base, function_id: e.target.value || null }), 'Function updated')}
               className="h-6 text-[11px] rounded-md border border-zinc-200 bg-zinc-50 px-1.5 text-zinc-600"
-              title="Function: the same discipline across verticals"
+              title="Domain: the same discipline across verticals"
             >
-              <option value="">{depth === 2 ? 'Function: inherit' : 'Function: none'}</option>
+              <option value="">{depth === 2 ? 'Domain: inherit' : 'Domain: none'}</option>
               {functions.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
             </select>
             {depth === 2 && !node.function_id && fnName === undefined && null}

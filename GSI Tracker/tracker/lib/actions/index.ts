@@ -2190,3 +2190,85 @@ export async function setTaskCampaign(taskId: string, campaignId: string | null)
   if (!data?.length) throw new Error('Nothing updated')
   return { updated: true }
 }
+
+
+// ============ MEMBERS, BADGES, SUGGESTIONS ============
+
+const cleanEmail = (e: string) => { const x = e.trim().toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x)) throw new Error('Enter a valid email'); return x }
+
+export async function addVerticalMember(verticalId: string, email: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const e = cleanEmail(email)
+  const { data: u } = await supabase.from('users').select('id').ilike('email', e).maybeSingle()
+  const { error } = await supabase.from('vertical_members').upsert({ vertical_id: verticalId, email: e, user_id: u?.id ?? null, added_by: user.id })
+  if (error) throw error
+  return { email: e }
+}
+
+export async function removeVerticalMember(verticalId: string, email: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase.from('vertical_members').delete().eq('vertical_id', verticalId).eq('email', email.toLowerCase()).select('email')
+  if (error) throw error
+  if (!data?.length) throw new Error('Nothing removed: only admins or the vertical owners can manage members')
+  return { removed: true }
+}
+
+// Admin and Leadership badges live in email tables so they survive resets and
+// apply on first sign-in. Admin also flips users.role for people already in.
+export async function setBadge(kind: 'admin' | 'leadership', email: string, on: boolean) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const e = cleanEmail(email)
+  const table = kind === 'admin' ? 'admin_emails' : 'leadership_emails'
+  if (on) {
+    const { error } = await supabase.from(table).upsert({ email: e })
+    if (error) throw error
+  } else {
+    if (kind === 'admin' && e === user.email?.toLowerCase()) throw new Error('You cannot remove your own admin badge')
+    const { error } = await supabase.from(table).delete().eq('email', e)
+    if (error) throw error
+  }
+  if (kind === 'admin') {
+    const { error } = await supabase.from('users').update({ role: on ? 'admin' : 'member' }).ilike('email', e)
+    if (error) throw error
+  }
+  return { email: e, on }
+}
+
+export async function suggestTaskEdit(taskId: string, patch: Record<string, unknown>, note?: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  if (!Object.keys(patch).length) throw new Error('Nothing to suggest')
+  const { data, error } = await supabase.from('task_suggestions')
+    .insert({ task_id: taskId, suggested_by: user.id, patch, note: note?.trim() || null }).select('id').single()
+  if (error) throw error
+  return data
+}
+
+// Accepting applies the patch through updateTask (so history + blockers run),
+// then marks the suggestion. Only people who can edit the task get past RLS.
+export async function resolveTaskSuggestion(id: string, accept: boolean) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const { data: sg, error: re } = await supabase.from('task_suggestions').select('*').eq('id', id).single()
+  if (re) throw re
+  if (sg.status !== 'pending') throw new Error('Already resolved')
+  if (accept) await updateTask(sg.task_id, sg.patch as Parameters<typeof updateTask>[1], { overrideBlockers: true })
+  const { data, error } = await supabase.from('task_suggestions')
+    .update({ status: accept ? 'accepted' : 'rejected', resolved_by: user.id, resolved_at: new Date().toISOString() })
+    .eq('id', id).select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('Only the task owners can accept or reject')
+  return { accepted: accept }
+}
+
+export async function withdrawTaskSuggestion(id: string) {
+  const supabase = await createClient()
+  const { error } = await supabase.from('task_suggestions').delete().eq('id', id)
+  if (error) throw error
+}

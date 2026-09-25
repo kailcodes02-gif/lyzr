@@ -43,7 +43,7 @@ export function FunctionsTab() {
     startTransition(async () => {
       try {
         await createFunction({ name, sort_order: (functions?.length || 0) + 1 })
-        setName(''); refresh(); toast.success('Function created')
+        setName(''); refresh(); toast.success('Domain created')
       } catch (err) { toast.error(errMsg(err)) }
     })
   }
@@ -55,14 +55,14 @@ export function FunctionsTab() {
     <div className="space-y-6">
       <Card className="bg-white border-zinc-200">
         <CardHeader>
-          <CardTitle className="text-base font-semibold text-zinc-900 flex items-center gap-2"><Workflow className="w-4 h-4 text-emerald-600" /> Functions <InfoTip k="function" /></CardTitle>
+          <CardTitle className="text-base font-semibold text-zinc-900 flex items-center gap-2"><Workflow className="w-4 h-4 text-emerald-600" /> Domains <InfoTip k="function" /></CardTitle>
           <CardDescription className="text-zinc-500 text-xs">
-            A function (Content, Social, Paid…) is the same discipline across verticals. Its owners are inherited by every vertical&apos;s channel of that function unless the vertical sets its own, and the function owner gets one roll-up view across verticals.
+            A function (Content, Social, Paid…) is the same discipline across verticals. Its owners are inherited by every vertical&apos;s channel of that function unless the vertical sets its own, and the domain owner gets one roll-up view across verticals.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <form onSubmit={handleCreate} className="flex items-center gap-2 max-w-md">
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder="New function name" className="bg-zinc-100 border-zinc-300 text-xs h-9" />
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="New domain name" className="bg-zinc-100 border-zinc-300 text-xs h-9" />
             <Button type="submit" disabled={isPending || !name.trim()} className="bg-blue-600 hover:bg-blue-500 text-white text-xs h-9 shrink-0"><Plus className="w-4 h-4 mr-1" /> Add</Button>
           </form>
           <div className="divide-y divide-zinc-200 rounded-lg border border-zinc-200">
@@ -122,7 +122,7 @@ export function FunctionsTab() {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-zinc-200 bg-zinc-100/40 text-zinc-600 font-medium">
-                <th className="text-left py-2 px-3">Vertical</th><th className="text-left py-2 px-3">Channel</th><th className="text-left py-2 px-3">Function</th>
+                <th className="text-left py-2 px-3">Vertical</th><th className="text-left py-2 px-3">Channel</th><th className="text-left py-2 px-3">Domain</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200">

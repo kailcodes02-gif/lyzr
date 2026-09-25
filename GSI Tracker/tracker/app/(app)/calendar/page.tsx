@@ -50,7 +50,7 @@ function CalendarContent() {
   const [currentDate, setCurrentDate] = useState(new Date())
   // Google-Calendar-style week view is the default; month remains available
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week')
-  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [selectedGroup, setSelectedGroup] = useState<string>('all')
   const [selectedChannel, setSelectedChannel] = useState<string>('all')
   const [selectedOwner, setSelectedOwner] = useState<string>('all')
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
@@ -59,7 +59,7 @@ function CalendarContent() {
   // React to query parameter changes
   useEffect(() => {
     if (categoryParam) {
-      setSelectedCategory(categoryParam)
+      setSelectedGroup(categoryParam)
     }
   }, [categoryParam])
 
@@ -73,7 +73,7 @@ function CalendarContent() {
   const { verticalId, verticals } = useVertical()
   const [selectedVertical, setSelectedVertical] = useState<string>('all')
   const { data: categories } = useCategories(verticalId)
-  const { data: channels } = useChannels(verticalId, selectedCategory !== 'all' ? selectedCategory : undefined)
+  const { data: channels } = useChannels(verticalId, selectedGroup !== 'all' ? selectedGroup : undefined)
   const { data: users } = useUsers()
 
   // Fetch tasks
@@ -111,9 +111,9 @@ function CalendarContent() {
       if (task.channel?.vertical_id !== selectedVertical) return false
     }
 
-    // Category filter
-    if (selectedCategory !== 'all') {
-      if (task.channel?.category_id !== selectedCategory) return false
+    // Group filter
+    if (selectedGroup !== 'all') {
+      if (task.channel?.category_id !== selectedGroup) return false
     }
 
     // Channel filter
@@ -208,7 +208,7 @@ function CalendarContent() {
             <label className="text-[10px] text-zinc-500 font-medium">Vertical</label>
             <select
               value={selectedVertical}
-              onChange={e => { setSelectedVertical(e.target.value); setSelectedCategory('all'); setSelectedChannel('all') }}
+              onChange={e => { setSelectedVertical(e.target.value); setSelectedGroup('all'); setSelectedChannel('all') }}
               className="bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-violet-500"
             >
               <option value="all">All Verticals</option>
@@ -217,18 +217,18 @@ function CalendarContent() {
           </div>
         )}
 
-        {/* Category Filter */}
+        {/* Group Filter */}
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] text-zinc-500 font-medium">Category</label>
+          <label className="text-[10px] text-zinc-500 font-medium">Group</label>
           <select
-            value={selectedCategory}
+            value={selectedGroup}
             onChange={e => {
-              setSelectedCategory(e.target.value)
+              setSelectedGroup(e.target.value)
               setSelectedChannel('all') // reset channel on category change
             }}
             className="bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-violet-500"
           >
-            <option value="all">All Categories</option>
+            <option value="all">All groups</option>
             {categories?.filter(c => selectedVertical === 'all' || c.vertical_id === selectedVertical).map(cat => (
               <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}

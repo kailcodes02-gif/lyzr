@@ -145,12 +145,12 @@ export function TaskFilterBar({ value, onChange, show, dateFields, tasks, count,
         value.verticals.map(id => verticals.find(v => v.id === id)?.name || id),
         names => set({ verticals: names.map(n => verticals.find(v => v.name === n)?.id || n) }), 'w-[160px]')}
 
-      {s.function && multi('Function',
+      {s.function && multi('Domain',
         (functions || []).map(f => f.name),
         value.functions.map(id => functions?.find(f => f.id === id)?.name || id),
         names => set({ functions: names.map(n => functions?.find(f => f.name === n)?.id || n) }), 'w-[160px]')}
 
-      {s.category && multi('Category',
+      {s.category && multi('Group',
         (categories || []).map(c => c.name),
         value.categories.map(id => categories?.find(c => c.id === id)?.name || id),
         names => set({ categories: names.map(n => categories?.find(c => c.name === n)?.id || n) }), 'w-[160px]')}

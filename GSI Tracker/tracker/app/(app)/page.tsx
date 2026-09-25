@@ -6,7 +6,7 @@ import { format, isBefore, isToday, parseISO, startOfDay } from 'date-fns'
 import { toZonedTime } from 'date-fns-tz'
 import { Plus, CheckSquare, AlertCircle, Radio, CalendarRange, Activity, Calendar, Building2, Table2 } from 'lucide-react'
 import {
-  useCurrentUser, useTasks, useVerticals, useAllVerticalOwners, useUsers, useChannels, useRecentActivity, useMentionsForUser,
+  useCurrentUser, useTasks, useVerticals, useAllVerticalOwners, useUsers, useChannels, useRecentActivity, useMentionsForUser, useMyBadges,
 } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { KpiTile } from '@/components/ui/kpi-tile'
@@ -14,6 +14,8 @@ import { InfoTip } from '@/components/ui/info-tip'
 import { VerticalCard } from '@/components/workspace/vertical-card'
 import { MyBoard } from '@/components/workspace/my-board'
 import { CampaignBanner } from '@/components/campaigns/campaign-banner'
+import { DomainGrid } from '@/components/workspace/domain-grid'
+import { PeopleMap } from '@/components/members/people-map'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -27,9 +29,10 @@ const IST = 'Asia/Kolkata'
 export default function HomePage() {
   const { data: user, isLoading } = useCurrentUser()
   const { ownedVerticalIds, isAdmin, resolving } = useVertical()
+  const { isLeadership } = useMyBadges()
   if (isLoading || resolving) return <div className="p-8 animate-pulse"><div className="h-8 w-1/4 bg-zinc-200 rounded" /></div>
   if (!user) return null
-  if (isAdmin || ownedVerticalIds.size > 0) return <WorkspaceHomePage />
+  if (isAdmin || isLeadership || ownedVerticalIds.size > 0) return <WorkspaceHomePage />
   return <MyBoard showFullWorkspaceLink />
 }
 
@@ -138,6 +141,8 @@ function WorkspaceHomePage() {
 
       <CampaignBanner verticalId="all" />
 
+      <DomainGrid tasks={all} />
+
       {/* Verticals */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -172,6 +177,8 @@ function WorkspaceHomePage() {
           )}
         </div>
       </div>
+
+      <PeopleMap compact />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="bg-white border-zinc-200 lg:col-span-2">

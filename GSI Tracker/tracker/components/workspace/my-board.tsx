@@ -79,7 +79,7 @@ export function MyBoard({ showFullWorkspaceLink }: { showFullWorkspaceLink?: boo
           <p className="text-sm text-zinc-600 mt-1 inline-flex items-center gap-1"><InfoTip k="my_board" /> {openMine.length} open · {week.notDone.length} due this week · {week.overdueCarried.length} overdue</p>
         </div>
         <div className="flex items-center gap-2">
-          {showFullWorkspaceLink && <Link href="/workspace/tasks/"><Button variant="outline" className="border-zinc-300 text-zinc-700"><Building2 className="w-4 h-4 mr-2" /> Full workspace</Button></Link>}
+          {showFullWorkspaceLink && <Link href="/workspace/tasks/"><Button variant="outline" className="border-zinc-300 text-zinc-700"><Building2 className="w-4 h-4 mr-2" /> Full company view</Button></Link>}
           <Button onClick={() => { setCreateChannel(undefined); setCreateOpen(true) }} className="bg-gradient-to-r from-blue-600 to-violet-600 text-white border-0"><Plus className="w-4 h-4 mr-2" /> New task</Button>
         </div>
       </div>

@@ -63,6 +63,10 @@ export function CreateTaskDialog({
   const showVerticalPicker = !defaultChannelId && currentVerticalId === 'all' && !defaultVerticalId
   const [isPending, startTransition] = useTransition()
   const [campaignId, setCampaignId] = useState<string>(defaultCampaignId || '')
+  // Sub-tasks default to the parent's channel but may live on another one
+  // (design work for a webinar belongs to the Design board).
+  const [otherChannel, setOtherChannel] = useState(false)
+  const lockedChannel = !!defaultChannelId && !(parentTaskId && otherChannel)
   const { data: campaigns } = useCampaigns(pickedVertical || 'all')
 
   const priorityLabels = {
@@ -368,8 +372,15 @@ export function CreateTaskDialog({
             </div>
           )}
 
+          {parentTaskId && defaultChannelId && (
+            <label className="flex items-center gap-2 text-xs text-zinc-600 cursor-pointer select-none">
+              <input type="checkbox" checked={otherChannel} onChange={e => { setOtherChannel(e.target.checked); if (!e.target.checked) setValue('channel_id', defaultChannelId) ; else { setValue('channel_id', ''); setPickedTop('') } }} className="accent-blue-600" />
+              This sub-task belongs to a different channel (it will show on that board too)
+            </label>
+          )}
+
           {/* Channel → Sub-channel (2 clicks) */}
-          {!defaultChannelId && (
+          {!lockedChannel && (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-zinc-600 text-xs">1 · Channel *</Label>

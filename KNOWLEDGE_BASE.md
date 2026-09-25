@@ -466,6 +466,34 @@ Access if the data ever becomes confidential.
   mailto sends via POST /me/sendMail after confirm; offers Move to Trash / Promotions. 396 unit + 48 browser
   tests; deployed.
 
+### 2026-09-25 (later), GSI Tracker: admins list, members + badges, owner-scoped rights, task history, suggested edits, people map, renames (GSI Tracker)
+- **Migration 018** `admin_emails` table (kailash.gm, ani, mothilal.kanagaraj @lyzr.ai and @lyzr.com);
+  `handle_new_user` reads it. Applied live by Kailash? -> pending paste at time of writing.
+- **Migration 019** (validated on scratch, NOT yet applied live): `leadership_emails` (read-across
+  badge; admins seeded), `vertical_members` (+ `is_vertical_member`: admin / vertical owner /
+  member row / channel owner / domain owner in that vertical; everyone signed in seeded as member of
+  every vertical), `owns_channel_or_ancestor` (channel owners may insert sub-channels under their
+  channel and edit channel_owners below them), `is_task_owner` / `can_edit_task` (owners, creator,
+  parent-task owners, channel owners above, vertical owners, admins) on tasks update/delete and
+  task_assignments; tasks insert needs vertical membership; `log_task_edit` trigger writes
+  `activity_log` rows `action='edited'` `{field, value}` for 14 columns (status stays client-logged);
+  `task_suggestions` (patch JSONB, pending/accepted/rejected; anyone inserts, editors resolve).
+- Client: `useMyBadges()` (admin, leadership, owned verticals/channels/domains, member verticals),
+  `useAllVerticalMembers`, `useBadgeEmails`, `useTaskSuggestions`, `useTaskHistory`; actions
+  `addVerticalMember/removeVerticalMember`, `setBadge('admin'|'leadership')`, `suggestTaskEdit`,
+  `resolveTaskSuggestion` (applies via updateTask), `withdrawTaskSuggestion`.
+- Task drawer: `TaskEditBar` (owners edit; admins/leadership see "View only · press to edit";
+  others "Suggest an edit" with field/value/note; pending suggestions with accept/reject), whole
+  body gated `pointer-events-none` when not editing (comments stay open), Delete only when editing,
+  new **History** tab (`TaskHistoryList`). Create-task dialog: sub-task may pick a different channel.
+- New `/members/` page (People with badges + admin toggles, People map, Verticals owners+members,
+  Domains owners, Channels owners scoped to what the viewer may manage). `PeopleMap` on Company
+  Home and each vertical dashboard; `DomainGrid` (verticals × domains, open/late/this-week) on
+  Company Home. `/` also routes Leadership to Company Home.
+- Renames (labels only, code names unchanged): Function -> Domain, Workspace -> Company,
+  Category -> Group, Champion -> Campaign lead. Guide roles (+Leadership), views (+Members),
+  section 12 (create/edit/suggest/history). Build 31 routes, 36 tests, staged in `GSI_Tracker/`.
+
 ### 2026-09-25, GSI Tracker: hero campaigns + thunderclaps, role-based Home / My Board, two-intent assistant (GSI Tracker)
 - **Migration `017_campaigns.sql`** (added to `build-reset-sql.mjs`, `RESET_ALL.sql` regenerated;
   NOT yet applied on live — paste it in the SQL Editor): `campaigns` (kind launch | thunderclap |

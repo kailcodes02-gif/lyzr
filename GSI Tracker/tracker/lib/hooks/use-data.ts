@@ -6,7 +6,7 @@ import type {
   User, Category, Channel,
   ChannelOwner, ChannelResource, ChannelLearning, ChannelTarget,
   Vertical, VerticalOwner, Fn, FunctionOwner, VerticalResource, TaxonomyTemplate,
-  EffectiveChannelOwner, Campaign, CampaignOwner, CampaignParticipant,
+  EffectiveChannelOwner, Campaign, CampaignOwner, CampaignParticipant, VerticalMember, TaskSuggestion,
 } from '@/lib/types/database'
 import { taskChannelIds } from '@/lib/task-channels'
 
@@ -132,6 +132,88 @@ export function useTaxonomyTemplates() {
       const { data, error } = await supabase.from('taxonomy_templates').select('*').order('name')
       if (error) throw error
       return data as TaxonomyTemplate[]
+    },
+  })
+}
+
+// ============ MEMBERS & BADGES ============
+
+export function useAllVerticalMembers() {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['verticalMembers', 'all'],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('vertical_members').select('*').order('email')
+      if (error) throw error
+      return data as VerticalMember[]
+    },
+  })
+}
+
+export function useBadgeEmails(kind: 'admin' | 'leadership') {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['badgeEmails', kind],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from(kind === 'admin' ? 'admin_emails' : 'leadership_emails').select('email').order('email')
+      if (error) throw error
+      return (data || []).map(r => r.email.toLowerCase())
+    },
+  })
+}
+
+// Everything the signed-in person is, in one object. Drives Home and the drawer.
+export function useMyBadges() {
+  const { data: me } = useCurrentUser()
+  const { data: leadership } = useBadgeEmails('leadership')
+  const { data: vOwners } = useAllVerticalOwners()
+  const { data: members } = useAllVerticalMembers()
+  const { data: chOwners } = useAllChannelOwners()
+  const { data: fnOwners } = useAllFunctionOwners()
+  const email = me?.email.toLowerCase()
+  const mine = <T extends { email: string; user_id: string | null }>(rows?: T[]) =>
+    (rows || []).filter(r => (me && r.user_id === me.id) || (email && r.email.toLowerCase() === email))
+  const isAdmin = me?.role === 'admin'
+  return {
+    me,
+    isAdmin,
+    isLeadership: isAdmin || (!!email && (leadership || []).includes(email)),
+    ownedVerticalIds: new Set(mine(vOwners).map(r => r.vertical_id)),
+    memberVerticalIds: new Set(mine(members).map(r => r.vertical_id)),
+    ownedChannelIds: new Set(mine(chOwners).filter(o => o.source === 'channel').map(r => r.channel_id)),
+    effectiveChannelIds: new Set(mine(chOwners).map(r => r.channel_id)),
+    ownedFunctionIds: new Set(mine(fnOwners).map(r => r.function_id)),
+  }
+}
+
+export function useTaskSuggestions(taskId?: string | null) {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['taskSuggestions', taskId],
+    enabled: !!taskId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('task_suggestions')
+        .select('*, suggester:users!suggested_by(id, email, display_name, avatar_url)')
+        .eq('task_id', taskId!).order('created_at', { ascending: false })
+      if (error) throw error
+      return data as TaskSuggestion[]
+    },
+  })
+}
+
+export function useTaskHistory(taskId?: string | null) {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['taskHistory', taskId],
+    enabled: !!taskId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('activity_log')
+        .select('*, actor:users!actor_id(id, email, display_name, avatar_url)')
+        .eq('task_id', taskId!).order('created_at', { ascending: false }).limit(200)
+      if (error) throw error
+      return data as { id: string; action: string; from_value: any; to_value: any; created_at: string; actor?: { display_name: string | null; email: string; avatar_url: string | null } }[]
     },
   })
 }

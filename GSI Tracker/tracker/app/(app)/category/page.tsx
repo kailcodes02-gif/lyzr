@@ -52,7 +52,7 @@ function CategoryContent() {
   if (!category) {
     return (
       <div className="p-8 text-center text-zinc-600">
-        Category not found.
+        Group not found.
       </div>
     )
   }

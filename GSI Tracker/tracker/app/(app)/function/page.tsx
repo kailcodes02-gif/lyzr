@@ -54,7 +54,7 @@ function FunctionContent() {
   const ctx = useMemo(() => ({ verticalById: lookup.verticalById, channelById: lookup.channelById }), [lookup.verticalById, lookup.channelById])
   const nameOf = (email: string) => users?.find(u => u.email.toLowerCase() === email.toLowerCase())?.display_name || email
 
-  if (!fn) return <div className="p-8 text-center text-zinc-500 bg-zinc-50 min-h-screen">{functions ? 'Function not found.' : 'Loading…'}</div>
+  if (!fn) return <div className="p-8 text-center text-zinc-500 bg-zinc-50 min-h-screen">{functions ? 'Domain not found.' : 'Loading…'}</div>
 
   return (
     <div className="p-4 lg:p-8 space-y-6 max-w-7xl mx-auto bg-zinc-50 text-zinc-900 min-h-screen">
@@ -72,7 +72,7 @@ function FunctionContent() {
               {o.sort_order <= 0 && <Crown className="w-3 h-3" />}{nameOf(o.email)}
             </span>
           ))}
-          {(owners || []).length === 0 && <span className="text-xs text-zinc-400">No default owners (set in Admin › Functions)</span>}
+          {(owners || []).length === 0 && <span className="text-xs text-zinc-400">No default owners (set in Admin › Domains)</span>}
         </div>
       </div>
 
@@ -109,7 +109,7 @@ function FunctionContent() {
                 </Card>
               )
             })}
-            {perVertical.size === 0 && <p className="text-sm text-zinc-500">No channel is linked to this function yet. Link channels under Admin › Functions.</p>}
+            {perVertical.size === 0 && <p className="text-sm text-zinc-500">No channel is linked to this domain yet. Link channels under Admin › Domains.</p>}
           </div>
         </TabsContent>
 

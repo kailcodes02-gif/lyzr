@@ -4,7 +4,7 @@ import Link from 'next/link'
 import {
   BookOpen, Building2, Folder, Layers, GitBranch, ListTodo, CheckSquare, Home, LayoutDashboard, Calendar,
   LineChart, UserCircle, CalendarRange, DollarSign, Upload, History, Workflow, Settings, Crown, ShieldCheck,
-  Users, Table2, Filter, Repeat, ArrowRight, Sparkles,
+  Users, Table2, Filter, Repeat, ArrowRight, Sparkles, Eye,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { InfoTip } from '@/components/ui/info-tip'
@@ -16,7 +16,7 @@ import { withVertical } from '@/lib/hooks/use-space-href'
 
 const LEVELS = [
   { icon: Building2, color: 'text-blue-600 bg-blue-50 border-blue-200', name: 'Vertical', k: 'vertical', eg: 'GSI · Lyzr · a product' },
-  { icon: Folder, color: 'text-zinc-600 bg-zinc-100 border-zinc-200', name: 'Category', k: 'category', eg: 'Paid · Organic · Events' },
+  { icon: Folder, color: 'text-zinc-600 bg-zinc-100 border-zinc-200', name: 'Group (folder)', k: 'group', eg: 'Paid · Organic · Events' },
   { icon: Layers, color: 'text-blue-700 bg-blue-50 border-blue-200', name: 'Channel', k: 'channel', eg: 'Paid Ads · Email · Content' },
   { icon: GitBranch, color: 'text-violet-700 bg-violet-50 border-violet-200', name: 'Sub-channel', k: 'sub_channel', eg: 'LinkedIn Ads · Webinar' },
   { icon: ListTodo, color: 'text-emerald-700 bg-emerald-50 border-emerald-200', name: 'Task', k: 'task', eg: 'Run Q4 ABM campaign' },
@@ -25,18 +25,20 @@ const LEVELS = [
 ]
 
 const ROLES = [
-  { icon: ShieldCheck, name: 'Admin', k: 'admin', can: ['Create verticals and functions', 'Manage users and roles', 'Edit anything, anywhere'], where: 'Admin' },
-  { icon: Crown, name: 'Vertical owner', k: 'vertical_owner', can: ['Channels and sub-channels of their vertical', 'Budgets, custom fields, resources', 'Channel owners'], where: 'Vertical Settings' },
-  { icon: Workflow, name: 'Function owner', k: 'function_owner', can: ['Default owner of that function’s channels in every vertical', 'One roll-up view across verticals'], where: 'Functions' },
-  { icon: Users, name: 'Channel owner', k: 'channel_owner', can: ['Owns the channel’s tasks', 'Tasks with no owner inherit the channel owners'], where: 'Channel page' },
-  { icon: UserCircle, name: 'Member', k: 'member', can: ['See everything', 'Create and update tasks, comments, checklists'], where: 'Everywhere' },
+  { icon: ShieldCheck, name: 'Admin', k: 'admin', can: ['Create verticals and domains', 'Give every badge on Members', 'Edit anything after pressing Edit'], where: 'Members' },
+  { icon: Eye, name: 'Leadership', k: 'leadership', can: ['See the whole company: grid, people map, campaigns', 'Read-only unless they press Edit'], where: 'Home' },
+  { icon: Crown, name: 'Vertical owner', k: 'vertical_owner', can: ['Channels and sub-channels of their vertical', 'Budgets, custom fields, resources', 'Members and channel owners'], where: 'Vertical Settings · Members' },
+  { icon: Workflow, name: 'Domain owner', k: 'function_owner', can: ['Default owner of that domain’s channel in every vertical', 'One roll-up view across verticals'], where: 'Domains' },
+  { icon: Users, name: 'Channel owner', k: 'channel_owner', can: ['Owns the channel’s tasks', 'Adds sub-channels and sets owners below', 'Tasks with no owner inherit the channel owners'], where: 'Channel page · Members' },
+  { icon: UserCircle, name: 'Member', k: 'vertical_member', can: ['See everything', 'Create tasks in verticals they belong to', 'Edit own tasks; suggest edits on others'], where: 'My Board' },
 ]
 
 const VIEWS = [
-  { icon: Home, name: 'Workspace Home', k: 'workspace_home', href: '/', mode: 'workspace' },
+  { icon: Home, name: 'Company Home', k: 'workspace_home', href: '/', mode: 'workspace' },
   { icon: Table2, name: 'All Tasks', k: 'tracker', href: '/workspace/tasks/', mode: 'workspace', text: 'Every task in every vertical, with every filter.' },
   { icon: CalendarRange, name: 'Weekly (workspace)', k: 'weekly', href: '/workspace/weekly/', mode: 'workspace' },
-  { icon: Workflow, name: 'Functions', k: 'functions_view', href: '/functions/', mode: 'workspace' },
+  { icon: Workflow, name: 'Domains', k: 'functions_view', href: '/functions/', mode: 'workspace' },
+  { icon: Users, name: 'Members', k: 'people_map', href: '/members/', mode: 'workspace', text: 'Every person and every badge; the people map; owners per vertical, domain and channel.' },
   { icon: LayoutDashboard, name: 'Dashboard', k: 'space_dashboard', href: '/dashboard/', mode: 'space' },
   { icon: Calendar, name: 'Calendar', k: 'calendar', href: '/calendar/', mode: 'both' },
   { icon: ListTodo, name: 'My Tasks', k: 'member', href: '/my-tasks/', mode: 'both', text: 'Assigned to you, inherited through your channels, or mentioning you.' },
@@ -84,8 +86,8 @@ export default function GuidePage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5 text-xs text-zinc-600">
               <div className="rounded-lg bg-zinc-50 p-3"><strong className="text-zinc-800">Verticals</strong> are separate spaces with their own channel tree, budgets and reports. <strong>Lyzr</strong> is the company-wide one.</div>
-              <div className="rounded-lg bg-zinc-50 p-3"><strong className="text-zinc-800">Categories</strong> only group channels. Nothing is assigned to them. Channels and sub-channels are where owners, targets and tasks live.</div>
-              <div className="rounded-lg bg-zinc-50 p-3"><strong className="text-zinc-800">Functions</strong> tie the same channel across verticals: GSI Content, Lyzr Content and any future one roll up to the Content owner.</div>
+              <div className="rounded-lg bg-zinc-50 p-3"><strong className="text-zinc-800">Groups</strong> are only folders. Nothing is owned or assigned at that level. Channels and sub-channels are where owners, targets and tasks live.</div>
+              <div className="rounded-lg bg-zinc-50 p-3"><strong className="text-zinc-800">Domains</strong> tie the same channel across verticals: GSI Content, Lyzr Content and any future one roll up to the Content domain owner.</div>
             </div>
           </CardContent>
         </Card>
@@ -98,13 +100,13 @@ export default function GuidePage() {
           <Card className="bg-white border-zinc-200">
             <CardContent className="p-5 space-y-2">
               <div className="flex items-center gap-2 text-base font-semibold"><Home className="w-5 h-5 text-violet-600" /> Workspace</div>
-              <p className="text-xs text-zinc-600">Everything, all verticals. For founders and function owners. The switcher at the top of the sidebar says <em>Workspace</em>.</p>
+              <p className="text-xs text-zinc-600">Everything, all verticals. For founders and function owners. The switcher at the top of the sidebar says <em>Company</em>.</p>
               <ul className="text-xs text-zinc-700 space-y-1 list-disc pl-4">
                 <li>Vertical cards with open, overdue, live and this week&apos;s done vs not done</li>
                 <li>All Tasks table, Calendar and Weekly across verticals</li>
-                <li>Functions: one discipline everywhere it runs</li>
+                <li>Domains: one discipline everywhere it runs; the verticals × domains grid and the people map</li>
               </ul>
-              <Link href="/" className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1">Open Workspace Home <ArrowRight className="w-3 h-3" /></Link>
+              <Link href="/" className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1">Open Company Home <ArrowRight className="w-3 h-3" /></Link>
             </CardContent>
           </Card>
           <Card className="bg-white border-zinc-200">
@@ -125,7 +127,7 @@ export default function GuidePage() {
       {/* 3. Roles */}
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider">3 · Who can do what</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
           {ROLES.map(r => (
             <Card key={r.name} className="bg-white border-zinc-200">
               <CardContent className="p-4 space-y-2">
@@ -307,7 +309,7 @@ export default function GuidePage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-zinc-600">
           <div className="rounded-lg bg-zinc-50 p-3"><strong className="text-zinc-800">Banner everywhere.</strong> Pinned live and upcoming campaigns sit at the top of Home, every vertical dashboard and My Board.</div>
-          <div className="rounded-lg bg-zinc-50 p-3"><strong className="text-zinc-800">Champions</strong> <InfoTip k="champion" /> drive it and can edit it. Admins create company-wide ones; vertical owners create theirs.</div>
+          <div className="rounded-lg bg-zinc-50 p-3"><strong className="text-zinc-800">Campaign leads</strong> <InfoTip k="champion" /> drive it and can edit it. Admins create company-wide ones; vertical owners create theirs.</div>
           <div className="rounded-lg bg-zinc-50 p-3"><strong className="text-zinc-800">Own tracker.</strong> Linked tasks (pick the campaign in any task) plus, for thunderclaps, the done / not-done list. <Link href="/campaigns/" className="text-blue-600 hover:underline inline-flex items-center gap-1">Open Campaigns <ArrowRight className="w-3 h-3" /></Link></div>
         </div>
       </section>
@@ -317,8 +319,8 @@ export default function GuidePage() {
         <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider">10 · Home is different per role</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {[
-            { icon: ShieldCheck, n: 'Admin / leadership', d: 'Workspace Home: KPIs across verticals, hero banner, every vertical card, My Day, activity. Plus Campaigns and Weekly across the company.', href: '/' },
-            { icon: Crown, n: 'Vertical owner', d: 'Same Workspace Home with their verticals first, then their vertical dashboards with every channel.', href: '/' },
+            { icon: ShieldCheck, n: 'Admin / leadership', d: 'Company Home: KPIs across verticals, hero banner, every vertical card, My Day, activity. Plus Campaigns and Weekly across the company.', href: '/' },
+            { icon: Crown, n: 'Vertical owner', d: 'Same Company Home with their verticals first, then their vertical dashboards with every channel.', href: '/' },
             { icon: Sparkles, n: 'Channel / function owner, member', d: 'My Board only: the banner, the channels you own in every vertical, what you owe this week and what is overdue. No filters, no toggles.', href: '/my-board/' },
           ].map(r => (
             <Card key={r.n} className="bg-white border-zinc-200">
@@ -331,6 +333,24 @@ export default function GuidePage() {
           ))}
         </div>
         <p className="text-[11px] text-zinc-500">Anyone can still open My Board from the sidebar; admins and vertical owners can too.</p>
+      </section>
+
+      {/* 12. Who edits a task, and the history */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider">12 · Editing a task: owners edit, others suggest, everything is logged</h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          {[
+            { t: 'Create', d: 'Anyone who is a member of the vertical creates tasks and sub-tasks there. A sub-task may live on another channel (design for a webinar sits on the Design board).', k: 'cross_channel' },
+            { t: 'Edit & delete', d: 'The task owners, the channel owners above it, the vertical owners and admins. Admins and Leadership see it read-only first and press Edit.', k: 'channel_owner' },
+            { t: 'Suggest', d: 'Everyone else presses “Suggest an edit”, picks the field and the new value. Owners accept or reject in one click. Comments are open to all.', k: 'suggest_edit' },
+            { t: 'History', d: 'Every field change is written by the database into the History tab of the task: who, what, from, to, when. Nothing can skip it.', k: 'task_history' },
+          ].map(x => (
+            <Card key={x.t} className="bg-white border-zinc-200"><CardContent className="p-4 space-y-1">
+              <div className="text-sm font-semibold flex items-center gap-1.5">{x.t} <InfoTip k={x.k} /></div>
+              <p className="text-xs text-zinc-600">{x.d}</p>
+            </CardContent></Card>
+          ))}
+        </div>
       </section>
 
       {/* 11. Assistant */}

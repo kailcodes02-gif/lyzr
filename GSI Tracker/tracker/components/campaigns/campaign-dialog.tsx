@@ -148,7 +148,7 @@ export function CampaignDialog({ open, onOpenChange, campaign, defaultVerticalId
           </div>
 
           <div>
-            <Label className="text-zinc-600 text-xs">Champions (emails, comma separated) <InfoTip k="champion" /></Label>
+            <Label className="text-zinc-600 text-xs">Campaign leads (emails, comma separated) <InfoTip k="champion" /></Label>
             <Input value={ownerText} onChange={e => setOwnerText(e.target.value)} list="campaign-emails" placeholder="anju@lyzr.ai, praveen@lyzr.ai" className={inputCls} />
           </div>
 

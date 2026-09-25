@@ -403,7 +403,7 @@ export default function TrackerPage() {
         </div>
 
         <div className="flex flex-col gap-1 w-full sm:w-auto">
-          <label className="text-[10px] text-zinc-500 font-medium">Category</label>
+          <label className="text-[10px] text-zinc-500 font-medium">Group</label>
           <select
             value={selectedCategory}
             onChange={e => {
@@ -412,7 +412,7 @@ export default function TrackerPage() {
             }}
             className="bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-violet-500 w-full sm:min-w-[160px]"
           >
-            <option value="all">All Categories</option>
+            <option value="all">All groups</option>
             {categories?.map(cat => (
               <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}

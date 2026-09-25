@@ -119,7 +119,7 @@ function CampaignPageInner() {
             <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900"><Zap className="w-4 h-4 inline mr-1" /><strong>Everyone:</strong> {c.ask}</div>
           )}
           <div className="flex items-center gap-2 flex-wrap text-xs text-zinc-600">
-            <Crown className="w-3.5 h-3.5 text-amber-500" /> Champions <InfoTip k="champion" />:
+            <Crown className="w-3.5 h-3.5 text-amber-500" /> Campaign leads <InfoTip k="champion" />:
             {owners.length ? owners.map(o => <span key={o.email}>{person(o.email)}</span>) : <span className="text-zinc-400">none yet</span>}
           </div>
         </div>

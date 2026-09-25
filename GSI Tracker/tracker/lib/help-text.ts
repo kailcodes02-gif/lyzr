@@ -4,10 +4,10 @@
 export const HELP: Record<string, string> = {
   // Taxonomy
   vertical: 'A business line (GSI, a product, or the company-wide Lyzr space). Everything below it belongs to that vertical: channels, tasks, budgets, reports.',
-  category: 'A grouping label for channels inside a vertical (Paid, Organic, Events). Nothing is assigned to a category; it only organises the channel list and can carry a budget.',
+  category: 'A group is only a folder for channels (Paid, Organic, Events). Nothing is owned or assigned at this level; it organises the channel list and can carry a budget.',
   channel: 'A marketing motion with owners, targets, budget and tasks (Paid Ads, Email, Content). Channels can have sub-channels.',
   sub_channel: 'A channel nested under a parent (LinkedIn Ads under Paid Ads). It has everything a channel has and inherits the parent function.',
-  function: 'The same discipline across verticals (Content, Social, Paid). Linking a channel to a function lets its owner see that work in every vertical at once.',
+  function: 'A domain is the same discipline across verticals (Content, Social, Paid). Linking a channel to a domain lets the domain owner see that work in every vertical at once.',
   tier: 'Priority of the channel in the plan: Gold = must win, Silver = important, Bronze = nice to have, Hygiene = keep the lights on.',
   category_icon: 'Optional pictogram for the category. Cosmetic only.',
   task: 'A piece of work on a channel: an activity with owners, a due date, priority and status. Can hold sub-activities and a checklist.',
@@ -18,13 +18,13 @@ export const HELP: Record<string, string> = {
   // People and permissions
   admin: 'Global administrator. Creates verticals and functions, manages users, edits everything everywhere.',
   vertical_owner: 'Manages one vertical: its channels, owners, budgets, custom fields and resources. Set by an admin.',
-  function_owner: 'Default owner for every channel of that function across verticals, unless a vertical sets its own channel owners.',
+  function_owner: 'Domain owner: default owner for every channel of that domain across verticals, unless a vertical sets its own channel owners.',
   channel_owner: 'Owns a channel and its tasks. Primary owners are marked with a crown; a task without an owner inherits the channel owners.',
   member: 'Everyone who signs in. Members see everything and can create and update tasks, comments and checklists.',
   pending_owner: 'This person has not signed in yet. Their ownership and assignments attach automatically on first Google sign-in.',
 
   // Views
-  workspace_home: 'The founder view: every vertical at a glance, your day across verticals, and recent activity.',
+  workspace_home: 'The company view: every vertical and domain at a glance, the hero campaigns, who is where, your day, and recent activity.',
   space_dashboard: 'This vertical only: your tasks, what goes live this week, budget and activity.',
   calendar: 'Tasks by due date. Use the arrows or pick any range; filter by owner, channel and status.',
   tracker: 'Results view: tasks that went live or finished, with their tracker fields (KPI actual, spend, evidence).',
@@ -33,7 +33,7 @@ export const HELP: Record<string, string> = {
   budgets: 'Budget periods at vertical, category or channel level, and how much tasks have allocated against each.',
   leads_pipeline: 'Read-only HubSpot lead pull, email-interaction CSVs and lead imports, with per-lead outreach tracking. Enabled per vertical.',
   history: 'Every logged change, who made it and when.',
-  functions_view: 'One discipline across all verticals: its channels, tasks and weekly results everywhere it runs.',
+  functions_view: 'One domain across all verticals: its channels, tasks and weekly results everywhere it runs.',
   resources: 'Curated links for this vertical: sheets, asset folders, live pages.',
   saved_views: 'Save the current filters and sort under a name so you can reload them later.',
   feature_flags: 'Which optional modules this vertical shows. GSI integrations (HubSpot pull, Instantly report) are wired for GSI today.',
@@ -47,9 +47,16 @@ export const HELP: Record<string, string> = {
   campaign: 'A hero item the whole team rallies around: a product launch, a thunderclap or a big campaign. It sits as a banner on every dashboard, links tasks from any channel, and has its own tracker page.',
   launch: 'A product or feature launch. Link every launch task to it so leadership sees one progress bar.',
   thunderclap: 'Everyone must do one specific action (repost, comment, share) by a date. Each participant ticks their own row; the banner shows who is done.',
-  champion: 'The people driving the campaign. They can edit it and are shown on the banner.',
+  champion: 'Campaign leads: the people driving it. They can edit it and are shown on the banner.',
   my_board: 'Your simple home: the hero banner, your channels across every vertical, and what you owe this week. Nothing else.',
   assistant: 'Ask it two things: create a task (it fills the form, you press Create) or find a task (status, owners and a link). It does nothing else.',
+  leadership: 'A read-across badge. Leadership sees the whole company (every vertical, domain, campaign and task) and edits nothing unless they press Edit on a task.',
+  vertical_member: 'Anyone who works in the vertical. Members create tasks and sub-tasks there. Owners of anything in the vertical are members automatically.',
+  suggest_edit: 'Not an owner of this task? Propose the change here. The owners see it and accept or reject it in one click.',
+  task_history: 'Every change to this task, written by the database: who, what, from, to, when.',
+  people_map: 'Who is where: each row is a domain or channel, each column a vertical, each cell the people who own it. Dimmed names are inherited from the domain.',
+  cross_channel: 'A sub-task can live on a different channel from its parent (design for a webinar sits on the Design board). It shows on both, counts once.',
+  group: 'Only a folder for channels. Nothing is owned or assigned at this level; it can carry a budget that its channels roll into.',
   recurring: 'Google-Calendar-style repeat: every N days, weeks or months, on chosen weekdays, ending never, on a date or after N times.',
 }
 

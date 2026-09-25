@@ -160,7 +160,7 @@ export default function BudgetsPage() {
         <Card className="bg-white border-zinc-200 backdrop-blur-xl">
           <CardHeader>
             <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-600 flex items-center gap-2">
-              <Layers className="w-4 h-4 text-blue-600" /> Category Scopes
+              <Layers className="w-4 h-4 text-blue-600" /> Group scopes
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">

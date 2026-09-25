@@ -18,9 +18,9 @@ import { Checkbox } from '@/components/ui/checkbox'
 import {
   Calendar, Layers, Plus, Trash2, Send, Loader2,
   CheckSquare, MessageSquare, Link as LinkIcon, Upload,
-  AlertTriangle, Pencil, Target, Repeat,
+  AlertTriangle, Pencil, Target, Repeat, Eye, Lightbulb, Check, X, History,
 } from 'lucide-react'
-import { useTask, useUsers, useTasks, useCurrentUser, useKnownEmails, useChannels, useCampaigns } from '@/lib/hooks/use-data'
+import { useTask, useUsers, useTasks, useCurrentUser, useKnownEmails, useChannels, useCampaigns, useMyBadges, useTaskSuggestions, useTaskHistory } from '@/lib/hooks/use-data'
 import {
   updateTask, deleteTask, addChecklistItem, toggleChecklistItem,
   deleteChecklistItem, addComment, createMention, updateAssignments, uploadResultFile,
@@ -42,6 +42,8 @@ import { toZonedTime, format as formatTz } from 'date-fns-tz'
 import { TaskOwnersEditor } from './task-owners-editor'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { withVertical } from '@/lib/hooks/use-space-href'
+import { suggestTaskEdit, resolveTaskSuggestion, withdrawTaskSuggestion } from '@/lib/actions'
+import { InfoTip } from '@/components/ui/info-tip'
 import Link from 'next/link'
 import { RecurrencePicker, DEFAULT_RECURRENCE, type RecurrenceValue } from './recurrence-picker'
 import { recurrenceLabel, type RecurrenceRule, type RecurrenceEnd } from '@/lib/task-logic'
@@ -108,6 +110,8 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
   const [createSubtaskOpen, setCreateSubtaskOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
+  const [editMode, setEditMode] = useState(false)
+  const badges = useMyBadges()
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
 
@@ -121,6 +125,20 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
 
   const isFrozen = task?.tracker_frozen_at ? new Date(task.tracker_frozen_at) < new Date() : false
   const isFieldDisabled = isFrozen && (!isAdmin || !adminOverride)
+
+  // Who may change this task: its owners / creator, the vertical owners, the
+  // channel owners above it, and admins. Everyone else reads and suggests.
+  const isOwnerish = !!task && !!currentUser && (
+    task.created_by === currentUser.id
+    || (task.assignments || []).some(a => a.user_id === currentUser.id)
+    || badges.ownedVerticalIds.has((task.channel as any)?.vertical_id)
+    || badges.effectiveChannelIds.has(task.channel_id)
+    || (!!(task.channel as any)?.parent_channel_id && badges.effectiveChannelIds.has((task.channel as any).parent_channel_id))
+  )
+  const canEdit = isOwnerish || isAdmin
+  // Admins and leadership start read-only and press Edit; owners edit directly.
+  const editing = canEdit && (isOwnerish || editMode)
+  const gate = editing ? '' : 'pointer-events-none'
 
   const incompleteDeps = dependencies?.filter(
     d => d.depends_on_task && d.depends_on_task.status !== 'done' && d.depends_on_task.status !== 'cancelled'
@@ -377,6 +395,9 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
             </div>
           ) : task ? (
             <div className="p-6">
+              <TaskEditBar task={task} canEdit={canEdit} isOwnerish={isOwnerish} editMode={editMode} setEditMode={setEditMode}
+                onChanged={() => { queryClient.invalidateQueries({ queryKey: ['task', taskId] }); queryClient.invalidateQueries({ queryKey: ['tasks'] }); queryClient.invalidateQueries({ queryKey: ['taskSuggestions', taskId] }) }} />
+              <div className={gate}>
               <SheetHeader className="mb-4">
                 {/* Context breadcrumb: Vertical › Category › Channel › Sub-channel */}
                 <div className="flex items-center gap-1.5 text-xs text-zinc-500 mb-2 flex-wrap">
@@ -655,6 +676,8 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                 </div>
               )}
 
+              </div>
+
               <Tabs defaultValue="details" className="mt-4">
                 <TabsList className="bg-zinc-100 border border-zinc-200">
                   <TabsTrigger value="details" className="text-xs data-[state=active]:bg-zinc-200/70">Details</TabsTrigger>
@@ -666,10 +689,12 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                     Comments {(task as any).comments?.length ? `(${(task as any).comments.length})` : ''}
                     {((task as any).comments?.length || 0) > 0 && <TabDot />}
                   </TabsTrigger>
+                  <TabsTrigger value="history" className="text-xs data-[state=active]:bg-zinc-200/70">History</TabsTrigger>
                 </TabsList>
 
                 {/* Details / Channel Fields */}
                 <TabsContent value="details" className="mt-4 space-y-4">
+                <div className={gate}>
                   {isFrozen && (
                     <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-lg flex items-center justify-between text-xs mb-4">
                       <div className="flex items-center gap-2">
@@ -768,10 +793,12 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                       />
                     </div>
                   )}
+                </div>
                 </TabsContent>
 
                 {/* Dependencies Tab */}
                 <TabsContent value="dependencies" className="mt-4 space-y-4">
+                <div className={gate}>
                   <div>
                     <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Depends On (Predecessors)</h4>
                     <div className="space-y-2 mb-4">
@@ -880,6 +907,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                       )}
                     </div>
                   </div>
+                </div>
                 </TabsContent>
 
                 {/* Subtasks */}
@@ -937,8 +965,12 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                     </Button>
                   </div>
                 </TabsContent>
+                <TabsContent value="history" className="mt-4">
+                  <TaskHistoryList taskId={taskId!} />
+                </TabsContent>
               </Tabs>
 
+              {editing && (<>
               {/* Delete */}
               <div className="mt-8 pt-4 border-t border-zinc-200">
                 <Button
@@ -949,6 +981,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                   <Trash2 className="w-4 h-4 mr-1" fill="currentColor" /> Delete Task
                 </Button>
               </div>
+              </>)}
             </div>
           ) : null}
         </SheetContent>
@@ -1632,6 +1665,163 @@ function CampaignSelect({ taskId, value, verticalId }: { taskId: string; value: 
         {list.map(c => <option key={c.id} value={c.id}>{c.kind === 'thunderclap' ? '⚡' : c.kind === 'launch' ? '🚀' : '🎯'} {c.name}</option>)}
       </select>
       {value && <Link href={`/campaign/?id=${value}`} className="text-xs text-blue-600 hover:underline shrink-0">Open</Link>}
+    </div>
+  )
+}
+
+
+// ---------------------------------------------------------------------------
+// Edit bar: owners edit directly; admins/leadership toggle Edit; everyone else
+// suggests. Pending suggestions are listed here for the owners to resolve.
+const SUGGEST_FIELDS: { key: string; label: string; kind: 'text' | 'date' | 'status' | 'priority' }[] = [
+  { key: 'title', label: 'Title', kind: 'text' },
+  { key: 'description', label: 'Description', kind: 'text' },
+  { key: 'status', label: 'Status', kind: 'status' },
+  { key: 'priority', label: 'Priority', kind: 'priority' },
+  { key: 'due_date', label: 'Due date', kind: 'date' },
+  { key: 'result_url', label: 'Result URL', kind: 'text' },
+]
+
+function TaskEditBar({ task, canEdit, isOwnerish, editMode, setEditMode, onChanged }: {
+  task: Task; canEdit: boolean; isOwnerish: boolean; editMode: boolean; setEditMode: (v: boolean) => void; onChanged: () => void
+}) {
+  const { data: me } = useCurrentUser()
+  const { data: suggestions } = useTaskSuggestions(task.id)
+  const [open, setOpen] = useState(false)
+  const [field, setField] = useState(SUGGEST_FIELDS[0].key)
+  const [value, setValue] = useState('')
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const pending = (suggestions || []).filter(s => s.status === 'pending')
+  const def = SUGGEST_FIELDS.find(f => f.key === field)!
+
+  const run = async (fn: () => Promise<unknown>, ok?: string) => {
+    if (busy) return; setBusy(true)
+    try { await fn(); onChanged(); if (ok) toast.success(ok) } catch (e: any) { toast.error(e?.message || 'Failed') } finally { setBusy(false) }
+  }
+  const submit = () => run(async () => {
+    const v = def.kind === 'date' ? (value || null) : value.trim()
+    if (v === '' ) throw new Error('Enter the new value')
+    await suggestTaskEdit(task.id, { [field]: v }, note)
+    setOpen(false); setValue(''); setNote('')
+  }, 'Suggestion sent to the owners')
+  const show = (v: unknown) => v == null || v === '' ? '—' : String(v)
+
+  return (
+    <div className="mb-4 space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        {canEdit && !isOwnerish && (
+          <Button size="sm" variant={editMode ? 'default' : 'outline'} onClick={() => setEditMode(!editMode)}
+            className={cn('h-7 text-xs', editMode ? 'bg-blue-600 text-white' : 'border-zinc-300')}>
+            {editMode ? <><Pencil className="w-3.5 h-3.5 mr-1" /> Editing</> : <><Eye className="w-3.5 h-3.5 mr-1" /> View only · press to edit</>}
+          </Button>
+        )}
+        {!canEdit && (
+          <Button size="sm" variant="outline" onClick={() => setOpen(o => !o)} className="h-7 text-xs border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100">
+            <Lightbulb className="w-3.5 h-3.5 mr-1" /> Suggest an edit
+          </Button>
+        )}
+        {!canEdit && <span className="text-[11px] text-zinc-500 inline-flex items-center gap-1">Owners edit this task; you can comment or suggest. <InfoTip k="suggest_edit" /></span>}
+        {pending.length > 0 && <span className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">{pending.length} pending suggestion{pending.length === 1 ? '' : 's'}</span>}
+      </div>
+
+      {open && !canEdit && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <select value={field} onChange={e => { setField(e.target.value); setValue('') }} className="h-8 text-xs rounded-md border border-zinc-300 bg-white px-2">
+              {SUGGEST_FIELDS.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
+            </select>
+            {def.kind === 'status' ? (
+              <select value={value} onChange={e => setValue(e.target.value)} className="h-8 text-xs rounded-md border border-zinc-300 bg-white px-2">
+                <option value="">New status…</option>
+                {Object.entries(STATUS_CONFIG).map(([k, c]) => <option key={k} value={k}>{c.label}</option>)}
+              </select>
+            ) : def.kind === 'priority' ? (
+              <select value={value} onChange={e => setValue(e.target.value)} className="h-8 text-xs rounded-md border border-zinc-300 bg-white px-2">
+                <option value="">New priority…</option>
+                {['P0', 'P1', 'P2', 'P3', 'P4'].map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            ) : (
+              <Input type={def.kind === 'date' ? 'date' : 'text'} value={value} onChange={e => setValue(e.target.value)} placeholder={`New ${def.label.toLowerCase()}`} className="h-8 text-xs bg-white border-zinc-300" />
+            )}
+          </div>
+          <Input value={note} onChange={e => setNote(e.target.value)} placeholder="Why? (optional)" className="h-8 text-xs bg-white border-zinc-300" />
+          <div className="flex gap-2 justify-end">
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button size="sm" className="h-7 text-xs bg-amber-600 hover:bg-amber-500 text-white" disabled={busy} onClick={submit}>Send suggestion</Button>
+          </div>
+        </div>
+      )}
+
+      {pending.length > 0 && (
+        <div className="rounded-xl border border-zinc-200 bg-white divide-y divide-zinc-100">
+          {pending.map(sg => (
+            <div key={sg.id} className="px-3 py-2 flex items-start gap-3 text-xs">
+              <Lightbulb className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-zinc-800">
+                  <span className="font-medium">{sg.suggester?.display_name || sg.suggester?.email || 'Someone'}</span> suggests{' '}
+                  {Object.entries(sg.patch).map(([k, v]) => (
+                    <span key={k}><span className="text-zinc-500">{SUGGEST_FIELDS.find(f => f.key === k)?.label || k}</span> → <strong>{k === 'status' ? (STATUS_CONFIG[v as TaskStatus]?.label || show(v)) : show(v)}</strong> </span>
+                  ))}
+                  <span className="text-zinc-400">(now {Object.keys(sg.patch).map(k => k === 'status' ? STATUS_CONFIG[(task as any)[k] as TaskStatus]?.label : show((task as any)[k])).join(', ')})</span>
+                </p>
+                {sg.note && <p className="text-zinc-500 mt-0.5">“{sg.note}”</p>}
+              </div>
+              {canEdit ? (
+                <div className="flex gap-1 shrink-0">
+                  <button disabled={busy} onClick={() => run(() => resolveTaskSuggestion(sg.id, true), 'Applied')} className="p-1 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100" title="Accept"><Check className="w-3.5 h-3.5" /></button>
+                  <button disabled={busy} onClick={() => run(() => resolveTaskSuggestion(sg.id, false), 'Rejected')} className="p-1 rounded bg-zinc-100 text-zinc-600 hover:bg-red-50 hover:text-red-600" title="Reject"><X className="w-3.5 h-3.5" /></button>
+                </div>
+              ) : sg.suggested_by === me?.id ? (
+                <button disabled={busy} onClick={() => run(() => withdrawTaskSuggestion(sg.id), 'Withdrawn')} className="text-zinc-400 hover:text-red-600 shrink-0" title="Withdraw"><X className="w-3.5 h-3.5" /></button>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Every change on this task, written by the database trigger plus the
+// client's own created / status / comment events.
+function TaskHistoryList({ taskId }: { taskId: string }) {
+  const { data: rows, isLoading } = useTaskHistory(taskId)
+  const { data: channels } = useChannels('all')
+  const { data: users } = useUsers()
+  const label = (f: string) => ({ title: 'title', description: 'description', priority: 'priority', due_date: 'due date', channel_id: 'channel', parent_task_id: 'parent', budget_allocated: 'budget', budget_period_id: 'budget period', campaign_id: 'campaign', result_url: 'result URL', blocked_reason: 'blocker reason', blocked_by_email: 'blocked by', planning_fields: 'planning fields', tracker_fields: 'tracker fields' } as Record<string, string>)[f] || f
+  const val = (f: string, v: unknown) => {
+    if (v == null || v === '') return '—'
+    if (f === 'channel_id') return channels?.find(c => c.id === v)?.name || String(v)
+    if (f === 'blocked_by_user_id') return users?.find(u => u.id === v)?.display_name || String(v)
+    if (typeof v === 'object') return JSON.stringify(v).slice(0, 120)
+    return String(v)
+  }
+  if (isLoading) return <p className="text-xs text-zinc-500">Loading…</p>
+  if (!rows?.length) return <p className="text-xs text-zinc-500">No changes recorded yet.</p>
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] text-zinc-500 inline-flex items-center gap-1"><History className="w-3 h-3" /> {rows.length} entries <InfoTip k="task_history" /></p>
+      <div className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white">
+        {rows.map(r => {
+          const who = r.actor?.display_name || r.actor?.email || 'System'
+          let text: React.ReactNode = r.action.replace(/_/g, ' ')
+          if (r.action === 'edited' && r.from_value?.field) {
+            const f = r.from_value.field
+            text = <>changed <span className="text-zinc-500">{label(f)}</span> from <s className="text-zinc-400">{val(f, r.from_value.value)}</s> to <strong>{val(f, r.to_value?.value)}</strong></>
+          } else if (r.action === 'status_changed') {
+            text = <>changed status from <s className="text-zinc-400">{STATUS_CONFIG[r.from_value as TaskStatus]?.label || String(r.from_value ?? '—')}</s> to <strong>{STATUS_CONFIG[r.to_value as TaskStatus]?.label || String(r.to_value ?? '—')}</strong></>
+          } else if (r.action === 'created') text = 'created this task'
+          else if (r.action === 'commented') text = 'commented'
+          return (
+            <div key={r.id} className="px-3 py-2 text-xs flex gap-2">
+              <span className="text-zinc-400 shrink-0 w-28">{formatTz(toZonedTime(new Date(r.created_at), 'Asia/Kolkata'), 'd MMM, h:mm a', { timeZone: 'Asia/Kolkata' })}</span>
+              <span className="text-zinc-800 min-w-0"><span className="font-medium">{who}</span> {text}</span>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

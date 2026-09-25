@@ -45,7 +45,7 @@ export default function FunctionsPage() {
     <div className="p-4 lg:p-8 space-y-6 max-w-7xl mx-auto bg-zinc-50 text-zinc-900 min-h-screen">
       <div className="pl-12 lg:pl-0">
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
-          <Workflow className="w-6 h-6 text-emerald-600" /> Functions <InfoTip k="functions_view" />
+          <Workflow className="w-6 h-6 text-emerald-600" /> Domains <InfoTip k="functions_view" />
         </h1>
         <p className="text-sm text-zinc-500 mt-1">
           One discipline across every vertical: Content, Social, Paid and so on. Open a function to see its work everywhere it runs.

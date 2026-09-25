@@ -340,7 +340,7 @@ function AdminContent() {
             <Building2 className="w-4 h-4 mr-2" /> Verticals
           </TabsTrigger>
           <TabsTrigger value="functions" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
-            <Workflow className="w-4 h-4 mr-2" /> Functions
+            <Workflow className="w-4 h-4 mr-2" /> Domains
           </TabsTrigger>
           <TabsTrigger value="taxonomy" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
             <Network className="w-4 h-4 mr-2" /> Taxonomy
