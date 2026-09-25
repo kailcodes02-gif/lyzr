@@ -55,7 +55,7 @@ function LoginContent() {
 
           {error && (
             <div className="mb-6 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm text-center">
-              {error === 'not_lyzr' ? 'This account cannot be created: either it is not a Lyzr address, or you already have an account under your other Lyzr email (lyzr.ai / lyzr.com). Sign in with that one and add this login under Me › Linked accounts.' : error === 'twin' ? 'You already have an account under your other Lyzr email. Sign in with that one, then add this login under Me › Linked accounts.' : 'Authentication failed. Please try again.'}
+              {error === 'not_lyzr' ? 'Only lyzr.com Microsoft accounts can sign in. If you used to sign in with Google, ask an admin to move your account to your lyzr.com address.' : error === 'twin' ? 'You already have an account under your other Lyzr email. Sign in with that one, then add this login under Me › Linked accounts.' : 'Authentication failed. Please try again.'}
             </div>
           )}
 
@@ -87,7 +87,7 @@ function LoginContent() {
           {failed && <p className="mt-3 text-xs text-center text-red-600">{failed}</p>}
 
           <p className="mt-6 text-xs text-center text-zinc-500">
-            Sign in with your Lyzr Microsoft account
+            Sign in with your Lyzr Microsoft account (name@lyzr.com)
           </p>
         </div>
       </div>

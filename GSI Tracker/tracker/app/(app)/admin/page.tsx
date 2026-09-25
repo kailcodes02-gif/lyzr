@@ -357,14 +357,14 @@ function AdminContent() {
             <CardHeader>
               <CardTitle className="text-base font-semibold text-zinc-900">Invite a teammate</CardTitle>
               <CardDescription className="text-zinc-500 text-xs">
-                Send a sign-in invite to any lyzr.ai or lyzr.com email. They sign in with Slack, Microsoft or Google; any tasks already assigned to that address get auto-mapped to their account.
+                Send a sign-in invite to any lyzr.com email. They sign in with Microsoft; any tasks already assigned to that address get auto-mapped to their account.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-2">
                 <Input
                   type="email"
-                  placeholder="teammate@lyzr.ai"
+                  placeholder="teammate@lyzr.com"
                   value={inviteEmail}
                   onChange={e => setInviteEmail(e.target.value)}
                   className="bg-zinc-200 border-zinc-300 text-sm h-9 flex-1"

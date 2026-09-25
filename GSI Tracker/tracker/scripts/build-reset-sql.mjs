@@ -32,6 +32,7 @@ const ORDER = [
   '020_task_notifications.sql',
   '021_auth_providers.sql',
   '022_one_person_two_emails.sql',
+  '023_com_only.sql',
 ]
 
 let m001 = mig('001_initial_schema.sql')
