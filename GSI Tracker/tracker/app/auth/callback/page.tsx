@@ -23,9 +23,11 @@ function CallbackContent() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
         const desc = (searchParams.get('error_description') || '').toLowerCase()
-        router.replace(desc.includes('lyzr') ? '/login?error=not_lyzr' : '/login?error=auth_failed')
+        router.replace(desc.includes('already have a tracker account') ? '/login?error=twin' : desc.includes('lyzr') ? '/login?error=not_lyzr' : '/login?error=auth_failed')
         return
       }
+      // Attach owner / member rows written under either spelling of the email.
+      try { await supabase.rpc('link_my_emails') } catch {}
       // Microsoft does not send a picture claim; fetch the photo from Graph
       // once with the provider token and keep a small data URL on the profile.
       try {

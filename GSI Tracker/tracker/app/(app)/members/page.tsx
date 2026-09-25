@@ -54,6 +54,10 @@ export default function MembersPage() {
     users?.forEach(u => u.email !== 'preview@lyzr.ai' && set.add(u.email.toLowerCase()))
     ;[...(admins || []), ...(leaders || [])].forEach(e => set.add(e))
     ;[...(vOwners || []), ...(members || []), ...(chOwners || []), ...(fnOwners || [])].forEach(r => set.add(r.email.toLowerCase()))
+    // name@lyzr.ai and name@lyzr.com are one person: keep the signed-in spelling, else the .ai one
+    const twin = (x: string) => x.endsWith('@lyzr.ai') ? x.replace(/@lyzr\.ai$/, '@lyzr.com') : x.endsWith('@lyzr.com') ? x.replace(/@lyzr\.com$/, '@lyzr.ai') : x
+    const signedIn = new Set((users || []).map(u => u.email.toLowerCase()))
+    for (const e of [...set]) { const t = twin(e); if (t !== e && set.has(t)) { if (signedIn.has(t) || (!signedIn.has(e) && t.endsWith('@lyzr.ai'))) set.delete(e) } }
     return [...set].sort().filter(e => !q || e.includes(q.toLowerCase()) || nameOf(e).toLowerCase().includes(q.toLowerCase()))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [users, admins, leaders, vOwners, members, chOwners, fnOwners, q])
@@ -101,18 +105,19 @@ export default function MembersPage() {
           <Card className="bg-white border-zinc-200">
             <CardContent className="p-0 divide-y divide-zinc-100">
               {people.map(e => {
-                const u = users?.find(x => x.email.toLowerCase() === e)
-                const isA = (admins || []).includes(e) || u?.role === 'admin'
-                const isL = (leaders || []).includes(e)
-                const vo = (vOwners || []).filter(r => r.email.toLowerCase() === e)
-                const vm = (members || []).filter(r => r.email.toLowerCase() === e && !vo.some(o => o.vertical_id === r.vertical_id))
-                const fo = (fnOwners || []).filter(r => r.email.toLowerCase() === e)
-                const co = (chOwners || []).filter(r => r.email.toLowerCase() === e && r.source === 'channel')
+                const same = (x: string) => { const y = x.toLowerCase(); return y === e || y === (e.endsWith('@lyzr.ai') ? e.replace(/@lyzr\.ai$/, '@lyzr.com') : e.replace(/@lyzr\.com$/, '@lyzr.ai')) }
+                const u = users?.find(x => same(x.email) || (x.alt_email ? same(x.alt_email) : false))
+                const isA = (admins || []).some(same) || u?.role === 'admin'
+                const isL = (leaders || []).some(same)
+                const vo = (vOwners || []).filter(r => same(r.email))
+                const vm = (members || []).filter(r => same(r.email) && !vo.some(o => o.vertical_id === r.vertical_id))
+                const fo = (fnOwners || []).filter(r => same(r.email))
+                const co = (chOwners || []).filter(r => same(r.email) && r.source === 'channel')
                 return (
                   <div key={e} className="px-4 py-2.5 flex items-start gap-3">
                     <div className="w-40 shrink-0">
                       <div className="text-sm font-medium text-zinc-900 truncate">{nameOf(e)}</div>
-                      <div className="text-[11px] text-zinc-500 truncate">{e}{!u && <span className="text-amber-600"> · not signed in</span>}</div>
+                      <div className="text-[11px] text-zinc-500 truncate">{e}{u?.alt_email && ` · ${u.alt_email}`}{!u && <span className="text-amber-600"> · not signed in</span>}</div>
                     </div>
                     <div className="flex flex-wrap gap-1 flex-1 min-w-0 items-center">
                       {isA && <Badge tone="bg-red-50 border-red-200 text-red-700"><ShieldCheck className="w-3 h-3" /> Admin {isAdmin && <button onClick={() => toggleBadge('admin', e, false)} className="hover:text-red-900"><X className="w-3 h-3" /></button>}</Badge>}

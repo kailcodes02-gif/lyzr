@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import {
   Calendar, LayoutDashboard, ListTodo, ChevronDown, ChevronRight, ChevronsUpDown,
-  Bell, LogOut, Zap, Sparkles, DollarSign, Upload, Menu, X, Settings, LineChart, UserCircle,
+  Bell, LogOut, Zap, Sparkles, Link2, DollarSign, Upload, Menu, X, Settings, LineChart, UserCircle,
   CalendarRange, History, BookOpen, Layers, Building2, Crown, Table2, Workflow, Home,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -346,6 +346,11 @@ export function AppSidebar() {
             <DropdownMenuItem className="p-0">
               <Link href="/functions/" className="flex items-center w-full px-2 py-1.5 text-zinc-700 hover:text-zinc-900 select-none outline-none">
                 <Layers className="w-4 h-4 mr-2" /> Domains
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="p-0">
+              <Link href="/me/accounts/" className="flex items-center w-full px-2 py-1.5 text-zinc-700 hover:text-zinc-900 select-none outline-none">
+                <Link2 className="w-4 h-4 mr-2" /> Linked accounts
               </Link>
             </DropdownMenuItem>
             {user?.role === 'admin' && (

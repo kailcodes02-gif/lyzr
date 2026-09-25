@@ -55,7 +55,7 @@ function LoginContent() {
 
           {error && (
             <div className="mb-6 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm text-center">
-              {error === 'not_lyzr' ? 'Only Lyzr accounts can sign in.' : 'Authentication failed. Please try again.'}
+              {error === 'not_lyzr' ? 'Only Lyzr accounts can sign in.' : error === 'twin' ? 'You already have an account under your other Lyzr email. Sign in with that one, then add this login under Me › Linked accounts.' : 'Authentication failed. Please try again.'}
             </div>
           )}
 

@@ -466,6 +466,20 @@ Access if the data ever becomes confidential.
   mailto sends via POST /me/sendMail after confirm; offers Move to Trash / Promotions. 396 unit + 48 browser
   tests; deployed.
 
+### 2026-09-26, GSI Tracker: one person, two emails (lyzr.ai + lyzr.com) as one account (GSI Tracker)
+- **Migration 022**: `users.alt_email`; `handle_new_user` refuses a sign-up whose email is the twin
+  of an existing account (message tells them to sign in with the existing one and link); RPC
+  `link_my_emails()` reads every email on the auth account's identities plus the twin spelling,
+  stores the second one on the profile, and attaches owner / member / campaign / pending rows
+  under any of them (called after every sign-in from the callback page and after linking).
+- Supabase **manual identity linking** is the mechanism: `Me › Linked accounts`
+  (`/me/accounts/`) lists Google / Microsoft / Slack with Link / Remove via
+  `auth.linkIdentity` / `unlinkIdentity`, shows both emails and a re-sync button. Needs
+  "Allow manual linking" switched on in Supabase › Authentication › Settings (user's step).
+- Members page folds twin emails into one row and matches badges/ownership under either
+  spelling. Login shows a dedicated message when a twin sign-up is refused.
+- Build 32 routes, staged in `GSI_Tracker/`. 022 validated on scratch.
+
 ### 2026-09-25 (night), GSI Tracker: Slack and Microsoft sign-in alongside Google (GSI Tracker)
 - Login page shows a button per provider in `NEXT_PUBLIC_AUTH_PROVIDERS` (default
   `slack_oidc,azure,google`); Supabase providers `slack_oidc` and `azure` (scopes openid profile

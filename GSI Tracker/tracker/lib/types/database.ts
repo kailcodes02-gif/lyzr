@@ -20,6 +20,7 @@ export interface User {
   avatar_url: string | null
   role: UserRole
   created_at: string
+  alt_email?: string | null
 }
 
 // ============ VERTICALS & FUNCTIONS ============
