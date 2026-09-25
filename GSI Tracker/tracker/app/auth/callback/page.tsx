@@ -23,7 +23,9 @@ function CallbackContent() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
         const desc = (searchParams.get('error_description') || '').toLowerCase()
-        router.replace(desc.includes('already have a tracker account') ? '/login?error=twin' : desc.includes('lyzr') ? '/login?error=not_lyzr' : '/login?error=auth_failed')
+        // Supabase hides trigger messages behind "Database error saving new user";
+        // that only happens for a non-Lyzr email or a twin-address duplicate.
+        router.replace(desc.includes('already have a tracker account') ? '/login?error=twin' : (desc.includes('lyzr') || desc.includes('saving new user')) ? '/login?error=not_lyzr' : '/login?error=auth_failed')
         return
       }
       // Attach owner / member rows written under either spelling of the email.
