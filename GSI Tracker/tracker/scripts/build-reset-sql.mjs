@@ -27,6 +27,7 @@ const ORDER = [
   '015_verticals_rls.sql',
   '016_taxonomy_templates.sql',
   '017_campaigns.sql',
+  '018_admins.sql',
 ]
 
 let m001 = mig('001_initial_schema.sql')
