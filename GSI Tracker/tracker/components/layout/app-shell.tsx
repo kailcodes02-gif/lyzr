@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import {
   Calendar, LayoutDashboard, ListTodo, ChevronDown, ChevronRight, ChevronsUpDown,
-  Bell, LogOut, DollarSign, Upload, Menu, X, Settings, LineChart, UserCircle,
+  Bell, LogOut, Zap, Sparkles, DollarSign, Upload, Menu, X, Settings, LineChart, UserCircle,
   CalendarRange, History, BookOpen, Layers, Building2, Crown, Table2, Workflow, Home,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,7 @@ import {
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { withVertical } from '@/lib/hooks/use-space-href'
 import { signOut } from '@/lib/actions'
+import { AssistantDialog } from '@/components/assistant/assistant-dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -223,7 +224,9 @@ export function AppSidebar() {
   const close = () => setMobileOpen(false)
 
   const workspaceNav: NavItem[] = [
-    { href: '/', icon: Home, label: 'Workspace Home', match: '/' },
+    { href: '/', icon: Home, label: 'Home', match: '/' },
+    { href: '/my-board/', icon: Sparkles, label: 'My Board', match: '/my-board' },
+    { href: '/campaigns/', icon: Zap, label: 'Campaigns', match: '/campaigns' },
     { href: withVertical('/calendar/', 'all'), icon: Calendar, label: 'Calendar', match: '/calendar' },
     { href: '/workspace/tasks/', icon: Table2, label: 'All Tasks', match: '/workspace/tasks' },
     { href: withVertical('/my-tasks/', 'all'), icon: ListTodo, label: 'My Tasks', match: '/my-tasks' },
@@ -236,6 +239,7 @@ export function AppSidebar() {
 
   const spaceNav: NavItem[] = [
     { href: withVertical('/dashboard/', slug), icon: LayoutDashboard, label: 'Dashboard', match: '/dashboard' },
+    { href: '/campaigns/', icon: Zap, label: 'Campaigns', match: '/campaigns' },
     { href: withVertical('/calendar/', slug), icon: Calendar, label: 'Calendar', match: '/calendar' },
     { href: withVertical('/my-tasks/', slug), icon: ListTodo, label: 'My Tasks', match: '/my-tasks' },
     { href: withVertical('/tracker/', slug), icon: LineChart, label: 'Tracker', match: '/tracker' },
@@ -394,6 +398,7 @@ export function AppSidebar() {
 
 export function AppHeader() {
   const router = useRouter()
+  const [assistantOpen, setAssistantOpen] = useState(false)
   const { data: notifications } = useNotifications()
   const { mode, vertical } = useVertical()
   const unreadCount = notifications?.length || 0
@@ -413,6 +418,10 @@ export function AppHeader() {
         )}
       </div>
       <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" className="h-8 border-violet-200 text-violet-700 hover:bg-violet-50" onClick={() => setAssistantOpen(true)} aria-label="Assistant">
+          <Sparkles className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline text-xs">Assistant</span>
+        </Button>
+        {assistantOpen && <AssistantDialog open={assistantOpen} onOpenChange={setAssistantOpen} />}
         <Button
           variant="ghost"
           size="icon"

@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { useCategories, useChannels, useUsers, useKnownEmails, buildChannelTree } from '@/lib/hooks/use-data'
+import { useCategories, useChannels, useUsers, useKnownEmails, useCampaigns, buildChannelTree } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { createTask, assignTaskByEmail, addChecklistItem } from '@/lib/actions'
 import { useQueryClient } from '@tanstack/react-query'
@@ -41,13 +41,17 @@ interface CreateTaskDialogProps {
   defaultVerticalId?: string
   defaultTitle?: string
   defaultDescription?: string
+  defaultCampaignId?: string
+  defaultDueDate?: string
+  defaultPriority?: TaskPriority
+  defaultOwnerEmails?: string[]
   parentTaskId?: string
   nestingLevel?: number
   onSuccess?: () => void
 }
 
 export function CreateTaskDialog({
-  open, onOpenChange, defaultChannelId, defaultCategoryId, defaultVerticalId, defaultTitle, defaultDescription, parentTaskId, nestingLevel = 0, onSuccess
+  open, onOpenChange, defaultChannelId, defaultCategoryId, defaultVerticalId, defaultTitle, defaultDescription, defaultCampaignId, defaultDueDate, defaultPriority, defaultOwnerEmails, parentTaskId, nestingLevel = 0, onSuccess
 }: CreateTaskDialogProps) {
   const queryClient = useQueryClient()
   // Vertical: the current space by default; in workspace mode the user picks one.
@@ -58,6 +62,8 @@ export function CreateTaskDialog({
   )
   const showVerticalPicker = !defaultChannelId && currentVerticalId === 'all' && !defaultVerticalId
   const [isPending, startTransition] = useTransition()
+  const [campaignId, setCampaignId] = useState<string>(defaultCampaignId || '')
+  const { data: campaigns } = useCampaigns(pickedVertical || 'all')
 
   const priorityLabels = {
     P0: 'P0 (Critical)',
@@ -135,11 +141,13 @@ export function CreateTaskDialog({
       reset({
         title: defaultTitle || '',
         description: defaultDescription || '',
-        priority: 'P2',
+        priority: defaultPriority || 'P2',
+        due_date: defaultDueDate || '',
         channel_id: defaultChannelId || '',
       })
+      if (defaultOwnerEmails?.length) setOwnerRows(defaultOwnerEmails.map((email, i) => ({ email, role: i === 0 ? 'primary' : 'secondary' })))
     }
-  }, [open, defaultTitle, defaultDescription, defaultChannelId, reset])
+  }, [open, defaultTitle, defaultDescription, defaultChannelId, defaultDueDate, defaultPriority, defaultOwnerEmails, reset])
 
   const channelId = watch('channel_id')
 
@@ -229,6 +237,7 @@ export function CreateTaskDialog({
           parent_task_id: parentTaskId,
           nesting_level: nestingLevel,
           budget_allocated: budget.trim() === '' ? null : Number(budget),
+          campaign_id: campaignId || null,
           planning_fields: {
             ...(frequency.trim() ? { frequency: frequency.trim() } : {}),
             ...(targets.length ? { targets, kpi_target: `${targets[0].type}: ${targets[0].value}` } : {}),
@@ -546,6 +555,14 @@ export function CreateTaskDialog({
                 placeholder="e.g. Monthly 1x, Ongoing"
                 className="mt-1 bg-zinc-100 border-zinc-300 text-zinc-900 h-9 px-3 text-sm"
               />
+            </div>
+            <div>
+              <Label className="text-zinc-600 text-xs">Campaign (optional)</Label>
+              <select value={campaignId} onChange={e => setCampaignId(e.target.value)}
+                className="mt-1 w-full text-sm rounded-lg border border-zinc-300 bg-zinc-100 px-3 h-9 text-zinc-900">
+                <option value="">None</option>
+                {(campaigns || []).map(c => <option key={c.id} value={c.id}>{c.kind === 'thunderclap' ? '⚡' : c.kind === 'launch' ? '🚀' : '🎯'} {c.name}</option>)}
+              </select>
             </div>
             <div>
               <Label className="text-zinc-600 text-xs">Budget ($)</Label>

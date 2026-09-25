@@ -288,6 +288,66 @@ export default function GuidePage() {
           ))}
         </div>
       </section>
+      {/* 9. Hero campaigns */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider">9 · Hero campaigns: launches and thunderclaps</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {([
+            { e: '🚀', n: 'Launch', k: 'launch', d: 'A product or feature launch. Link its tasks from any channel; one progress bar for leadership.', c: 'from-violet-600 to-fuchsia-600' },
+            { e: '⚡', n: 'Thunderclap', k: 'thunderclap', d: 'One ask for everyone (repost, comment, share) by a date. Each person ticks “I did my part”; the banner counts who is done.', c: 'from-amber-500 to-orange-600' },
+            { e: '🎯', n: 'Campaign', k: 'campaign', d: 'Any big push that spans channels or verticals. Same tracker, same banner.', c: 'from-blue-600 to-cyan-600' },
+          ]).map(x => (
+            <div key={x.n} className={`rounded-2xl p-[1px] bg-gradient-to-r ${x.c}`}>
+              <div className="rounded-2xl bg-white p-4 h-full space-y-1">
+                <div className="text-sm font-semibold flex items-center gap-1.5">{x.e} {x.n} <InfoTip k={x.k} /></div>
+                <p className="text-xs text-zinc-600">{x.d}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-zinc-600">
+          <div className="rounded-lg bg-zinc-50 p-3"><strong className="text-zinc-800">Banner everywhere.</strong> Pinned live and upcoming campaigns sit at the top of Home, every vertical dashboard and My Board.</div>
+          <div className="rounded-lg bg-zinc-50 p-3"><strong className="text-zinc-800">Champions</strong> <InfoTip k="champion" /> drive it and can edit it. Admins create company-wide ones; vertical owners create theirs.</div>
+          <div className="rounded-lg bg-zinc-50 p-3"><strong className="text-zinc-800">Own tracker.</strong> Linked tasks (pick the campaign in any task) plus, for thunderclaps, the done / not-done list. <Link href="/campaigns/" className="text-blue-600 hover:underline inline-flex items-center gap-1">Open Campaigns <ArrowRight className="w-3 h-3" /></Link></div>
+        </div>
+      </section>
+
+      {/* 10. What each role sees on Home */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider">10 · Home is different per role</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {[
+            { icon: ShieldCheck, n: 'Admin / leadership', d: 'Workspace Home: KPIs across verticals, hero banner, every vertical card, My Day, activity. Plus Campaigns and Weekly across the company.', href: '/' },
+            { icon: Crown, n: 'Vertical owner', d: 'Same Workspace Home with their verticals first, then their vertical dashboards with every channel.', href: '/' },
+            { icon: Sparkles, n: 'Channel / function owner, member', d: 'My Board only: the banner, the channels you own in every vertical, what you owe this week and what is overdue. No filters, no toggles.', href: '/my-board/' },
+          ].map(r => (
+            <Card key={r.n} className="bg-white border-zinc-200">
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-semibold"><r.icon className="w-4 h-4 text-blue-600" /> {r.n}</div>
+                <p className="text-xs text-zinc-600">{r.d}</p>
+                <Link href={r.href} className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1">Open <ArrowRight className="w-3 h-3" /></Link>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <p className="text-[11px] text-zinc-500">Anyone can still open My Board from the sidebar; admins and vertical owners can too.</p>
+      </section>
+
+      {/* 11. Assistant */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider">11 · The assistant (top right) <InfoTip k="assistant" /></h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Card className="bg-white border-zinc-200"><CardContent className="p-4 space-y-1">
+            <div className="text-sm font-semibold">“Assign the Q4 ABM email on GSI Email to Anju, due Friday”</div>
+            <p className="text-xs text-zinc-600">It opens the normal task form pre-filled with title, channel, owner, due date and priority. You press <strong>Create</strong>. If something mandatory is missing it says what.</p>
+          </CardContent></Card>
+          <Card className="bg-white border-zinc-200"><CardContent className="p-4 space-y-1">
+            <div className="text-sm font-semibold">“What is the status of the Accenture webinar task?”</div>
+            <p className="text-xs text-zinc-600">It finds the task and answers in one line with status, owner and due date, plus a link to open it or its channel board.</p>
+          </CardContent></Card>
+        </div>
+        <p className="text-[11px] text-zinc-500">It does nothing else on purpose: no summaries, no edits, no deletes. It runs on the smallest model and never writes without you pressing Create.</p>
+      </section>
     </div>
   )
 }

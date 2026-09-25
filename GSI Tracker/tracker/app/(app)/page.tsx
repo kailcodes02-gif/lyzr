@@ -12,6 +12,8 @@ import { useVertical } from '@/lib/hooks/use-vertical'
 import { KpiTile } from '@/components/ui/kpi-tile'
 import { InfoTip } from '@/components/ui/info-tip'
 import { VerticalCard } from '@/components/workspace/vertical-card'
+import { MyBoard } from '@/components/workspace/my-board'
+import { CampaignBanner } from '@/components/campaigns/campaign-banner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -22,7 +24,16 @@ import { STATUS_CONFIG, type Task } from '@/lib/types/database'
 
 const IST = 'Asia/Kolkata'
 
-export default function WorkspaceHomePage() {
+export default function HomePage() {
+  const { data: user, isLoading } = useCurrentUser()
+  const { ownedVerticalIds, isAdmin, resolving } = useVertical()
+  if (isLoading || resolving) return <div className="p-8 animate-pulse"><div className="h-8 w-1/4 bg-zinc-200 rounded" /></div>
+  if (!user) return null
+  if (isAdmin || ownedVerticalIds.size > 0) return <WorkspaceHomePage />
+  return <MyBoard showFullWorkspaceLink />
+}
+
+function WorkspaceHomePage() {
   const { data: user, isLoading: userLoading } = useCurrentUser()
   const { verticals, ownedVerticalIds, isAdmin } = useVertical()
   const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: 'all' })
@@ -125,6 +136,8 @@ export default function WorkspaceHomePage() {
         />
       </div>
 
+      <CampaignBanner verticalId="all" />
+
       {/* Verticals */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -136,7 +149,7 @@ export default function WorkspaceHomePage() {
           </Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {verticals.map(v => (
+          {[...verticals].sort((a, b) => Number(ownedVerticalIds.has(b.id)) - Number(ownedVerticalIds.has(a.id))).map(v => (
             <VerticalCard
               key={v.id}
               vertical={v}

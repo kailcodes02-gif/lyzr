@@ -5,7 +5,7 @@ import type { TaskStatus, TaskPriority, AssignmentRole, BudgetScopeType, BudgetP
 import { format } from 'date-fns'
 import { advanceRecurrence, legacyPatternFields, normalizeEmail, incompleteBlockers } from '@/lib/task-logic'
 import type { RecurrenceRule, RecurrenceEnd } from '@/lib/task-logic'
-import type { VerticalSettings } from '@/lib/types/database'
+import type { VerticalSettings, CampaignKind, CampaignStatus } from '@/lib/types/database'
 
 // UX-level gate mirroring the RLS helper can_manage_vertical(): global admin
 // or explicit owner of the vertical. RLS remains the real boundary; this just
@@ -79,6 +79,7 @@ export async function createTask(data: {
   parent_task_id?: string
   nesting_level?: number
   budget_allocated?: number | null
+  campaign_id?: string | null
   planning_fields?: Record<string, unknown>
   assignments: { user_id: string; role: AssignmentRole }[]
   recurrence?: {
@@ -139,6 +140,7 @@ export async function createTask(data: {
       nesting_level: data.nesting_level || 0,
       budget_allocated: data.budget_allocated ?? null,
       planning_fields: data.planning_fields || {},
+      campaign_id: data.campaign_id || null,
       recurring_template_id: templateId,
       created_by: user.id,
     })
@@ -233,6 +235,7 @@ export async function updateTask(
     blocked_by_email: string | null
     planning_fields: Record<string, unknown>
     tracker_fields: Record<string, unknown>
+    campaign_id: string | null
   }>,
   opts?: { overrideBlockers?: boolean }
 ) {
@@ -2054,4 +2057,136 @@ export async function deleteTaxonomyTemplate(id: string) {
   if (error) throw error
   if (!data?.length) throw new Error('Nothing deleted: only the creator or an admin can delete a template')
   return { deleted: true }
+}
+
+
+// ============ CAMPAIGNS ============
+// Hero items (launch / thunderclap / campaign) shown as banners. Admins create
+// workspace-wide ones; vertical managers create theirs; campaign owners edit.
+
+const slugit = (t: string) => t.toLowerCase().trim().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+
+export async function createCampaign(args: {
+  vertical_id: string | null
+  kind: CampaignKind
+  name: string
+  headline?: string
+  description?: string
+  cta_label?: string
+  cta_url?: string
+  starts_on?: string | null
+  ends_on?: string | null
+  status?: CampaignStatus
+  ask?: string
+  color?: string
+  ownerEmails?: string[]
+  participantEmails?: string[]
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  if (!args.name.trim()) throw new Error('Name is required')
+  await assertCanManage(supabase, user.id, args.vertical_id, args.vertical_id ? 'this vertical' : 'the workspace')
+
+  let slug = slugit(args.name)
+  const { data: dup } = await supabase.from('campaigns').select('id').eq('slug', slug)
+    .filter('vertical_id', args.vertical_id ? 'eq' : 'is', args.vertical_id ?? null).maybeSingle()
+  if (dup) slug = `${slug}-${Math.floor(Math.random() * 1000)}`
+
+  const { data: row, error } = await supabase.from('campaigns').insert({
+    vertical_id: args.vertical_id, kind: args.kind, name: args.name.trim(), slug,
+    headline: args.headline?.trim() || null, description: args.description?.trim() || null,
+    cta_label: args.cta_label?.trim() || null, cta_url: args.cta_url?.trim() || null,
+    starts_on: args.starts_on || null, ends_on: args.ends_on || null,
+    status: args.status || 'upcoming', ask: args.ask?.trim() || null, color: args.color || null,
+    created_by: user.id,
+  }).select('*').single()
+  if (error) throw error
+
+  const emails = (list?: string[]) => [...new Set((list || []).map(e => e.trim().toLowerCase()).filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)))]
+  const { data: users } = await supabase.from('users').select('id, email')
+  const uid = (e: string) => users?.find(u => u.email.toLowerCase() === e)?.id ?? null
+  const owners = emails(args.ownerEmails)
+  if (owners.length) {
+    const { error: oe } = await supabase.from('campaign_owners').insert(owners.map((email, i) => ({ campaign_id: row.id, email, user_id: uid(email), sort_order: i })))
+    if (oe) throw oe
+  }
+  const parts = emails(args.participantEmails)
+  if (parts.length) {
+    const { error: pe } = await supabase.from('campaign_participants').insert(parts.map(email => ({ campaign_id: row.id, email, user_id: uid(email) })))
+    if (pe) throw pe
+  }
+  return row
+}
+
+export async function updateCampaign(id: string, patch: Partial<{
+  kind: CampaignKind; name: string; headline: string | null; description: string | null
+  cta_label: string | null; cta_url: string | null; starts_on: string | null; ends_on: string | null
+  status: CampaignStatus; is_pinned: boolean; ask: string | null; color: string | null
+}>) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const { data, error } = await supabase.from('campaigns').update(patch).eq('id', id).select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('Nothing updated: only admins, the vertical\'s owners or the campaign owners can edit it')
+  return { updated: true }
+}
+
+export async function deleteCampaign(id: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const { data, error } = await supabase.from('campaigns').delete().eq('id', id).select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('Nothing deleted: only admins or the vertical\'s owners can delete a campaign')
+  return { deleted: true }
+}
+
+export async function setCampaignPeople(id: string, kind: 'owners' | 'participants', emailsIn: string[]) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const table = kind === 'owners' ? 'campaign_owners' : 'campaign_participants'
+  const emails = [...new Set(emailsIn.map(e => e.trim().toLowerCase()).filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)))]
+  const { data: users } = await supabase.from('users').select('id, email')
+  const uid = (e: string) => users?.find(u => u.email.toLowerCase() === e)?.id ?? null
+  const { data: existing, error: re } = await supabase.from(table).select('email').eq('campaign_id', id)
+  if (re) throw re
+  const have = new Set((existing || []).map(r => r.email))
+  const toAdd = emails.filter(e => !have.has(e))
+  const toRemove = [...have].filter(e => !emails.includes(e))
+  if (toAdd.length) {
+    const rows = toAdd.map((email, i) => kind === 'owners' ? { campaign_id: id, email, user_id: uid(email), sort_order: have.size + i } : { campaign_id: id, email, user_id: uid(email) })
+    const { error } = await supabase.from(table).insert(rows)
+    if (error) throw error
+  }
+  if (toRemove.length) {
+    const { error } = await supabase.from(table).delete().eq('campaign_id', id).in('email', toRemove)
+    if (error) throw error
+  }
+  return { added: toAdd.length, removed: toRemove.length }
+}
+
+// A participant ticks their own thunderclap action (managers can tick anyone).
+export async function setParticipantDone(campaignId: string, email: string, done: boolean, proofUrl?: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const { data, error } = await supabase.from('campaign_participants')
+    .update({ done_at: done ? new Date().toISOString() : null, ...(proofUrl !== undefined ? { proof_url: proofUrl || null } : {}) })
+    .eq('campaign_id', campaignId).eq('email', email.toLowerCase()).select('email')
+  if (error) throw error
+  if (!data?.length) throw new Error('You can only tick your own action (or you manage this campaign)')
+  return { done }
+}
+
+export async function setTaskCampaign(taskId: string, campaignId: string | null) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const { data, error } = await supabase.from('tasks').update({ campaign_id: campaignId }).eq('id', taskId).select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('Nothing updated')
+  return { updated: true }
 }

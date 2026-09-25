@@ -94,6 +94,46 @@ export interface TaxonomyTemplate {
   updated_at: string
 }
 
+export type CampaignKind = 'launch' | 'thunderclap' | 'campaign'
+export type CampaignStatus = 'upcoming' | 'live' | 'done' | 'cancelled'
+
+export interface Campaign {
+  id: string
+  vertical_id: string | null
+  kind: CampaignKind
+  name: string
+  slug: string
+  headline: string | null
+  description: string | null
+  cta_label: string | null
+  cta_url: string | null
+  starts_on: string | null
+  ends_on: string | null
+  status: CampaignStatus
+  is_pinned: boolean
+  color: string | null
+  ask: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CampaignOwner { campaign_id: string; email: string; user_id: string | null; sort_order: number }
+export interface CampaignParticipant {
+  campaign_id: string
+  email: string
+  user_id: string | null
+  done_at: string | null
+  proof_url: string | null
+  note: string | null
+}
+
+export const CAMPAIGN_KIND: Record<CampaignKind, { label: string; emoji: string; className: string }> = {
+  launch: { label: 'Launch', emoji: '🚀', className: 'from-violet-600 to-fuchsia-600' },
+  thunderclap: { label: 'Thunderclap', emoji: '⚡', className: 'from-amber-500 to-orange-600' },
+  campaign: { label: 'Campaign', emoji: '🎯', className: 'from-blue-600 to-cyan-600' },
+}
+
 export interface EffectiveChannelOwner {
   channel_id: string
   email: string
@@ -211,6 +251,7 @@ export interface Task {
   cancelled_at: string | null
   recurring_template_id?: string | null
   tracker_frozen_at?: string | null
+  campaign_id?: string | null
   // Joined
   channel?: Channel
   creator?: User

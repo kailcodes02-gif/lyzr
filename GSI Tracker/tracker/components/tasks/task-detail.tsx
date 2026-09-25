@@ -20,7 +20,7 @@ import {
   CheckSquare, MessageSquare, Link as LinkIcon, Upload,
   AlertTriangle, Pencil, Target, Repeat,
 } from 'lucide-react'
-import { useTask, useUsers, useTasks, useCurrentUser, useKnownEmails, useChannels } from '@/lib/hooks/use-data'
+import { useTask, useUsers, useTasks, useCurrentUser, useKnownEmails, useChannels, useCampaigns } from '@/lib/hooks/use-data'
 import {
   updateTask, deleteTask, addChecklistItem, toggleChecklistItem,
   deleteChecklistItem, addComment, createMention, updateAssignments, uploadResultFile,
@@ -513,6 +513,10 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                     }}
                     className="bg-zinc-100 border-zinc-300 text-sm h-8"
                   />
+                </div>
+                <div>
+                  <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1">Campaign</p>
+                  <CampaignSelect taskId={taskId!} value={task.campaign_id || null} verticalId={task.channel?.vertical_id} />
                 </div>
                 <div>
                   <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1">Result URL</p>
@@ -1606,6 +1610,28 @@ function AlsoChannelsEditor({ homeChannelId, planningFields, onSave }: {
           ))}
         </select>
       </div>
+    </div>
+  )
+}
+
+
+// Link the task to a hero campaign (launch / thunderclap / campaign).
+function CampaignSelect({ taskId, value, verticalId }: { taskId: string; value: string | null; verticalId?: string }) {
+  const queryClient = useQueryClient()
+  const { data: campaigns } = useCampaigns(verticalId || 'all', { includeClosed: true })
+  const list = (campaigns || []).filter(c => c.status === 'live' || c.status === 'upcoming' || c.id === value)
+  return (
+    <div className="flex items-center gap-1">
+      <select value={value || ''} onChange={e => {
+        const v = e.target.value || null
+        updateTask(taskId, { campaign_id: v }).then(() => {
+          queryClient.invalidateQueries({ queryKey: ['tasks'] }); queryClient.invalidateQueries({ queryKey: ['task', taskId] })
+        }).catch((err: any) => toast.error(err?.message || 'Failed to link campaign'))
+      }} className="h-8 text-sm rounded-md border border-zinc-300 bg-zinc-100 px-2 flex-1 min-w-0">
+        <option value="">None</option>
+        {list.map(c => <option key={c.id} value={c.id}>{c.kind === 'thunderclap' ? '⚡' : c.kind === 'launch' ? '🚀' : '🎯'} {c.name}</option>)}
+      </select>
+      {value && <Link href={`/campaign/?id=${value}`} className="text-xs text-blue-600 hover:underline shrink-0">Open</Link>}
     </div>
   )
 }

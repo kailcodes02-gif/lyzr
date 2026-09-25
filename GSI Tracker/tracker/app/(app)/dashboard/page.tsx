@@ -3,6 +3,7 @@
 import { useCurrentUser, useTasks, useMentionsForUser, useBudgetPeriods, useRecentActivity } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { InfoTip } from '@/components/ui/info-tip'
+import { CampaignBanner } from '@/components/campaigns/campaign-banner'
 import { useSpaceHref } from '@/lib/hooks/use-space-href'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
@@ -213,6 +214,8 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <CampaignBanner />
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

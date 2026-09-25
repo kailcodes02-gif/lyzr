@@ -466,6 +466,35 @@ Access if the data ever becomes confidential.
   mailto sends via POST /me/sendMail after confirm; offers Move to Trash / Promotions. 396 unit + 48 browser
   tests; deployed.
 
+### 2026-09-25, GSI Tracker: hero campaigns + thunderclaps, role-based Home / My Board, two-intent assistant (GSI Tracker)
+- **Migration `017_campaigns.sql`** (added to `build-reset-sql.mjs`, `RESET_ALL.sql` regenerated;
+  NOT yet applied on live — paste it in the SQL Editor): `campaigns` (kind launch | thunderclap |
+  campaign; `vertical_id` NULL = company-wide; status, dates, headline, CTA, `ask`, `is_pinned`),
+  `campaign_owners` (champions), `campaign_participants` (thunderclap done/not done, self-tick),
+  `tasks.campaign_id`. RLS: read all; insert admin (workspace) or `can_manage_vertical`; update via
+  `can_manage_campaign` (admin, campaign owner, vertical owner); participants update their own row.
+- Client: `Campaign*` types + `CAMPAIGN_KIND`; hooks `useCampaigns(scope)`, `useCampaign(id)`,
+  `useAllCampaignParticipants`, `useAllCampaignOwners`; actions `createCampaign`, `updateCampaign`,
+  `deleteCampaign`, `setCampaignPeople`, `setParticipantDone`, `setTaskCampaign`; `createTask` and
+  `updateTask` take `campaign_id`.
+- UI: `components/campaigns/campaign-banner.tsx` (hero strip on Home, every vertical Dashboard and
+  My Board; progress bar of linked tasks, people done, champions, "I did my part" tick, CTA),
+  `campaign-dialog.tsx` (create/edit, kind picker, scope, champions, participants with
+  "everyone" shortcut), `/campaigns/` list grouped by status, `/campaign/?id=` tracker (linked tasks
+  kanban/table, thunderclap people list, edit/status/delete). Campaign select in the create-task
+  dialog and the task drawer.
+- **Role-based Home**: `/` renders Workspace Home (banner + verticals, owned first) for admins and
+  vertical owners, and `MyBoard` (`components/workspace/my-board.tsx`, also at `/my-board/`) for
+  everyone else: banner, channels I own across verticals (effective owners incl. function
+  inheritance), due this week / overdue / done, no filters.
+- **Assistant** (header button): `functions/api/assistant.js` on `claude-haiku-4-5-20251001` with
+  `requireUser`; tools `create_task` (returns prefill → opens the normal CreateTaskDialog with
+  `defaultTitle/ChannelId/DueDate/Priority/OwnerEmails`; user presses Create), `find_task` (id +
+  one-line answer + link), `clarify`, `refuse`. Client sends compact channels/users/open tasks as
+  context. Needs the `ANTHROPIC_API_KEY` Pages secret.
+- Guide sections 9-11 (campaigns, home per role, assistant); help keys campaign/launch/thunderclap/
+  champion/my_board/assistant. `tsc` clean, 36 tests, build 30 routes, staged in `GSI_Tracker/`.
+
 ### 2026-09-24, GSI Tracker: tree taxonomy editor, hover help everywhere, Guide page (GSI Tracker)
 - `components/admin/taxonomy-manager.tsx` rewritten as a tree: Category › Channel › Sub-channel rows
   with inline rename, add-child from the row, move up/down, hide/show (no hard delete), inline

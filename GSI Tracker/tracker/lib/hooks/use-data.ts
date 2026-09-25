@@ -6,7 +6,7 @@ import type {
   User, Category, Channel,
   ChannelOwner, ChannelResource, ChannelLearning, ChannelTarget,
   Vertical, VerticalOwner, Fn, FunctionOwner, VerticalResource, TaxonomyTemplate,
-  EffectiveChannelOwner,
+  EffectiveChannelOwner, Campaign, CampaignOwner, CampaignParticipant,
 } from '@/lib/types/database'
 import { taskChannelIds } from '@/lib/task-channels'
 
@@ -132,6 +132,55 @@ export function useTaxonomyTemplates() {
       const { data, error } = await supabase.from('taxonomy_templates').select('*').order('name')
       if (error) throw error
       return data as TaxonomyTemplate[]
+    },
+  })
+}
+
+// ============ CAMPAIGNS (launches, thunderclaps) ============
+
+// Campaigns visible in a scope: workspace-wide ones always, plus the vertical's own.
+export function useCampaigns(verticalId: VerticalScope = 'all', opts?: { includeClosed?: boolean }) {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['campaigns', verticalId, !!opts?.includeClosed],
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      let q = supabase.from('campaigns').select('*').order('starts_on', { ascending: false, nullsFirst: false })
+      if (verticalId !== 'all') q = q.or(`vertical_id.eq.${verticalId},vertical_id.is.null`)
+      if (!opts?.includeClosed) q = q.in('status', ['upcoming', 'live'])
+      const { data, error } = await q
+      if (error) throw error
+      return data as Campaign[]
+    },
+  })
+}
+
+export function useCampaign(id?: string | null) {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['campaign', id],
+    enabled: !!id,
+    queryFn: async () => {
+      const [c, o, p] = await Promise.all([
+        supabase.from('campaigns').select('*').eq('id', id!).single(),
+        supabase.from('campaign_owners').select('*').eq('campaign_id', id!).order('sort_order'),
+        supabase.from('campaign_participants').select('*').eq('campaign_id', id!).order('email'),
+      ])
+      if (c.error) throw c.error
+      return { campaign: c.data as Campaign, owners: (o.data || []) as CampaignOwner[], participants: (p.data || []) as CampaignParticipant[] }
+    },
+  })
+}
+
+export function useAllCampaignParticipants() {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['campaignParticipants', 'all'],
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('campaign_participants').select('*')
+      if (error) throw error
+      return data as CampaignParticipant[]
     },
   })
 }

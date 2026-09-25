@@ -44,6 +44,12 @@ export const HELP: Record<string, string> = {
   priority: 'P0 critical, P1 high, P2 medium, P3 low, P4 backlog. Blueprint star grades map gold=P0, silver=P1, bronze=P2.',
   tracker_fields: 'Results captured once a task is live or done. They lock 45 days after completion; admins can override.',
   custom_fields: 'Extra planning or tracker fields per channel (text, number, currency, date, dropdown...). Cascade to sub-channels.',
+  campaign: 'A hero item the whole team rallies around: a product launch, a thunderclap or a big campaign. It sits as a banner on every dashboard, links tasks from any channel, and has its own tracker page.',
+  launch: 'A product or feature launch. Link every launch task to it so leadership sees one progress bar.',
+  thunderclap: 'Everyone must do one specific action (repost, comment, share) by a date. Each participant ticks their own row; the banner shows who is done.',
+  champion: 'The people driving the campaign. They can edit it and are shown on the banner.',
+  my_board: 'Your simple home: the hero banner, your channels across every vertical, and what you owe this week. Nothing else.',
+  assistant: 'Ask it two things: create a task (it fills the form, you press Create) or find a task (status, owners and a link). It does nothing else.',
   recurring: 'Google-Calendar-style repeat: every N days, weeks or months, on chosen weekdays, ending never, on a date or after N times.',
 }
 
