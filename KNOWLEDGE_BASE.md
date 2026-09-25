@@ -466,6 +466,22 @@ Access if the data ever becomes confidential.
   mailto sends via POST /me/sendMail after confirm; offers Move to Trash / Promotions. 396 unit + 48 browser
   tests; deployed.
 
+### 2026-09-25 (evening), GSI Tracker: notifications for everything on a task (GSI Tracker)
+- **Migration 020** (validated on scratch): 7 new `notification_type` values (task_edited, checklist,
+  subtask_added, suggestion, suggestion_resolved, campaign_ask, task_created); `task_watchers(t)`
+  (owners, creator, parent-task owners, effective channel owners of the channel and its parent,
+  suggesters); `notify_task(t, kind, payload, actor, only_users)` with 10s dedupe and actor
+  exclusion; triggers on task_comments, checklist_items (insert + tick/untick), tasks insert
+  (sub-task -> parent watchers, top-level -> channel owners), `log_task_edit` now also emits one
+  `task_edited` per UPDATE with the changed fields, task_suggestions (new -> editors, resolved ->
+  suggester), task_assignments (-> the assignee), campaign_participants (-> `campaign_ask`).
+  Users may delete their own notifications.
+- Client: removed the duplicate client-side inserts for `assigned` and `comment` (trigger owns
+  them; `status_change` and `mentioned` stay client-side). `lib/notification-text.ts` renders every
+  type with the actor's first name; `/notifications` uses it and routes `campaign_ask` to the
+  campaign page. New `InboxCard` ("Needs you") on Company Home, every vertical Dashboard and My
+  Board. Build 31 routes, 36 tests, staged in `GSI_Tracker/`.
+
 ### 2026-09-25 (later), GSI Tracker: admins list, members + badges, owner-scoped rights, task history, suggested edits, people map, renames (GSI Tracker)
 - **Migration 018** `admin_emails` table (kailash.gm, ani, mothilal.kanagaraj @lyzr.ai and @lyzr.com);
   `handle_new_user` reads it. Applied live by Kailash? -> pending paste at time of writing.

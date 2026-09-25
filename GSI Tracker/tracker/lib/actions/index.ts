@@ -163,23 +163,7 @@ export async function createTask(data: {
       )
     if (assignError) throw assignError
 
-    // Create notifications for assigned users
-    const notifications = data.assignments
-      .filter(a => a.user_id !== user.id)
-      .map(a => ({
-        user_id: a.user_id,
-        task_id: task.id,
-        type: 'assigned' as const,
-        payload: {
-          task_title: data.title,
-          assigned_by: user.id,
-          role: a.role,
-        },
-      }))
-
-    if (notifications.length > 0) {
-      await supabase.from('notifications').insert(notifications)
-    }
+    // 'assigned' notifications come from the task_assignments trigger (020).
   }
 
   // Log activity
@@ -633,28 +617,7 @@ export async function addComment(taskId: string, body: string) {
 
   if (error) throw error
 
-  // Notify task owners
-  const { data: assignments } = await supabase
-    .from('task_assignments')
-    .select('user_id')
-    .eq('task_id', taskId)
-
-  if (assignments) {
-    const notifications = assignments
-      .filter(a => a.user_id !== user.id)
-      .map(a => ({
-        user_id: a.user_id,
-        task_id: taskId,
-        type: 'comment' as const,
-        payload: {
-          comment_body: body.substring(0, 100),
-          commented_by: user.id,
-        },
-      }))
-    if (notifications.length > 0) {
-      await supabase.from('notifications').insert(notifications)
-    }
-  }
+  // 'comment' notifications come from the task_comments trigger (020).
 
   // Log activity
   await supabase.from('activity_log').insert({
@@ -1430,16 +1393,7 @@ export async function bulkSetPrimaryAssignee(taskIds: string[], userId: string) 
       )
     if (error) continue
 
-    // Notify the newly-assigned user (skip self-assignment).
-    if (userId !== user.id) {
-      const { data: t } = await supabase.from('tasks').select('title').eq('id', taskId).maybeSingle()
-      await supabase.from('notifications').insert({
-        user_id: userId,
-        task_id: taskId,
-        type: 'assigned' as const,
-        payload: { task_title: t?.title || '', assigned_by: user.id, role: 'primary' },
-      })
-    }
+    // 'assigned' notification comes from the task_assignments trigger (020).
     updated++
   }
 
@@ -2270,5 +2224,11 @@ export async function resolveTaskSuggestion(id: string, accept: boolean) {
 export async function withdrawTaskSuggestion(id: string) {
   const supabase = await createClient()
   const { error } = await supabase.from('task_suggestions').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteNotifications(ids: string[]) {
+  const supabase = await createClient()
+  const { error } = await supabase.from('notifications').delete().in('id', ids)
   if (error) throw error
 }

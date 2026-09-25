@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { InfoTip } from '@/components/ui/info-tip'
 import { CampaignBanner } from '@/components/campaigns/campaign-banner'
+import { InboxCard } from '@/components/workspace/inbox-card'
 import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { useAllChannelOwners, useChannels, useCurrentUser, useTasks } from '@/lib/hooks/use-data'
@@ -85,6 +86,8 @@ export function MyBoard({ showFullWorkspaceLink }: { showFullWorkspaceLink?: boo
       </div>
 
       <CampaignBanner verticalId="all" compact canCreate={false} />
+
+      <InboxCard />
 
       {/* My channels across verticals */}
       <div className="space-y-3">

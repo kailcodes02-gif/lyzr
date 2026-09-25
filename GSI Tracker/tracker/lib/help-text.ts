@@ -57,6 +57,7 @@ export const HELP: Record<string, string> = {
   people_map: 'Who is where: each row is a domain or channel, each column a vertical, each cell the people who own it. Dimmed names are inherited from the domain.',
   cross_channel: 'A sub-task can live on a different channel from its parent (design for a webinar sits on the Design board). It shows on both, counts once.',
   group: 'Only a folder for channels. Nothing is owned or assigned at this level; it can carry a budget that its channels roll into.',
+  notifications: 'You hear about everything on tasks you are related to: asked to own, comments, edits, checklist ticks, new sub-tasks, suggestions, and thunderclap asks. Related = owner, creator, parent-task owner, channel owner above it.',
   recurring: 'Google-Calendar-style repeat: every N days, weeks or months, on chosen weekdays, ending never, on a date or after N times.',
 }
 

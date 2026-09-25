@@ -9,6 +9,7 @@ export type MentionSurface = 'task_description' | 'task_comment' | 'checklist_it
 export type BudgetPeriodType = 'one_time' | 'monthly' | 'quarterly' | 'half_yearly' | 'annual' | 'custom'
 export type BudgetScopeType = 'global' | 'vertical' | 'category' | 'channel'
 export type NotificationType = 'assigned' | 'mentioned' | 'comment' | 'status_change' | 'dependency_completed' | 'subtask_completed' | 'parent_blocked' | 'budget_overrun_warning' | 'overdue'
+  | 'task_edited' | 'checklist' | 'subtask_added' | 'suggestion' | 'suggestion_resolved' | 'campaign_ask' | 'task_created'
 export type FieldType = 'text' | 'long_text' | 'number' | 'currency' | 'date' | 'date_range' | 'dropdown' | 'multi_select' | 'checkbox' | 'url' | 'email' | 'phone' | 'person' | 'file'
 export type FieldSurface = 'planning' | 'tracker'
 

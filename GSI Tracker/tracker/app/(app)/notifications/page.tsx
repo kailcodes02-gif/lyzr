@@ -1,6 +1,9 @@
 'use client'
 
-import { useNotifications } from '@/lib/hooks/use-data'
+import { useNotifications, useUsers } from '@/lib/hooks/use-data'
+import { notificationText, notificationHref } from '@/lib/notification-text'
+import { useRouter } from 'next/navigation'
+import { Lightbulb, Pencil, ListChecks, Zap, Layers } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -15,6 +18,9 @@ import { formatDistanceToNow } from 'date-fns'
 export default function NotificationsPage() {
   const queryClient = useQueryClient()
   const { data: notifications, isLoading } = useNotifications()
+  const { data: users } = useUsers()
+  const router = useRouter()
+  const actorName = (p: any) => { const id = p?.actor_id || p?.assigned_by || p?.commented_by || p?.changed_by || p?.mentioned_by; return users?.find(u => u.id === id)?.display_name?.split(' ')[0] }
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -82,7 +88,14 @@ export default function NotificationsPage() {
     parent_blocked: <ShieldAlert className="w-4 h-4 text-red-600" />,
     budget_overrun_warning: <ShieldAlert className="w-4 h-4 text-orange-600" />,
     overdue: <AlertCircle className="w-4 h-4 text-red-600" />,
-  }
+    task_edited: <Pencil className="w-4 h-4 text-zinc-600" />,
+    task_created: <Layers className="w-4 h-4 text-blue-600" />,
+    subtask_added: <Layers className="w-4 h-4 text-violet-600" />,
+    checklist: <ListChecks className="w-4 h-4 text-emerald-600" />,
+    suggestion: <Lightbulb className="w-4 h-4 text-amber-600" />,
+    suggestion_resolved: <Lightbulb className="w-4 h-4 text-emerald-600" />,
+    campaign_ask: <Zap className="w-4 h-4 text-amber-500" />,
+  } as Record<string, React.ReactNode>
 
   const getNotificationText = (type: string, payload: any) => {
     switch (type) {
@@ -141,7 +154,7 @@ export default function NotificationsPage() {
               {notifications.map(notif => (
                 <div 
                   key={notif.id}
-                  onClick={() => handleNotificationClick(notif.task_id, notif.id)}
+                  onClick={() => { const h = notificationHref(notif.type, notif.payload as any); handleNotificationClick(notif.task_id, notif.id); if (h) router.push(h) }}
                   className="p-4 hover:bg-zinc-100 transition-colors cursor-pointer flex items-start gap-4"
                 >
                   <div className="p-2 bg-zinc-100 rounded-lg shrink-0 mt-0.5">
@@ -150,7 +163,7 @@ export default function NotificationsPage() {
                   
                   <div className="flex-1 space-y-1 min-w-0">
                     <p className="text-sm text-zinc-800 leading-snug">
-                      {getNotificationText(notif.type, notif.payload)}
+                      {notificationText(notif.type, notif.payload as any, actorName(notif.payload))}
                     </p>
                     <div className="flex items-center gap-2 text-xs text-zinc-500">
                       {notif.task && (

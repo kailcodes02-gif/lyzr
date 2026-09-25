@@ -16,6 +16,7 @@ import { MyBoard } from '@/components/workspace/my-board'
 import { CampaignBanner } from '@/components/campaigns/campaign-banner'
 import { DomainGrid } from '@/components/workspace/domain-grid'
 import { PeopleMap } from '@/components/members/people-map'
+import { InboxCard } from '@/components/workspace/inbox-card'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -178,7 +179,10 @@ function WorkspaceHomePage() {
         </div>
       </div>
 
-      <PeopleMap compact />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2"><PeopleMap compact /></div>
+        <InboxCard />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="bg-white border-zinc-200 lg:col-span-2">
