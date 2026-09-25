@@ -1138,8 +1138,8 @@ export async function inviteUser(email: string) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
     throw new Error('Invalid email address')
   }
-  if (!normalized.endsWith('@lyzr.ai')) {
-    throw new Error('Only @lyzr.ai addresses can be invited')
+  if (!normalized.endsWith('@lyzr.ai') && !normalized.endsWith('@lyzr.com')) {
+    throw new Error('Only lyzr.ai or lyzr.com addresses can be invited')
   }
 
   // Admin-only

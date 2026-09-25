@@ -357,7 +357,7 @@ function AdminContent() {
             <CardHeader>
               <CardTitle className="text-base font-semibold text-zinc-900">Invite a teammate</CardTitle>
               <CardDescription className="text-zinc-500 text-xs">
-                Send a sign-in invite to any @lyzr.ai email. They sign in with Google; any tasks already assigned to that address get auto-mapped to their account.
+                Send a sign-in invite to any lyzr.ai or lyzr.com email. They sign in with Slack, Microsoft or Google; any tasks already assigned to that address get auto-mapped to their account.
               </CardDescription>
             </CardHeader>
             <CardContent>

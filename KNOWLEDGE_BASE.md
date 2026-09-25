@@ -466,6 +466,21 @@ Access if the data ever becomes confidential.
   mailto sends via POST /me/sendMail after confirm; offers Move to Trash / Promotions. 396 unit + 48 browser
   tests; deployed.
 
+### 2026-09-25 (night), GSI Tracker: Slack and Microsoft sign-in alongside Google (GSI Tracker)
+- Login page shows a button per provider in `NEXT_PUBLIC_AUTH_PROVIDERS` (default
+  `slack_oidc,azure,google`); Supabase providers `slack_oidc` and `azure` (scopes openid profile
+  email User.Read). Callback page fetches the Microsoft 96x96 photo from Graph with the sign-in
+  token and stores a data URL on `users.avatar_url` (Microsoft sends no picture claim).
+- **Migration 021**: `lyzr_twin(email)` (lyzr.ai <-> lyzr.com), `handle_new_user` reads
+  full_name | name | preferred_username and avatar_url | picture, rejects non-Lyzr emails at the
+  database, and links owner / member / badge / pending rows under either domain spelling; backfills
+  names/avatars for existing users. Invites accept lyzr.com.
+- `tracker/AUTH-SETUP.md`: Slack app + Supabase steps (preferred), Entra Web-platform redirect +
+  Azure provider steps (reuse "Lyzr MS UI" registration), note that Microsoft identities are
+  @lyzr.com and Google are @lyzr.ai (two users if one person uses both).
+- Build 31 routes, staged in `GSI_Tracker/`. Provider switches in the Supabase dashboard are the
+  user's step.
+
 ### 2026-09-25 (evening), GSI Tracker: notifications for everything on a task (GSI Tracker)
 - **Migration 020** (validated on scratch): 7 new `notification_type` values (task_edited, checklist,
   subtask_added, suggestion, suggestion_resolved, campaign_ask, task_created); `task_watchers(t)`

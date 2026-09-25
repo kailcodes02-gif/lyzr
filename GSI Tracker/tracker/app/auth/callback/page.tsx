@@ -21,7 +21,28 @@ function CallbackContent() {
     // time it resolves the session either exists or the exchange failed.
     const finish = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      router.replace(session ? '/' : '/login?error=auth_failed')
+      if (!session) {
+        const desc = (searchParams.get('error_description') || '').toLowerCase()
+        router.replace(desc.includes('lyzr') ? '/login?error=not_lyzr' : '/login?error=auth_failed')
+        return
+      }
+      // Microsoft does not send a picture claim; fetch the photo from Graph
+      // once with the provider token and keep a small data URL on the profile.
+      try {
+        const provider = session.user.app_metadata?.provider
+        if (provider === 'azure' && session.provider_token) {
+          const { data: me } = await supabase.from('users').select('avatar_url, display_name').eq('id', session.user.id).maybeSingle()
+          if (me && !me.avatar_url) {
+            const res = await fetch('https://graph.microsoft.com/v1.0/me/photos/96x96/$value', { headers: { Authorization: `Bearer ${session.provider_token}` } })
+            if (res.ok) {
+              const blob = await res.blob()
+              const dataUrl = await new Promise<string>((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = no; r.readAsDataURL(blob) })
+              if (dataUrl.length < 60_000) await supabase.from('users').update({ avatar_url: dataUrl }).eq('id', session.user.id)
+            }
+          }
+        }
+      } catch (e) { console.warn('avatar fetch skipped', e) }
+      router.replace('/')
     }
     finish()
   }, [searchParams, router])
