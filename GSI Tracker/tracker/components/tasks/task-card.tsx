@@ -303,6 +303,8 @@ export function TaskCard({ task, onClick, compact, onSubtaskClick }: TaskCardPro
 export function TaskRow({ task, onClick, selectable, selected, onSelectChange, parentLabel, showVerticalColumn }: TaskRowProps) {
   const { verticals } = useVertical()
   const verticalName = verticals.find(v => v.id === task.channel?.vertical_id)?.name
+  const { data: allChannels } = useChannels('all')
+  const parentChannel = task.channel?.parent_channel_id ? allChannels?.find(c => c.id === task.channel!.parent_channel_id) : null
   const statusConfig = STATUS_CONFIG[task.status]
   const priorityColor = PRIORITY_COLORS[task.priority]
   const assignments = task.assignments || []
@@ -371,7 +373,7 @@ export function TaskRow({ task, onClick, selectable, selected, onSelectChange, p
           : '-'}
       </td>
       <td className="py-3 px-4 text-xs text-zinc-500">
-        {task.channel?.name || '-'}
+        {parentChannel ? <><span className="text-zinc-400">{parentChannel.name} › </span>{task.channel?.name}</> : (task.channel?.name || '-')}
       </td>
       {showVerticalColumn && (
         <td className="py-3 px-4 text-xs text-zinc-500">{verticalName || '-'}</td>

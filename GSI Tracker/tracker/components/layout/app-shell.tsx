@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import {
   Calendar, LayoutDashboard, ListTodo, ChevronDown, ChevronRight, ChevronsUpDown,
-  Bell, LogOut, Zap, Sparkles, Link2, DollarSign, Upload, Menu, X, Settings, LineChart, UserCircle,
+  Bell, LogOut, Zap, Sparkles, Link2, GitBranch, DollarSign, Upload, Menu, X, Settings, LineChart, UserCircle,
   CalendarRange, History, BookOpen, Layers, Building2, Crown, Table2, Workflow, Home,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -228,6 +228,7 @@ export function AppSidebar() {
     { href: '/my-board/', icon: Sparkles, label: 'My Board', match: '/my-board' },
     { href: '/campaigns/', icon: Zap, label: 'Campaigns', match: '/campaigns' },
     { href: withVertical('/calendar/', 'all'), icon: Calendar, label: 'Calendar', match: '/calendar' },
+    { href: withVertical('/overview/', 'all'), icon: GitBranch, label: 'Overview', match: '/overview' },
     { href: '/workspace/tasks/', icon: Table2, label: 'All Tasks', match: '/workspace/tasks' },
     { href: withVertical('/my-tasks/', 'all'), icon: ListTodo, label: 'My Tasks', match: '/my-tasks' },
     { href: withVertical('/owners/', 'all'), icon: UserCircle, label: 'Owners', match: '/owners' },
@@ -241,6 +242,7 @@ export function AppSidebar() {
   const spaceNav: NavItem[] = [
     { href: withVertical('/dashboard/', slug), icon: LayoutDashboard, label: 'Dashboard', match: '/dashboard' },
     { href: '/campaigns/', icon: Zap, label: 'Campaigns', match: '/campaigns' },
+    { href: withVertical('/overview/', slug), icon: GitBranch, label: 'Overview', match: '/overview' },
     { href: withVertical('/calendar/', slug), icon: Calendar, label: 'Calendar', match: '/calendar' },
     { href: withVertical('/my-tasks/', slug), icon: ListTodo, label: 'My Tasks', match: '/my-tasks' },
     { href: withVertical('/tracker/', slug), icon: LineChart, label: 'Tracker', match: '/tracker' },

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/components/ui/sheet'
@@ -108,6 +108,9 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
   // @mention autocomplete over every known dashboard email
   const { data: knownEmails } = useKnownEmails()
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
+  const chatRef = useRef<HTMLDivElement>(null)
+  const commentCount = (task as any)?.comments?.length || 0
+  useEffect(() => { const el = chatRef.current; if (el) el.scrollTop = el.scrollHeight }, [commentCount, taskId])
   const [createSubtaskOpen, setCreateSubtaskOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editMode, setEditMode] = useState(false)
@@ -916,36 +919,44 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
 
                 {/* Comments */}
                 <TabsContent value="comments" className="mt-4">
-                  <div className="space-y-4 mb-4 max-h-64 overflow-y-auto">
-                    {((task as any).comments || []).map((comment: any) => (
-                      <div key={comment.id} className="flex gap-3">
-                        <Avatar className="w-7 h-7 shrink-0">
-                          <AvatarImage src={comment.user?.avatar_url || ''} />
-                          <AvatarFallback className="bg-zinc-300 text-[10px]">{comment.user?.display_name?.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium text-zinc-700">{comment.user?.display_name}</span>
-                            <span className="text-[11px] text-zinc-600">{formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}</span>
+                  {/* Chat: newest at the bottom, mine on the right, Enter sends */}
+                  <div ref={chatRef} className="space-y-2 mb-3 max-h-80 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/70 p-3">
+                    {((task as any).comments || []).map((comment: any, i: number, arr: any[]) => {
+                      const mine = comment.user_id === currentUser?.id
+                      const prev = arr[i - 1]
+                      const sameAuthor = prev && prev.user_id === comment.user_id && (new Date(comment.created_at).getTime() - new Date(prev.created_at).getTime()) < 5 * 60 * 1000
+                      const dayBreak = !prev || new Date(prev.created_at).toDateString() !== new Date(comment.created_at).toDateString()
+                      return (
+                        <div key={comment.id}>
+                          {dayBreak && <div className="text-center text-[10px] text-zinc-400 my-2">{formatTz(toZonedTime(new Date(comment.created_at), 'Asia/Kolkata'), 'EEE d MMM', { timeZone: 'Asia/Kolkata' })}</div>}
+                          <div className={cn('flex gap-2 items-end', mine ? 'flex-row-reverse' : '')}>
+                            <div className="w-7 shrink-0">
+                              {!sameAuthor && (
+                                <Avatar className="w-7 h-7">
+                                  <AvatarImage src={comment.user?.avatar_url || ''} />
+                                  <AvatarFallback className="bg-zinc-300 text-[10px]">{comment.user?.display_name?.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                              )}
+                            </div>
+                            <div className={cn('max-w-[78%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap break-words', mine ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-white border border-zinc-200 text-zinc-800 rounded-bl-sm')}>
+                              {!sameAuthor && !mine && <div className="text-[11px] font-medium text-zinc-500 mb-0.5">{comment.user?.display_name}</div>}
+                              {renderMentions(comment.body, mine)}
+                              <div className={cn('text-[10px] mt-1 text-right', mine ? 'text-blue-100' : 'text-zinc-400')}>{formatTz(toZonedTime(new Date(comment.created_at), 'Asia/Kolkata'), 'h:mm a', { timeZone: 'Asia/Kolkata' })}</div>
+                            </div>
                           </div>
-                          <p className="text-sm text-zinc-600 mt-0.5">{comment.body}</p>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                     {(!(task as any).comments || (task as any).comments.length === 0) && (
-                      <p className="text-sm text-zinc-600 py-4 text-center">No comments yet</p>
+                      <p className="text-sm text-zinc-500 py-6 text-center">No messages yet. Say something, or @mention someone.</p>
                     )}
                   </div>
-                  <div className="relative">
+                  <div className="relative flex items-end gap-2">
                     {mentionQuery !== null && mentionSuggestions.length > 0 && (
                       <div className="absolute bottom-full mb-1 left-0 w-72 rounded-lg border border-zinc-300 bg-white shadow-lg z-50 overflow-hidden">
                         {mentionSuggestions.map(pn => (
-                          <button
-                            key={pn.email}
-                            type="button"
-                            onMouseDown={e => { e.preventDefault(); pickMention(pn.email) }}
-                            className="w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50 flex items-center justify-between gap-2"
-                          >
+                          <button key={pn.email} type="button" onMouseDown={e => { e.preventDefault(); pickMention(pn.email) }}
+                            className="w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50 flex items-center justify-between gap-2">
                             <span className="font-medium text-zinc-800 capitalize">{pn.label}</span>
                             <span className="text-zinc-500 truncate">{pn.email}</span>
                           </button>
@@ -955,13 +966,13 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                     <Textarea
                       value={newComment}
                       onChange={onCommentChange}
-                      placeholder="Add a comment... type @ to mention someone"
-                      className="bg-zinc-100 border-zinc-300 text-sm min-h-[60px]"
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && mentionQuery === null) { e.preventDefault(); if (newComment.trim() && !isPending) handleAddComment() } }}
+                      placeholder="Message… Enter to send, Shift+Enter for a new line, @ to mention"
+                      rows={1}
+                      className="bg-white border-zinc-300 text-sm min-h-[40px] max-h-32 rounded-2xl resize-none flex-1"
                     />
-                  </div>
-                  <div className="flex justify-end mt-2">
-                    <Button size="sm" onClick={handleAddComment} disabled={isPending || !newComment.trim()} className="bg-blue-600 hover:bg-blue-700 text-white">
-                      <Send className="w-3.5 h-3.5 mr-1" /> Comment
+                    <Button size="icon" onClick={handleAddComment} disabled={isPending || !newComment.trim()} className="bg-blue-600 hover:bg-blue-700 text-white rounded-full h-10 w-10 shrink-0" aria-label="Send">
+                      <Send className="w-4 h-4" />
                     </Button>
                   </div>
                 </TabsContent>
@@ -1824,4 +1835,13 @@ function TaskHistoryList({ taskId }: { taskId: string }) {
       </div>
     </div>
   )
+}
+
+
+// @name and @email inside a message are shown as chips.
+function renderMentions(body: string, mine: boolean) {
+  const parts = body.split(/(@[\w.+-]+(?:@[\w.-]+)?)/g)
+  return parts.map((p, i) => p.startsWith('@') && p.length > 1
+    ? <span key={i} className={cn('rounded px-1 font-medium', mine ? 'bg-blue-500/60' : 'bg-blue-50 text-blue-700')}>{p}</span>
+    : <span key={i}>{p}</span>)
 }

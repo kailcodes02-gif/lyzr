@@ -59,6 +59,7 @@ export const HELP: Record<string, string> = {
   group: 'Only a folder for channels. Nothing is owned or assigned at this level; it can carry a budget that its channels roll into.',
   notifications: 'You hear about everything on tasks you are related to: asked to own, comments, edits, checklist ticks, new sub-tasks, suggestions, and thunderclap asks. Related = owner, creator, parent-task owner, channel owner above it.',
   linked_accounts: 'You are one person with one account. Add Google, Microsoft or Slack sign-in here; your lyzr.ai and lyzr.com addresses both attach to it. Never create a second account.',
+  overview: 'The whole plan as one collapsible tree: vertical, group, channel, sub-channel, task, sub-task. Each row shows open, done and overdue for everything underneath it.',
   recurring: 'Google-Calendar-style repeat: every N days, weeks or months, on chosen weekdays, ending never, on a date or after N times.',
 }
 

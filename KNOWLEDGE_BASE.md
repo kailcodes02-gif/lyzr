@@ -472,6 +472,18 @@ Access if the data ever becomes confidential.
   mailto sends via POST /me/sendMail after confirm; offers Move to Trash / Promotions. 396 unit + 48 browser
   tests; deployed.
 
+### 2026-09-26, GSI Tracker: Microsoft-only login live, chat-style comments, tree Overview (GSI Tracker)
+- Auth: migration 023 (lyzr.com only; all .ai rows/accounts rewritten to .com) applied live by
+  Kailash; Entra app `eb37cade…` has the Supabase callback + `email`/`xms_edov` ID-token claims;
+  login page defaults to `NEXT_PUBLIC_AUTH_PROVIDERS=azure`. Google/Slack stay behind the env var.
+- Task drawer Comments tab is now a chat: bubbles (mine right / others left), day separators,
+  grouped consecutive messages, @mention chips, Enter sends, auto-scroll to newest.
+- New `/overview/` (company and per-vertical via `?v=`): collapsible tree Vertical › Group ›
+  Channel › Sub-channel › Task › Sub-task with open / done / overdue per row, filter bar, drawer.
+  In both navs and the Guide. All-tasks table channel cell shows `Parent › Sub-channel`.
+- Note for the user: "12.2 GSI" is the ABM sub-channel for global SIs from the GTM blueprint, not
+  the vertical; rename pending their choice. Build 33 routes, staged in `GSI_Tracker/`.
+
 ### 2026-09-26, GSI Tracker: one person, two emails (lyzr.ai + lyzr.com) as one account (GSI Tracker)
 - **Migration 022**: `users.alt_email`; `handle_new_user` refuses a sign-up whose email is the twin
   of an existing account (message tells them to sign in with the existing one and link); RPC

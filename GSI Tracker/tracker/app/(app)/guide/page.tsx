@@ -35,6 +35,7 @@ const ROLES = [
 
 const VIEWS = [
   { icon: Home, name: 'Company Home', k: 'workspace_home', href: '/', mode: 'workspace' },
+  { icon: GitBranch, name: 'Overview', k: 'overview', href: '/overview/', mode: 'both' },
   { icon: Table2, name: 'All Tasks', k: 'tracker', href: '/workspace/tasks/', mode: 'workspace', text: 'Every task in every vertical, with every filter.' },
   { icon: CalendarRange, name: 'Weekly (workspace)', k: 'weekly', href: '/workspace/weekly/', mode: 'workspace' },
   { icon: Workflow, name: 'Domains', k: 'functions_view', href: '/functions/', mode: 'workspace' },
