@@ -458,6 +458,12 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-09-26, MS UI: New Word / Excel / PowerPoint files from the Drive New menu (MS UI)
+- Drive "New" menu (and right-click on empty space) creates a blank .docx / .xlsx / .pptx in the current
+  folder (My files when in a type view, with a toast saying so) via PUT .../content with a minimal OOXML
+  package built in the browser with fflate (lib/drive/ooxml.ts), then opens it in the Office web app.
+  411 unit + 50 browser tests; deployed. Unverified live: Office opening the generated blank files without repair.
+
 ### 2026-09-23, MS UI: visible Not spam, Spam/Trash banners, Gmail-style Unsubscribe (MS UI)
 - Spam folder: always-visible "Not spam" pill per row, yellow banner on opened spam mail, labelled toolbar
   button; Trash gets a "Move to Inbox" banner. Folder detection now resolves both well-known names and raw ids.

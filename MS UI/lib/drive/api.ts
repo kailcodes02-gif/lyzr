@@ -111,6 +111,12 @@ export async function createFolder(instance: Msal, parentId: string, name: strin
     body: { name, folder: {}, "@microsoft.graph.conflictBehavior": "rename" },
   });
 }
+// A blank Office file: PUT of the generated OOXML bytes by path, renamed on
+// conflict like uploads. Graph answers with the new driveItem (webUrl included).
+export async function createOfficeFile(instance: Msal, parentId: string, name: string, bytes: Uint8Array, mimeType: string) {
+  const body = new Blob([bytes as BlobPart], { type: mimeType });
+  return graphFetch<DriveItem>(instance, S, `${itemPath(parentId)}:/${enc(name)}:/content?@microsoft.graph.conflictBehavior=rename`, { method: "PUT", body, headers: { "Content-Type": mimeType } });
+}
 export async function renameItem(instance: Msal, id: string, name: string) {
   return graphFetch<DriveItem>(instance, S, itemPath(id), { method: "PATCH", body: { name } });
 }

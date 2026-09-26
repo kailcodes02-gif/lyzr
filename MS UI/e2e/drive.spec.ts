@@ -62,3 +62,37 @@ test("the Refresh button refetches from OneDrive at once", async ({ page }) => {
   await page.getByRole("button", { name: /^refresh$/i }).click();
   await expect(page.getByTestId("drive-updated")).toContainText(/just now/, { timeout: 10_000 });
 });
+
+// Google-Drive-style New: a Word / Excel / PowerPoint file is created in the
+// folder being looked at and opened in its web app (the demo explains instead).
+test("New > Word document inside a folder creates it there and opens it in Word", async ({ page }) => {
+  await openDemo(page, "/MS/onedrive/");
+  await page.getByText(/GSI Program/).first().dblclick();
+  await expect(page).toHaveURL(/folder=/);
+  await page.getByRole("button", { name: /^new$/i }).click();
+  await expect(page.getByRole("menuitem", { name: /excel workbook/i })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: /powerpoint presentation/i })).toBeVisible();
+  await page.getByRole("menuitem", { name: /word document/i }).click();
+  const input = page.getByRole("textbox", { name: "Name" });
+  await expect(input).toHaveValue("Document.docx");
+  await input.fill("Playwright brief");
+  await page.getByRole("button", { name: /^create$/i }).click();
+  await expect(page.getByText(/would open "Playwright brief\.docx" in Word/i)).toBeVisible();
+  await expect(page.getByText(/created in GSI Program/i)).toBeVisible();
+  await expect(page.getByRole("navigation", { name: /breadcrumb/i }).getByText(/GSI Program/)).toBeVisible();
+  await expect(page.getByText("Playwright brief.docx").first()).toBeVisible();
+  await expect(page).toHaveURL(/folder=/);
+});
+
+test("New > Excel workbook from the Docs type view lands in My files and says so", async ({ page }) => {
+  await openDemo(page, "/MS/onedrive/?repo=docs");
+  await page.getByRole("button", { name: /^new$/i }).click();
+  await page.getByRole("menuitem", { name: /excel workbook/i }).click();
+  await expect(page.getByRole("textbox", { name: "Name" })).toHaveValue("Book.xlsx");
+  await page.getByRole("button", { name: /^create$/i }).click();
+  await expect(page.getByText(/"Book\.xlsx" created in My files/i)).toBeVisible();
+  await expect(page.getByText(/go to My files/i)).toBeVisible();
+  await expect(page.getByText(/would open "Book\.xlsx" in Excel/i)).toBeVisible();
+  await page.getByRole("button", { name: /^my files$/i }).click();
+  await expect(page.getByText("Book.xlsx").first()).toBeVisible();
+});

@@ -88,6 +88,27 @@ describe("DriveApp (mock mode)", () => {
     await screen.findByText("Partner kits", {}, { timeout: 5000 });
   });
 
+  it("New > PowerPoint presentation (empty-space menu) inside a folder creates it there and selects it", async () => {
+    nav.set("/onedrive/");
+    renderApp();
+    const gsi = await screen.findByText("GSI Program", {}, { timeout: 5000 });
+    fireEvent.doubleClick(gsi);
+    await screen.findByText("Accenture", {}, { timeout: 5000 });
+    // Right-click on empty space in the listing opens the same "New" menu.
+    fireEvent.contextMenu(screen.getByRole("main"), { clientX: 300, clientY: 300 });
+    fireEvent.click(await screen.findByRole("menuitem", { name: /powerpoint presentation/i }));
+    const input = await screen.findByLabelText("Name");
+    expect(input).toHaveValue("Presentation.pptx");
+    fireEvent.change(input, { target: { value: "Partner kickoff" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+    await screen.findByText("Partner kickoff.pptx", {}, { timeout: 5000 });
+    expect(nav.get()).toContain("folder=");
+    const crumb = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(crumb).getByText("GSI Program")).toHaveAttribute("aria-current", "page");
+    // The new tile is selected (toasts are asserted in the e2e, which mounts the Toaster).
+    await waitFor(() => expect(screen.getByText("Partner kickoff.pptx").closest("[id^=drive-item-]")).toHaveAttribute("aria-selected", "true"));
+  });
+
   it("switches to a type repo view via the left panel", async () => {
     nav.set("/onedrive/");
     renderApp();

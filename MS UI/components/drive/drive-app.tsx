@@ -2,20 +2,21 @@
 
 import { useMsal } from "@azure/msal-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Copy, Download, ExternalLink, FolderInput, FolderOpen, Info, Pencil, Search, Share2, Star, StarOff, Trash2, X } from "lucide-react";
+import { Copy, Download, ExternalLink, FolderInput, FolderOpen, FolderPlus, FolderUp, Info, Pencil, Search, Share2, Star, StarOff, Trash2, Upload, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { ConsentStatus } from "@/components/consent-status";
 import { Button } from "@/components/ui/button";
-import { copyItem, createFolder, deleteItem, downloadItem, followItem, moveItem, renameItem, resolveTarget, useDriveSearch, useQuota, useSharedWithMe, useStarred } from "@/lib/drive/api";
+import { copyItem, createFolder, createOfficeFile, deleteItem, downloadItem, followItem, moveItem, renameItem, resolveTarget, useDriveSearch, useQuota, useSharedWithMe, useStarred } from "@/lib/drive/api";
 import { SETTLE_REFRESH_MS, settleRefresh } from "@/lib/drive/freshness";
 import { isConsentError, useDriveIndex } from "@/lib/drive/index";
 import { reconcile, type Expectation } from "@/lib/drive/reconcile";
-import { applyChips, canMutate, filterItems, folderTree, isFolder, isWithin, moveIndex, nextSelection, parseUrlState, recentItems, recycleBinUrl, ROOT, serializeUrlState, sortItems, ownersIn, type DriveUrlState, type SortKey } from "@/lib/drive/logic";
+import { applyChips, canMutate, childrenOf, filterItems, folderTree, isFolder, isWithin, moveIndex, nextSelection, parseUrlState, recentItems, recycleBinUrl, ROOT, serializeUrlState, sortItems, ownersIn, type DriveUrlState, type SortKey } from "@/lib/drive/logic";
 import type { DriveItem } from "@/lib/drive/types";
-import { officeAppFor, officeDesktopUrl } from "@/lib/drive/office";
+import { defaultOfficeName, officeAppFor, officeDesktopUrl, officeTypeFor, withOfficeExtension } from "@/lib/drive/office";
+import { blankOfficeFile, type OfficeKind } from "@/lib/drive/ooxml";
 import { enqueueUploads } from "@/lib/drive/upload";
 import { isMockMode } from "@/lib/mock";
 import { Breadcrumb } from "./breadcrumb";
@@ -23,7 +24,8 @@ import { ContextMenu, type MenuAction } from "./context-menu";
 import { DetailsPanel } from "./details-panel";
 import { ConfirmDeleteDialog, MoveDialog, NameDialog } from "./dialogs";
 import { FileListing, ListingSkeleton } from "./file-listing";
-import { LeftPanel, type NavKey } from "./left-panel";
+import { LeftPanel, OFFICE_ICON, type NavKey } from "./left-panel";
+import { NEW_OFFICE_TYPES } from "@/lib/drive/office";
 import { PreviewModal } from "./preview-modal";
 import { ShareDialog } from "./share-dialog";
 import { TopBar, type Filters } from "./top-bar";
@@ -111,7 +113,9 @@ export function DriveApp() {
   const [cols, setCols] = useState(4);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [ctx, setCtx] = useState<{ x: number; y: number; item: DriveItem } | null>(null);
+  const [bgCtx, setBgCtx] = useState<{ x: number; y: number } | null>(null);
   const [newFolderOpen, setNewFolderOpen] = useState(false);
+  const [newOffice, setNewOffice] = useState<OfficeKind | null>(null);
   const [renameTarget, setRenameTarget] = useState<DriveItem | null>(null);
   const [moveState, setMoveState] = useState<{ mode: "move" | "copy"; ids: string[] } | null>(null);
   const [deleteIds, setDeleteIds] = useState<string[] | null>(null);
@@ -401,6 +405,36 @@ export function DriveApp() {
     }
   };
 
+  // New Word / Excel / PowerPoint file, Google-Drive style: it lands in the
+  // folder being looked at (My files' root from a type view, Starred, Recent
+  // or Shared, since those are not folders), then opens in the web app.
+  const officeSiblings = newOffice ? childrenOf(index.store, currentApiFolder).map((i) => i.name) : [];
+  const newOfficeName = newOffice ? defaultOfficeName(officeTypeFor(newOffice), officeSiblings) : "";
+  const inFolderView = !url.view && !url.repo && !url.q;
+  const doNewOffice = async (kind: OfficeKind, typed: string) => {
+    setNewOffice(null);
+    const type = officeTypeFor(kind);
+    const name = withOfficeExtension(typed, type);
+    const t = toast.loading(`Creating ${name}...`);
+    try {
+      const created = await createOfficeFile(instance, currentApiFolder, name, blankOfficeFile(kind), type.mime);
+      index.patchLocal(created.id, { ...created, parentReference: { ...created.parentReference, id: created.parentReference?.id ?? currentParentId } });
+      setSelected(new Set([created.id]));
+      setAnchor(created.id);
+      setFocusedId(created.id);
+      const where = inFolderView ? (url.folder === ROOT ? "My files" : crumbs[crumbs.length - 1]?.name ?? "this folder") : "My files";
+      toast.success(`"${created.name}" created in ${where}`, {
+        id: t,
+        description: inFolderView ? undefined : `New files from ${title ?? "this view"} go to My files.`,
+        action: { label: `Open in ${type.app}`, onClick: () => void openInOffice(created) },
+      });
+      afterMutation([{ kind: "exists", id: created.id, action: `new ${type.label.toLowerCase()}`, label: created.name }]);
+      openInOffice(created);
+    } catch (e) {
+      toast.error(`Could not create the ${type.label.toLowerCase()}`, { id: t, description: (e as Error).message });
+    }
+  };
+
   const uploadFiles = async (files: File[], parentId = currentApiFolder) => {
     if (!files.length) return;
     const created = await enqueueUploads(instance, files.map((file) => ({ file, parentId })));
@@ -446,7 +480,7 @@ export function DriveApp() {
   // rule as the context menu (no remote / foreign-drive items).
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
-      if (isTyping(e) || previewItem || ctx) return;
+      if (isTyping(e) || previewItem || ctx || bgCtx) return;
       if (e.key === "/") {
         e.preventDefault();
         searchRef.current?.focus();
@@ -517,6 +551,13 @@ export function DriveApp() {
     ];
   };
 
+  const newMenu: MenuAction[] = [
+    { label: "New folder", icon: FolderPlus, onSelect: () => setNewFolderOpen(true), shortcut: "n" },
+    { label: "File upload", icon: Upload, onSelect: () => fileInput.current?.click(), separator: true },
+    { label: "Folder upload", icon: FolderUp, onSelect: () => folderInput.current?.click() },
+    ...NEW_OFFICE_TYPES.map((t, i) => ({ label: t.label, icon: OFFICE_ICON[t.kind], onSelect: () => setNewOffice(t.kind), separator: i === 0 }) as MenuAction),
+  ];
+
   // Consent gate: a consent-required token error or 401/403 from the index
   // means Files.ReadWrite is not approved.
   if (index.status.error && isConsentError(index.status.error) && index.items.length === 0) {
@@ -540,7 +581,7 @@ export function DriveApp() {
 
   return (
     <div className="flex h-screen min-w-0 bg-background">
-      <LeftPanel active={activeNav} onNav={nav} onNewFolder={() => setNewFolderOpen(true)} onUploadFiles={() => fileInput.current?.click()} onUploadFolder={() => folderInput.current?.click()} quota={quota.data?.quota} trashUrl={recycleBinUrl(quota.data)} indexing={index.status.indexing} count={index.status.count} lastSync={index.status.lastSync} />
+      <LeftPanel active={activeNav} onNav={nav} onNewFolder={() => setNewFolderOpen(true)} onNewOffice={setNewOffice} onUploadFiles={() => fileInput.current?.click()} onUploadFolder={() => folderInput.current?.click()} quota={quota.data?.quota} trashUrl={recycleBinUrl(quota.data)} indexing={index.status.indexing} count={index.status.count} lastSync={index.status.lastSync} />
       <input ref={fileInput} type="file" multiple hidden onChange={(e) => { void uploadFiles(Array.from(e.target.files ?? [])); e.target.value = ""; }} aria-label="Upload files" />
       <input ref={folderInput} type="file" hidden {...({ webkitdirectory: "", directory: "" } as Record<string, string>)} onChange={(e) => { void uploadFolder(Array.from(e.target.files ?? [])); e.target.value = ""; }} aria-label="Upload folder" />
 
@@ -565,7 +606,16 @@ export function DriveApp() {
           <Button variant="ghost" size="icon" aria-label="Details" aria-pressed={detailsOpen} onClick={() => setDetailsOpen((d) => !d)}><Info /></Button>
         </div>
         <div className="flex min-h-0 flex-1">
-          <main className="min-w-0 flex-1 overflow-auto pb-24" onClick={() => setSelected(new Set())}>
+          <main
+            className="min-w-0 flex-1 overflow-auto pb-24"
+            onClick={() => setSelected(new Set())}
+            onContextMenu={(e) => {
+              // Right-click on empty space: the same "New" menu as the left panel.
+              if ((e.target as HTMLElement).closest("[id^=drive-item-]")) return;
+              e.preventDefault();
+              setBgCtx({ x: e.clientX, y: e.clientY });
+            }}
+          >
             {index.status.indexing && index.items.length === 0 && (
               <p className="px-4 pb-2 text-xs text-muted-foreground" aria-live="polite">Indexing your OneDrive for the first time: {index.status.count.toLocaleString()} items so far. Type views, search and people filters work from this index.</p>
             )}
@@ -618,6 +668,8 @@ export function DriveApp() {
       </div>
 
       {ctx && <ContextMenu x={ctx.x} y={ctx.y} actions={menuFor(ctx.item)} onClose={() => setCtx(null)} />}
+      {bgCtx && <ContextMenu x={bgCtx.x} y={bgCtx.y} actions={newMenu} onClose={() => setBgCtx(null)} />}
+      <NameDialog open={Boolean(newOffice)} title={newOffice ? `New ${officeTypeFor(newOffice).label.toLowerCase()}` : "New file"} initial={newOfficeName} submitLabel="Create" onClose={() => setNewOffice(null)} onSubmit={(n) => newOffice && void doNewOffice(newOffice, n)} />
       <NameDialog open={newFolderOpen} title="New folder" initial="Untitled folder" submitLabel="Create" onClose={() => setNewFolderOpen(false)} onSubmit={(n) => void doNewFolder(n)} />
       <NameDialog open={Boolean(renameTarget)} title="Rename" initial={renameTarget?.name ?? ""} submitLabel="OK" onClose={() => setRenameTarget(null)} onSubmit={(n) => renameTarget && void doRename(renameTarget, n)} />
       <MoveDialog open={Boolean(moveState)} mode={moveState?.mode ?? "move"} tree={tree} disabled={moveDisabled} count={moveState?.ids.length ?? 0} onClose={() => setMoveState(null)} onSubmit={(target) => { const s = moveState; setMoveState(null); if (s) void (s.mode === "move" ? doMove(s.ids, target) : doCopy(s.ids, target)); }} />

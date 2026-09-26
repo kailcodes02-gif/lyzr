@@ -7,6 +7,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Progress } from "@/components/ui/progress";
 import { formatBytes, KIND_COLOR, KIND_VIEWS } from "@/lib/files";
 import { formatAgo } from "@/lib/drive/freshness";
+import { NEW_OFFICE_TYPES } from "@/lib/drive/office";
+import type { OfficeKind } from "@/lib/drive/ooxml";
 import type { DriveQuota } from "@/lib/drive/types";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +18,9 @@ const REPO_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
 const REPO_COLOR: Record<string, string> = {
   docs: KIND_COLOR.doc, sheets: KIND_COLOR.sheet, slides: KIND_COLOR.slide, pdfs: KIND_COLOR.pdf, images: KIND_COLOR.image, videos: KIND_COLOR.video, folders: KIND_COLOR.folder,
 };
+
+// Icons for the "New" menu's Office entries, coloured like the type views.
+export const OFFICE_ICON: Record<OfficeKind, React.ComponentType<{ className?: string }>> = { word: FileText, excel: FileSpreadsheet, powerpoint: Presentation };
 
 export type NavKey = "myfiles" | "starred" | "recent" | "shared" | `repo:${string}`;
 
@@ -52,11 +57,12 @@ function NavItem({ k, active, icon: I, label, color, onNav }: { k: NavKey; activ
 }
 
 export function LeftPanel({
-  active, onNav, onNewFolder, onUploadFiles, onUploadFolder, quota, trashUrl, indexing, count, lastSync,
+  active, onNav, onNewFolder, onNewOffice, onUploadFiles, onUploadFolder, quota, trashUrl, indexing, count, lastSync,
 }: {
   active: NavKey;
   onNav: (k: NavKey) => void;
   onNewFolder: () => void;
+  onNewOffice: (kind: OfficeKind) => void;
   onUploadFiles: () => void;
   onUploadFolder: () => void;
   quota?: DriveQuota;
@@ -83,6 +89,16 @@ export function LeftPanel({
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onUploadFiles} className="gap-3 px-3 py-2"><Upload />File upload</DropdownMenuItem>
             <DropdownMenuItem onClick={onUploadFolder} className="gap-3 px-3 py-2"><FolderUp />Folder upload</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {NEW_OFFICE_TYPES.map((t) => {
+              const I = OFFICE_ICON[t.kind];
+              return (
+                <DropdownMenuItem key={t.kind} onClick={() => onNewOffice(t.kind)} className="gap-3 px-3 py-2">
+                  <I className={cn("h-4 w-4", t.color)} />
+                  {t.label}
+                </DropdownMenuItem>
+              );
+            })}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

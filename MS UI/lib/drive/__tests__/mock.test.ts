@@ -43,6 +43,24 @@ describe("mock drive handler", () => {
   });
 });
 
+describe("mock drive: new Office files", () => {
+  it("PUT of .docx / .xlsx / .pptx content creates the file in that folder with the Office mimeType and a webUrl", () => {
+    const gsi = mockDriveFind("GSI Program")!;
+    const docx = call<DriveItem>("PUT", `/me/drive/items/${gsi.id}:/Document.docx:/content?@microsoft.graph.conflictBehavior=rename`, new Blob(["PK"], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }));
+    expect(docx.parentReference?.id).toBe(gsi.id);
+    expect(docx.file?.mimeType).toBe("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    expect(docx.webUrl).toMatch(/^https:/);
+    const xlsx = call<DriveItem>("PUT", `/me/drive/items/${MOCK_ROOT_ID}:/Book.xlsx:/content`, new Blob(["PK"]));
+    expect(xlsx.file?.mimeType).toContain("spreadsheetml");
+    const pptx = call<DriveItem>("PUT", `/me/drive/root:/Presentation.pptx:/content`, new Blob(["PK"]));
+    expect(pptx.file?.mimeType).toContain("presentationml");
+    expect(pptx.parentReference?.id).toBe(MOCK_ROOT_ID);
+    // Same name again is renamed, as conflictBehavior=rename does.
+    const again = call<DriveItem>("PUT", `/me/drive/items/${gsi.id}:/Document.docx:/content?@microsoft.graph.conflictBehavior=rename`, new Blob(["PK"]));
+    expect(again.name).toBe("Document 1.docx");
+  });
+});
+
 describe("mock drive delta honours $select like Graph", () => {
   it("strips unselected properties (root facet included) and keeps the selection in the deltaLink", () => {
     const d = call<{ value: DriveItem[]; "@odata.deltaLink": string }>("GET", "/me/drive/root/delta?$select=id,name,folder&$top=500");
