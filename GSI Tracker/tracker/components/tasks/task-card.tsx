@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Calendar, MessageSquare, CheckSquare, Layers, DollarSign, Target, Repeat, Crown, Link as LinkIcon } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
-import { useAllChannelOwners, useChannels } from '@/lib/hooks/use-data'
+import { useAllChannelOwners, useChannels, useFunctions } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { updateTask } from '@/lib/actions'
 import { useQueryClient } from '@tanstack/react-query'
@@ -304,7 +304,9 @@ export function TaskRow({ task, onClick, selectable, selected, onSelectChange, p
   const { verticals } = useVertical()
   const verticalName = verticals.find(v => v.id === task.channel?.vertical_id)?.name
   const { data: allChannels } = useChannels('all')
+  const { data: functions } = useFunctions()
   const parentChannel = task.channel?.parent_channel_id ? allChannels?.find(c => c.id === task.channel!.parent_channel_id) : null
+  const domainName = functions?.find(f => f.id === (task.channel?.function_id || parentChannel?.function_id))?.name
   const statusConfig = STATUS_CONFIG[task.status]
   const priorityColor = PRIORITY_COLORS[task.priority]
   const assignments = task.assignments || []
@@ -353,6 +355,11 @@ export function TaskRow({ task, onClick, selectable, selected, onSelectChange, p
         </div>
       </td>
       <td className="py-3 px-4">
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color: priorityColor }}>
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: priorityColor }} />{task.priority}
+        </span>
+      </td>
+      <td className="py-3 px-4">
         <Badge
           variant="outline"
           className="text-[11px] font-medium border-0"
@@ -376,7 +383,10 @@ export function TaskRow({ task, onClick, selectable, selected, onSelectChange, p
         {parentChannel ? <><span className="text-zinc-400">{parentChannel.name} › </span>{task.channel?.name}</> : (task.channel?.name || '-')}
       </td>
       {showVerticalColumn && (
-        <td className="py-3 px-4 text-xs text-zinc-500">{verticalName || '-'}</td>
+        <td className="py-3 px-4 text-xs text-zinc-500">{domainName ? <Badge variant="outline" className="text-[10px] border-emerald-200 bg-emerald-50 text-emerald-700">{domainName}</Badge> : <span className="text-zinc-300">unlinked</span>}</td>
+      )}
+      {showVerticalColumn && (
+        <td className="py-3 px-4 text-xs text-zinc-500">{verticalName ? <Badge variant="outline" className="text-[10px] border-blue-200 bg-blue-50 text-blue-700">{verticalName}</Badge> : '-'}</td>
       )}
     </tr>
   )

@@ -348,11 +348,15 @@ function TaskTable({ tasks, onTaskClick, showCancelled, showChannelColumn, showV
                 />
               </th>
               <th className="text-left text-xs font-medium text-zinc-600 py-3 px-4">Title</th>
+              <th className="text-left text-xs font-medium text-zinc-600 py-3 px-4">Priority</th>
               <th className="text-left text-xs font-medium text-zinc-600 py-3 px-4">Status</th>
               <th className="text-left text-xs font-medium text-zinc-600 py-3 px-4">Owners</th>
               <th className="text-left text-xs font-medium text-zinc-600 py-3 px-4">Due Date</th>
               {showChannelColumn && (
                 <th className="text-left text-xs font-medium text-zinc-600 py-3 px-4">Channel</th>
+              )}
+              {showVerticalColumn && (
+                <th className="text-left text-xs font-medium text-zinc-600 py-3 px-4">Domain</th>
               )}
               {showVerticalColumn && (
                 <th className="text-left text-xs font-medium text-zinc-600 py-3 px-4">Vertical</th>
