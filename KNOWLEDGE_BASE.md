@@ -458,6 +458,28 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-09-28, MS UI: hands-free inbox sorting — invites to Calendar invites, notes to Meeting scripts (MS UI)
+- Why: user's real mailbox kept meeting invites ("All Hands Sync", "Accepted: Paid Ads GSI") and Gemini
+  "Notes: …" mails in the Inbox although Calendar invites / Meeting scripts labels existed. Three real-world
+  gaps: the backfill scanned only the newest 500; label rules ran in creation order (Leadership before
+  Calendar); Teams invites have an all-underscore bodyPreview, so preview matching never saw the join link.
+- New `lib/mail/resort.ts`: replays the mailbox's real inbox rules over the whole Inbox (up to 20k) and moves
+  each message where they'd have filed it. Meeting detection via PR_MESSAGE_CLASS ($expand
+  singleValueExtendedProperties, String 0x001A) with @odata.type fallback; body phrases (Teams/Zoom/Meet join
+  links) found with per-phrase Inbox $search matched on internetMessageId ($search returns REST ids). Rule
+  priority: Calendar invitation/response rules first, then Meeting scripts, then Calendar's link rule.
+  `repairBrokenRules` recreates own label rules Outlook flags hasError; broken rules still replay client-side.
+  `calendarHealth` reports disabled/broken/stopped-before rules; result reports meetingsLeft.
+- Hands-free: `useAutoSort` runs the full resort on Outlook load (≥6h apart per account, localStorage
+  `msui.mail.autosort.*`); the poller runs the Inbox delta in EVERY view and `sortNewMail` (full-body fetch,
+  ≤50 msgs since last round) on each arrival batch — so mail is filed even when Outlook's server rules fail.
+  "Sort Inbox now" button in Filters for the manual whole-Inbox pass.
+- Presets: Calendar preset gains bodyContains join-link phrases; Meeting scripts gains gemini-notes /
+  meet-recordings-noreply senders and the "Notes: “" subject. Mock demo delivers an invite with rules
+  deliberately NOT applied to prove the app files it itself (e2e). 426 unit + 52 e2e green; deployed
+  (Worker version ec6fd75a). Correction to 2026-09-28 earlier attempt: preview-only matching and
+  @odata.type-only detection were insufficient on real Teams invites.
+
 ### 2026-09-26, MS UI: New Word / Excel / PowerPoint files from the Drive New menu (MS UI)
 - Drive "New" menu (and right-click on empty space) creates a blank .docx / .xlsx / .pptx in the current
   folder (My files when in a type view, with a toast saying so) via PUT .../content with a minimal OOXML
