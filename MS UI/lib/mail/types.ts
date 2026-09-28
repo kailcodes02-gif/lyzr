@@ -43,6 +43,8 @@ export type Message = {
   body?: ItemBody;
   uniqueBody?: ItemBody;
   internetMessageId?: string;
+  // Only when expanded, e.g. PR_MESSAGE_CLASS ("String 0x001A") in resort.ts.
+  singleValueExtendedProperties?: { id: string; value: string }[];
   internetMessageHeaders?: { name: string; value: string }[];
   // Derived types (#microsoft.graph.eventMessageRequest / eventMessageResponse
   // / eventMessage) come back on every list row without extra $select.

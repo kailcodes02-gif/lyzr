@@ -9,6 +9,7 @@ import { isMockMode } from "@/lib/mock";
 import { FOLDER_SELECT, guessWellKnownByName, wellKnownIdsFrom, wellKnownRequests, withWellKnownNames, type WellKnownMap } from "./folders";
 import { createPoller, isSentCopy, listKey, pageFingerprint, pollUntil, refetchTargets, Settler, type ActionContext, type ActionKind, type Poller } from "./freshness";
 import { backfillLabel, BACKFILL_MAX, BACKFILL_SELECT, CATEGORIES_PATH, errorMessage, installPresets, isReservedFolderName, moveLabelBackToInbox, safeFolderName, type BackfillResult, type BatchOutcome, type GraphApi } from "./install";
+import { CALENDAR_LABEL, resortInbox, RESORT_STEP_LABEL, sortNewMail, type ResortStep } from "./resort";
 import { encodeFilter, escapeOData, folderByNamePath, hasCategory, inboxTabPath, labelListPath, moveFolderOf, ownRules, PROMOTIONS_COLOR, PROMOTIONS_CONDITIONS, PROMOTIONS_LABEL, RULES_PATH, rulesOfLabel, SOCIAL_COLOR, SOCIAL_CONDITIONS, SOCIAL_LABEL, SORTING_RULES, withoutCategory, type LabelConditions } from "./labels";
 import { folderListPath, isVirtualFolderKey, resolveFolderId, searchListPath } from "./logic";
 import { PRESET_LABELS } from "./presets";
@@ -1226,6 +1227,80 @@ export function useInstallPresets() {
   });
 }
 
+// ---- Sort Inbox now -----------------------------------------------------------
+
+// Calendar rules brought up to date and moved first, then every Inbox
+// message replayed against the rules and moved where they would have put it.
+export function useResortInbox() {
+  const api = useGraphApi();
+  const qc = useQueryClient();
+  const [step, setStep] = useState<ResortStep | null>(null);
+  const mutation = useMutation({
+    mutationFn: ({ meAddress }: { meAddress?: string }) => resortInbox(api, meAddress, setStep),
+    onSuccess: (r) => {
+      const failed = r.failed ? `, ${r.failed} could not be moved` : "";
+      toast.success(`Checked ${r.scanned} Inbox messages: ${r.moved} moved to their labels${failed}.`);
+    },
+    onError: (e) => toast.error(`Could not sort the Inbox. ${errorMessage(e)}`),
+    onSettled: () => {
+      setStep(null);
+      void settleAction(qc, "presets");
+    },
+  });
+  return Object.assign(mutation, { stepLabel: mutation.isPending && step ? RESORT_STEP_LABEL[step] : null });
+}
+
+// ---- Automatic sorting ------------------------------------------------------
+//
+// The rules should not depend on anyone pressing a button: once the preset
+// labels exist, the app itself keeps the Inbox sorted. On load (at most once
+// every 6 hours per account) it runs the full "Sort Inbox now"; the poller
+// then runs the cheap new-mail pass whenever the delta feed reports arrivals,
+// so an invitation is filed within one poll round (~15 s) even when
+// Outlook's own rules fail to run it.
+
+const AUTOSORT_EVERY_MS = 6 * 3600_000;
+const autosortKey = (accountId: string) => `msui.mail.autosort.${accountId}`;
+export const autosortDue = (accountId: string, now = Date.now()): boolean => {
+  try {
+    const at = Number(localStorage.getItem(autosortKey(accountId)) ?? 0);
+    return !Number.isFinite(at) || now - at > AUTOSORT_EVERY_MS;
+  } catch {
+    return true;
+  }
+};
+const stampAutosort = (accountId: string, now = Date.now()) => {
+  try {
+    localStorage.setItem(autosortKey(accountId), String(now));
+  } catch {
+    // no storage: it just runs again next load
+  }
+};
+
+// Runs the full resort on load once the Calendar label exists. Silent unless
+// it moved something.
+export function useAutoSort(meAddress?: string) {
+  const api = useGraphApi();
+  const qc = useQueryClient();
+  const { accounts } = useMsal();
+  const accountId = accounts[0]?.homeAccountId ?? "anon";
+  const categories = useCategories();
+  const ran = useRef(false);
+  const installed = (categories.data ?? []).some((c) => c.displayName.toLowerCase() === CALENDAR_LABEL.toLowerCase());
+  useEffect(() => {
+    if (ran.current || !installed || !meAddress || !autosortDue(accountId)) return;
+    ran.current = true;
+    stampAutosort(accountId); // before, not after: a failing mailbox must not retry on every load
+    void resortInbox(api, meAddress)
+      .then((r) => {
+        if (r.moved) toast.success(`${r.moved} ${r.moved === 1 ? "message" : "messages"} filed under ${Object.keys(r.byFolder).length > 1 ? "their labels" : "its label"}.`);
+        if (r.moved || r.labelled) void settleAction(qc, "presets");
+      })
+      .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [installed, meAddress, accountId]);
+}
+
 // ---- Inbox sorting (Social / Promotions) ----------------------------------
 
 // True once a rule assigns each sorting category; undefined while unknown.
@@ -1398,7 +1473,29 @@ export function isDeadDeltaLink(e: unknown): boolean {
 export function useMailPolling(view: ListView, enabled: boolean): { lastPolledAt: number; refresh: () => void } {
   const { instance, accounts } = useMsal();
   const qc = useQueryClient();
+  const api = useGraphApi();
   const accountId = accounts[0]?.homeAccountId ?? "anon";
+  const meAddress = accounts[0]?.username;
+  // New arrivals are replayed against the inbox rules here (sortNewMail):
+  // Outlook is supposed to do it on the server, but a broken or throttled
+  // rule silently stops, and then the invite sits in the Inbox.
+  const sortFrom = useRef<string | null>(null);
+  const sorting = useRef(false);
+  const sortArrivals = async () => {
+    if (sorting.current) return;
+    sortFrom.current ??= new Date(Date.now() - 10 * 60_000).toISOString();
+    sorting.current = true;
+    const since: string = sortFrom.current;
+    sortFrom.current = new Date(Date.now() - 60_000).toISOString(); // a minute of overlap; moves are idempotent
+    try {
+      const r = await sortNewMail(api, since, meAddress);
+      if (r.moved || r.labelled) await settleAction(qc, "presets");
+    } catch {
+      sortFrom.current = since; // retry the same window on the next round
+    } finally {
+      sorting.current = false;
+    }
+  };
   const [lastPolledAt, setLastPolledAt] = useState(0);
   const link = useRef<string | null>(null);
   const viewRef = useRef(view);
@@ -1406,6 +1503,10 @@ export function useMailPolling(view: ListView, enabled: boolean): { lastPolledAt
     viewRef.current = view;
   }, [view]);
   const pollerRef = useRef<Poller | null>(null);
+  const sortArrivalsRef = useRef(sortArrivals);
+  useEffect(() => {
+    sortArrivalsRef.current = sortArrivals;
+  });
 
   useEffect(() => {
     if (!enabled) return;
@@ -1426,7 +1527,10 @@ export function useMailPolling(view: ListView, enabled: boolean): { lastPolledAt
           link.current = page["@odata.deltaLink"];
           saveDeltaLink(accountId, link.current);
         }
-        if (changed) await qc.invalidateQueries({ queryKey: listKey("inbox") });
+        if (changed) {
+          await sortArrivalsRef.current();
+          await qc.invalidateQueries({ queryKey: listKey("inbox") });
+        }
       } catch (e) {
         if (isDeadDeltaLink(e)) {
           link.current = null;
@@ -1471,7 +1575,12 @@ export function useMailPolling(view: ListView, enabled: boolean): { lastPolledAt
       try {
         if (listErrored) return;
         if (v.folder === "inbox" && !v.query) await inboxTick();
-        else await pageTick(v);
+        else {
+          // The Inbox delta runs in every view: new arrivals must be replayed
+          // against the rules (sortArrivals) even while a label is open.
+          await inboxTick().catch(() => undefined);
+          await pageTick(v);
+        }
       } finally {
         if (qc.getQueryState(keys.folders)?.status !== "error") void qc.invalidateQueries({ queryKey: keys.folders });
         if (!stopped) setLastPolledAt(Date.now());

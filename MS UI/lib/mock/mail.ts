@@ -359,7 +359,8 @@ const byDateDesc = (a: Message, b: Message) => (b.receivedDateTime ?? "").locale
 function page(items: Message[], url: URL, basePath: string) {
   const top = Number(url.searchParams.get("$top") ?? 50);
   const skip = Number(url.searchParams.get("$skip") ?? 0);
-  const slice = items.slice(skip, skip + top).map(stripBody);
+  const wantsBody = (url.searchParams.get("$select") ?? "").split(",").includes("body");
+  const slice = items.slice(skip, skip + top).map((m) => (wantsBody ? { ...stripBody(m), body: m.body } : stripBody(m)));
   const out: { value: Message[]; "@odata.nextLink"?: string } = { value: slice };
   if (skip + top < items.length) {
     const next = new URL(url.toString());
@@ -396,7 +397,7 @@ function applySearch(items: Message[], search: string): Message[] {
   const q = search.replace(/^"|"$/g, "").trim();
   const terms = q.split(/\s+/).filter(Boolean);
   return items.filter((m) => {
-    const hay = `${m.subject} ${m.bodyPreview} ${m.from?.emailAddress?.name} ${m.from?.emailAddress?.address} ${(m.toRecipients ?? []).map((t) => t.emailAddress.address).join(" ")}`.toLowerCase();
+    const hay = `${m.subject} ${m.bodyPreview} ${m.body?.content ?? ""} ${m.from?.emailAddress?.name} ${m.from?.emailAddress?.address} ${(m.toRecipients ?? []).map((t) => t.emailAddress.address).join(" ")}`.toLowerCase();
     return terms.every((t) => {
       const [k, v] = t.includes(":") ? t.split(/:(.*)/) : ["", t];
       const val = v.toLowerCase();
@@ -489,6 +490,10 @@ function applyRuleToInbox(rule: MessageRule) {
 // polls and reconciles instead of trusting its own optimistic state.
 export const mockTiming = { sendDelayMs: 3_000, arrivalDelayMs: 20_000 };
 export const ARRIVAL_SUBJECT = "Arrived from Outlook";
+// A meeting invite that arrives with the rules NOT applied: in real life
+// Outlook sometimes skips or breaks a rule, and the app's own new-mail pass
+// must file the message anyway.
+export const ARRIVAL_INVITE_SUBJECT = "Gulf partnerships catchup (invite)";
 const OUTBOX = "f-outbox";
 const transit: { id: string; at: number }[] = [];
 let firstRequestAt: number | null = null;
@@ -545,6 +550,19 @@ function settleClock() {
     applyRulesOnArrival(msg);
     touch(msg, now);
     mockMessages.push(msg);
+    const inviteId = nid("msg");
+    const invite: Message = {
+      ...msg, id: inviteId, conversationId: nid("conv"), conversationIndex: `${inviteId}-000`, subject: ARRIVAL_INVITE_SUBJECT,
+      bodyPreview: "_".repeat(120), from: r("Rohit Mallavarapu", "rohit.mallavarapu@lyzr.com"), sender: r("Rohit Mallavarapu", "rohit.mallavarapu@lyzr.com"),
+      body: { contentType: "html", content: "<p>Microsoft Teams meeting</p><p>Join: <a href='https://teams.microsoft.com/meet/2588?p=x'>link</a></p>" },
+      uniqueBody: undefined, categories: [],
+      "@odata.type": "#microsoft.graph.eventMessageRequest",
+      singleValueExtendedProperties: [{ id: "String 0x001A", value: "IPM.Schedule.Meeting.Request" }],
+      webLink: `https://outlook.office365.com/mail/id/${inviteId}`,
+    };
+    // Deliberately no applyRulesOnArrival: Outlook "missed" this one.
+    touch(invite, now);
+    mockMessages.push(invite);
     changed = true;
   }
   if (changed) recount();

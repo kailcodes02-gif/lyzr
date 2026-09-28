@@ -4,6 +4,7 @@
 import { GraphError, type BatchRequest } from "@/lib/graph";
 import { backfillTargets, folderByNamePath, hasCategory, matchesConditions, ownRules, planLabelInsert, presetConditions, RULES_PATH, rulesForLabel, withCategory, type LabelConditions, type RuleOptions } from "./labels";
 import type { PresetLabel } from "./presets";
+import { prioritizeRules } from "./resort";
 import type { MailFolder, Message, MessageRule, OutlookCategory } from "./types";
 
 // bodies: the response body of each successful sub-request, by request id
@@ -154,5 +155,8 @@ export async function installPresets(api: GraphApi, presets: PresetLabel[], meAd
       out.push({ name: p.name, rules: 0, labelled: 0, moved: 0, failed: 1, error: errorMessage(e) });
     }
   }
+  // Invitations first whoever sends them (see resort.ts); a failure here
+  // leaves the labels installed in creation order.
+  await prioritizeRules(api).catch(() => 0);
   return out;
 }

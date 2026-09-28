@@ -474,6 +474,20 @@ test.describe("Preset labels and skip-the-inbox in demo mode", () => {
     await expect(page.getByText(/move it to the Leadership folder and assign it to the Leadership category and stop processing more rules/).first()).toBeVisible();
   });
 
+  test("Sort Inbox now puts the Calendar rules first and reports what it checked and moved", async ({ page }) => {
+    await openDemo(page, "/MS/outlook/");
+    await page.getByRole("button", { name: "Filters" }).click();
+    await page.getByRole("button", { name: "Set up my labels" }).click();
+    await expect(page.getByText(/labels set up/)).toBeVisible({ timeout: 40_000 });
+    await page.getByRole("button", { name: "Sort Inbox now" }).click();
+    await expect(page.getByLabel("Sort Inbox result")).toContainText(/Checked \d+ Inbox messages: \d+ moved/, { timeout: 40_000 });
+    // Invitations and responses are the first two rules in the list.
+    const names = page.getByRole("list", { name: "Inbox rules" }).getByRole("listitem");
+    await expect(names.nth(0)).toContainText("Label: Calendar (invitations)");
+    await expect(names.nth(1)).toContainText("Label: Calendar (responses)");
+    await expect(page.getByText(/Microsoft Teams meeting/).first()).toBeVisible();
+  });
+
   test("a label with Skip the inbox creates a folder visible in the folder list and moves matching mail", async ({ page }) => {
     await openDemo(page, "/MS/outlook/");
     await expect(page.getByText(/Infosys Topaz partner enablement/)).toBeVisible();
@@ -569,6 +583,22 @@ test.describe("Actions land in Outlook and show in their folder", () => {
     await expect(page.locator("[data-sonner-toast]").filter({ hasText: /^Sent$/ })).toBeVisible({ timeout: 15_000 });
     // The demo keeps sent mail in the Outbox for 3 s; the Sent Items poll (every 2 s) files it into the open list.
     await expect(page.getByRole("row").filter({ hasText: subject })).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("an invite Outlook's rules missed is filed under Calendar invites by the app itself, no button pressed", async ({ page }) => {
+    await openDemo(page, "/MS/outlook/");
+    await page.getByRole("button", { name: "Filters" }).click();
+    await page.getByRole("button", { name: "Set up my labels" }).click();
+    await expect(page.getByText(/labels set up/)).toBeVisible({ timeout: 40_000 });
+    await page.keyboard.press("Escape");
+    // The demo delivers this invite with the inbox rules deliberately NOT
+    // applied (Outlook "missed" it); the poller's new-mail pass must file it.
+    await page.getByRole("link", { name: /^Calendar invites/ }).click();
+    await expect(page.getByRole("row").filter({ hasText: "Gulf partnerships catchup (invite)" })).toBeVisible({ timeout: 60_000 });
+    // And it is out of the Inbox.
+    await page.getByRole("link", { name: /^Inbox/ }).click();
+    await expect(page.getByRole("row").first()).toBeVisible();
+    await expect(page.getByRole("row").filter({ hasText: "Gulf partnerships catchup (invite)" })).toHaveCount(0);
   });
 
   test("mail that reaches Outlook after the page loaded shows in the Inbox without a reload", async ({ page }) => {

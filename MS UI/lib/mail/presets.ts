@@ -10,6 +10,7 @@ export type PresetCondition = {
   fromAddresses?: string[]; // exact addresses (fromAddresses)
   senderContains?: string[]; // substrings of the sender name/address (senderContains)
   subjectContains?: string[];
+  bodyContains?: string[];
   meetingRequests?: boolean; // isMeetingRequest + isMeetingResponse
   newsletters?: boolean; // headerContains List-Unsubscribe
 };
@@ -25,6 +26,16 @@ export type PresetLabel = {
   folderName?: string;
   note?: string;
 };
+
+// Plain emails that carry a join link (forwarded invites, "here is the link")
+// are not meeting requests to Outlook; these body phrases catch them. The
+// URLs cover invites that print the link, the phrases the ones that hide it
+// behind "Click here to join".
+export const MEETING_LINK_PHRASES = [
+  "teams.microsoft.com/l/meetup-join", "teams.microsoft.com/meet/", "Microsoft Teams meeting",
+  "zoom.us/j/", "Join Zoom Meeting",
+  "meet.google.com/", "Join with Google Meet",
+];
 
 const both = (local: string) => [`${local}@lyzr.ai`, `${local}@lyzr.com`];
 
@@ -66,18 +77,19 @@ export const PRESET_LABELS: PresetLabel[] = [
       senderContains: [
         "fireflies.ai", "otter.ai", "fathom.video", "tldv.io", "gong.io", "read.ai", "avoma.com", "grain.com", "fellow.app", "krisp.ai",
         "notta.ai", "sembly.ai", "tactiq.io", "supernormal.com", "circleback.ai", "granola.ai",
+        "gemini-notes", "meet-recordings-noreply", // Google Meet's Gemini notes and recording mails
       ],
-      subjectContains: ["Meeting summary", "Meeting recap", "Meeting notes", "Notes by Gemini", "meeting transcript", "Transcript:", "Recap:"],
+      subjectContains: ["Meeting summary", "Meeting recap", "Meeting notes", "Notes by Gemini", "meeting transcript", "Transcript:", "Recap:", "Notes: \u201c"],
     },
-    note: "Sender rule catches the AI recorders; subject rule catches Zoom, Teams and Google Meet recaps.",
+    note: "Sender rule catches the AI recorders and Gemini's meeting notes; subject rule catches Zoom, Teams and Google Meet recaps.",
   },
   {
     name: "Calendar",
     color: "preset14",
     skipInbox: true,
     folderName: "Calendar invites", // "Calendar" is the mailbox's calendar folder
-    conditions: { meetingRequests: true },
-    note: "Every meeting invitation and response. They still land on your calendar; accept or decline from the Calendar page.",
+    conditions: { meetingRequests: true, bodyContains: MEETING_LINK_PHRASES },
+    note: "Every meeting invitation, update, cancellation and response, plus plain emails carrying a Teams, Zoom or Google Meet join link. Invitations still land on your calendar; accept or decline from the Calendar page.",
   },
 ];
 

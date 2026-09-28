@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useMe } from "@/lib/hooks";
-import { clientFilterFor, errorMessage, flattenPages, useCategories, useDraftApi, useEnableSorting, useFolders, useLabelFolder, useMailPolling, useMessageActions, useMessageList, useRules, useSettlerLifecycle, useSortingEnabled } from "@/lib/mail/hooks";
+import { clientFilterFor, errorMessage, flattenPages, useCategories, useDraftApi, useAutoSort, useEnableSorting, useFolders, useLabelFolder, useMailPolling, useMessageActions, useMessageList, useRules, useSettlerLifecycle, useSortingEnabled } from "@/lib/mail/hooks";
 import { PROMOTIONS_LABEL, rulesOfLabel, SOCIAL_LABEL } from "@/lib/mail/labels";
 import { TAB_LABEL, type TabTarget } from "@/lib/mail/tabs";
 import { buildKql, groupThreads, isVirtualFolderKey, moveScopeIds, parseKql, presetHex, resolveFolderId, SEARCH_ID, WELL_KNOWN_LABEL, wellKnownOfKey, type WellKnown } from "@/lib/mail/logic";
@@ -134,6 +134,7 @@ export function MailApp() {
   // polled while the tab is visible.
   useSettlerLifecycle();
   const polling = useMailPolling({ folder: state.folder, tab, query: state.query, focused: state.focused }, list.isSuccess);
+  useAutoSort(meAddress);
   const updatedAt = Math.max(list.dataUpdatedAt ?? 0, polling.lastPolledAt);
   // Content stays on screen through every background refetch (and, while a
   // new view loads, the previous view's rows sit dimmed under aria-busy).

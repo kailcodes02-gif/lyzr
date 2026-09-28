@@ -89,7 +89,7 @@ export const hasConditions = (c: LabelConditions) => completeConditions(c.condit
 
 // The simple form (presets, inbox sorting, tests): sender addresses or
 // keywords, subjects, meetings, newsletters, sent only to me, sender exceptions.
-export type SimpleConditions = { from?: string[]; subject?: string[]; meetings?: boolean; newsletters?: boolean; toMe?: boolean; exceptFrom?: string[] };
+export type SimpleConditions = { from?: string[]; subject?: string[]; body?: string[]; meetings?: boolean; newsletters?: boolean; toMe?: boolean; exceptFrom?: string[] };
 export function simpleConditions(s: SimpleConditions): LabelConditions {
   const conditions: Condition[] = [];
   const addresses = (s.from ?? []).map((x) => x.trim()).filter(isFullAddress);
@@ -98,6 +98,7 @@ export function simpleConditions(s: SimpleConditions): LabelConditions {
   if (keywords.length) conditions.push({ kind: "fromContains", values: keywords });
   if (trimmed(s.subject).length) conditions.push({ kind: "subjectContains", values: trimmed(s.subject) });
   if (s.meetings) conditions.push({ kind: "meeting" });
+  if (trimmed(s.body).length) conditions.push({ kind: "bodyContains", values: trimmed(s.body) });
   if (s.newsletters) conditions.push({ kind: "headerContains", values: [NEWSLETTER_HEADER] });
   if (s.toMe) conditions.push({ kind: "sentOnlyToMe" });
   const exceptions: Condition[] = trimmed(s.exceptFrom).length ? [{ kind: "fromContains", values: trimmed(s.exceptFrom) }] : [];
@@ -304,6 +305,14 @@ const mergeRows = (into: Condition[], rows: Condition[]) => {
   }
 };
 
+// Rows of `extra` that `base` lacks (text rows of one kind merge their
+// values). A new object: `base` is left untouched.
+export function mergeConditions(base: LabelConditions, extra: Condition[]): LabelConditions {
+  const conditions = base.conditions.map((c) => ({ ...c, values: c.values ? [...c.values] : undefined }));
+  mergeRows(conditions, extra);
+  return { ...base, conditions };
+}
+
 // Rebuilds the dialog state from a label's own rules: one rule carrying
 // several predicates is "all of these", several rules are "any of these"
 // (the invitations + responses pair reads back as one meeting row). Graph
@@ -467,6 +476,7 @@ export function presetConditions(p: PresetLabel): LabelConditions {
   return simpleConditions({
     from: [...(p.conditions.fromAddresses ?? []), ...(p.conditions.senderContains ?? [])],
     subject: [...(p.conditions.subjectContains ?? [])],
+    body: [...(p.conditions.bodyContains ?? [])],
     meetings: !!p.conditions.meetingRequests,
     newsletters: !!p.conditions.newsletters,
   });
