@@ -17,13 +17,14 @@ import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { TaskView } from '@/components/tasks/task-view'
 import { PRIORITY_COLORS, STATUS_CONFIG, STATUS_DOT, type Channel, type Task, type TaskPriority } from '@/lib/types/database'
 import { cn } from '@/lib/utils'
+import { LyzrSail } from '@/components/ui/lyzr-logo'
 
 // Projects: the Jira/Asana-style home for work. Every channel is a project.
 // Pick one on the left (or My tasks / Today) and see it as a Board (the
 // Kanban, default), a Table, or a compact List; add a task with one line
 // above any of them. Click a task for its full details.
 
-type ViewId = 'mine' | 'today' | string
+type ViewId = 'all' | 'mine' | 'today' | string
 type Layout = 'board' | 'table' | 'list'
 const LAYOUTS: { id: Layout; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'board', label: 'Board', icon: Columns3 },
@@ -46,7 +47,7 @@ function dueLabel(due: string | null) {
 export function ProjectView() {
   const router = useRouter()
   const params = useSearchParams()
-  const view: ViewId = params.get('p') || 'mine'
+  const view: ViewId = params.get('p') || 'all'
   const layout: Layout = (['board', 'table', 'list'] as const).find(l => l === params.get('view')) || 'board'
   const qc = useQueryClient()
   const { data: me } = useCurrentUser()
@@ -64,7 +65,7 @@ export function ProjectView() {
 
   const active = (channels || []).filter(c => c.is_active)
   const byId = useMemo(() => new Map(active.map(c => [c.id, c])), [active])
-  const project = view !== 'mine' && view !== 'today' ? byId.get(view) : undefined
+  const project = view !== 'all' && view !== 'mine' && view !== 'today' ? byId.get(view) : undefined
   const topLevel = (t: Task) => !t.parent_task_id
   const isMine = (t: Task) => !!me && (t.assignments?.some(a => a.user_id === me.id) ||
     !!t.pending_assignments?.some(p => p.email.toLowerCase() === me.email.toLowerCase()))
@@ -76,6 +77,7 @@ export function ProjectView() {
 
   const list = useMemo(() => {
     const all = (tasks || []).filter(t => topLevel(t) && t.status !== 'cancelled')
+    if (view === 'all') return all
     if (view === 'mine') return all.filter(isMine)
     if (view === 'today') return all.filter(t => isMine(t) && t.due_date && !isBefore(startOfDay(new Date()), day(t.due_date)))
     return all.filter(t => t.channel_id === view)
@@ -84,6 +86,7 @@ export function ProjectView() {
 
   const boardTasks = useMemo(() => {
     const all = tasks || []
+    if (view === 'all') return all
     if (view === 'mine') return all.filter(isMine)
     if (view === 'today') return all.filter(t => isMine(t) && t.due_date && !isBefore(startOfDay(new Date()), day(t.due_date)))
     return all.filter(t => t.channel_id === view)
@@ -157,8 +160,9 @@ export function ProjectView() {
     )
   }
 
-  const title = view === 'mine' ? 'My tasks' : view === 'today' ? 'Today' : project?.name || 'Project'
-  const subtitle = view === 'mine' ? 'Everything assigned to you, across every project.'
+  const title = view === 'all' ? 'Everything' : view === 'mine' ? 'My tasks' : view === 'today' ? 'Today' : project?.name || 'Project'
+  const subtitle = view === 'all' ? 'The Lyzr board — every task in every vertical, including tasks with no channel.'
+    : view === 'mine' ? 'Everything assigned to you, across every project.'
     : view === 'today' ? 'What’s due today, plus anything overdue.'
     : project ? chPath(project) : ''
 
@@ -166,6 +170,11 @@ export function ProjectView() {
     <div className="flex h-[calc(100vh-3.5rem)] bg-white">
       <aside className="hidden md:flex w-80 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50">
         <div className="p-3 space-y-0.5 border-b border-zinc-200">
+          <button onClick={() => go('all')}
+            className={cn('w-full flex items-center gap-2.5 rounded-md px-3 py-2 text-sm', view === 'all' ? 'bg-white ring-1 ring-zinc-200 text-zinc-900 font-medium' : 'text-zinc-700 hover:bg-zinc-100')}>
+            <LyzrSail className="w-4 h-3" /> Everything <span className="text-[11px] text-zinc-400 font-normal">· Lyzr board</span>
+            <span className="ml-auto text-[11px] text-zinc-400">{(tasks || []).filter(t => topLevel(t) && t.status !== 'done' && t.status !== 'cancelled').length || ''}</span>
+          </button>
           {([['mine', 'My tasks', Inbox], ['today', 'Today', Sun]] as const).map(([id, label, Icon]) => (
             <button key={id} onClick={() => go(id)}
               className={cn('w-full flex items-center gap-2.5 rounded-md px-3 py-2 text-sm', view === id ? 'bg-white ring-1 ring-zinc-200 text-zinc-900 font-medium' : 'text-zinc-700 hover:bg-zinc-100')}>
@@ -214,6 +223,7 @@ export function ProjectView() {
         <div className={cn('mx-auto px-6 lg:px-8 py-8 pl-16 md:pl-8', layout === 'list' ? 'max-w-3xl' : 'max-w-none')}>
           {/* Mobile project picker */}
           <select value={view} onChange={e => go(e.target.value)} className="md:hidden mb-4 h-9 w-full rounded-md border border-zinc-300 bg-white px-2 text-sm">
+            <option value="all">Everything (Lyzr board)</option>
             <option value="mine">My tasks</option>
             <option value="today">Today</option>
             {active.map(c => <option key={c.id} value={c.id}>{chPath(c)} › {c.name}</option>)}
@@ -243,7 +253,7 @@ export function ProjectView() {
           </div>
 
           <div className="mt-4">
-            <QuickAdd projectId={project?.id} projects={active} chPath={chPath} meId={me?.id} onAdded={refresh} key={view} />
+            <QuickAdd projectId={project?.id} projects={active} chPath={chPath} meId={me?.id} lyzrId={verticals.find(v => v.slug === 'lyzr')?.id} onAdded={refresh} key={view} />
           </div>
 
           {isLoading ? (
@@ -342,8 +352,9 @@ function TaskRow({ t, showProject, chPath, byId, onToggle, onOpen }: {
   )
 }
 
-function QuickAdd({ projectId, projects, chPath, meId, onAdded }: {
+function QuickAdd({ projectId, projects, chPath, meId, lyzrId, onAdded }: {
   projectId?: string
+  lyzrId?: string
   projects: Channel[]
   chPath: (c: Channel) => string
   meId?: string
@@ -359,8 +370,10 @@ function QuickAdd({ projectId, projects, chPath, meId, onAdded }: {
 
   const submit = async () => {
     if (!title.trim()) return
-    const channel = projectId || target
-    if (!channel) { toast.error('Pick which project this task goes in'); return }
+    // Nothing picked: the task goes to Lyzr's "No channel" bucket.
+    const lyzrBucket = projects.find(c => c.slug === 'no-channel' && !c.parent_channel_id && c.vertical_id === lyzrId)
+    const channel = projectId || target || lyzrBucket?.id
+    if (!channel) { toast.error('Pick which project this task goes in (the “No channel” option needs database update 027)'); return }
     setBusy(true)
     try {
       await createTask({ channel_id: channel, title: title.trim(), priority, due_date: due || undefined, assignments: meId ? [{ user_id: meId, role: 'primary' }] : [] })
@@ -400,8 +413,8 @@ function QuickAdd({ projectId, projects, chPath, meId, onAdded }: {
         </div>
         {!projectId && (
           <select value={target} onChange={e => setTarget(e.target.value)} className="h-7 max-w-[14rem] rounded-md border border-zinc-200 bg-white px-1.5 text-xs text-zinc-700">
-            <option value="">Which project?</option>
-            {projects.map(c => <option key={c.id} value={c.id}>{c.name} · {chPath(c)}</option>)}
+            <option value="">No channel · Lyzr</option>
+            {projects.filter(c => !(c.slug === 'no-channel' && c.vertical_id === lyzrId)).map(c => <option key={c.id} value={c.id}>{c.name} · {chPath(c)}</option>)}
           </select>
         )}
       </div>

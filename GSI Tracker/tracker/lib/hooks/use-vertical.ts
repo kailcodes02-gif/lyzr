@@ -10,6 +10,9 @@ export interface VerticalContextValue {
   mode: VerticalMode
   // Vertical id, or 'all' in workspace mode. Pass straight to the data hooks.
   verticalId: string | 'all'
+  // What task lists should load: the current vertical, or 'all' inside Lyzr —
+  // Lyzr is the primary board and shows every vertical's tasks.
+  taskScope: string | 'all'
   vertical: Vertical | null
   slug: string | 'all'
   verticals: Vertical[]
@@ -25,6 +28,7 @@ export interface VerticalContextValue {
 export const VerticalContext = createContext<VerticalContextValue>({
   mode: 'workspace',
   verticalId: 'all',
+  taskScope: 'all',
   vertical: null,
   slug: 'all',
   verticals: [],

@@ -166,10 +166,10 @@ export default function WeeklyReviewPage() {
     if (match) { setSelectedKey(match.key); setCustomPeriod(null) } else setCustomPeriod(v)
   }
 
-  const { verticalId, vertical, flags } = useVertical()
+  const { verticalId, taskScope, vertical, flags } = useVertical()
   const { data: snapshot, isLoading: snapLoading } = useWeeklySnapshot(isCurrentWeek ? null : selectedKey, verticalId)
   const { data: recentSnapshots } = useRecentWeeklySnapshots(WEEK_COUNT, verticalId)
-  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId })
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: taskScope })
   const { data: budgets } = useBudgetPeriods(verticalId)
   const { data: categories } = useCategories(verticalId)
   const { data: users } = useUsers()

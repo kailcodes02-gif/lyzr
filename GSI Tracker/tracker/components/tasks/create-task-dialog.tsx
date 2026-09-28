@@ -28,7 +28,8 @@ const schema = z.object({
   description: z.string().optional(),
   priority: z.enum(['P0', 'P1', 'P2', 'P3', 'P4']),
   due_date: z.string().optional(),
-  channel_id: z.string().min(1, 'Channel is required'),
+  // Empty = no channel: the task goes in its vertical's "No channel" bucket.
+  channel_id: z.string(),
 })
 
 type FormData = z.infer<typeof schema>
@@ -55,12 +56,14 @@ export function CreateTaskDialog({
 }: CreateTaskDialogProps) {
   const queryClient = useQueryClient()
   // Vertical: the current space by default; in workspace mode the user picks one.
-  const { verticalId: currentVerticalId, verticals } = useVertical()
+  const { verticalId: currentVerticalId, verticals, vertical: currentVertical } = useVertical()
+  const lyzrId = verticals.find(v => v.slug === 'lyzr')?.id
   const { data: allChannelsForDefault } = useChannels('all')
   const [pickedVertical, setPickedVertical] = useState<string>(
-    defaultVerticalId || (currentVerticalId !== 'all' ? currentVerticalId : '')
+    defaultVerticalId || (currentVerticalId !== 'all' ? currentVerticalId : lyzrId || '')
   )
-  const showVerticalPicker = !defaultChannelId && currentVerticalId === 'all' && !defaultVerticalId
+  // Lyzr is the primary board: from Lyzr (or the company view) a task can go to any vertical.
+  const showVerticalPicker = !defaultChannelId && !defaultVerticalId && (currentVerticalId === 'all' || currentVertical?.slug === 'lyzr')
   const [isPending, startTransition] = useTransition()
   const [campaignId, setCampaignId] = useState<string>(defaultCampaignId || '')
   // Sub-tasks default to the parent's channel but may live on another one
@@ -206,6 +209,12 @@ export function CreateTaskDialog({
 
 
   const onSubmit = (data: FormData) => {
+    if (!data.channel_id) {
+      if (!effectiveVertical || effectiveVertical === 'all') { toast.error('Pick which vertical this task is for'); return }
+      const bucket = (channels || []).find(c => c.slug === 'no-channel' && !c.parent_channel_id)
+      if (!bucket) { toast.error('Pick a channel — the “No channel” option needs database update 027 first'); return }
+      data = { ...data, channel_id: bucket.id }
+    }
     // Typed text can be an email or a name — resolve names to known emails.
     const resolveRow = (raw: string) => {
       const text = raw.trim().toLowerCase()
@@ -342,8 +351,8 @@ export function CreateTaskDialog({
                       <select value={pickedTop} disabled={showVerticalPicker && !pickedVertical}
                         onChange={e => { setPickedTop(e.target.value); setValue('channel_id', e.target.value || '') }}
                         className={selectCls}>
-                        <option value="">{showVerticalPicker && !pickedVertical ? 'Pick a vertical first' : 'Channel…'}</option>
-                        {(channels || []).filter(c => !c.parent_channel_id).sort((a, b) => a.sort_order - b.sort_order).map(c => (
+                        <option value="">{showVerticalPicker && !pickedVertical ? 'Pick a vertical first' : 'No channel'}</option>
+                        {(channels || []).filter(c => !c.parent_channel_id && c.slug !== 'no-channel').sort((a, b) => a.sort_order - b.sort_order).map(c => (
                           <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
                       </select>

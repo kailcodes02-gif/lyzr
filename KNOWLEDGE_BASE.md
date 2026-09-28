@@ -475,6 +475,27 @@ Access if the data ever becomes confidential.
 - Event detail (invite view) gains Google's response summary under the guest count ("2 yes,
   1 awaiting"). 430 unit + calendar/smoke e2e green; deployed (Worker version d53988f6).
 
+### 2026-09-29 (Lyzr board), GSI Tracker: Lyzr primary + all-verticals board, "No channel" tasks, logo favicon (GSI Tracker)
+- **Lyzr is the primary vertical**: listed first everywhere (vertical provider sorts it first; migration 027
+  also moves its `sort_order` first) and it's the default when no vertical is remembered.
+- **Lyzr = the primary job board**: new `taskScope` on the vertical context is `'all'` inside Lyzr (the
+  vertical id elsewhere). Dashboard, My Tasks, Calendar, Tracker, Owners, Owner view and Weekly load tasks
+  with it, so inside Lyzr they show every vertical's tasks (calendar/tracker filter dropdowns too). From
+  Lyzr (or the company view) the task form asks which vertical, defaulting to Lyzr. GSI stays scoped to GSI.
+  Lyzr's own channels hold stand-alone Lyzr tasks. Projects gets a top **Everything · Lyzr board** view
+  (every task, Board/Table/List; now the Projects default).
+- **Tasks with no channel**: migration `027_lyzr_primary_no_channel.sql` (user pastes live) gives every
+  vertical a "General" group + a "No channel" channel (slug `no-channel`, sort first) via
+  `ensure_no_channel()`, plus a trigger doing the same for new verticals. A bucket rather than a NULL
+  `channel_id` because task permissions derive the vertical from the channel. The task form's channel is
+  now optional (first option "No channel"); Projects quick-add with no project → Lyzr's "No channel".
+  Without 027 the app says the option needs the update. 027 added to RESET_ALL.
+- **Favicon = the logo**: `app/favicon.ico` was still the stock Next.js icon. Replaced with the orange sail on
+  transparent (16/32/48 PNGs rendered with headless Chrome, packed into ICO), `app/icon.svg` now the same
+  sail (was white-on-orange tile), `app/apple-icon.png` 180px on off-white. In the lyzr.ai iframe the tab
+  shows lyzr.ai's own favicon — that page controls it.
+- `tsc` clean, 36 tests, 37 routes; harness screenshot of the Everything board.
+
 ### 2026-09-29 (labels), GSI Tracker: plain names + (i) help for the seeded task fields; deploy of the rebuild (GSI Tracker)
 - The 8 task fields every channel got from `seed-gtm.mjs` now show friendly labels with an (i) tooltip
   (`lib/field-copy.ts`, used by `channel-fields.tsx`, the admin Task fields list and card tooltips):

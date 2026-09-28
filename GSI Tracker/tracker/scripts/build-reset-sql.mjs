@@ -37,6 +37,7 @@ const ORDER = [
   // apply to a fresh DB. 026 installs the Lyzr-vertical protection trigger
   // (its dummy-task delete is a no-op on a fresh DB).
   '026_clear_dummy_tasks_protect_lyzr.sql',
+  '027_lyzr_primary_no_channel.sql',
 ]
 
 let m001 = mig('001_initial_schema.sql')

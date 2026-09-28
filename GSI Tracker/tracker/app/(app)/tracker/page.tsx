@@ -105,9 +105,9 @@ function getPrimaryOwnerName(task: Task): string {
 }
 
 export default function TrackerPage() {
-  const { verticalId } = useVertical()
-  const { data: tasks, isLoading, refetch } = useTasks({ verticalId })
-  const { data: categories } = useCategories(verticalId)
+  const { verticalId, taskScope } = useVertical()
+  const { data: tasks, isLoading, refetch } = useTasks({ verticalId: taskScope })
+  const { data: categories } = useCategories(taskScope)
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedChannel, setSelectedChannel] = useState<string>('all')
@@ -121,7 +121,7 @@ export default function TrackerPage() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
 
   const { data: channels } = useChannels(
-    verticalId, selectedCategory !== 'all' ? selectedCategory : undefined
+    taskScope, selectedCategory !== 'all' ? selectedCategory : undefined
   )
 
   // ---- Saved views ----

@@ -61,10 +61,10 @@ const HIDDEN_EMAILS = new Set(['preview@lyzr.ai'])
 const OPEN_STATUSES = new Set(['not_started', 'in_progress', 'blocked'])
 
 export default function OwnersPage() {
-  const { verticalId } = useVertical()
+  const { verticalId, taskScope } = useVertical()
   const href = useSpaceHref()
   const { data: allUsers, isLoading: usersLoading } = useUsers()
-  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId })
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: taskScope })
   const { data: mentions, isLoading: mentionsLoading } = useAllMentions()
   const { data: pendingOwners } = usePendingOwners()
   const users = allUsers?.filter(u => !HIDDEN_EMAILS.has(u.email))

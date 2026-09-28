@@ -55,11 +55,11 @@ function OwnerDetailContent() {
   const params = useSearchParams()
   const email = params.get('email') || ''
   const initialTab = params.get('tab') || 'assigned'
-  const { verticalId } = useVertical()
+  const { verticalId, taskScope } = useVertical()
   const href = useSpaceHref()
 
   const { data: users, isLoading: usersLoading } = useUsers()
-  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId })
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: taskScope })
   const { data: activities } = useRecentActivity(200, verticalId)
   const { data: channelOwners } = useAllChannelOwners()
 

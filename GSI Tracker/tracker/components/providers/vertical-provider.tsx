@@ -51,7 +51,9 @@ export function VerticalProvider({ children }: { children: ReactNode }) {
   const verticals = useMemo<Vertical[]>(() => {
     if (verticalsError) return [LEGACY_VERTICAL]
     if (!verticalsData) return []
-    return verticalsData.length ? verticalsData : [LEGACY_VERTICAL]
+    // Lyzr is the primary vertical: always listed first.
+    const sorted = [...verticalsData].sort((a, b) => Number(b.slug === 'lyzr') - Number(a.slug === 'lyzr'))
+    return sorted.length ? sorted : [LEGACY_VERTICAL]
   }, [verticalsData, verticalsError])
   const legacy = verticals.length === 1 && verticals[0].id === 'all'
 
@@ -123,6 +125,7 @@ export function VerticalProvider({ children }: { children: ReactNode }) {
     }
     if (!target) target = verticals.find(v => v.slug === lastSlug)
     if (!target) target = verticals.find(v => ownedVerticalIds.has(v.id))
+    if (!target) target = verticals.find(v => v.slug === 'lyzr')
     if (!target) target = verticals[0]
     if (!target) return
     const qs = params.toString()
@@ -142,6 +145,7 @@ export function VerticalProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({
     mode,
     verticalId: mode === 'space' && vertical ? vertical.id : 'all' as const,
+    taskScope: mode === 'space' && vertical && vertical.slug !== 'lyzr' ? vertical.id : 'all' as const,
     vertical,
     slug: mode === 'space' && vertical ? vertical.slug : 'all' as const,
     verticals,

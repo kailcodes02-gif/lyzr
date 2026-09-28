@@ -70,14 +70,14 @@ function CalendarContent() {
   }, [channelParam])
 
   // Fetch all taxonomy + users for filters
-  const { verticalId, verticals } = useVertical()
+  const { verticalId, taskScope, verticals } = useVertical()
   const [selectedVertical, setSelectedVertical] = useState<string>('all')
-  const { data: categories } = useCategories(verticalId)
-  const { data: channels } = useChannels(verticalId, selectedGroup !== 'all' ? selectedGroup : undefined)
+  const { data: categories } = useCategories(taskScope)
+  const { data: channels } = useChannels(taskScope, selectedGroup !== 'all' ? selectedGroup : undefined)
   const { data: users } = useUsers()
 
   // Fetch tasks
-  const { data: tasks, isLoading, refetch } = useTasks({ verticalId })
+  const { data: tasks, isLoading, refetch } = useTasks({ verticalId: taskScope })
 
   // Calendar dates generation
   const monthStart = startOfMonth(currentDate)

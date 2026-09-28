@@ -24,11 +24,11 @@ import { toZonedTime } from 'date-fns-tz'
 const IST = 'Asia/Kolkata'
 
 export default function DashboardPage() {
-  const { mode, verticalId, vertical, resolving } = useVertical()
+  const { mode, verticalId, taskScope, vertical, resolving } = useVertical()
   const router = useRouter()
   const href = useSpaceHref()
   const { data: user, isLoading: userLoading } = useCurrentUser()
-  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId })
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: taskScope })
   const { data: mentions } = useMentionsForUser()
   const { data: budgets } = useBudgetPeriods(verticalId)
   const { data: activities } = useRecentActivity(20, verticalId)
@@ -144,7 +144,7 @@ export default function DashboardPage() {
             Welcome back, {user.display_name?.split(' ')[0]}
           </h1>
           <p className="text-sm text-zinc-600 mt-1">
-            Here&apos;s what&apos;s happening in {vertical?.name || 'marketing'} today <InfoTip k="space_dashboard" />
+            {vertical?.slug === 'lyzr' ? <>Lyzr is the primary board: here&apos;s what&apos;s happening across every vertical today</> : <>Here&apos;s what&apos;s happening in {vertical?.name || 'marketing'} today</>} <InfoTip k="space_dashboard" />
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
