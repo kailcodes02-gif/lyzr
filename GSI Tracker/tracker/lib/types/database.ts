@@ -383,23 +383,34 @@ export interface SavedView {
   updated_at: string
 }
 
-// Priority colors — Lyzr brand palette
+// Priority colors — P0 status red, P1 brand orange, P2 navy, P3/P4 greys
 export const PRIORITY_COLORS: Record<TaskPriority, string> = {
-  P0: '#FE4B1E', // orange — the brand's alarm/review color
-  P1: '#593D3D', // oxblood
-  P2: '#043E77', // navy
-  P3: '#8A857C', // grey 600
-  P4: '#6B675F', // grey 700 — AA on white, distinct from P3
+  P0: '#D92D20',
+  P1: '#FE4B1E',
+  P2: '#043E77',
+  P3: '#8A857C',
+  P4: '#6B675F',
 }
 
-// Status config — brand status colors (live #2F8F5B · review #FE4B1E · paused #B8B4AD)
+// Status — traffic light: green = live/done (brand live #2F8F5B), yellow = in
+// progress, red = blocked, grey = not started/cancelled (brand paused tone).
 export const STATUS_CONFIG: Record<TaskStatus, { label: string; color: string; bgColor: string }> = {
   not_started: { label: 'Not Started', color: '#6B675F', bgColor: '#F1F0EE' },
-  in_progress: { label: 'In Progress', color: '#043E77', bgColor: '#DEE9F3' },
-  live: { label: 'Live', color: '#27794D', bgColor: '#D8EDE2' },
-  blocked: { label: 'Blocked', color: '#BF2F0A', bgColor: '#FFE3D9' },
-  done: { label: 'Done', color: '#1F613E', bgColor: '#B2DBC6' },
+  in_progress: { label: 'In Progress', color: '#B54708', bgColor: '#FEF0C7' },
+  live: { label: 'Live', color: '#1F613E', bgColor: '#D8EDE2' },
+  blocked: { label: 'Blocked', color: '#B42318', bgColor: '#FEE4E2' },
+  done: { label: 'Done', color: '#194E32', bgColor: '#B2DBC6' },
   cancelled: { label: 'Cancelled', color: '#8A857C', bgColor: '#E3E1DE' },
+}
+
+// Traffic-light dot per status (lists, tables, the Projects view).
+export const STATUS_DOT: Record<TaskStatus, string> = {
+  not_started: '#B8B4AD',
+  in_progress: '#F5A00A',
+  live: '#2F8F5B',
+  blocked: '#D92D20',
+  done: '#2F8F5B',
+  cancelled: '#CFCCC7',
 }
 
 // Kanban columns (cancelled hidden by default)

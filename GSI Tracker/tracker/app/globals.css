@@ -14,8 +14,12 @@
  *   zinc/slate/gray/neutral/stone -> warm greyscale (Stone #A8A298 at 500)
  *   blue/sky/cyan/teal/indigo     -> Navy #043E77 (data, supporting primary)
  *   emerald/green                 -> Live #2F8F5B (status)
- *   red/rose/orange/pink          -> Orange #FE4B1E (accent + alert/review)
- *   amber/yellow/lime             -> Oxblood #593D3D (warnings)
+ *   orange/pink                   -> Orange #FE4B1E (accent, CTAs)
+ *   red/rose                      -> status red (blocked, overdue, errors)
+ *   amber/yellow                  -> status yellow (in progress, due soon)
+ *   lime                          -> Oxblood #593D3D
+ *   Status red/yellow are NOT in the brand palette: added at Kailash's request
+ *   for green/yellow/red task status only (brand ground rule 01: get design sign-off).
  *   violet/purple/fuchsia         -> Forest #063B28 (workspace accents)
  */
 @theme {
@@ -157,18 +161,18 @@
   --color-green-900: #133C26;
   --color-green-950: #0D2A1B;
 
-  /* Orange #FE4B1E — dominant primary: accent + alert/review/overdue */
-  --color-red-50: #FFF2ED;
-  --color-red-100: #FFE3D9;
-  --color-red-200: #FFC5B2;
-  --color-red-300: #FF9F82;
-  --color-red-400: #FE7550;
-  --color-red-500: #FE4B1E;
-  --color-red-600: #E63A0F;
-  --color-red-700: #BF2F0A;
-  --color-red-800: #992607;
-  --color-red-900: #7A1F06;
-  --color-red-950: #4D1304;
+  /* red/rose = status red; orange/pink = brand Orange #FE4B1E */
+  --color-red-50: #FEF3F2;
+  --color-red-100: #FEE4E2;
+  --color-red-200: #FECDCA;
+  --color-red-300: #FDA29B;
+  --color-red-400: #F97066;
+  --color-red-500: #F04438;
+  --color-red-600: #D92D20;
+  --color-red-700: #B42318;
+  --color-red-800: #912018;
+  --color-red-900: #7A271A;
+  --color-red-950: #55160C;
   --color-orange-50: #FFF2ED;
   --color-orange-100: #FFE3D9;
   --color-orange-200: #FFC5B2;
@@ -180,17 +184,17 @@
   --color-orange-800: #992607;
   --color-orange-900: #7A1F06;
   --color-orange-950: #4D1304;
-  --color-rose-50: #FFF2ED;
-  --color-rose-100: #FFE3D9;
-  --color-rose-200: #FFC5B2;
-  --color-rose-300: #FF9F82;
-  --color-rose-400: #FE7550;
-  --color-rose-500: #FE4B1E;
-  --color-rose-600: #E63A0F;
-  --color-rose-700: #BF2F0A;
-  --color-rose-800: #992607;
-  --color-rose-900: #7A1F06;
-  --color-rose-950: #4D1304;
+  --color-rose-50: #FEF3F2;
+  --color-rose-100: #FEE4E2;
+  --color-rose-200: #FECDCA;
+  --color-rose-300: #FDA29B;
+  --color-rose-400: #F97066;
+  --color-rose-500: #F04438;
+  --color-rose-600: #D92D20;
+  --color-rose-700: #B42318;
+  --color-rose-800: #912018;
+  --color-rose-900: #7A271A;
+  --color-rose-950: #55160C;
   --color-pink-50: #FFF2ED;
   --color-pink-100: #FFE3D9;
   --color-pink-200: #FFC5B2;
@@ -203,29 +207,29 @@
   --color-pink-900: #7A1F06;
   --color-pink-950: #4D1304;
 
-  /* Oxblood #593D3D — warnings / at-risk */
-  --color-amber-50: #F6F1F0;
-  --color-amber-100: #ECE2E0;
-  --color-amber-200: #D9C6C3;
-  --color-amber-300: #BEA09C;
-  --color-amber-400: #9D7B76;
-  --color-amber-500: #7C5A56;
-  --color-amber-600: #593D3D;
-  --color-amber-700: #4C3333;
-  --color-amber-800: #3D2929;
-  --color-amber-900: #2E1F1F;
-  --color-amber-950: #221717;
-  --color-yellow-50: #F6F1F0;
-  --color-yellow-100: #ECE2E0;
-  --color-yellow-200: #D9C6C3;
-  --color-yellow-300: #BEA09C;
-  --color-yellow-400: #9D7B76;
-  --color-yellow-500: #7C5A56;
-  --color-yellow-600: #593D3D;
-  --color-yellow-700: #4C3333;
-  --color-yellow-800: #3D2929;
-  --color-yellow-900: #2E1F1F;
-  --color-yellow-950: #221717;
+  /* amber/yellow = status yellow; lime = Oxblood #593D3D */
+  --color-amber-50: #FFFAEB;
+  --color-amber-100: #FEF0C7;
+  --color-amber-200: #FEDF89;
+  --color-amber-300: #FEC84B;
+  --color-amber-400: #FDB022;
+  --color-amber-500: #F5A00A;
+  --color-amber-600: #DC8A05;
+  --color-amber-700: #B54708;
+  --color-amber-800: #93370D;
+  --color-amber-900: #7A2E0E;
+  --color-amber-950: #4E1D09;
+  --color-yellow-50: #FFFAEB;
+  --color-yellow-100: #FEF0C7;
+  --color-yellow-200: #FEDF89;
+  --color-yellow-300: #FEC84B;
+  --color-yellow-400: #FDB022;
+  --color-yellow-500: #F5A00A;
+  --color-yellow-600: #DC8A05;
+  --color-yellow-700: #B54708;
+  --color-yellow-800: #93370D;
+  --color-yellow-900: #7A2E0E;
+  --color-yellow-950: #4E1D09;
   --color-lime-50: #F6F1F0;
   --color-lime-100: #ECE2E0;
   --color-lime-200: #D9C6C3;

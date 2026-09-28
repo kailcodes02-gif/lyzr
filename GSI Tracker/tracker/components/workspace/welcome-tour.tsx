@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  BookOpen, Building2, Layers, ListTodo, Table2, Users, X, Zap,
+  BookOpen, Building2, FolderKanban, Layers, ListTodo, Table2, Users, X, Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { LyzrSail } from '@/components/ui/lyzr-logo'
@@ -99,6 +99,19 @@ const STEPS: Step[] = [
     href: '/my-board/',
     place: 'My Board',
     introKey: 'my_board',
+  },
+  {
+    icon: <FolderKanban className="w-6 h-6 text-orange-500" />,
+    title: 'Projects: your to-do lists',
+    body: (
+      <>Every channel is a <strong>project</strong> — a simple to-do list. Pick one on the left, type a
+      task and press Enter to add it, and tick the round checkbox when it&apos;s done. Colours tell
+      you where things stand: <strong>green</strong> live or done, <strong>yellow</strong> in progress,
+      <strong> red</strong> blocked or overdue.</>
+    ),
+    href: '/projects/',
+    place: 'Projects',
+    introKey: 'projects',
   },
   {
     icon: <Zap className="w-6 h-6 text-orange-500" />,

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import {
   Calendar, CalendarRange, DollarSign, GitBranch, History, Home, LayoutDashboard, LineChart,
-  ListTodo, Settings, Sparkles, Table2, Upload, UserCircle, Users, Workflow, X, Zap,
+  FolderKanban, ListTodo, Settings, Sparkles, Table2, Upload, UserCircle, Users, Workflow, X, Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { startTour, useTourActive } from '@/components/workspace/welcome-tour'
@@ -69,6 +69,18 @@ const INTROS: Intro[] = [
       { name: 'My channels', what: 'Every channel you own or belong to, across all verticals.' },
       { name: 'Inbox', what: 'Mentions, assignments and asks waiting on you.' },
       { name: 'New task', what: 'The orange button creates a task in any of your channels.' },
+    ],
+  },
+  {
+    key: 'projects', path: '/projects', icon: <FolderKanban className="w-5 h-5 text-orange-500" />,
+    title: 'Projects — simple to-do lists',
+    lead: 'Every channel is a project. This is the quickest way to add and finish work.',
+    features: [
+      { name: 'Left panel', what: 'My tasks, Today, then every project grouped by vertical. Search to jump to one.' },
+      { name: 'Add task', what: 'Type what needs doing and press Enter. Add a due date and priority if you like.' },
+      { name: 'Round checkbox', what: 'Click it to mark a task done. Its colour is the priority: red critical, orange high, blue medium, grey low.' },
+      { name: 'Colours', what: 'Green = live or done, yellow = in progress, red = blocked or overdue.' },
+      { name: 'Task details', what: 'Click any task to open it — comments, checklist, owners, history.' },
     ],
   },
   {
