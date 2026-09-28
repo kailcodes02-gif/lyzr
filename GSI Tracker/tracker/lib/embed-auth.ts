@@ -31,6 +31,18 @@ export function reportToOpener(opener: Window, msg: EmbedAuthMessage) {
   opener.postMessage(msg, window.location.origin)
 }
 
+// After handing the session to the iframe the pop-up must drop its own copy:
+// two holders of one refresh token trip Supabase's reuse detection and both
+// get logged out. This deletes the cookies only. supabase.auth.signOut() is
+// NOT usable here — even with scope 'local' it calls the server's logout and
+// revokes the very session the iframe just received.
+export function forgetLocalSession() {
+  for (const part of document.cookie.split(';')) {
+    const name = part.split('=')[0].trim()
+    if (/^sb-.+-auth-token/.test(name)) document.cookie = `${name}=; Max-Age=0; path=/`
+  }
+}
+
 export function openSignInPopup(provider: string): Window | null {
   const base = process.env.NEXT_PUBLIC_BASE_PATH || ''
   const w = 520, h = 680

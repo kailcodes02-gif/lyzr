@@ -475,6 +475,15 @@ Access if the data ever becomes confidential.
 - Event detail (invite view) gains Google's response summary under the guest count ("2 yes,
   1 awaiting"). 430 unit + calendar/smoke e2e green; deployed (Worker version d53988f6).
 
+### 2026-09-28 (fix), GSI Tracker: iframe sign-in showed "Auth session missing!" (GSI Tracker)
+- **Correction to the entry below:** the pop-up dropped its copy of the session with
+  `supabase.auth.signOut({ scope: 'local' })`, but in auth-js even `local` calls the server's
+  `/logout` and revokes that session — the very one just posted to the iframe, whose `setSession`
+  then failed with "Auth session missing!". Replaced with `forgetLocalSession()` in
+  `lib/embed-auth.ts`, which only deletes the pop-up's `sb-<ref>-auth-token*` cookies. Verified in
+  headless Chrome on the real lyzr.ai page that the click opens the pop-up and reaches Microsoft;
+  the final hand-back still needs a real sign-in to confirm.
+
 ### 2026-09-28 (latest), GSI Tracker: Microsoft sign-in works inside the www.lyzr.ai/marketing-tracker iframe (GSI Tracker)
 - The lyzr.ai page embeds `https://lyzr.kailash-gm.com/GSI_Tracker/` in a plain (unsandboxed) iframe.
   Two blockers inside it: Microsoft's login page refuses to be framed, and the cookie-based Supabase

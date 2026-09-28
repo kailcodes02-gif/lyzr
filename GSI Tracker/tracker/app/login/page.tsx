@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { LyzrSail } from '@/components/ui/lyzr-logo'
 import {
-  isEmbedAuthMessage, markAsSignInPopup, openSignInPopup, reportToOpener, signInPopupOpener,
+  forgetLocalSession, isEmbedAuthMessage, markAsSignInPopup, openSignInPopup, reportToOpener, signInPopupOpener,
 } from '@/lib/embed-auth'
 
 type Provider = 'google' | 'azure' | 'slack_oidc'
@@ -29,9 +29,7 @@ function LoginContent() {
         const opener = signInPopupOpener()
         if (session && opener) {
           reportToOpener(opener, { type: 'gsi-auth', access_token: session.access_token, refresh_token: session.refresh_token })
-          // Hand the session over rather than share it: two holders of one
-          // refresh token trip Supabase's reuse detection and log both out.
-          await supabase.auth.signOut({ scope: 'local' })
+          forgetLocalSession()
           window.close()
           return
         }

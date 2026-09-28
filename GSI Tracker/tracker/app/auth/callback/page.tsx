@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { reportToOpener, signInPopupOpener } from '@/lib/embed-auth'
+import { forgetLocalSession, reportToOpener, signInPopupOpener } from '@/lib/embed-auth'
 
 // PKCE landing page (static build — no server route): exchanges the ?code
 // from Google/Supabase for a session, then enters the app.
@@ -52,12 +52,11 @@ function CallbackContent() {
         }
       } catch (e) { console.warn('avatar fetch skipped', e) }
       // Sign-in pop-up for an embedded tracker: hand the session to the iframe
-      // and close. Hand over, not share — two holders of one refresh token trip
-      // Supabase's reuse detection and both get logged out.
+      // and close (forgetLocalSession explains why the pop-up drops its copy).
       const opener = signInPopupOpener()
       if (opener) {
         reportToOpener(opener, { type: 'gsi-auth', access_token: session.access_token, refresh_token: session.refresh_token })
-        await supabase.auth.signOut({ scope: 'local' })
+        forgetLocalSession()
         window.close()
         return
       }
