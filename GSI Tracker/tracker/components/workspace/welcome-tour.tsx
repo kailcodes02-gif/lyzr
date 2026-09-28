@@ -3,28 +3,51 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Building2, Eye, Layers, ListTodo, Sparkles, Table2, Users, Zap,
+  BookOpen, Building2, Layers, ListTodo, Table2, Users, X, Zap,
 } from 'lucide-react'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { LyzrSail } from '@/components/ui/lyzr-logo'
 import { useCurrentUser } from '@/lib/hooks/use-data'
+import { markIntroSeen } from '@/components/workspace/page-intro'
 import { cn } from '@/lib/utils'
 
-// First-run walkthrough. Opens automatically the first time someone signs in
-// on this browser, and can be replayed from the account menu ("Replay the
-// welcome tour"). Pure explanation — it never writes anything.
+// Guided walkthrough. A sticky floating card, not a blocking modal: each
+// step NAVIGATES to the page it explains, the page stays fully usable behind
+// it, and the card survives navigation and reloads until Done or Close.
+// Opens automatically on first sign-in on this browser; restarts from the
+// account menu ("Replay the welcome tour") or the Guide page's "Guide
+// walkthrough" button. Pure explanation — it never writes anything.
 
-const DONE_KEY = 'gsi:tour:v1'
+const DONE_KEY = 'gsi:tour:v2'
+const STEP_KEY = 'gsi:tour:v2:step' // present = walkthrough in progress (survives reloads)
 
 let openFn: (() => void) | null = null
 export function startTour() { openFn?.() }
+
+// Page intros stay quiet while the walkthrough runs (two cards would fight).
+const active = { now: false, listeners: new Set<() => void>() }
+function setActive(v: boolean) {
+  active.now = v
+  active.listeners.forEach(fn => fn())
+}
+export function useTourActive(): boolean {
+  const [, force] = useState(0)
+  useEffect(() => {
+    const fn = () => force(x => x + 1)
+    active.listeners.add(fn)
+    return () => { active.listeners.delete(fn) }
+  }, [])
+  return active.now
+}
 
 type Step = {
   icon: React.ReactNode
   title: string
   body: React.ReactNode
-  go?: { href: string; label: string }
+  // The page this step explains: Next lands here, then the card talks about it.
+  href?: string
+  place?: string // short name shown on the Next button ("Next · Overview")
+  introKey?: string // the page intro this step replaces (marked as seen)
 }
 
 const STEPS: Step[] = [
@@ -33,42 +56,49 @@ const STEPS: Step[] = [
     title: 'Welcome to the Lyzr Marketing Tracker',
     body: (
       <>This is where the marketing team plans, runs and reports its work — tasks, channels,
-      campaigns and budgets, in one place. This short tour explains what each part of the
-      dashboard is for. You can replay it any time from your account menu at the bottom left.</>
+      campaigns and budgets, in one place. This walkthrough takes you <strong>page by page</strong>:
+      every “Next” opens the page it talks about, and the page stays usable behind this card —
+      click around as much as you like, the walkthrough stays until you finish or close it.</>
     ),
   },
   {
     icon: <Building2 className="w-6 h-6 text-blue-600" />,
-    title: 'Verticals, and the Lyzr company view',
+    title: 'Home: verticals, and the Lyzr company view',
     body: (
-      <><strong>A vertical is a business line</strong> — GSI is one, and more can be added.
-      Each vertical has its own dashboard, channels and tasks. <strong>Lyzr</strong> is special:
-      it is the company-wide, across-workspace view that is always there and can never be
-      removed. Switch between “Company” and a vertical with the switcher at the top of the
-      sidebar.</>
+      <>You are on the <strong>Company Home</strong>. <strong>A vertical is a business line</strong> —
+      GSI is one, and more can be added. Each vertical has its own dashboard, channels and tasks.
+      <strong> Lyzr</strong> is the company-wide view that is always there. Switch between “Company”
+      and a vertical with the switcher at the top of the sidebar.</>
     ),
+    href: '/',
+    place: 'Home',
+    introKey: 'workspace_home',
   },
   {
     icon: <Layers className="w-6 h-6 text-blue-600" />,
-    title: 'How work is organised',
+    title: 'Overview: how work is organised',
     body: (
-      <>Work lives in a tree: <strong>Group → Channel → Sub-channel → Task</strong>.
-      A channel is a marketing motion (Events, ABM, Paid…); every channel has an owner.
-      The <strong>Overview</strong> page draws this whole tree so you can see how everything
-      hangs together.</>
+      <>This is the <strong>Overview</strong> — the whole tree of work drawn as one picture:
+      <strong> Group → Channel → Sub-channel → Task</strong>. A channel is a marketing motion
+      (Events, ABM, Paid…); every channel has an owner. Click any node to open it — the
+      walkthrough will still be here.</>
     ),
-    go: { href: '/overview/?v=all', label: 'Open Overview' },
+    href: '/overview/?v=all',
+    place: 'Overview',
+    introKey: 'overview',
   },
   {
     icon: <ListTodo className="w-6 h-6 text-emerald-600" />,
-    title: 'Your own pages: My Board and My Tasks',
+    title: 'My Board: your own page',
     body: (
-      <><strong>My Board</strong> is your personal home — just the tasks assigned to you,
-      grouped by when they are due. <strong>My Tasks</strong> is the full list of everything
+      <><strong>My Board</strong> is your personal home — just the tasks assigned to you, grouped
+      by when they are due. Its sibling <strong>My Tasks</strong> is the full list of everything
       with your name on it, across all verticals. If you mainly execute tasks, these two pages
       are most of what you need.</>
     ),
-    go: { href: '/my-board/', label: 'Open My Board' },
+    href: '/my-board/',
+    place: 'My Board',
+    introKey: 'my_board',
   },
   {
     icon: <Zap className="w-6 h-6 text-orange-500" />,
@@ -79,39 +109,53 @@ const STEPS: Step[] = [
       many people post at once. A pinned campaign shows as a banner on home pages so nobody
       misses it.</>
     ),
-    go: { href: '/campaigns/', label: 'Open Campaigns' },
+    href: '/campaigns/',
+    place: 'Campaigns',
+    introKey: 'campaign',
   },
   {
     icon: <Table2 className="w-6 h-6 text-blue-600" />,
-    title: 'The leadership view: All Tasks',
+    title: 'All Tasks: the leadership view',
     body: (
-      <><strong>All Tasks</strong> is the leadership view — every task in every vertical in one
-      table. The summary tiles at the top (Done, Not done, Live, Blocked, Overdue, Critical)
-      filter the table when clicked. <strong>Weekly</strong> shows the same work week by week:
-      planned, done, carried over.</>
+      <><strong>All Tasks</strong> is every task in every vertical in one table. The summary tiles
+      at the top (Done, Not done, Live, Blocked, Overdue, Critical) filter the table when clicked —
+      try one now. <strong>Weekly</strong> shows the same work week by week: planned, done,
+      carried over.</>
     ),
-    go: { href: '/workspace/tasks/', label: 'Open All Tasks' },
+    href: '/workspace/tasks/',
+    place: 'All Tasks',
+    introKey: 'tracker_all',
   },
   {
     icon: <Users className="w-6 h-6 text-blue-600" />,
-    title: 'People and roles',
+    title: 'Members: people and roles',
     body: (
       <>The <strong>Members</strong> page shows who is who: admins, leadership, vertical owners,
-      channel owners. Admins can assign any role there; vertical owners manage their vertical;
-      channel owners assign owners below themselves.</>
+      channel owners — and the people map of who owns what, where. Admins assign any role here;
+      vertical owners manage their vertical; channel owners assign owners below themselves.</>
     ),
-    go: { href: '/members/', label: 'Open Members' },
+    href: '/members/',
+    place: 'Members',
+    introKey: 'people_map',
   },
   {
-    icon: <Eye className="w-6 h-6 text-violet-600" />,
-    title: 'See it through anyone’s eyes',
+    icon: <BookOpen className="w-6 h-6 text-violet-600" />,
+    title: 'The Guide — and seeing it as anyone',
     body: (
-      <>Admins can switch <strong>“View as”</strong> in the account menu at the bottom of the
-      sidebar — Leadership, Vertical owner, Channel owner or Member — to preview exactly how the
-      tracker looks and navigates for that role. That’s everything: enjoy!</>
+      <>This <strong>Guide</strong> page repeats everything in five minutes, and the
+      “Guide walkthrough” button at the top restarts this walkthrough whenever anyone needs it.
+      One last trick: admins can switch <strong>“View as”</strong> in the account menu (bottom
+      left) to preview the tracker exactly as Leadership, a vertical owner, a channel owner or a
+      member sees it. That’s everything — enjoy!</>
     ),
+    href: '/guide/',
+    place: 'Guide',
   },
 ]
+
+const save = (k: string, v: string) => { try { window.localStorage.setItem(k, v) } catch { /* session only */ } }
+const drop = (k: string) => { try { window.localStorage.removeItem(k) } catch { /* nothing to drop */ } }
+const load = (k: string) => { try { return window.localStorage.getItem(k) } catch { return null } }
 
 export function WelcomeTour() {
   const { data: user } = useCurrentUser()
@@ -119,61 +163,99 @@ export function WelcomeTour() {
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState(0)
 
+  // Entering a step: remember it (a reload or redirect resumes here), open
+  // the page it explains, and stand in for that page's first-visit intro.
+  const goTo = (i: number, navigate = true) => {
+    const s = STEPS[i]
+    setStep(i)
+    save(STEP_KEY, String(i))
+    if (s.introKey) markIntroSeen(s.introKey)
+    if (navigate && s.href) router.push(s.href)
+  }
+
+  const begin = () => { setOpen(true); setActive(true); goTo(0) }
+
   useEffect(() => {
-    openFn = () => { setStep(0); setOpen(true) }
+    openFn = begin
     return () => { openFn = null }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // First run on this browser: show once the user has loaded.
+  // On load: resume a walkthrough that was in progress (the card must survive
+  // any redirect or reload), else auto-start on this browser's first sign-in.
+  // Deferred a tick: this reads localStorage after the user query resolves,
+  // an external store the lint cannot see, so the sync-setState rule is moot.
   useEffect(() => {
-    if (!user) return
-    try {
-      if (window.localStorage.getItem(DONE_KEY) !== '1') { setStep(0); setOpen(true) }
-    } catch { /* storage unavailable — skip auto-open */ }
+    if (!user || open) return
+    const t = window.setTimeout(() => {
+      const resume = load(STEP_KEY)
+      if (resume !== null) {
+        const i = Math.min(Math.max(0, Number(resume) || 0), STEPS.length - 1)
+        setOpen(true)
+        setActive(true)
+        goTo(i, false) // stay on whatever page they are on until they press Next
+        return
+      }
+      if (load(DONE_KEY) !== '1') begin()
+    }, 0)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
   const finish = () => {
     setOpen(false)
-    try { window.localStorage.setItem(DONE_KEY, '1') } catch { /* session only */ }
+    setActive(false)
+    save(DONE_KEY, '1')
+    drop(STEP_KEY)
   }
 
+  if (!open) return null
   const s = STEPS[step]
   const last = step === STEPS.length - 1
+  const next = STEPS[step + 1]
 
   return (
-    <Dialog open={open} onOpenChange={o => { if (!o) finish() }}>
-      <DialogContent className="max-w-md bg-white p-0 overflow-hidden">
-        <div className="p-6 space-y-4">
-          <div className="flex items-center gap-3">
-            {s.icon}
-            <DialogTitle className="text-base font-semibold text-zinc-900">{s.title}</DialogTitle>
-          </div>
-          <div className="text-sm leading-relaxed text-zinc-700">{s.body}</div>
-          {s.go && (
-            <button
-              onClick={() => { finish(); router.push(s.go!.href) }}
-              className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1"
-            >
-              <Sparkles className="w-3 h-3" /> {s.go.label} now
-            </button>
+    <div
+      role="dialog"
+      aria-label={`Walkthrough step ${step + 1} of ${STEPS.length}: ${s.title}`}
+      className="fixed bottom-4 right-4 z-[60] w-[min(400px,calc(100vw-2rem))] rounded-2xl border border-zinc-200 bg-white shadow-2xl shadow-zinc-900/10 overflow-hidden"
+    >
+      <div className="p-5 space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="shrink-0 mt-0.5">{s.icon}</div>
+          <h2 className="text-sm font-semibold text-zinc-900 flex-1">{s.title}</h2>
+          <button
+            onClick={finish}
+            aria-label="Close the walkthrough"
+            className="shrink-0 -mt-1 -mr-1 rounded-md p-1 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="text-[13px] leading-relaxed text-zinc-700">{s.body}</div>
+      </div>
+      <div className="flex items-center justify-between border-t border-zinc-200 bg-zinc-50 px-5 py-3">
+        <div className="flex items-center gap-1.5">
+          {STEPS.map((_, i) => (
+            <button key={i} onClick={() => goTo(i)} aria-label={`Step ${i + 1}`}
+              className={cn('h-1.5 rounded-full transition-all', i === step ? 'w-5 bg-orange-500' : 'w-1.5 bg-zinc-300 hover:bg-zinc-400')} />
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          {step > 0 && (
+            <Button variant="outline" size="sm" className="text-xs border-zinc-300" onClick={() => goTo(step - 1)}>
+              Back
+            </Button>
           )}
+          {last
+            ? <Button size="sm" className="text-xs bg-orange-500 hover:bg-orange-600 text-white" onClick={finish}>Done</Button>
+            : (
+              <Button size="sm" className="text-xs" onClick={() => goTo(step + 1)}>
+                Next{next?.place ? ` · ${next.place}` : ''} · {step + 2}/{STEPS.length}
+              </Button>
+            )}
         </div>
-        <div className="flex items-center justify-between border-t border-zinc-200 bg-zinc-50 px-6 py-3">
-          <div className="flex items-center gap-1.5">
-            {STEPS.map((_, i) => (
-              <button key={i} onClick={() => setStep(i)} aria-label={`Step ${i + 1}`}
-                className={cn('h-1.5 rounded-full transition-all', i === step ? 'w-5 bg-orange-500' : 'w-1.5 bg-zinc-300 hover:bg-zinc-400')} />
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            {!last && <Button variant="ghost" size="sm" className="text-xs text-zinc-500" onClick={finish}>Skip</Button>}
-            {step > 0 && <Button variant="outline" size="sm" className="text-xs border-zinc-300" onClick={() => setStep(step - 1)}>Back</Button>}
-            {last
-              ? <Button size="sm" className="text-xs bg-orange-500 hover:bg-orange-600 text-white" onClick={finish}>Done</Button>
-              : <Button size="sm" className="text-xs" onClick={() => setStep(step + 1)}>Next · {step + 1}/{STEPS.length}</Button>}
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   )
 }

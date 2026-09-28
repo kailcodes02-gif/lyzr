@@ -458,6 +458,21 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-09-28, GSI Tracker: sticky page-by-page walkthrough + first-visit page intros (GSI Tracker)
+- Why: the old welcome tour's "Open X now" link called finish() — clicking it killed the remaining
+  steps ("the rest of the onboarding vanished"). Rewritten per user's spec.
+- `components/workspace/welcome-tour.tsx` (v2): a sticky floating card (bottom-right, no blocking
+  overlay) — every Next NAVIGATES to the page that step explains (Home → Overview → My Board →
+  Campaigns → All Tasks → Members → Guide), the page stays fully usable behind it, and the card
+  survives navigation and reloads (step persisted in localStorage gsi:tour:v2:step until Done/Close).
+  Auto-opens on first sign-in per browser; replays from the account menu.
+- New `components/workspace/page-intro.tsx`: first visit to each page (per browser,
+  gsi:intro:v1:<key>) shows a sticky dismissible card explaining what the page is for, with a
+  "Full walkthrough" link. 17 pages covered. Quiet while the walkthrough runs; walkthrough steps
+  mark their pages' intros as seen so nobody gets the same card twice.
+- Guide page: "Guide walkthrough" button next to the "How the tracker works" H1 restarts the
+  walkthrough for anyone, any time. 36 unit tests green; static export merged into GSI_Tracker/.
+
 ### 2026-09-28, MS UI: hands-free inbox sorting — invites to Calendar invites, notes to Meeting scripts (MS UI)
 - Why: user's real mailbox kept meeting invites ("All Hands Sync", "Accepted: Paid Ads GSI") and Gemini
   "Notes: …" mails in the Inbox although Calendar invites / Meeting scripts labels existed. Three real-world

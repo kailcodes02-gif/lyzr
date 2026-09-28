@@ -3,6 +3,7 @@ import { AppSidebar, AppHeader } from '@/components/layout/app-shell'
 import { AuthGuard } from '@/components/layout/auth-guard'
 import { VerticalProvider } from '@/components/providers/vertical-provider'
 import { WelcomeTour } from '@/components/workspace/welcome-tour'
+import { PageIntro } from '@/components/workspace/page-intro'
 
 export default function AuthenticatedLayout({
   children,
@@ -22,6 +23,7 @@ export default function AuthenticatedLayout({
                 {children}
               </main>
               <WelcomeTour />
+              <PageIntro />
             </div>
           </div>
         </VerticalProvider>
