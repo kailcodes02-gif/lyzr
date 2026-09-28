@@ -475,6 +475,25 @@ Access if the data ever becomes confidential.
 - Event detail (invite view) gains Google's response summary under the guest count ("2 yes,
   1 awaiting"). 430 unit + calendar/smoke e2e green; deployed (Worker version d53988f6).
 
+### 2026-09-28 (latest), GSI Tracker: Microsoft sign-in works inside the www.lyzr.ai/marketing-tracker iframe (GSI Tracker)
+- The lyzr.ai page embeds `https://lyzr.kailash-gm.com/GSI_Tracker/` in a plain (unsandboxed) iframe.
+  Two blockers inside it: Microsoft's login page refuses to be framed, and the cookie-based Supabase
+  client (`@supabase/ssr`) can't hold a session there (cross-site iframe cookies are third-party —
+  dropped by Chrome's SameSite=Lax rules, blocked outright by Safari).
+- Fix (`lib/embed-auth.ts`, `lib/supabase/client.ts`, `app/login/page.tsx`, `app/auth/callback/page.tsx`):
+  when framed (`window.self !== window.top`) the client keeps the session in the iframe's own
+  partitioned localStorage (key `gsi-embed-auth`). "Sign in with Microsoft" opens a pop-up at
+  `/login/?popup=azure`; the pop-up (a normal first-party tab) runs the usual redirect flow, and the
+  callback posts `{access_token, refresh_token}` to `window.opener` (same origin, origin-checked),
+  signs itself out locally (hand-over, not share — avoids refresh-token reuse revocation) and closes.
+  The iframe calls `setSession` and enters the app. Errors are posted back the same way. Blocked
+  pop-ups show "allow pop-ups or open the tracker in its own tab". Top-level tabs are unchanged
+  (still cookies). No Supabase, Entra or lyzr.ai changes needed (same callback URL).
+- Degraded case: if a browser severs `window.opener` during the Microsoft round trip, the pop-up just
+  signs the user in top-level there instead. Long-term cleaner option: serve the tracker from a
+  lyzr.ai subdomain (same-site with www.lyzr.ai). Unverified live until the user tests a real
+  sign-in in the embed. `tsc` clean, 36 tests, 35 routes.
+
 ### 2026-09-28 (late night), GSI Tracker: Asana-style task form, Workspace settings redesign, Task fields builder, UUID-in-dropdown fix (GSI Tracker)
 - **Bug: raw IDs in dropdowns.** Base UI `Select.Value` renders the stored value (a UUID, or `all`)
   unless the root knows item labels. `components/ui/select.tsx` `Select` now walks its children for

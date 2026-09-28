@@ -1,29 +1,78 @@
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
+import { createClient, isFramed } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { LyzrSail } from '@/components/ui/lyzr-logo'
+import {
+  isEmbedAuthMessage, markAsSignInPopup, openSignInPopup, reportToOpener, signInPopupOpener,
+} from '@/lib/embed-auth'
+
+type Provider = 'google' | 'azure' | 'slack_oidc'
 
 function LoginContent() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
+  // Set when this tab is the sign-in pop-up opened by an embedded tracker.
+  const popupProvider = searchParams.get('popup') as Provider | null
   const router = useRouter()
+  const [failed, setFailed] = useState<string | null>(null)
+  const [waiting, setWaiting] = useState(false)
 
-  // Already signed in? Straight to the app.
+  // Already signed in? Straight to the app — or, as the pop-up, straight
+  // back to the iframe that asked.
   useEffect(() => {
-    createClient().auth.getSession().then(({ data: { session } }) => {
+    const supabase = createClient()
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (popupProvider) {
+        markAsSignInPopup()
+        const opener = signInPopupOpener()
+        if (session && opener) {
+          reportToOpener(opener, { type: 'gsi-auth', access_token: session.access_token, refresh_token: session.refresh_token })
+          // Hand the session over rather than share it: two holders of one
+          // refresh token trip Supabase's reuse detection and log both out.
+          await supabase.auth.signOut({ scope: 'local' })
+          window.close()
+          return
+        }
+        signIn(popupProvider)
+        return
+      }
       if (session) router.replace('/')
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, popupProvider])
+
+  // Embedded: receive the session from the sign-in pop-up.
+  useEffect(() => {
+    if (!isFramed()) return
+    const onMessage = async (e: MessageEvent) => {
+      if (!isEmbedAuthMessage(e)) return
+      const msg = e.data
+      if (msg.type === 'gsi-auth-error') { setWaiting(false); router.replace(`/login?error=${msg.error}`); return }
+      const { error } = await createClient().auth.setSession({ access_token: msg.access_token, refresh_token: msg.refresh_token })
+      if (error) { setWaiting(false); setFailed(error.message); return }
+      router.replace('/')
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
   }, [router])
 
   // Which buttons to show, in order. Each provider must also be switched on
   // in Supabase › Authentication › Providers, or Supabase answers
   // "provider is not enabled" and we show that under the buttons.
   const providers = (process.env.NEXT_PUBLIC_AUTH_PROVIDERS || 'azure').split(',').map(s => s.trim()).filter(Boolean)
-  const [failed, setFailed] = useState<string | null>(null)
 
-  const signIn = async (provider: 'google' | 'azure' | 'slack_oidc') => {
+  const signIn = async (provider: Provider) => {
+    // Microsoft's sign-in page can't load inside an iframe: sign in in a pop-up.
+    if (isFramed()) {
+      setFailed(null)
+      const w = openSignInPopup(provider)
+      if (!w) { setFailed('popup_blocked'); return }
+      setWaiting(true)
+      const poll = window.setInterval(() => { if (w.closed) { window.clearInterval(poll); setWaiting(false) } }, 800)
+      return
+    }
     const supabase = createClient()
     const redirectTo = `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH || ''}/auth/callback/`
     const opts: Record<string, unknown> = { redirectTo }
@@ -79,7 +128,13 @@ function LoginContent() {
               </button>
             )}
           </div>
-          {failed && <p className="mt-3 text-xs text-center text-red-600">{failed}</p>}
+          {waiting && <p className="mt-3 text-xs text-center text-zinc-600">Finish signing in in the pop-up window…</p>}
+          {failed === 'popup_blocked' ? (
+            <p className="mt-3 text-xs text-center text-red-600">
+              Your browser blocked the sign-in window. Allow pop-ups for this page and try again, or{' '}
+              <a href={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/`} target="_blank" rel="noopener" className="underline">open the tracker in its own tab</a>.
+            </p>
+          ) : failed && <p className="mt-3 text-xs text-center text-red-600">{failed}</p>}
 
           <p className="mt-6 text-xs text-center text-zinc-500">
             Sign in with your Lyzr Microsoft account (name@lyzr.com)

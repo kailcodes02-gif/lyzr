@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { reportToOpener, signInPopupOpener } from '@/lib/embed-auth'
 
 // PKCE landing page (static build — no server route): exchanges the ?code
 // from Google/Supabase for a session, then enters the app.
@@ -25,7 +26,11 @@ function CallbackContent() {
         const desc = (searchParams.get('error_description') || '').toLowerCase()
         // Supabase hides trigger messages behind "Database error saving new user";
         // that only happens for a non-Lyzr email or a twin-address duplicate.
-        router.replace(desc.includes('already have a tracker account') ? '/login?error=twin' : (desc.includes('lyzr') || desc.includes('saving new user')) ? '/login?error=not_lyzr' : '/login?error=auth_failed')
+        const code = desc.includes('already have a tracker account') ? 'twin' : (desc.includes('lyzr') || desc.includes('saving new user')) ? 'not_lyzr' : 'auth_failed'
+        // Sign-in pop-up for an embedded tracker: the error belongs to the iframe.
+        const opener = signInPopupOpener()
+        if (opener) { reportToOpener(opener, { type: 'gsi-auth-error', error: code }); window.close(); return }
+        router.replace(`/login?error=${code}`)
         return
       }
       // Attach owner / member rows written under either spelling of the email.
@@ -46,6 +51,16 @@ function CallbackContent() {
           }
         }
       } catch (e) { console.warn('avatar fetch skipped', e) }
+      // Sign-in pop-up for an embedded tracker: hand the session to the iframe
+      // and close. Hand over, not share — two holders of one refresh token trip
+      // Supabase's reuse detection and both get logged out.
+      const opener = signInPopupOpener()
+      if (opener) {
+        reportToOpener(opener, { type: 'gsi-auth', access_token: session.access_token, refresh_token: session.refresh_token })
+        await supabase.auth.signOut({ scope: 'local' })
+        window.close()
+        return
+      }
       router.replace('/')
     }
     finish()
