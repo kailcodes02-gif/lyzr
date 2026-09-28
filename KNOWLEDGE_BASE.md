@@ -475,6 +475,15 @@ Access if the data ever becomes confidential.
 - Event detail (invite view) gains Google's response summary under the guest count ("2 yes,
   1 awaiting"). 430 unit + calendar/smoke e2e green; deployed (Worker version d53988f6).
 
+### 2026-09-29 (rollback), GSI Tracker: back to the 65257f2 build (GSI Tracker)
+- Commit 31cf196 (deployed as 727297f) was rolled back in 5814351 at Kailash's request. It had added a
+  Todoist-style `/projects/` page and pointed the sidebar's channel links at it, so the Kanban board /
+  table (`TaskView` on the channel page) looked removed. Kailash wants the Kanban/Jira structure kept;
+  a to-do list would be an extra, smaller view on top of it, not a replacement.
+- Also undone with it: the rewritten campaign form + type-ahead people picker, traffic-light status
+  colours, and the leadership-only company home. Tracker source and `GSI_Tracker/` are identical to
+  65257f2 (iframe sign-in fix). `tsc` clean, 36 tests, 35 routes.
+
 ### 2026-09-28 (fix), GSI Tracker: iframe sign-in showed "Auth session missing!" (GSI Tracker)
 - **Correction to the entry below:** the pop-up dropped its copy of the session with
   `supabase.auth.signOut({ scope: 'local' })`, but in auth-js even `local` calls the server's
