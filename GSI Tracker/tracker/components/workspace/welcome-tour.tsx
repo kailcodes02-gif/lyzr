@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  BookOpen, Building2, Layers, ListTodo, Table2, Users, X, Zap,
+  BookOpen, Building2, FolderKanban, Layers, ListTodo, Table2, Users, X, Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { LyzrSail } from '@/components/ui/lyzr-logo'
@@ -99,6 +99,20 @@ const STEPS: Step[] = [
     href: '/my-board/',
     place: 'My Board',
     introKey: 'my_board',
+  },
+  {
+    icon: <FolderKanban className="w-6 h-6 text-orange-500" />,
+    title: 'Projects: every channel’s work, Jira-style',
+    body: (
+      <>Every channel is a <strong>project</strong>. Pick one on the left and see its work as a
+      <strong> Board</strong> (drag cards between columns), a <strong>Table</strong>, or a compact
+      <strong> List</strong>. Type a task at the top and press Enter to add it. Colours tell you where
+      things stand: <strong>green</strong> live or done, <strong>yellow</strong> in progress,
+      <strong> red</strong> blocked or overdue.</>
+    ),
+    href: '/projects/',
+    place: 'Projects',
+    introKey: 'projects',
   },
   {
     icon: <Zap className="w-6 h-6 text-orange-500" />,

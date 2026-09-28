@@ -6,11 +6,11 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   Calendar, LayoutDashboard, ListTodo, ChevronDown, ChevronRight, ChevronsUpDown,
   Bell, LogOut, Zap, Sparkles, Link2, GitBranch, DollarSign, Upload, Menu, X, Settings, LineChart, UserCircle,
-  CalendarRange, History, BookOpen, Layers, Building2, Crown, Table2, Workflow, Home, Eye, FolderOpen,
+  CalendarRange, History, BookOpen, Layers, Building2, Crown, Table2, Workflow, Home, Eye, FolderOpen, FolderKanban,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
-  useChannels, buildChannelTree, useCurrentUser, useNotifications, useFunctions, useAllFunctionOwners, useTasks,
+  useChannels, buildChannelTree, useCurrentUser, useNotifications, useFunctions, useAllFunctionOwners, useTasks, useMyBadges,
 } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { withVertical } from '@/lib/hooks/use-space-href'
@@ -110,7 +110,8 @@ function NavList({ items, onNavigate }: { items: NavItem[]; onNavigate: () => vo
 function VerticalSwitcher() {
   const { mode, vertical, verticals, ownedVerticalIds, setVertical } = useVertical()
   const pathname = usePathname()
-  const label = mode === 'space' && vertical ? vertical.name : 'Company'
+  const { isLeadership } = useMyBadges()
+  const label = mode === 'space' && vertical ? vertical.name : isLeadership ? 'Company' : 'My work'
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-100 text-left transition-colors">
@@ -120,7 +121,7 @@ function VerticalSwitcher() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-60 bg-white border-zinc-300">
         <DropdownMenuItem onClick={() => setVertical('all')} className="text-zinc-700">
-          <Home className="w-4 h-4 mr-2 text-violet-600" /> Company (all verticals)
+          <Home className="w-4 h-4 mr-2 text-violet-600" /> {isLeadership ? 'Company (all verticals)' : 'My work (all my verticals)'}
         </DropdownMenuItem>
         <DropdownMenuSeparator className="bg-zinc-200/70" />
         {verticals.map(v => (
@@ -223,29 +224,43 @@ export function AppSidebar() {
   const { data: user } = useCurrentUser()
   const viewAs = useViewAs()
   const realAdmin = user?.role === 'admin'
+  const { isLeadership } = useMyBadges()
   const { mode, slug, verticalId, vertical, flags, canManage } = useVertical()
   const { data: spaceChannels } = useChannels(verticalId)
   const [mobileOpen, setMobileOpen] = useState(false)
   const close = () => setMobileOpen(false)
 
-  const workspaceNav: NavItem[] = [
-    { href: '/', icon: Home, label: 'Home', match: '/' },
+  // The company-wide pages are for admins and leadership; everyone else gets
+  // a short list built around their own work (Home shows them My Board).
+  const companyNav: NavItem[] = [
+    { href: '/', icon: Home, label: 'Company home', match: '/' },
+    { href: '/projects/', icon: FolderKanban, label: 'Projects', match: '/projects' },
     { href: '/my-board/', icon: Sparkles, label: 'My Board', match: '/my-board' },
+    { href: '/workspace/tasks/', icon: Table2, label: 'All Tasks', match: '/workspace/tasks' },
+    { href: withVertical('/overview/', 'all'), icon: GitBranch, label: 'Overview', match: '/overview' },
+    { href: '/workspace/weekly/', icon: CalendarRange, label: 'Weekly', match: '/workspace/weekly' },
+    { href: withVertical('/owners/', 'all'), icon: UserCircle, label: 'Owners', match: '/owners' },
     { href: '/campaigns/', icon: Zap, label: 'Campaigns', match: '/campaigns' },
     { href: withVertical('/calendar/', 'all'), icon: Calendar, label: 'Calendar', match: '/calendar' },
-    { href: withVertical('/overview/', 'all'), icon: GitBranch, label: 'Overview', match: '/overview' },
-    { href: '/workspace/tasks/', icon: Table2, label: 'All Tasks', match: '/workspace/tasks' },
     { href: withVertical('/my-tasks/', 'all'), icon: ListTodo, label: 'My Tasks', match: '/my-tasks' },
-    { href: withVertical('/owners/', 'all'), icon: UserCircle, label: 'Owners', match: '/owners' },
-    { href: '/workspace/weekly/', icon: CalendarRange, label: 'Weekly', match: '/workspace/weekly' },
     { href: '/functions/', icon: Workflow, label: 'Domains', match: '/functions' },
     { href: '/members/', icon: UserCircle, label: 'Members', match: '/members' },
     { href: withVertical('/history/', 'all'), icon: History, label: 'History', match: '/history' },
     { href: '/guide/', icon: BookOpen, label: 'Guide', match: '/guide' },
   ]
+  const personalNav: NavItem[] = [
+    { href: '/', icon: Sparkles, label: 'My Board', match: '/' },
+    { href: '/projects/', icon: FolderKanban, label: 'Projects', match: '/projects' },
+    { href: withVertical('/my-tasks/', 'all'), icon: ListTodo, label: 'My Tasks', match: '/my-tasks' },
+    { href: '/campaigns/', icon: Zap, label: 'Campaigns', match: '/campaigns' },
+    { href: withVertical('/calendar/', 'all'), icon: Calendar, label: 'Calendar', match: '/calendar' },
+    { href: '/guide/', icon: BookOpen, label: 'Guide', match: '/guide' },
+  ]
+  const workspaceNav = isLeadership ? companyNav : personalNav
 
   const spaceNav: NavItem[] = [
     { href: withVertical('/dashboard/', slug), icon: LayoutDashboard, label: 'Dashboard', match: '/dashboard' },
+    { href: '/projects/', icon: FolderKanban, label: 'Projects', match: '/projects' },
     { href: '/campaigns/', icon: Zap, label: 'Campaigns', match: '/campaigns' },
     { href: withVertical('/overview/', slug), icon: GitBranch, label: 'Overview', match: '/overview' },
     { href: withVertical('/calendar/', slug), icon: Calendar, label: 'Calendar', match: '/calendar' },
@@ -410,7 +425,7 @@ export function AppSidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 w-64 bg-zinc-50 border-r border-zinc-200 transition-transform duration-300 lg:translate-x-0 lg:static lg:z-0',
+          'fixed inset-y-0 left-0 z-40 w-72 bg-zinc-50 border-r border-zinc-200 transition-transform duration-300 lg:translate-x-0 lg:static lg:z-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >

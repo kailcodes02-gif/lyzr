@@ -32,10 +32,13 @@ interface TaskViewProps {
   showChannelColumn?: boolean
   showVerticalColumn?: boolean
   defaultView?: 'kanban' | 'table'
+  // Set by a parent that renders its own Board/Table switch (Projects page).
+  view?: 'kanban' | 'table'
 }
 
-export function TaskView({ tasks: allTasks, onTaskClick, showChannelColumn, showVerticalColumn, defaultView = 'kanban' }: TaskViewProps) {
-  const [viewMode, setViewMode] = useState<'kanban' | 'table'>(defaultView)
+export function TaskView({ tasks: allTasks, onTaskClick, showChannelColumn, showVerticalColumn, defaultView = 'kanban', view }: TaskViewProps) {
+  const [ownViewMode, setViewMode] = useState<'kanban' | 'table'>(defaultView)
+  const viewMode = view ?? ownViewMode
   const [showCancelled, setShowCancelled] = useState(false)
   // Sub-activities render nested INSIDE their parent activity card, so the
   // board/table lists only top-level activities — EXCEPT orphans: on filtered
@@ -48,7 +51,7 @@ export function TaskView({ tasks: allTasks, onTaskClick, showChannelColumn, show
     <div>
       {/* View toggle */}
       <div className="flex items-center gap-2 mb-4">
-        <div className="flex bg-zinc-100 rounded-lg p-0.5">
+        {!view && <div className="flex bg-zinc-100 rounded-lg p-0.5">
           <button
             onClick={() => setViewMode('kanban')}
             className={cn(
@@ -67,7 +70,7 @@ export function TaskView({ tasks: allTasks, onTaskClick, showChannelColumn, show
           >
             <TableIcon className="w-3.5 h-3.5" /> Table
           </button>
-        </div>
+        </div>}
         <button
           onClick={() => setShowCancelled(!showCancelled)}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-500 hover:text-zinc-700 transition-colors"

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition, useMemo } from 'react'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/components/ui/sheet'
@@ -42,7 +42,7 @@ import { toZonedTime, format as formatTz } from 'date-fns-tz'
 import { TaskOwnersEditor } from './task-owners-editor'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { withVertical } from '@/lib/hooks/use-space-href'
-import { suggestTaskEdit, resolveTaskSuggestion, withdrawTaskSuggestion } from '@/lib/actions'
+import { suggestTaskEdit, resolveTaskSuggestion, withdrawTaskSuggestion, bulkSetPrimaryAssignee } from '@/lib/actions'
 import { InfoTip } from '@/components/ui/info-tip'
 import Link from 'next/link'
 import { RecurrencePicker, DEFAULT_RECURRENCE, type RecurrenceValue } from './recurrence-picker'
@@ -58,6 +58,12 @@ interface TaskDetailDrawerProps {
 export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }: TaskDetailDrawerProps) {
   const queryClient = useQueryClient()
   const { data: task, isLoading } = useTask(taskId)
+  // New sub-tasks start owned by the parent's main owner (stable reference:
+  // the create dialog resets its form whenever this changes).
+  const subtaskDefaultOwners = useMemo(() => {
+    const main = task?.assignments?.find(a => a.role === 'primary') || task?.assignments?.[0]
+    return main?.user?.email ? [main.user.email.toLowerCase()] : undefined
+  }, [task?.assignments])
   const { data: users } = useUsers()
   const { data: allTasks } = useTasks()
   const { data: currentUser } = useCurrentUser()
@@ -1003,6 +1009,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
           open={createSubtaskOpen}
           onOpenChange={setCreateSubtaskOpen}
           defaultChannelId={task.channel_id}
+          defaultOwnerEmails={subtaskDefaultOwners}
           parentTaskId={task.id}
           nestingLevel={task.nesting_level + 1}
         />
@@ -1032,6 +1039,8 @@ function SubtaskInlineRow({ sub, parentPriority, onChanged }: {
   const { data: subFull } = useTask(expanded ? sub.id : null)
   const [newItem, setNewItem] = useState('')
   const subQueryClient = useQueryClient()
+  const { data: subUsers } = useUsers()
+  const subOwnerId = sub.assignments?.find(a => a.role === 'primary')?.user_id || sub.assignments?.[0]?.user_id || ''
 
   const run = async (fn: () => Promise<unknown>, failMsg: string) => {
     if (busy) return
@@ -1080,6 +1089,18 @@ function SubtaskInlineRow({ sub, parentPriority, onChanged }: {
           style={{ color: STATUS_CONFIG[sub.status].color }}
         >
           {Object.entries(STATUS_CONFIG).map(([k, c]) => <option key={k} value={k}>{c.label}</option>)}
+        </select>
+
+        {/* Owner — inline; every sub-task needs one */}
+        <select
+          value={subOwnerId}
+          disabled={busy}
+          onChange={e => e.target.value && run(() => bulkSetPrimaryAssignee([sub.id], e.target.value), 'Owner update failed')}
+          title={subOwnerId ? 'Owner' : 'This sub-task has no owner yet — pick one'}
+          className={cn('text-[11px] rounded-md border px-1 py-0.5 max-w-[8rem]', subOwnerId ? 'border-zinc-300 bg-white text-zinc-700' : 'border-amber-300 bg-amber-50 text-amber-800')}
+        >
+          {!subOwnerId && <option value="">No owner</option>}
+          {(subUsers || []).filter(u => u.email !== 'preview@lyzr.ai').map(u => <option key={u.id} value={u.id}>{u.display_name || u.email}</option>)}
         </select>
 
         {/* Due date — inline */}

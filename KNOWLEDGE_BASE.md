@@ -475,6 +475,24 @@ Access if the data ever becomes confidential.
 - Event detail (invite view) gains Google's response summary under the guest count ("2 yes,
   1 awaiting"). 430 unit + calendar/smoke e2e green; deployed (Worker version d53988f6).
 
+### 2026-09-29 (rebuild), GSI Tracker: Projects with Board / Table / List, Kanban kept as the core; sub-task owners (GSI Tracker)
+- Rebuilt on the 65257f2 base after the rollback, this time keeping the Kanban/Jira structure as the
+  core. `/projects/` (Asana/Jira-style): wide project list on the left (My tasks, Today, My projects, all
+  projects by vertical, search); the selected project opens on **Board** (the existing Kanban `TaskView`,
+  default), with **Table** (existing table) and **List** (compact to-do, an extra smaller view) tabs
+  (`?view=table|list`). One-line "+ Add task" above every view. `TaskView` gained an optional `view` prop
+  so a parent can drive it; every other page is unchanged. Sidebar channel links still open the channel
+  page with its Kanban — nothing rerouted. Sidebar w-72; "Projects" near the top for everyone.
+- Re-applied from 31cf196 (the parts Kailash didn't object to): plain-language campaign form + type-ahead
+  PeoplePicker + tasks inside a new campaign; traffic-light status colours (status red/yellow are off-brand
+  additions — needs brand sign-off); company home + company nav for admins/leadership only (members get
+  My Board, Projects, My Tasks, Campaigns, Calendar, Guide); Projects step in the walkthrough + intro.
+- **Sub-task owners**: each sub-task row in the task drawer now has an owner picker (amber "No owner"
+  when unset; sets the main owner via `bulkSetPrimaryAssignee`), and new sub-tasks default to the parent
+  task's main owner (memoised so the create form doesn't reset).
+- Smoke test: harness screenshots of Board (sub-task nested with its owner), Table, List. `tsc` clean,
+  36 tests, 36 routes.
+
 ### 2026-09-29 (rollback), GSI Tracker: back to the 65257f2 build (GSI Tracker)
 - Commit 31cf196 (deployed as 727297f) was rolled back in 5814351 at Kailash's request. It had added a
   Todoist-style `/projects/` page and pointed the sidebar's channel links at it, so the Kanban board /
