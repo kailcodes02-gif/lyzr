@@ -458,6 +458,16 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-09-28, MS UI: Google-style calendar quick create (MS UI)
+- Quick-create popup rebuilt to mirror Google Calendar's: Event / Out of office / Focus time tabs
+  (oof sets showAs oof + default title; both non-event kinds drop Teams), date field + start/end
+  time dropdowns in 15-min steps with duration labels ("9:00pm (1 hr)", capped at 12h / same day —
+  multi-day timed events fall back to datetime editors), "Does not repeat" recurrence dropdown now
+  in the popup (was full dialog only), rows reordered Google-style (description above the calendar
+  line). New components/calendar/time-select.tsx; full event dialog shares the same time controls.
+- Event detail (invite view) gains Google's response summary under the guest count ("2 yes,
+  1 awaiting"). 430 unit + calendar/smoke e2e green; deployed (Worker version d53988f6).
+
 ### 2026-09-28, GSI Tracker: sticky page-by-page walkthrough + first-visit page intros (GSI Tracker)
 - Why: the old welcome tour's "Open X now" link called finish() — clicking it killed the remaining
   steps ("the rest of the onboarding vanished"). Rewritten per user's spec.
