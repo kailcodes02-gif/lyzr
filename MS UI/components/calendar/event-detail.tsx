@@ -174,7 +174,18 @@ export function EventDetail({
               <>
                 <Users className="mt-0.5 size-4 text-muted-foreground" />
                 <div className="text-sm">
-                  <p className="text-muted-foreground">{ev.attendees!.length} guests</p>
+                  <p className="text-muted-foreground">
+                    {ev.attendees!.length} guests
+                    {(() => {
+                      const rs = ev.attendees!.map((x) => x.status?.response);
+                      const yes = rs.filter((r) => r === "accepted" || r === "organizer").length + (ev.organizer ? 1 : 0);
+                      const no = rs.filter((r) => r === "declined").length;
+                      const maybe = rs.filter((r) => r === "tentativelyAccepted").length;
+                      const waiting = rs.filter((r) => !r || r === "none" || r === "notResponded").length;
+                      const parts = [yes ? `${yes} yes` : "", maybe ? `${maybe} maybe` : "", no ? `${no} no` : "", waiting ? `${waiting} awaiting` : ""].filter(Boolean);
+                      return parts.length ? <span className="ml-1 text-xs">· {parts.join(", ")}</span> : null;
+                    })()}
+                  </p>
                   <ul className="mt-1 flex max-h-40 flex-col gap-1 overflow-auto">
                     {ev.organizer && (
                       <li className="flex items-center gap-2">

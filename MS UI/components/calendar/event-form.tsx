@@ -12,6 +12,7 @@ import { withAttendees } from "@/lib/calendar/edit";
 import { allDayExclusiveEnd, allDayInclusiveEnd, addMinutesWall } from "@/lib/calendar/time";
 import type { EventDraft, GraphCalendar } from "@/lib/calendar/types";
 import { REMINDER_OPTIONS } from "./settings-dialog";
+import { EndTimeSelect, TimeSelect } from "./time-select";
 import { RecurrenceEditor } from "./recurrence-editor";
 import { FindTime } from "./find-time";
 import { defaultForm, fromGraphRecurrence, toGraphRecurrence, type RecurrenceForm } from "@/lib/calendar/recurrence";
@@ -97,11 +98,19 @@ export function EventForm({
               <span className="text-muted-foreground">to</span>
               <Input type="date" value={allDayInclusiveEnd(draft.end)} onChange={(e) => setEnd(e.target.value)} aria-label="End date" className="w-40" />
             </>
-          ) : (
+          ) : draft.end.slice(0, 10) !== draft.start.slice(0, 10) ? (
+            // A timed event spanning days keeps the full editors.
             <>
               <Input type="datetime-local" value={draft.start} onChange={(e) => setStart(e.target.value)} aria-label="Start" className="w-52" />
               <span className="text-muted-foreground">to</span>
               <Input type="datetime-local" value={draft.end} onChange={(e) => setEnd(e.target.value)} aria-label="End" className="w-52" />
+            </>
+          ) : (
+            <>
+              <Input type="date" value={draft.start.slice(0, 10)} onChange={(e) => e.target.value && setStart(`${e.target.value}T${draft.start.slice(11, 16)}`)} aria-label="Date" className="w-40" />
+              <TimeSelect value={draft.start} onChange={(w) => setStart(w)} label="Start time" />
+              <span className="text-muted-foreground">–</span>
+              <EndTimeSelect start={draft.start} value={draft.end} onChange={(w) => setEnd(w)} />
             </>
           )}
           <label className="ml-1 flex items-center gap-2 text-xs">
@@ -110,11 +119,9 @@ export function EventForm({
           </label>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">Time zone: {tz}</p>
-        {full && (
-          <div className="mt-2">
-            <RecurrenceEditor value={rec} onChange={setRec} startDate={draft.start.slice(0, 10)} />
-          </div>
-        )}
+        <div className="mt-2">
+          <RecurrenceEditor value={rec} onChange={setRec} startDate={draft.start.slice(0, 10)} />
+        </div>
       </Row>
       <Row icon={<Users className="size-4" />}>
         <PeoplePicker value={draft.attendees} onChange={(attendees) => onChange(withAttendees(draft, attendees, teamsAllowed))} placeholder="Add guests" />
@@ -144,6 +151,9 @@ export function EventForm({
       </Row>
       <Row icon={<MapPin className="size-4" />}>
         <Input value={draft.location} onChange={(e) => set({ location: e.target.value })} placeholder="Add location" aria-label="Location" />
+      </Row>
+      <Row icon={<AlignLeft className="size-4" />}>
+        <Textarea value={draft.description} onChange={(e) => set({ description: e.target.value })} placeholder="Add description" aria-label="Description" rows={full ? 5 : 2} />
       </Row>
       <Row icon={<span className="inline-block size-3.5 rounded-full" style={{ background: hexOf(cal) }} />}>
         <div className="flex flex-wrap items-center gap-2">
@@ -200,9 +210,6 @@ export function EventForm({
             </>
           )}
         </div>
-      </Row>
-      <Row icon={<AlignLeft className="size-4" />}>
-        <Textarea value={draft.description} onChange={(e) => set({ description: e.target.value })} placeholder="Add description" aria-label="Description" rows={full ? 5 : 2} />
       </Row>
     </div>
   );
