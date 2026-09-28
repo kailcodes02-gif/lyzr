@@ -475,36 +475,6 @@ Access if the data ever becomes confidential.
 - Event detail (invite view) gains Google's response summary under the guest count ("2 yes,
   1 awaiting"). 430 unit + calendar/smoke e2e green; deployed (Worker version d53988f6).
 
-### 2026-09-29, GSI Tracker: Todoist-style Projects, plain-language campaign form, people picker, traffic-light status, company view for leadership only (GSI Tracker)
-- Confirmed: sign-in inside the www.lyzr.ai iframe works after the 91718c6 fix (user is using the tracker in the embed).
-- **Projects** (`/projects/`, `components/projects/project-view.tsx`), modelled on Todoist per Kailash: every
-  channel is a project. Wide left panel (My tasks, Today, "My projects", then every project by vertical with
-  sub-projects nested, open counts rolled up, search); right pane is a to-do list: one-line "+ Add task"
-  (Enter adds, stays open; due date, priority, project picker when not inside a project; creator = main
-  owner), round checkbox coloured by priority (click = done/reopen via `updateTask`), sections by status
-  in a project (Blocked / In progress / To do) or by due date in My tasks/Today, collapsed Completed, row
-  click opens the task drawer. In the sidebar: "Projects" near the top for everyone; in a vertical, the
-  channel list is "Projects in this vertical" and links into /projects. Sidebar widened to w-72. Added to
-  the walkthrough and first-visit intros.
-- **Campaign form** rewritten (`components/campaigns/campaign-dialog.tsx`): kinds explained inline, "Scope"
-  → "Who sees the banner?" (Everyone in the company / Only people in <vertical>), status set automatically
-  from the dates on create (editable as "Stage" when editing), button fields folded under "Add a button to
-  the banner (optional)" with an explanation, leads/participants use the new **PeoplePicker**
-  (`components/ui/people-picker.tsx`: type-ahead by name or email, chips, Enter/click to add — the old
-  comma-separated datalist never suggested after the first email), and new campaigns can carry their first
-  tasks (title + project each, created with `campaign_id` after the campaign).
-- **Status colours = traffic light**: green live/done (brand #2F8F5B), yellow in progress, red blocked /
-  overdue / errors, grey not started. `STATUS_CONFIG` + new `STATUS_DOT` in `lib/types/database.ts`; the
-  Tailwind red/rose and amber/yellow scales in `globals.css` are now true status red/yellow. These two are
-  NOT in the brand palette — added at Kailash's request for status only; brand orange stays on CTAs and
-  P1. Worth brand-team sign-off (ground rule 01).
-- **Company view for admins + leadership only**: `/` shows the company home only to them (vertical owners
-  and members start on My Board); members get a short nav (My Board, Projects, My Tasks, Campaigns,
-  Calendar, Guide) and the switcher reads "My work" instead of "Company".
-- Smoke test: throwaway harness + headless Chrome screenshots of Projects (list + single project) and the
-  campaign form; typed "pr" into the leads picker and confirmed Praveen/Priya suggestions and Enter-to-add.
-  Harness deleted. `tsc` clean, 36 tests, 36 routes.
-
 ### 2026-09-28 (fix), GSI Tracker: iframe sign-in showed "Auth session missing!" (GSI Tracker)
 - **Correction to the entry below:** the pop-up dropped its copy of the session with
   `supabase.auth.signOut({ scope: 'local' })`, but in auth-js even `local` calls the server's

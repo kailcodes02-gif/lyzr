@@ -28,13 +28,11 @@ const IST = 'Asia/Kolkata'
 
 export default function HomePage() {
   const { data: user, isLoading } = useCurrentUser()
-  const { isAdmin, resolving } = useVertical()
+  const { ownedVerticalIds, isAdmin, resolving } = useVertical()
   const { isLeadership } = useMyBadges()
   if (isLoading || resolving) return <div className="p-8 animate-pulse"><div className="h-8 w-1/4 bg-zinc-200 rounded" /></div>
   if (!user) return null
-  // The company-wide home is for admins and leadership; everyone else,
-  // vertical owners included, starts on their own board.
-  if (isAdmin || isLeadership) return <WorkspaceHomePage />
+  if (isAdmin || isLeadership || ownedVerticalIds.size > 0) return <WorkspaceHomePage />
   return <MyBoard showFullWorkspaceLink />
 }
 
