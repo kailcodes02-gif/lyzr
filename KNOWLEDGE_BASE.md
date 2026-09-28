@@ -472,6 +472,52 @@ Access if the data ever becomes confidential.
   mailto sends via POST /me/sendMail after confirm; offers Move to Trash / Promotions. 396 unit + 48 browser
   tests; deployed.
 
+### 2026-09-28 (later still), GSI Tracker: full Lyzr brand revamp of the dashboard (GSI Tracker)
+- Restyled the whole tracker to the Lyzr Brand Guidelines v1.0 (source: `lyzr-brand-build-reference.html`
+  shared in chat). Done at the token level in `tracker/app/globals.css` so component code keeps its stock
+  Tailwind classes: every stock scale is re-anchored on a brand color — zinc/slate/gray/neutral/stone → warm
+  greyscale (Stone `#A8A298` at 500), blue/sky/cyan/teal/indigo → Navy `#043E77` (data), emerald/green →
+  Live `#2F8F5B`, red/rose/orange/pink → Orange `#FE4B1E` (accent + alert), amber/yellow → Oxblood
+  `#593D3D` (warnings), violet/purple/fuchsia → Forest `#063B28` (workspace accents). shadcn semantic
+  tokens rebuilt on the brand roles (bg `#FAFAF9`, surface white, line `#E3E1DE`, text `#1F2022`, ring/accent
+  orange, charts navy-led); `color-scheme: light only`.
+- Type: JetBrains Mono added via next/font (`--font-jetbrains-mono`); `--font-sans` now "Aeonik", Inter, …
+  (Aeonik is licensed/self-hosted — Inter renders until the files are added). New `.brand-label` utility
+  (mono, uppercase, .06em) applied to table headers (`components/ui/table.tsx` TableHead), KPI tile labels,
+  and sidebar section headers.
+- Brand marks: new `components/ui/lyzr-logo.tsx` (LyzrSail, fixed artwork from the master files) replaces the
+  old gradient bar-chart tile in the sidebar and login; new `app/icon.svg` favicon (white sail on orange,
+  permitted colourway 09). Avatar fallback and vertical-card tiles now solid black (`.ws-icon` spec).
+- Gradients removed: `from-blue-600 to-violet-600` CTA buttons are now the one orange button per view
+  (`bg-orange-500 hover:bg-orange-600`); gradient text headings → solid black. Sidebar is off-white with
+  white active cards (per `.ui-side`); tabs underline in orange.
+- Data constants rebranded in `lib/types/database.ts`: `PRIORITY_COLORS` (P0 orange, P1 oxblood, P2 navy,
+  P3/P4 greys) and `STATUS_CONFIG` (live/done greens, blocked deep orange, in-progress navy, paused greys).
+  Invite email (`lib/email/resend.ts`) recolored to brand. `lib/report-logic.ts` (emailed GSI report) keeps
+  its own standalone dark palette on purpose.
+- `tsc` clean, 36 tests, build 33 routes. Export staging into `GSI_Tracker/` + commit + push left to the user
+  (sandbox denies writing the deploy folder).
+
+### 2026-09-28 (later), GSI Tracker: roles migration 025, members at vertical creation, 021/022 restored (GSI Tracker)
+- **Migration 025** (roles per Kailash; user pastes in the live SQL Editor): devanarayanan.iyer
+  joins `admin_emails` (both domains; also added to 018's seed), admins seeded into
+  `leadership_emails`, signed-in users matching `admin_emails` on email or alt_email promoted to
+  role admin, Kailash set as primary GSI vertical owner (`sort_order 0`). Verification SELECT at
+  the end. Admin list now: ani, kailash.gm, devanarayanan.iyer, mothilal.kanagaraj.
+- Admin › Verticals "New vertical" form gains a **Members** field (comma-separated emails, known-
+  email datalist on both people inputs): `createVertical` now takes `memberEmails` and upserts
+  `vertical_members` rows after the RPC (owners skipped, they are members implicitly). Covers
+  "when new verticals are created admins choose who all can be there"; per-person mapping to
+  verticals/domains/channels/sub-channels already lives in `/members/` (admin assigns anything,
+  vertical owners their vertical, channel owners below themselves).
+- **Correction:** commit c6e0117 accidentally emptied `021_auth_providers.sql` and
+  `022_one_person_two_emails.sql` (0 bytes; 023 calls `lyzr_twin` from 021 and the app reads
+  `users.alt_email` from 022, so a fresh RESET_ALL replay would have failed). Both restored from
+  the parent commit; `RESET_ALL.sql` regenerated (now includes the Deva admin seed).
+- Live DB state verified this session via anon REST probes: migrations through 023 applied; 024
+  (ABM SI / ABM GSI rename) + 025 are the two pending pastes. `tsc` clean, 36 tests, build 33
+  routes, staged in `GSI_Tracker/`.
+
 ### 2026-09-28, GSI Tracker: holistic All Tasks view (GSI Tracker)
 - All Tasks (`/workspace/tasks/`): new `TaskSummaryStrip` over the filtered set (All, Done with %,
   Not done, Live, Blocked, Overdue, P0/P1 open; status tiles toggle the status filter; stacked

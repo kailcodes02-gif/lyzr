@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
+import { LyzrSail } from '@/components/ui/lyzr-logo'
 
 function LoginContent() {
   const searchParams = useSearchParams()
@@ -40,17 +41,11 @@ function LoginContent() {
       </div>
 
       <div className="relative z-10 w-full max-w-md px-6">
-        <div className="bg-zinc-100 backdrop-blur-xl border border-zinc-300 rounded-2xl p-8 shadow-2xl">
+        <div className="bg-white border border-zinc-200 rounded-xl p-8 shadow-2xl">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 mb-4">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 20V10" />
-                <path d="M18 20V4" />
-                <path d="M6 20v-4" />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-bold text-zinc-900 mb-1">Lyzr Marketing Tracker</h1>
-            <p className="text-sm text-zinc-600">Lyzr internal operations tool</p>
+            <LyzrSail className="inline-block w-16 h-10 mb-4" />
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 mb-1">Lyzr Marketing Tracker</h1>
+            <p className="brand-label text-[11px] text-zinc-600">Lyzr internal operations tool</p>
           </div>
 
           {error && (

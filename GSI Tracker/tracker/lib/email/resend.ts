@@ -63,31 +63,31 @@ function inviteEmailHtml(args: { inviterName: string; appUrl: string; recipient:
   // Plain, minimal HTML — no template engine to keep this self-contained.
   return `<!doctype html>
 <html>
-  <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f6f6f8;margin:0;padding:32px 16px;color:#18181b;">
-    <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:12px;border:1px solid #e4e4e7;overflow:hidden;">
+  <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#FAFAF9;margin:0;padding:32px 16px;color:#1F2022;">
+    <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:12px;border:1px solid #E3E1DE;overflow:hidden;">
       <tr><td style="padding:32px 32px 16px;">
-        <div style="font-size:18px;font-weight:600;color:#0f172a;">Lyzr Marketing Tracker</div>
+        <div style="font-size:18px;font-weight:600;color:#1F2022;">Lyzr Marketing Tracker</div>
       </td></tr>
       <tr><td style="padding:0 32px 24px;">
-        <h1 style="font-size:22px;line-height:1.3;margin:0 0 16px;color:#0f172a;">You've been added to the tracker</h1>
-        <p style="margin:0 0 16px;line-height:1.55;color:#3f3f46;">
+        <h1 style="font-size:22px;line-height:1.3;margin:0 0 16px;color:#1F2022;">You've been added to the tracker</h1>
+        <p style="margin:0 0 16px;line-height:1.55;color:#6B675F;">
           ${escapeHtml(args.inviterName)} added <strong>${escapeHtml(args.recipient)}</strong> to the Lyzr Marketing Tracker.
         </p>
-        <p style="margin:0 0 24px;line-height:1.55;color:#3f3f46;">
+        <p style="margin:0 0 24px;line-height:1.55;color:#6B675F;">
           Sign in with your <strong>@lyzr.ai</strong> Google account to get started. Any tasks already assigned to your email will appear in your queue automatically once you sign in.
         </p>
         <p style="margin:0 0 24px;">
-          <a href="${args.appUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:500;">
+          <a href="${args.appUrl}" style="display:inline-block;background:#1F2022;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:500;">
             Open the tracker
           </a>
         </p>
-        <p style="margin:0;font-size:12px;color:#71717a;">
+        <p style="margin:0;font-size:12px;color:#8A857C;">
           If the button doesn't work, paste this URL into your browser:<br>
           <span style="word-break:break-all;">${args.appUrl}</span>
         </p>
       </td></tr>
-      <tr><td style="padding:16px 32px 24px;border-top:1px solid #e4e4e7;background:#fafafa;">
-        <p style="margin:0;font-size:12px;color:#71717a;">
+      <tr><td style="padding:16px 32px 24px;border-top:1px solid #E3E1DE;background:#FAFAF9;">
+        <p style="margin:0;font-size:12px;color:#8A857C;">
           This is an internal Lyzr tool. If you weren't expecting this, you can ignore it.
         </p>
       </td></tr>

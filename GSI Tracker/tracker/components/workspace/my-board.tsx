@@ -81,7 +81,7 @@ export function MyBoard({ showFullWorkspaceLink }: { showFullWorkspaceLink?: boo
         </div>
         <div className="flex items-center gap-2">
           {showFullWorkspaceLink && <Link href="/workspace/tasks/"><Button variant="outline" className="border-zinc-300 text-zinc-700"><Building2 className="w-4 h-4 mr-2" /> Full company view</Button></Link>}
-          <Button onClick={() => { setCreateChannel(undefined); setCreateOpen(true) }} className="bg-gradient-to-r from-blue-600 to-violet-600 text-white border-0"><Plus className="w-4 h-4 mr-2" /> New task</Button>
+          <Button onClick={() => { setCreateChannel(undefined); setCreateOpen(true) }} className="bg-orange-500 hover:bg-orange-600 text-white border-0"><Plus className="w-4 h-4 mr-2" /> New task</Button>
         </div>
       </div>
 

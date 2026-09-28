@@ -50,7 +50,7 @@ export default function GlobalError({
         <div className="flex items-center gap-3">
           <Button
             onClick={reset}
-            className="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white border-0"
+            className="bg-orange-500 hover:bg-orange-600 text-white border-0"
           >
             <RefreshCw className="w-4 h-4 mr-2" /> Reset
           </Button>

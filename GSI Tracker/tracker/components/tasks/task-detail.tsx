@@ -809,7 +809,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                         dependencies.map(dep => (
                           <div key={dep.id} className="flex items-center justify-between bg-zinc-100/60 rounded-lg px-3 py-2 border border-zinc-200">
                             <div className="flex items-center gap-2.5">
-                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: PRIORITY_COLORS[dep.depends_on_task?.priority as TaskPriority] || '#3b82f6' }} />
+                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: PRIORITY_COLORS[dep.depends_on_task?.priority as TaskPriority] || '#043E77' }} />
                               <div className="text-sm">
                                 {onTaskIdChange ? (
                                   <button
@@ -852,7 +852,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                         blocks.map(block => (
                           <div key={block.id} className="flex items-center justify-between bg-zinc-100/60 rounded-lg px-3 py-2 border border-zinc-200">
                             <div className="flex items-center gap-2.5">
-                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: PRIORITY_COLORS[block.blocked_task?.priority as TaskPriority] || '#3b82f6' }} />
+                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: PRIORITY_COLORS[block.blocked_task?.priority as TaskPriority] || '#043E77' }} />
                               <div className="text-sm">
                                 {onTaskIdChange ? (
                                   <button

@@ -165,7 +165,7 @@ export function CampaignDialog({ open, onOpenChange, campaign, defaultVerticalId
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button onClick={submit} disabled={pending} className="bg-gradient-to-r from-blue-600 to-violet-600 text-white border-0">
+            <Button onClick={submit} disabled={pending} className="bg-orange-500 hover:bg-orange-600 text-white border-0">
               {pending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} {campaign ? 'Save' : 'Create'}
             </Button>
           </div>

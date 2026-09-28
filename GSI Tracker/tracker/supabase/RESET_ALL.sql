@@ -2537,7 +2537,8 @@ CREATE TABLE IF NOT EXISTS admin_emails (
 INSERT INTO admin_emails (email) VALUES
   ('kailash.gm@lyzr.ai'), ('kailash.gm@lyzr.com'),
   ('ani@lyzr.ai'), ('ani@lyzr.com'),
-  ('mothilal.kanagaraj@lyzr.ai'), ('mothilal.kanagaraj@lyzr.com')
+  ('mothilal.kanagaraj@lyzr.ai'), ('mothilal.kanagaraj@lyzr.com'),
+  ('devanarayanan.iyer@lyzr.ai'), ('devanarayanan.iyer@lyzr.com')
 ON CONFLICT (email) DO NOTHING;
 
 ALTER TABLE admin_emails ENABLE ROW LEVEL SECURITY;

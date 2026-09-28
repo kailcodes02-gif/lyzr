@@ -4,11 +4,283 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Lyzr brand theme — from "Lyzr — Brand Guidelines v1.0" (brand@lyzr.ai).
+ * The whole app is written in stock Tailwind color utilities, so the brand
+ * is applied here at the token level: every stock scale is re-anchored on a
+ * brand color and its warm-neutral ramp. Component code keeps saying
+ * `text-zinc-600` / `bg-blue-50` and gets brand values.
+ *
+ *   zinc/slate/gray/neutral/stone -> warm greyscale (Stone #A8A298 at 500)
+ *   blue/sky/cyan/teal/indigo     -> Navy #043E77 (data, supporting primary)
+ *   emerald/green                 -> Live #2F8F5B (status)
+ *   red/rose/orange/pink          -> Orange #FE4B1E (accent + alert/review)
+ *   amber/yellow/lime             -> Oxblood #593D3D (warnings)
+ *   violet/purple/fuchsia         -> Forest #063B28 (workspace accents)
+ */
+@theme {
+  /* Warm greyscale — brand ramp, anchored on Stone at 500 */
+  --color-zinc-50: #FAFAF9;
+  --color-zinc-100: #F1F0EE;
+  --color-zinc-200: #E3E1DE;
+  --color-zinc-300: #CFCCC7;
+  --color-zinc-400: #B8B4AD;
+  --color-zinc-500: #A8A298;
+  --color-zinc-600: #8A857C;
+  --color-zinc-700: #6B675F;
+  --color-zinc-800: #4A4744;
+  --color-zinc-900: #1F2022;
+  --color-zinc-950: #1F2022;
+  --color-slate-50: #FAFAF9;
+  --color-slate-100: #F1F0EE;
+  --color-slate-200: #E3E1DE;
+  --color-slate-300: #CFCCC7;
+  --color-slate-400: #B8B4AD;
+  --color-slate-500: #A8A298;
+  --color-slate-600: #8A857C;
+  --color-slate-700: #6B675F;
+  --color-slate-800: #4A4744;
+  --color-slate-900: #1F2022;
+  --color-slate-950: #1F2022;
+  --color-gray-50: #FAFAF9;
+  --color-gray-100: #F1F0EE;
+  --color-gray-200: #E3E1DE;
+  --color-gray-300: #CFCCC7;
+  --color-gray-400: #B8B4AD;
+  --color-gray-500: #A8A298;
+  --color-gray-600: #8A857C;
+  --color-gray-700: #6B675F;
+  --color-gray-800: #4A4744;
+  --color-gray-900: #1F2022;
+  --color-gray-950: #1F2022;
+  --color-neutral-50: #FAFAF9;
+  --color-neutral-100: #F1F0EE;
+  --color-neutral-200: #E3E1DE;
+  --color-neutral-300: #CFCCC7;
+  --color-neutral-400: #B8B4AD;
+  --color-neutral-500: #A8A298;
+  --color-neutral-600: #8A857C;
+  --color-neutral-700: #6B675F;
+  --color-neutral-800: #4A4744;
+  --color-neutral-900: #1F2022;
+  --color-neutral-950: #1F2022;
+  --color-stone-50: #FAFAF9;
+  --color-stone-100: #F1F0EE;
+  --color-stone-200: #E3E1DE;
+  --color-stone-300: #CFCCC7;
+  --color-stone-400: #B8B4AD;
+  --color-stone-500: #A8A298;
+  --color-stone-600: #8A857C;
+  --color-stone-700: #6B675F;
+  --color-stone-800: #4A4744;
+  --color-stone-900: #1F2022;
+  --color-stone-950: #1F2022;
+
+  /* Navy #043E77 — the "Data" color: links, data, in-progress */
+  --color-blue-50: #F0F4F9;
+  --color-blue-100: #DEE9F3;
+  --color-blue-200: #BFD4E8;
+  --color-blue-300: #93B4D6;
+  --color-blue-400: #5C8CBD;
+  --color-blue-500: #29629E;
+  --color-blue-600: #043E77;
+  --color-blue-700: #033566;
+  --color-blue-800: #032C55;
+  --color-blue-900: #022244;
+  --color-blue-950: #021A34;
+  --color-sky-50: #F0F4F9;
+  --color-sky-100: #DEE9F3;
+  --color-sky-200: #BFD4E8;
+  --color-sky-300: #93B4D6;
+  --color-sky-400: #5C8CBD;
+  --color-sky-500: #29629E;
+  --color-sky-600: #043E77;
+  --color-sky-700: #033566;
+  --color-sky-800: #032C55;
+  --color-sky-900: #022244;
+  --color-sky-950: #021A34;
+  --color-cyan-50: #F0F4F9;
+  --color-cyan-100: #DEE9F3;
+  --color-cyan-200: #BFD4E8;
+  --color-cyan-300: #93B4D6;
+  --color-cyan-400: #5C8CBD;
+  --color-cyan-500: #29629E;
+  --color-cyan-600: #043E77;
+  --color-cyan-700: #033566;
+  --color-cyan-800: #032C55;
+  --color-cyan-900: #022244;
+  --color-cyan-950: #021A34;
+  --color-teal-50: #F0F4F9;
+  --color-teal-100: #DEE9F3;
+  --color-teal-200: #BFD4E8;
+  --color-teal-300: #93B4D6;
+  --color-teal-400: #5C8CBD;
+  --color-teal-500: #29629E;
+  --color-teal-600: #043E77;
+  --color-teal-700: #033566;
+  --color-teal-800: #032C55;
+  --color-teal-900: #022244;
+  --color-teal-950: #021A34;
+  --color-indigo-50: #F0F4F9;
+  --color-indigo-100: #DEE9F3;
+  --color-indigo-200: #BFD4E8;
+  --color-indigo-300: #93B4D6;
+  --color-indigo-400: #5C8CBD;
+  --color-indigo-500: #29629E;
+  --color-indigo-600: #043E77;
+  --color-indigo-700: #033566;
+  --color-indigo-800: #032C55;
+  --color-indigo-900: #022244;
+  --color-indigo-950: #021A34;
+
+  /* Live #2F8F5B — status green */
+  --color-emerald-50: #EDF6F1;
+  --color-emerald-100: #D8EDE2;
+  --color-emerald-200: #B2DBC6;
+  --color-emerald-300: #82C2A2;
+  --color-emerald-400: #52A67B;
+  --color-emerald-500: #2F8F5B;
+  --color-emerald-600: #27794D;
+  --color-emerald-700: #1F613E;
+  --color-emerald-800: #194E32;
+  --color-emerald-900: #133C26;
+  --color-emerald-950: #0D2A1B;
+  --color-green-50: #EDF6F1;
+  --color-green-100: #D8EDE2;
+  --color-green-200: #B2DBC6;
+  --color-green-300: #82C2A2;
+  --color-green-400: #52A67B;
+  --color-green-500: #2F8F5B;
+  --color-green-600: #27794D;
+  --color-green-700: #1F613E;
+  --color-green-800: #194E32;
+  --color-green-900: #133C26;
+  --color-green-950: #0D2A1B;
+
+  /* Orange #FE4B1E — dominant primary: accent + alert/review/overdue */
+  --color-red-50: #FFF2ED;
+  --color-red-100: #FFE3D9;
+  --color-red-200: #FFC5B2;
+  --color-red-300: #FF9F82;
+  --color-red-400: #FE7550;
+  --color-red-500: #FE4B1E;
+  --color-red-600: #E63A0F;
+  --color-red-700: #BF2F0A;
+  --color-red-800: #992607;
+  --color-red-900: #7A1F06;
+  --color-red-950: #4D1304;
+  --color-orange-50: #FFF2ED;
+  --color-orange-100: #FFE3D9;
+  --color-orange-200: #FFC5B2;
+  --color-orange-300: #FF9F82;
+  --color-orange-400: #FE7550;
+  --color-orange-500: #FE4B1E;
+  --color-orange-600: #E63A0F;
+  --color-orange-700: #BF2F0A;
+  --color-orange-800: #992607;
+  --color-orange-900: #7A1F06;
+  --color-orange-950: #4D1304;
+  --color-rose-50: #FFF2ED;
+  --color-rose-100: #FFE3D9;
+  --color-rose-200: #FFC5B2;
+  --color-rose-300: #FF9F82;
+  --color-rose-400: #FE7550;
+  --color-rose-500: #FE4B1E;
+  --color-rose-600: #E63A0F;
+  --color-rose-700: #BF2F0A;
+  --color-rose-800: #992607;
+  --color-rose-900: #7A1F06;
+  --color-rose-950: #4D1304;
+  --color-pink-50: #FFF2ED;
+  --color-pink-100: #FFE3D9;
+  --color-pink-200: #FFC5B2;
+  --color-pink-300: #FF9F82;
+  --color-pink-400: #FE7550;
+  --color-pink-500: #FE4B1E;
+  --color-pink-600: #E63A0F;
+  --color-pink-700: #BF2F0A;
+  --color-pink-800: #992607;
+  --color-pink-900: #7A1F06;
+  --color-pink-950: #4D1304;
+
+  /* Oxblood #593D3D — warnings / at-risk */
+  --color-amber-50: #F6F1F0;
+  --color-amber-100: #ECE2E0;
+  --color-amber-200: #D9C6C3;
+  --color-amber-300: #BEA09C;
+  --color-amber-400: #9D7B76;
+  --color-amber-500: #7C5A56;
+  --color-amber-600: #593D3D;
+  --color-amber-700: #4C3333;
+  --color-amber-800: #3D2929;
+  --color-amber-900: #2E1F1F;
+  --color-amber-950: #221717;
+  --color-yellow-50: #F6F1F0;
+  --color-yellow-100: #ECE2E0;
+  --color-yellow-200: #D9C6C3;
+  --color-yellow-300: #BEA09C;
+  --color-yellow-400: #9D7B76;
+  --color-yellow-500: #7C5A56;
+  --color-yellow-600: #593D3D;
+  --color-yellow-700: #4C3333;
+  --color-yellow-800: #3D2929;
+  --color-yellow-900: #2E1F1F;
+  --color-yellow-950: #221717;
+  --color-lime-50: #F6F1F0;
+  --color-lime-100: #ECE2E0;
+  --color-lime-200: #D9C6C3;
+  --color-lime-300: #BEA09C;
+  --color-lime-400: #9D7B76;
+  --color-lime-500: #7C5A56;
+  --color-lime-600: #593D3D;
+  --color-lime-700: #4C3333;
+  --color-lime-800: #3D2929;
+  --color-lime-900: #2E1F1F;
+  --color-lime-950: #221717;
+
+  /* Forest #063B28 — workspace / company accents */
+  --color-violet-50: #EDF3F0;
+  --color-violet-100: #D9E7E1;
+  --color-violet-200: #B4CFC3;
+  --color-violet-300: #85AF9C;
+  --color-violet-400: #52886F;
+  --color-violet-500: #2A6A4E;
+  --color-violet-600: #0E4A32;
+  --color-violet-700: #063B28;
+  --color-violet-800: #05301F;
+  --color-violet-900: #042518;
+  --color-violet-950: #031C12;
+  --color-purple-50: #EDF3F0;
+  --color-purple-100: #D9E7E1;
+  --color-purple-200: #B4CFC3;
+  --color-purple-300: #85AF9C;
+  --color-purple-400: #52886F;
+  --color-purple-500: #2A6A4E;
+  --color-purple-600: #0E4A32;
+  --color-purple-700: #063B28;
+  --color-purple-800: #05301F;
+  --color-purple-900: #042518;
+  --color-purple-950: #031C12;
+  --color-fuchsia-50: #EDF3F0;
+  --color-fuchsia-100: #D9E7E1;
+  --color-fuchsia-200: #B4CFC3;
+  --color-fuchsia-300: #85AF9C;
+  --color-fuchsia-400: #52886F;
+  --color-fuchsia-500: #2A6A4E;
+  --color-fuchsia-600: #0E4A32;
+  --color-fuchsia-700: #063B28;
+  --color-fuchsia-800: #05301F;
+  --color-fuchsia-900: #042518;
+  --color-fuchsia-950: #031C12;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Aeonik is the brand face (self-hosted, licensed); Inter is the documented
+     fallback and what actually renders until Aeonik files are added. */
+  --font-sans: "Aeonik", var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -49,72 +321,76 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  color-scheme: light only;
+  /* Semantic roles — Lyzr brand guidelines §02 */
+  --background: #FAFAF9;        /* Background            */
+  --foreground: #1F2022;        /* Text                  */
+  --card: #FFFFFF;              /* Surface               */
+  --card-foreground: #1F2022;
+  --popover: #FFFFFF;
+  --popover-foreground: #1F2022;
+  --primary: #1F2022;           /* Primary buttons: black on light */
+  --primary-foreground: #FAFAF9;
+  --secondary: #F1F0EE;         /* Fill                  */
+  --secondary-foreground: #1F2022;
+  --muted: #F1F0EE;             /* Fill                  */
+  --muted-foreground: #8A857C;  /* Text muted            */
+  --accent: #F1F0EE;            /* hover fill (shadcn semantics) */
+  --accent-foreground: #1F2022;
+  --destructive: #E63A0F;       /* Orange, deepened one ramp step for AA text */
+  --border: #E3E1DE;            /* Line                  */
+  --input: #E3E1DE;
+  --ring: #FE4B1E;              /* Accent — focus states */
+  --chart-1: #043E77;           /* Data (navy) leads charts */
+  --chart-2: #FE4B1E;
+  --chart-3: #2F8F5B;
+  --chart-4: #A8A298;
+  --chart-5: #593D3D;
+  --radius: 0.5rem;             /* cards 6–8, buttons 4 (radius-sm) */
+  --sidebar: #FAFAF9;
+  --sidebar-foreground: #1F2022;
+  --sidebar-primary: #1F2022;
+  --sidebar-primary-foreground: #FAFAF9;
+  --sidebar-accent: #FFFFFF;
+  --sidebar-accent-foreground: #1F2022;
+  --sidebar-border: #E3E1DE;
+  --sidebar-ring: #FE4B1E;
 }
 
+/* The brand is light-only ("color-scheme: light only"); the dark block stays
+   for the .dark class edge case but re-uses brand darks. */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #1F2022;
+  --foreground: #FAFAF9;
+  --card: #2A2B2D;
+  --card-foreground: #FAFAF9;
+  --popover: #2A2B2D;
+  --popover-foreground: #FAFAF9;
+  --primary: #FAFAF9;
+  --primary-foreground: #1F2022;
+  --secondary: #4A4744;
+  --secondary-foreground: #FAFAF9;
+  --muted: #4A4744;
+  --muted-foreground: #B8B4AD;
+  --accent: #4A4744;
+  --accent-foreground: #FAFAF9;
+  --destructive: #FE4B1E;
+  --border: rgba(250, 250, 249, 0.1);
+  --input: rgba(250, 250, 249, 0.15);
+  --ring: #FE4B1E;
+  --chart-1: #5C8CBD;
+  --chart-2: #FE4B1E;
+  --chart-3: #52A67B;
+  --chart-4: #A8A298;
+  --chart-5: #9D7B76;
+  --sidebar: #2A2B2D;
+  --sidebar-foreground: #FAFAF9;
+  --sidebar-primary: #FE4B1E;
+  --sidebar-primary-foreground: #FAFAF9;
+  --sidebar-accent: #4A4744;
+  --sidebar-accent-foreground: #FAFAF9;
+  --sidebar-border: rgba(250, 250, 249, 0.1);
+  --sidebar-ring: #FE4B1E;
 }
 
 @layer base {
@@ -126,5 +402,16 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+@layer utilities {
+  /* Brand mono label — JetBrains Mono, uppercase, .06em (guidelines §03) */
+  .brand-label {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    line-height: 1.4;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 }

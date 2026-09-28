@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Building2, Plus, Save, Trash2, LayoutTemplate, ExternalLink } from 'lucide-react'
-import { useVerticals, useAllVerticalOwners, useTaxonomyTemplates, useChannels } from '@/lib/hooks/use-data'
+import { useVerticals, useAllVerticalOwners, useTaxonomyTemplates, useChannels, useKnownEmails } from '@/lib/hooks/use-data'
 import {
   createVertical, updateVertical, addVerticalOwner, removeVerticalOwner, setPrimaryVerticalOwner,
   saveVerticalAsTemplate, applyTaxonomyTemplate, deleteTaxonomyTemplate,
@@ -32,6 +32,7 @@ export function VerticalsTab() {
   const { data: owners } = useAllVerticalOwners()
   const { data: templates } = useTaxonomyTemplates()
   const { data: channels } = useChannels('all')
+  const { data: knownEmails } = useKnownEmails()
   const [isPending, startTransition] = useTransition()
 
   // Create form
@@ -40,6 +41,7 @@ export function VerticalsTab() {
   const [description, setDescription] = useState('')
   const [start, setStart] = useState<string>('empty')
   const [ownerEmails, setOwnerEmails] = useState('')
+  const [memberEmails, setMemberEmails] = useState('')
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ['verticals'] })
@@ -58,9 +60,10 @@ export function VerticalsTab() {
           name, slug: slug || undefined, description: description || undefined,
           templateId: start === 'empty' ? null : start,
           ownerEmails: ownerEmails.split(/[,\s]+/).filter(Boolean),
+          memberEmails: memberEmails.split(/[,\s]+/).filter(Boolean),
         })
         toast.success(`Vertical "${name}" created${start !== 'empty' ? ' from template' : ''}`)
-        setName(''); setSlug(''); setDescription(''); setStart('empty'); setOwnerEmails('')
+        setName(''); setSlug(''); setDescription(''); setStart('empty'); setOwnerEmails(''); setMemberEmails('')
         refresh()
       } catch (err) { toast.error(errMsg(err)) }
     })
@@ -95,7 +98,12 @@ export function VerticalsTab() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs text-zinc-600">Vertical owners (emails, comma separated)</Label>
-              <Input value={ownerEmails} onChange={e => setOwnerEmails(e.target.value)} placeholder="a@lyzr.ai, b@lyzr.ai" className="bg-zinc-100 border-zinc-300 text-xs h-9" />
+              <Input value={ownerEmails} onChange={e => setOwnerEmails(e.target.value)} list="vertical-people-emails" placeholder="a@lyzr.com, b@lyzr.com" className="bg-zinc-100 border-zinc-300 text-xs h-9" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-zinc-600">Members (emails, comma separated) <InfoTip k="vertical_member" /></Label>
+              <Input value={memberEmails} onChange={e => setMemberEmails(e.target.value)} list="vertical-people-emails" placeholder="who all can be in this vertical" className="bg-zinc-100 border-zinc-300 text-xs h-9" />
+              <datalist id="vertical-people-emails">{(knownEmails || []).map(e => <option key={e} value={e} />)}</datalist>
             </div>
             <div className="space-y-1 md:col-span-2">
               <Label className="text-xs text-zinc-600">Description</Label>

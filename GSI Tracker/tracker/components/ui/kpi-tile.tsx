@@ -23,7 +23,7 @@ export function KpiTile({ label, value, icon, accent = 'blue', hint, valueClassN
     <Card className="bg-white border-zinc-200 hover:border-zinc-300 transition-all">
       <CardContent className="p-5 flex items-center justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">{label}</p>
+          <p className="brand-label text-[11px] text-zinc-600">{label}</p>
           <h3 className={`text-3xl font-bold mt-1 ${valueClassName || 'text-zinc-900'}`}>{value}</h3>
           {hint && <p className="text-[11px] text-zinc-500 mt-1 truncate">{hint}</p>}
         </div>

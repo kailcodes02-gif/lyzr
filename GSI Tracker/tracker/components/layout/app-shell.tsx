@@ -16,6 +16,7 @@ import { useVertical } from '@/lib/hooks/use-vertical'
 import { withVertical } from '@/lib/hooks/use-space-href'
 import { signOut } from '@/lib/actions'
 import { AssistantDialog } from '@/components/assistant/assistant-dialog'
+import { LyzrSail } from '@/components/ui/lyzr-logo'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -44,8 +45,8 @@ function ChannelItem({ channel, depth, slug }: { channel: Channel; depth: number
           className={cn(
             'flex-1 flex items-center gap-2 px-3 py-1.5 rounded-md text-[13px] transition-all duration-150',
             isActive
-              ? 'bg-zinc-200/70 text-zinc-900 font-medium'
-              : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100',
+              ? 'bg-white text-zinc-900 font-medium ring-1 ring-zinc-200'
+              : 'text-zinc-600 hover:text-zinc-800 hover:bg-zinc-100',
             depth > 0 && 'pl-4'
           )}
         >
@@ -91,7 +92,7 @@ function NavList({ items, onNavigate }: { items: NavItem[]; onNavigate: () => vo
             onClick={onNavigate}
             className={cn(
               'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150',
-              isActive ? 'bg-zinc-200/70 text-zinc-900' : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+              isActive ? 'bg-white text-zinc-900 ring-1 ring-zinc-200' : 'text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100'
             )}
           >
             <item.icon className="w-4 h-4" />
@@ -110,7 +111,7 @@ function VerticalSwitcher() {
   const label = mode === 'space' && vertical ? vertical.name : 'Company'
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-left transition-colors">
+      <DropdownMenuTrigger className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-100 text-left transition-colors">
         {mode === 'space' ? <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" /> : <Home className="w-3.5 h-3.5 text-violet-600 shrink-0" />}
         <span className="flex-1 text-xs font-semibold text-zinc-800 truncate">{label}</span>
         <ChevronsUpDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
@@ -201,7 +202,7 @@ function MyFunctionRows({ onNavigate }: { onNavigate: () => void }) {
   if (!mine.length) return null
   return (
     <div>
-      <p className="px-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">My domains</p>
+      <p className="px-3 brand-label text-zinc-600 mb-2">My domains</p>
       <div className="space-y-0.5">
         {mine.map(f => (
           <Link key={f.id} href={`/function/?id=${f.id}`} onClick={onNavigate}
@@ -272,16 +273,10 @@ export function AppSidebar() {
       {/* Logo + switcher */}
       <div className="px-4 py-4 border-b border-zinc-200 space-y-3">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 20V10" />
-              <path d="M18 20V4" />
-              <path d="M6 20v-4" />
-            </svg>
-          </div>
+          <LyzrSail className="w-8 h-[20px] shrink-0" />
           <div>
             <h1 className="text-sm font-semibold text-zinc-900">Lyzr Marketing Tracker</h1>
-            <p className="text-[11px] text-zinc-500">Marketing Ops</p>
+            <p className="brand-label text-[10px] text-zinc-600">Marketing Ops</p>
           </div>
         </div>
         <VerticalSwitcher />
@@ -293,7 +288,7 @@ export function AppSidebar() {
           <>
             <NavList items={workspaceNav} onNavigate={close} />
             <div>
-              <p className="px-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">Verticals</p>
+              <p className="px-3 brand-label text-zinc-600 mb-2">Verticals</p>
               <VerticalRows onNavigate={close} />
             </div>
             <MyFunctionRows onNavigate={close} />
@@ -302,7 +297,7 @@ export function AppSidebar() {
           <>
             <NavList items={spaceNav} onNavigate={close} />
             <div>
-              <p className="px-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">Channels</p>
+              <p className="px-3 brand-label text-zinc-600 mb-2">Channels</p>
               <div className="space-y-0.5">
                 {buildChannelTree(spaceChannels || []).map(channel => (
                   <ChannelItem key={channel.id} channel={channel} depth={0} slug={slug} />
@@ -325,7 +320,7 @@ export function AppSidebar() {
           <DropdownMenuTrigger className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-zinc-100 transition-colors">
             <Avatar className="w-8 h-8">
               <AvatarImage src={user?.avatar_url || ''} />
-              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-violet-600 text-white text-xs">
+              <AvatarFallback className="bg-zinc-900 text-white text-xs">
                 {user?.display_name?.charAt(0) || '?'}
               </AvatarFallback>
             </Avatar>
@@ -394,7 +389,7 @@ export function AppSidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-zinc-200 transition-transform duration-300 lg:translate-x-0 lg:static lg:z-0',
+          'fixed inset-y-0 left-0 z-40 w-64 bg-zinc-50 border-r border-zinc-200 transition-transform duration-300 lg:translate-x-0 lg:static lg:z-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >

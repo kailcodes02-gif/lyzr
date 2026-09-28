@@ -100,7 +100,7 @@ function WorkspaceHomePage() {
     <div className="p-4 lg:p-8 space-y-8 max-w-7xl mx-auto bg-zinc-50 text-zinc-900 min-h-screen">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="pl-12 lg:pl-0">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-zinc-900 via-zinc-700 to-zinc-500 bg-clip-text text-transparent">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-zinc-900">
             Welcome back, {user?.display_name?.split(' ')[0]}
           </h1>
           <p className="text-sm text-zinc-600 mt-1 inline-flex items-center gap-1">
@@ -120,7 +120,7 @@ function WorkspaceHomePage() {
           </Link>
           <Button
             onClick={() => setCreateOpen(true)}
-            className="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white border-0"
+            className="bg-orange-500 hover:bg-orange-600 text-white border-0"
           >
             <Plus className="w-4 h-4 mr-2" /> New Task
           </Button>

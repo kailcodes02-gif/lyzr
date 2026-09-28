@@ -651,7 +651,7 @@ export function CreateTaskDialog({
             <Button
               type="submit"
               disabled={isPending}
-              className="bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white border-0"
+              className="bg-orange-500 hover:bg-orange-600 text-white border-0"
             >
               {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {parentTaskId ? 'Create Subtask' : 'Create Task'}

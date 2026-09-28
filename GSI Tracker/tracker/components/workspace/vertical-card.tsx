@@ -34,7 +34,7 @@ export function VerticalCard({ vertical, tasks, owners, users, owned }: {
       <Card className="bg-white border-zinc-200 group-hover:border-blue-300 group-hover:shadow-lg group-hover:shadow-blue-500/5 transition-all h-full">
         <CardContent className="p-5 space-y-4">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center shrink-0">
               <Building2 className="w-5 h-5 text-white" />
             </div>
             <div className="min-w-0 flex-1">

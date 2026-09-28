@@ -132,7 +132,7 @@ function CampaignPageInner() {
         </TabsList>
         <TabsContent value="tasks" className="mt-4 space-y-3">
           <div className="flex justify-end">
-            <Button size="sm" onClick={() => setCreateOpen(true)} className="bg-gradient-to-r from-blue-600 to-violet-600 text-white border-0"><Plus className="w-4 h-4 mr-1" /> New task in this campaign</Button>
+            <Button size="sm" onClick={() => setCreateOpen(true)} className="bg-orange-500 hover:bg-orange-600 text-white border-0"><Plus className="w-4 h-4 mr-1" /> New task in this campaign</Button>
           </div>
           {linked.length === 0
             ? <Card className="bg-white border-zinc-200"><CardContent className="p-8 text-center text-sm text-zinc-500">No tasks linked yet. Create one here, or pick this campaign in any task&apos;s drawer.</CardContent></Card>

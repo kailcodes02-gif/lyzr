@@ -1734,6 +1734,7 @@ export async function createVertical(args: {
   settings?: Partial<VerticalSettings>
   templateId?: string | null
   ownerEmails?: string[]
+  memberEmails?: string[]
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -1752,6 +1753,21 @@ export async function createVertical(args: {
     if (/forbidden/i.test(error.message)) throw new Error('Only admins can create verticals')
     if (/verticals_slug_key|duplicate key/i.test(error.message)) throw new Error('A vertical with that slug already exists')
     throw error
+  }
+
+  // Members chosen at creation. Owners are already members implicitly, so
+  // only explicit extra people need rows.
+  const memberEmails = [...new Set((args.memberEmails || []).map(e => e.trim().toLowerCase()).filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)))]
+    .filter(e => !(args.ownerEmails || []).map(o => o.trim().toLowerCase()).includes(e))
+  if (memberEmails.length) {
+    const { data: matched } = await supabase.from('users').select('id, email').in('email', memberEmails)
+    const rows = memberEmails.map(email => ({
+      vertical_id: data as string, email,
+      user_id: matched?.find(u => u.email.toLowerCase() === email)?.id ?? null,
+      added_by: user.id,
+    }))
+    const { error: mErr } = await supabase.from('vertical_members').upsert(rows)
+    if (mErr) throw new Error(`Vertical created, but adding members failed: ${mErr.message}`)
   }
   return data as string
 }

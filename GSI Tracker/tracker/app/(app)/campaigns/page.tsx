@@ -40,7 +40,7 @@ export default function CampaignsPage() {
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><Zap className="w-6 h-6 text-amber-500" /> Campaigns <InfoTip k="campaign" /></h1>
           <p className="text-sm text-zinc-500 mt-1">Launches, thunderclaps and big campaigns. Pinned ones show as a banner on every dashboard.</p>
         </div>
-        {canCreate && <Button onClick={() => setCreateOpen(true)} className="bg-gradient-to-r from-blue-600 to-violet-600 text-white border-0"><Plus className="w-4 h-4 mr-2" /> New campaign</Button>}
+        {canCreate && <Button onClick={() => setCreateOpen(true)} className="bg-orange-500 hover:bg-orange-600 text-white border-0"><Plus className="w-4 h-4 mr-2" /> New campaign</Button>}
       </div>
 
       {isLoading ? <div className="h-40 bg-zinc-200 rounded-xl animate-pulse" /> : groups.length === 0 ? (

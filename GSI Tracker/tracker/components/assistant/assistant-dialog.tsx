@@ -106,7 +106,7 @@ export function AssistantDialog({ open, onOpenChange }: { open: boolean; onOpenC
           <div className="space-y-3">
             <form onSubmit={e => { e.preventDefault(); send() }} className="flex gap-2">
               <Input autoFocus value={text} onChange={e => setText(e.target.value)} placeholder="Create a task… or ask where a task is" className="bg-zinc-100 border-zinc-300 h-10" />
-              <Button type="submit" disabled={busy || !text.trim()} className="bg-gradient-to-r from-blue-600 to-violet-600 text-white border-0 h-10">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}</Button>
+              <Button type="submit" disabled={busy || !text.trim()} className="bg-orange-500 hover:bg-orange-600 text-white border-0 h-10">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}</Button>
             </form>
             {!reply && !busy && (
               <div className="space-y-1">
