@@ -1,12 +1,13 @@
 'use client'
 
-import { useCurrentUser, useUsers, useBudgetPeriods, useCategories, useChannels, useChannelFields, useHubSpotConnection, usePendingInvites, useVerticals } from '@/lib/hooks/use-data'
+import { useCurrentUser, useUsers, useBudgetPeriods, useCategories, useChannels, useHubSpotConnection, usePendingInvites, useVerticals } from '@/lib/hooks/use-data'
 import { TaxonomyManager } from '@/components/admin/taxonomy-manager'
 import { VerticalsTab } from '@/components/admin/verticals-tab'
 import { FunctionsTab } from '@/components/admin/functions-tab'
+import { TaskFieldsTab } from '@/components/admin/task-fields-tab'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
-import { updateUserRole, createBudgetPeriod, upsertChannelField, deleteChannelField, disconnectHubSpot, inviteUser, cancelInvite } from '@/lib/actions'
+import { updateUserRole, createBudgetPeriod, disconnectHubSpot, inviteUser, cancelInvite } from '@/lib/actions'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -61,24 +62,6 @@ function AdminContent() {
   // HubSpot Integration States
   const { data: hubspotConnection, isLoading: hubspotLoading } = useHubSpotConnection()
   const [isSyncing, setIsSyncing] = useState(false)
-
-  // Custom Fields States
-  const { data: allFields } = useChannelFields()
-  const [selectedFieldChannelId, setSelectedFieldChannelId] = useState('')
-  const [fieldName, setFieldName] = useState('')
-  const [fieldSlug, setFieldSlug] = useState('')
-  const [fieldType, setFieldType] = useState('text')
-  const [fieldSurface, setFieldSurface] = useState('planning')
-  const [fieldIsRequired, setFieldIsRequired] = useState(false)
-  const [fieldCascades, setFieldCascades] = useState(true)
-  const [fieldOptionsText, setFieldOptionsText] = useState('')
-  const [fieldFormula, setFieldFormula] = useState('')
-  const [fieldIsAutoCalc, setFieldIsAutoCalc] = useState(false)
-  const [fieldDescription, setFieldDescription] = useState('')
-  const [fieldSortOrder, setFieldSortOrder] = useState('0')
-  const [editingFieldId, setEditingFieldId] = useState<string | null>(null)
-
-  const [filterChannelId, setFilterChannelId] = useState('all')
 
   const { data: allVerticals } = useVerticals(true)
   const [taxonomyVertical, setTaxonomyVertical] = useState('')
@@ -189,94 +172,6 @@ function AdminContent() {
     })
   }
 
-  // Custom Fields Handlers
-  const handleNameChange = (name: string) => {
-    setFieldName(name)
-    if (!editingFieldId) {
-      setFieldSlug(name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''))
-    }
-  }
-
-  const handleUpsertField = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedFieldChannelId || !fieldName || !fieldSlug) {
-      toast.error('Please select a channel and enter a field name and slug')
-      return
-    }
-
-    const options = fieldOptionsText
-      ? fieldOptionsText.split(',').map(s => s.trim()).filter(Boolean)
-      : null
-
-    startTransition(async () => {
-      try {
-        await upsertChannelField({
-          id: editingFieldId || undefined,
-          channel_id: selectedFieldChannelId,
-          name: fieldName,
-          slug: fieldSlug,
-          field_type: fieldType,
-          surface: fieldSurface,
-          is_required: fieldIsRequired,
-          options,
-          formula: fieldFormula || null,
-          is_auto_calc: fieldIsAutoCalc,
-          description: fieldDescription || null,
-          sort_order: Number(fieldSortOrder) || 0,
-          cascades_to_children: fieldCascades,
-        })
-        queryClient.invalidateQueries({ queryKey: ['channelFields'] })
-        toast.success(editingFieldId ? 'Custom field updated' : 'Custom field created')
-        
-        // Reset form
-        setFieldName('')
-        setFieldSlug('')
-        setFieldOptionsText('')
-        setFieldFormula('')
-        setFieldIsAutoCalc(false)
-        setFieldDescription('')
-        setFieldSortOrder('0')
-        setFieldIsRequired(false)
-        setFieldCascades(true)
-        setEditingFieldId(null)
-      } catch (err: any) {
-        console.error('upsertChannelField failed:', err)
-        toast.error(`Failed to save custom field: ${err.message}`)
-      }
-    })
-  }
-
-  const handleDeleteField = (id: string) => {
-    if (!confirm('Are you sure you want to delete this custom field?')) return
-    startTransition(async () => {
-      try {
-        await deleteChannelField(id)
-        queryClient.invalidateQueries({ queryKey: ['channelFields'] })
-        toast.success('Custom field deleted')
-      } catch (err: any) {
-        console.error('deleteChannelField failed:', err)
-        toast.error(`Failed to delete custom field: ${err.message}`)
-      }
-    })
-  }
-
-  const handleEditField = (field: any) => {
-    setEditingFieldId(field.id)
-    setSelectedFieldChannelId(field.channel_id)
-    setFieldName(field.name)
-    setFieldSlug(field.slug)
-    setFieldType(field.field_type)
-    setFieldSurface(field.surface)
-    setFieldIsRequired(field.is_required)
-    setFieldCascades(field.cascades_to_children)
-    setFieldOptionsText(field.options ? field.options.join(', ') : '')
-    setFieldFormula(field.formula || '')
-    setFieldIsAutoCalc(field.is_auto_calc)
-    setFieldDescription(field.description || '')
-    setFieldSortOrder(String(field.sort_order))
-    setActiveTab('custom_fields')
-  }
-
   // HubSpot Handlers
   const handleSyncHubSpot = async () => {
     // Static build has no sync server; the OAuth/sync backend was removed.
@@ -308,50 +203,38 @@ function AdminContent() {
     return vn ? `${vn} · ${base}` : base
   }
 
-  const filteredFieldsList = allFields?.filter(f => {
-    if (filterChannelId === 'all') return true
-    return f.channel_id === filterChannelId
-  }) || []
-
-
   return (
     <div className="p-4 lg:p-8 space-y-6 max-w-6xl mx-auto bg-zinc-50 text-zinc-900 min-h-screen">
       
       {/* Header */}
-      <div>
+      <div className="pl-12 lg:pl-0">
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
-          <Settings className="w-6 h-6 text-zinc-600" /> Admin Control Panel
+          <Settings className="w-6 h-6 text-zinc-600" /> Workspace settings
         </h1>
-        <p className="text-sm text-zinc-500 mt-1">Users, verticals, functions, taxonomy, custom fields and budgets for the whole workspace</p>
+        <p className="text-sm text-zinc-500 mt-1">Set up how the tracker is organised. Work top to bottom the first time — each section explains what it is for.</p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="bg-white border border-zinc-200 p-1 rounded-lg flex flex-wrap gap-1 md:inline-flex">
-          <TabsTrigger value="users" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
-            <Users className="w-4 h-4 mr-2" /> Users
-          </TabsTrigger>
-          <TabsTrigger value="budgets" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
-            <Landmark className="w-4 h-4 mr-2" /> Budgets Manager
-          </TabsTrigger>
-          <TabsTrigger value="custom_fields" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
-            <Sliders className="w-4 h-4 mr-2" /> Custom Fields
-          </TabsTrigger>
-          <TabsTrigger value="verticals" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
-            <Building2 className="w-4 h-4 mr-2" /> Verticals
-          </TabsTrigger>
-          <TabsTrigger value="functions" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
-            <Workflow className="w-4 h-4 mr-2" /> Domains
-          </TabsTrigger>
-          <TabsTrigger value="taxonomy" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
-            <Network className="w-4 h-4 mr-2" /> Taxonomy
-          </TabsTrigger>
-          <TabsTrigger value="hubspot" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
-            <RefreshCw className="w-4 h-4 mr-2" /> HubSpot Integration
-          </TabsTrigger>
+      <Tabs value={activeTab} onValueChange={v => setActiveTab(String(v))} orientation="vertical" className="w-full flex-col lg:flex-row gap-6 items-start">
+        <TabsList className="w-full lg:w-64 shrink-0 h-auto flex-col items-stretch gap-0.5 rounded-xl border border-zinc-200 bg-white p-1.5 lg:sticky lg:top-20">
+          {SECTIONS.map((s, i) => (
+            <TabsTrigger key={s.value} value={s.value}
+              className="h-auto justify-start items-start gap-2.5 rounded-lg px-3 py-2 text-left whitespace-normal data-active:bg-zinc-100 data-active:text-zinc-900 after:hidden">
+              <s.icon className="w-4 h-4 mt-0.5 shrink-0 text-zinc-500" />
+              <span className="min-w-0">
+                <span className="block text-[13px] font-medium text-zinc-900">
+                  <span className="brand-label text-zinc-400 mr-1.5">{String(i + 1).padStart(2, '0')}</span>{s.label}
+                </span>
+                <span className="block text-[11px] font-normal text-zinc-500 leading-snug">{s.short}</span>
+              </span>
+            </TabsTrigger>
+          ))}
         </TabsList>
 
+        <div className="flex-1 min-w-0 w-full space-y-5">
+        <SectionHeader value={activeTab} />
+
         {/* Users Tab */}
-        <TabsContent value="users" className="mt-6 space-y-6">
+        <TabsContent value="users" className="mt-0 space-y-6">
           {/* Invite a teammate */}
           <Card className="bg-white border-zinc-200 backdrop-blur-xl">
             <CardHeader>
@@ -367,9 +250,9 @@ function AdminContent() {
                   placeholder="teammate@lyzr.com"
                   value={inviteEmail}
                   onChange={e => setInviteEmail(e.target.value)}
-                  className="bg-zinc-200 border-zinc-300 text-sm h-9 flex-1"
+                  className="bg-white border-zinc-300 text-sm h-9 flex-1"
                 />
-                <Button type="submit" disabled={isPending || !inviteEmail.trim()} className="bg-violet-600 hover:bg-violet-700 text-white h-9">
+                <Button type="submit" disabled={isPending || !inviteEmail.trim()} className="bg-zinc-900 hover:bg-zinc-800 text-white h-9">
                   <Plus className="w-4 h-4 mr-1" /> Send invite
                 </Button>
               </form>
@@ -408,9 +291,9 @@ function AdminContent() {
 
           <Card className="bg-white border-zinc-200 backdrop-blur-xl">
             <CardHeader>
-              <CardTitle className="text-base font-semibold text-zinc-900">Platform Users</CardTitle>
+              <CardTitle className="text-base font-semibold text-zinc-900">Everyone in the tracker</CardTitle>
               <CardDescription className="text-zinc-500 text-xs">
-                Manage user permissions and roles.
+                Admins can change every workspace setting. Members do the work. Change someone’s role on the right.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
@@ -440,7 +323,7 @@ function AdminContent() {
                             onValueChange={(val) => { if (val === 'admin' || val === 'member') handleRoleChange(u.id, val) }}
                             disabled={isPending}
                           >
-                            <SelectTrigger className="w-[120px] bg-zinc-200 border-zinc-300 text-xs h-7 ml-auto">
+                            <SelectTrigger className="w-[120px] bg-white border-zinc-300 text-xs h-7 ml-auto">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
@@ -461,29 +344,29 @@ function AdminContent() {
         </TabsContent>
 
         {/* Budgets Manager Tab */}
-        <TabsContent value="budgets" className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <TabsContent value="budgets" className="mt-0 grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* Create Budget Form */}
           <Card className="bg-white border-zinc-200 backdrop-blur-xl lg:col-span-1">
             <CardHeader>
-              <CardTitle className="text-base font-semibold text-zinc-900">Create Budget Period</CardTitle>
-              <CardDescription className="text-zinc-500 text-xs">Set limits for scopes</CardDescription>
+              <CardTitle className="text-base font-semibold text-zinc-900">Add a budget</CardTitle>
+              <CardDescription className="text-zinc-500 text-xs">A spending limit for a period of time.</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleCreateBudget} className="space-y-4">
                 
                 {/* Scope Type */}
                 <div className="space-y-1">
-                  <Label className="text-xs text-zinc-600">Budget Scope</Label>
+                  <Label className="text-xs text-zinc-600">What does this budget cover?</Label>
                   <Select value={scopeType} onValueChange={(val) => { if (val) { setScopeType(val as any); setScopeId(''); } }}>
-                    <SelectTrigger className="bg-zinc-200 border-zinc-300 text-xs h-9">
+                    <SelectTrigger className="bg-white border-zinc-300 text-xs h-9">
                       <SelectValue placeholder="Scope" />
                     </SelectTrigger>
                     <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
-                      <SelectItem value="global">Global (whole workspace)</SelectItem>
-                      <SelectItem value="vertical">Vertical</SelectItem>
-                      <SelectItem value="category">Category Specific</SelectItem>
-                      <SelectItem value="channel">Channel Specific</SelectItem>
+                      <SelectItem value="global">The whole company</SelectItem>
+                      <SelectItem value="vertical">One vertical</SelectItem>
+                      <SelectItem value="category">One group</SelectItem>
+                      <SelectItem value="channel">One channel</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -493,8 +376,8 @@ function AdminContent() {
                   <div className="space-y-1">
                     <Label className="text-xs text-zinc-600">Vertical</Label>
                     <Select value={scopeId} onValueChange={(val) => setScopeId(val || '')}>
-                      <SelectTrigger className="bg-zinc-200 border-zinc-300 text-xs h-9">
-                        <SelectValue placeholder="Select Vertical" />
+                      <SelectTrigger className="bg-white border-zinc-300 text-xs h-9">
+                        <SelectValue placeholder="Choose a vertical" />
                       </SelectTrigger>
                       <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
                         {(allVerticals || []).map(v => (
@@ -507,10 +390,10 @@ function AdminContent() {
 
                 {scopeType === 'category' && (
                   <div className="space-y-1">
-                    <Label className="text-xs text-zinc-600">Category Selection</Label>
+                    <Label className="text-xs text-zinc-600">Which group?</Label>
                     <Select value={scopeId} onValueChange={(val) => setScopeId(val || '')}>
-                      <SelectTrigger className="bg-zinc-200 border-zinc-300 text-xs h-9">
-                        <SelectValue placeholder="Select Category" />
+                      <SelectTrigger className="bg-white border-zinc-300 text-xs h-9">
+                        <SelectValue placeholder="Choose a group" />
                       </SelectTrigger>
                       <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
                         {categories?.map(c => (
@@ -523,10 +406,10 @@ function AdminContent() {
 
                 {scopeType === 'channel' && (
                   <div className="space-y-1">
-                    <Label className="text-xs text-zinc-600">Channel Selection</Label>
+                    <Label className="text-xs text-zinc-600">Which channel?</Label>
                     <Select value={scopeId} onValueChange={(val) => setScopeId(val || '')}>
-                      <SelectTrigger className="bg-zinc-200 border-zinc-300 text-xs h-9">
-                        <SelectValue placeholder="Select Channel" />
+                      <SelectTrigger className="bg-white border-zinc-300 text-xs h-9">
+                        <SelectValue placeholder="Choose a channel" />
                       </SelectTrigger>
                       <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
                         {channels?.map(ch => (
@@ -539,13 +422,13 @@ function AdminContent() {
 
                 {/* Period Label */}
                 <div className="space-y-1">
-                  <Label className="text-xs text-zinc-600">Period Label (e.g. "May 2026")</Label>
+                  <Label className="text-xs text-zinc-600">Name this period (e.g. “May 2026”)</Label>
                   <Input 
                     type="text" 
                     value={periodLabel} 
                     onChange={e => setPeriodLabel(e.target.value)}
                     placeholder="May 2026"
-                    className="bg-zinc-200 border-zinc-300 text-xs h-9 text-zinc-800"
+                    className="bg-white border-zinc-300 text-xs h-9 text-zinc-800"
                     required
                   />
                 </div>
@@ -558,7 +441,7 @@ function AdminContent() {
                       type="date" 
                       value={startsOn} 
                       onChange={e => setStartsOn(e.target.value)}
-                      className="bg-zinc-200 border-zinc-300 text-xs h-9 text-zinc-800"
+                      className="bg-white border-zinc-300 text-xs h-9 text-zinc-800"
                       required
                     />
                   </div>
@@ -568,7 +451,7 @@ function AdminContent() {
                       type="date" 
                       value={endsOn} 
                       onChange={e => setEndsOn(e.target.value)}
-                      className="bg-zinc-200 border-zinc-300 text-xs h-9 text-zinc-800"
+                      className="bg-white border-zinc-300 text-xs h-9 text-zinc-800"
                       required
                     />
                   </div>
@@ -582,7 +465,7 @@ function AdminContent() {
                     value={totalBudget} 
                     onChange={e => setTotalBudget(e.target.value)}
                     placeholder="5000"
-                    className="bg-zinc-200 border-zinc-300 text-xs h-9 text-zinc-800"
+                    className="bg-white border-zinc-300 text-xs h-9 text-zinc-800"
                     required
                   />
                 </div>
@@ -595,16 +478,16 @@ function AdminContent() {
                     value={notes} 
                     onChange={e => setNotes(e.target.value)}
                     placeholder="Internal memo..."
-                    className="bg-zinc-200 border-zinc-300 text-xs h-9 text-zinc-800"
+                    className="bg-white border-zinc-300 text-xs h-9 text-zinc-800"
                   />
                 </div>
 
                 <Button 
                   type="submit" 
                   disabled={isPending}
-                  className="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs h-9 mt-2"
+                  className="w-full bg-zinc-900 hover:bg-zinc-800 text-white text-xs h-9 mt-2"
                 >
-                  <Plus className="w-4 h-4 mr-2" /> Create Budget
+                  <Plus className="w-4 h-4 mr-2" /> Add budget
                 </Button>
               </form>
             </CardContent>
@@ -613,7 +496,7 @@ function AdminContent() {
           {/* Budgets List Table */}
           <Card className="bg-white border-zinc-200 backdrop-blur-xl lg:col-span-2">
             <CardHeader>
-              <CardTitle className="text-base font-semibold text-zinc-900">Configured Budgets</CardTitle>
+              <CardTitle className="text-base font-semibold text-zinc-900">Budgets already set</CardTitle>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
               <table className="w-full text-xs">
@@ -621,9 +504,9 @@ function AdminContent() {
                   <tr className="border-b border-zinc-200 bg-zinc-100/40 text-zinc-600">
                     <th className="text-left font-medium py-3 px-4">Period</th>
                     <th className="text-left font-medium py-3 px-4">Scope</th>
-                    <th className="text-right font-medium py-3 px-4">Total Cap</th>
-                    <th className="text-right font-medium py-3 px-4">Allocated</th>
-                    <th className="text-right font-medium py-3 px-4">Remaining</th>
+                    <th className="text-right font-medium py-3 px-4">Limit</th>
+                    <th className="text-right font-medium py-3 px-4">Planned on tasks</th>
+                    <th className="text-right font-medium py-3 px-4">Left</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200">
@@ -632,7 +515,7 @@ function AdminContent() {
                       <td className="py-3 px-4 font-semibold text-zinc-800">{b.period_label}</td>
                       <td className="py-3 px-4">
                         <Badge variant="outline" className="capitalize border-zinc-300 text-zinc-600 bg-zinc-100/50">
-                          {b.scope_type}
+                          {({ global: 'Whole company', vertical: 'Vertical', category: 'Group', channel: 'Channel' } as Record<string, string>)[b.scope_type] || b.scope_type}
                         </Badge>
                       </td>
                       <td className="py-3 px-4 text-right text-zinc-700">${Number(b.total_budget).toLocaleString()}</td>
@@ -645,7 +528,7 @@ function AdminContent() {
                   {budgets?.length === 0 && (
                     <tr>
                       <td colSpan={5} className="py-12 text-center text-zinc-500">
-                        No budget periods created yet. Use the creation panel to add one.
+                        No budgets yet. Add one on the left.
                       </td>
                     </tr>
                   )}
@@ -655,325 +538,14 @@ function AdminContent() {
           </Card>
         </TabsContent>
 
-        {/* Custom Fields Tab */}
-        <TabsContent value="custom_fields" className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Field Form */}
-          <Card className="bg-white border-zinc-200 backdrop-blur-xl lg:col-span-1">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold text-zinc-900">
-                {editingFieldId ? 'Edit Custom Field' : 'Create Custom Field'}
-              </CardTitle>
-              <CardDescription className="text-zinc-500 text-xs">
-                Define task metadata schemas per channel.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleUpsertField} className="space-y-4">
-                {/* Select Channel */}
-                <div className="space-y-1">
-                  <Label className="text-xs text-zinc-600">Target Channel *</Label>
-                  <Select value={selectedFieldChannelId} onValueChange={(val) => setSelectedFieldChannelId(val || '')}>
-                    <SelectTrigger className="bg-zinc-200 border-zinc-300 text-xs h-9">
-                      <SelectValue placeholder="Select Channel" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
-                      {channels?.map(ch => (
-                        <SelectItem key={ch.id} value={ch.id}>
-                          {getFlatChannelLabel(ch.id)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Name & Slug */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-zinc-600">Field Name *</Label>
-                    <Input
-                      type="text"
-                      value={fieldName}
-                      onChange={e => handleNameChange(e.target.value)}
-                      placeholder="Total Spend"
-                      className="bg-zinc-200 border-zinc-300 text-xs h-9 text-zinc-800"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-zinc-600">Slug *</Label>
-                    <Input
-                      type="text"
-                      value={fieldSlug}
-                      onChange={e => setFieldSlug(e.target.value)}
-                      placeholder="total_spend"
-                      className="bg-zinc-200 border-zinc-300 text-xs h-9 text-zinc-800"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Type & Surface */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-zinc-600">Field Type</Label>
-                    <Select value={fieldType} onValueChange={(val) => setFieldType(val || 'text')}>
-                      <SelectTrigger className="bg-zinc-200 border-zinc-300 text-xs h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
-                        <SelectItem value="text">Text</SelectItem>
-                        <SelectItem value="long_text">Long Text</SelectItem>
-                        <SelectItem value="number">Number</SelectItem>
-                        <SelectItem value="currency">Currency</SelectItem>
-                        <SelectItem value="date">Date</SelectItem>
-                        <SelectItem value="date_range">Date Range</SelectItem>
-                        <SelectItem value="dropdown">Dropdown</SelectItem>
-                        <SelectItem value="multi_select">Multi-Select</SelectItem>
-                        <SelectItem value="checkbox">Checkbox</SelectItem>
-                        <SelectItem value="url">URL</SelectItem>
-                        <SelectItem value="email">Email</SelectItem>
-                        <SelectItem value="phone">Phone</SelectItem>
-                        <SelectItem value="person">Person Link</SelectItem>
-                        <SelectItem value="file">File Attachment</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-zinc-600">Render Surface</Label>
-                    <Select value={fieldSurface} onValueChange={(val) => setFieldSurface(val || 'planning')}>
-                      <SelectTrigger className="bg-zinc-200 border-zinc-300 text-xs h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
-                        <SelectItem value="planning">Planning Fields</SelectItem>
-                        <SelectItem value="tracker">Tracker Fields</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Dropdown Options */}
-                {(fieldType === 'dropdown' || fieldType === 'multi_select') && (
-                  <div className="space-y-1">
-                    <Label className="text-xs text-zinc-600">Options (Comma separated list)</Label>
-                    <Input
-                      type="text"
-                      value={fieldOptionsText}
-                      onChange={e => setFieldOptionsText(e.target.value)}
-                      placeholder="option1, option2, option3"
-                      className="bg-zinc-200 border-zinc-300 text-xs h-9 text-zinc-800"
-                    />
-                  </div>
-                )}
-
-                {/* Auto Calc Configuration */}
-                <div className="border border-zinc-200 bg-zinc-100/50 rounded-lg p-3 space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="is_auto_calc"
-                      checked={fieldIsAutoCalc}
-                      onCheckedChange={checked => setFieldIsAutoCalc(!!checked)}
-                      className="border-zinc-300 bg-zinc-100"
-                    />
-                    <Label htmlFor="is_auto_calc" className="text-zinc-600 text-xs cursor-pointer">
-                      Auto-Calculated Value
-                    </Label>
-                  </div>
-
-                  {fieldIsAutoCalc && (
-                    <div className="space-y-1 pt-1">
-                      <Label className="text-[10px] text-zinc-500">Formula Rule Description</Label>
-                      <Input
-                        type="text"
-                        value={fieldFormula}
-                        onChange={e => setFieldFormula(e.target.value)}
-                        placeholder="e.g. clicks / impressions * 100"
-                        className="bg-zinc-200 border-zinc-300 text-xs h-8 text-zinc-800"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Sort Order & Settings */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-zinc-600">Sort Order</Label>
-                    <Input
-                      type="number"
-                      value={fieldSortOrder}
-                      onChange={e => setFieldSortOrder(e.target.value)}
-                      className="bg-zinc-200 border-zinc-300 text-xs h-9 text-zinc-800"
-                    />
-                  </div>
-                  <div className="flex flex-col justify-end space-y-2 pb-1.5">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="is_required"
-                        checked={fieldIsRequired}
-                        onCheckedChange={checked => setFieldIsRequired(!!checked)}
-                        className="border-zinc-300 bg-zinc-100"
-                      />
-                      <Label htmlFor="is_required" className="text-zinc-600 text-xs cursor-pointer">Required</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="cascades"
-                        checked={fieldCascades}
-                        onCheckedChange={checked => setFieldCascades(!!checked)}
-                        className="border-zinc-300 bg-zinc-100"
-                      />
-                      <Label htmlFor="cascades" className="text-zinc-600 text-xs cursor-pointer">Cascade to children</Label>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div className="space-y-1">
-                  <Label className="text-xs text-zinc-600">Description (Optional)</Label>
-                  <Input
-                    type="text"
-                    value={fieldDescription}
-                    onChange={e => setFieldDescription(e.target.value)}
-                    placeholder="Short description for tooltip..."
-                    className="bg-zinc-200 border-zinc-300 text-xs h-9 text-zinc-800"
-                  />
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  {editingFieldId && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => {
-                        setFieldName('')
-                        setFieldSlug('')
-                        setFieldOptionsText('')
-                        setFieldFormula('')
-                        setFieldIsAutoCalc(false)
-                        setFieldDescription('')
-                        setFieldSortOrder('0')
-                        setFieldIsRequired(false)
-                        setFieldCascades(true)
-                        setEditingFieldId(null)
-                      }}
-                      className="w-1/3 text-xs h-9"
-                    >
-                      Cancel
-                    </Button>
-                  )}
-                  <Button
-                    type="submit"
-                    disabled={isPending}
-                    className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs h-9"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    {editingFieldId ? 'Update Field' : 'Create Field'}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-
-          {/* Fields list */}
-          <Card className="bg-white border-zinc-200 backdrop-blur-xl lg:col-span-2">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <div>
-                <CardTitle className="text-base font-semibold text-zinc-900">Configured Fields Schema</CardTitle>
-                <CardDescription className="text-zinc-500 text-xs mt-1">
-                  List of custom field rules.
-                </CardDescription>
-              </div>
-              <div className="w-48">
-                <Select value={filterChannelId} onValueChange={(val) => setFilterChannelId(val || 'all')}>
-                  <SelectTrigger className="bg-zinc-200 border-zinc-300 text-xs h-8">
-                    <SelectValue placeholder="All Channels" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white shadow-lg border-zinc-300 text-xs text-zinc-700">
-                    <SelectItem value="all">All Channels</SelectItem>
-                    {channels?.map(ch => (
-                      <SelectItem key={ch.id} value={ch.id}>
-                        {getFlatChannelLabel(ch.id)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0 overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-zinc-200 bg-zinc-100/40 text-zinc-600 font-medium">
-                    <th className="text-left py-3 px-4">Channel</th>
-                    <th className="text-left py-3 px-4">Field Name</th>
-                    <th className="text-left py-3 px-4">Slug</th>
-                    <th className="text-left py-3 px-4">Type</th>
-                    <th className="text-left py-3 px-4">Surface</th>
-                    <th className="text-center py-3 px-4">Cascade</th>
-                    <th className="text-center py-3 px-4">Required</th>
-                    <th className="text-right py-3 px-4">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-200">
-                  {filteredFieldsList.map(field => (
-                    <tr key={field.id} className="hover:bg-zinc-100 transition-colors">
-                      <td className="py-3 px-4 text-zinc-600 font-medium">
-                        {getFlatChannelLabel(field.channel_id)}
-                      </td>
-                      <td className="py-3 px-4 font-semibold text-zinc-800">{field.name}</td>
-                      <td className="py-3 px-4 text-zinc-500 font-mono">{field.slug}</td>
-                      <td className="py-3 px-4">
-                        <Badge variant="outline" className="border-zinc-300 text-zinc-600 font-mono capitalize">
-                          {field.field_type.replace('_', ' ')}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4 capitalize text-zinc-600">{field.surface}</td>
-                      <td className="py-3 px-4 text-center">
-                        <span className={field.cascades_to_children ? 'text-emerald-600' : 'text-zinc-600'}>
-                          {field.cascades_to_children ? 'Yes' : 'No'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className={field.is_required ? 'text-red-600' : 'text-zinc-600'}>
-                          {field.is_required ? 'Yes' : 'No'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right space-x-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditField(field)}
-                          className="h-7 w-7 text-zinc-600 hover:text-zinc-900"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteField(field.id)}
-                          className="h-7 w-7 text-zinc-500 hover:text-red-600"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredFieldsList.length === 0 && (
-                    <tr>
-                      <td colSpan={8} className="py-12 text-center text-zinc-500">
-                        No custom fields configured for the selected filter.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
+        <TabsContent value="custom_fields" className="mt-0">
+          <TaskFieldsTab />
         </TabsContent>
 
         {/* Taxonomy Manager Tab: per vertical */}
-        <TabsContent value="taxonomy" className="mt-6 space-y-4">
+        <TabsContent value="taxonomy" className="mt-0 space-y-4">
           <div className="flex items-center gap-3 flex-wrap">
-            <Label className="text-xs text-zinc-600">Vertical</Label>
+            <Label className="text-xs text-zinc-600">Showing the structure of</Label>
             <div className="w-56">
               <Select value={taxonomyVertical} onValueChange={val => setTaxonomyVertical(val || '')}>
                 <SelectTrigger className="bg-white border-zinc-300 text-xs h-9"><SelectValue placeholder="Pick a vertical" /></SelectTrigger>
@@ -988,21 +560,21 @@ function AdminContent() {
         </TabsContent>
 
         {/* Verticals Tab */}
-        <TabsContent value="verticals" className="mt-6">
+        <TabsContent value="verticals" className="mt-0">
           <VerticalsTab />
         </TabsContent>
 
         {/* Functions Tab */}
-        <TabsContent value="functions" className="mt-6">
+        <TabsContent value="functions" className="mt-0">
           <FunctionsTab />
         </TabsContent>
 
         {/* HubSpot Tab */}
-        <TabsContent value="hubspot" className="mt-6 space-y-6">
+        <TabsContent value="hubspot" className="mt-0 space-y-6">
           <Card className="bg-white border-zinc-200 backdrop-blur-xl">
             <CardHeader>
               <CardTitle className="text-base font-semibold text-zinc-900 flex items-center gap-2">
-                <RefreshCw className="w-5 h-5 text-blue-600" /> HubSpot OAuth Connection Settings
+                <RefreshCw className="w-5 h-5 text-blue-600" /> HubSpot
               </CardTitle>
               <CardDescription className="text-zinc-500 text-xs">
                 Link and manage your HubSpot CRM connection. Sync metrics and pipelines into Outbound channels.
@@ -1081,7 +653,40 @@ function AdminContent() {
             </CardContent>
           </Card>
         </TabsContent>
+        </div>
       </Tabs>
+    </div>
+  )
+}
+
+// The settings sections, in the order someone setting up the tracker should
+// walk them. `why` is shown at the top of each section in plain language.
+const SECTIONS = [
+  { value: 'users', label: 'People', icon: Users, short: 'Invite teammates, pick admins',
+    why: 'Everyone who uses the tracker. Invite a teammate by email — they sign in with Microsoft and any tasks already assigned to their address appear automatically. Admins can change every setting on this page; members just do the work. For vertical, channel and leadership roles, use the Members page.' },
+  { value: 'verticals', label: 'Verticals', icon: Building2, short: 'Business lines with their own dashboard',
+    why: 'A vertical is a business line — GSI is one. Each vertical gets its own dashboard, channels, owners and members. Lyzr is the company-wide vertical: it is always on and can\u2019t be removed.' },
+  { value: 'taxonomy', label: 'Channels & structure', icon: Network, short: 'Groups → channels → sub-channels',
+    why: 'The folders work lives in. Inside each vertical, work is organised as Group → Channel → Sub-channel (e.g. Demand gen → Events → Field events). Every task sits in one channel. Pick a vertical below to add, rename or reorder its channels.' },
+  { value: 'functions', label: 'Domains', icon: Workflow, short: 'One discipline across verticals',
+    why: 'A domain ties the same discipline together across verticals — one “Events” domain covers the Events channel in GSI and everywhere else, so it can have one owner and one company-wide view.' },
+  { value: 'custom_fields', label: 'Task fields', icon: Sliders, short: 'Extra questions a channel\u2019s tasks ask',
+    why: 'Every task has a title, owner, due date and priority. Task fields add the extra details one channel needs — Events tasks might ask “Venue” and “Expected attendees”, Paid Ads tasks “Daily budget”. Build one in four steps; drag to reorder.' },
+  { value: 'budgets', label: 'Budgets', icon: Landmark, short: 'Money limits per period',
+    why: 'Set how much can be spent in a period — for the whole company, one vertical, one group or one channel. Budgets entered on tasks count against the matching limit, so you can see what is left.' },
+  { value: 'hubspot', label: 'Integrations', icon: RefreshCw, short: 'HubSpot and other connections',
+    why: 'Connections to outside tools. HubSpot lead data is read-only and never written back.' },
+] as const
+
+function SectionHeader({ value }: { value: string }) {
+  const s = SECTIONS.find(x => x.value === value) || SECTIONS[0]
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-white px-5 py-4 flex gap-3">
+      <s.icon className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
+      <div>
+        <h2 className="text-lg font-semibold text-zinc-900">{s.label}</h2>
+        <p className="text-[13px] leading-relaxed text-zinc-600 mt-0.5 max-w-3xl">{s.why}</p>
+      </div>
     </div>
   )
 }

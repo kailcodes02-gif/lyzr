@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   Calendar, LayoutDashboard, ListTodo, ChevronDown, ChevronRight, ChevronsUpDown,
   Bell, LogOut, Zap, Sparkles, Link2, GitBranch, DollarSign, Upload, Menu, X, Settings, LineChart, UserCircle,
-  CalendarRange, History, BookOpen, Layers, Building2, Crown, Table2, Workflow, Home, Eye,
+  CalendarRange, History, BookOpen, Layers, Building2, Crown, Table2, Workflow, Home, Eye, FolderOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -256,7 +256,7 @@ export function AppSidebar() {
     { href: withVertical('/budgets/', slug), icon: DollarSign, label: 'Budgets', match: '/budgets' },
     ...(flags.leads_pipeline ? [{ href: withVertical('/leads/', slug), icon: Upload, label: 'Leads Pipeline', match: '/leads' }] : []),
     { href: withVertical('/history/', slug), icon: History, label: 'History', match: '/history' },
-    ...(flags.resources ? [{ href: withVertical('/resources/', slug), icon: BookOpen, label: `${vertical?.name || ''} Resources`.trim(), match: '/resources' }] : []),
+    ...(flags.resources ? [{ href: withVertical('/resources/', slug), icon: FolderOpen, label: `${vertical?.name || ''} Resources`.trim(), match: '/resources' }] : []),
     ...(canManage ? [{ href: withVertical('/settings/', slug), icon: Settings, label: 'Vertical Settings', match: '/settings' }] : []),
     { href: withVertical('/guide/', slug), icon: BookOpen, label: 'Guide', match: '/guide' },
   ]

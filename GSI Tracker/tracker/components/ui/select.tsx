@@ -6,7 +6,38 @@ import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "@/lib/utils"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
-const Select = SelectPrimitive.Root
+// Base UI's Select.Value renders the raw stored value (often a UUID) unless
+// the root knows each item's label. Collect them from the SelectItem children
+// so every trigger shows the human label without each caller passing `items`.
+function collectItems(node: React.ReactNode, out: Record<string, React.ReactNode>) {
+  React.Children.forEach(node, child => {
+    if (!React.isValidElement(child)) return
+    const props = child.props as { value?: unknown; children?: React.ReactNode }
+    if (child.type === SelectItem && props.value != null) {
+      out[String(props.value)] = props.children
+      return
+    }
+    if (props.children) collectItems(props.children, out)
+  })
+}
+
+function Select<Value, Multiple extends boolean | undefined = false>({
+  items,
+  children,
+  ...props
+}: SelectPrimitive.Root.Props<Value, Multiple>) {
+  const collected = React.useMemo(() => {
+    if (items) return items
+    const out: Record<string, React.ReactNode> = {}
+    collectItems(children, out)
+    return Object.keys(out).length ? out : undefined
+  }, [items, children])
+  return (
+    <SelectPrimitive.Root items={collected} {...props}>
+      {children}
+    </SelectPrimitive.Root>
+  )
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (

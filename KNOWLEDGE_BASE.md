@@ -475,6 +475,31 @@ Access if the data ever becomes confidential.
 - Event detail (invite view) gains Google's response summary under the guest count ("2 yes,
   1 awaiting"). 430 unit + calendar/smoke e2e green; deployed (Worker version d53988f6).
 
+### 2026-09-28 (late night), GSI Tracker: Asana-style task form, Workspace settings redesign, Task fields builder, UUID-in-dropdown fix (GSI Tracker)
+- **Bug: raw IDs in dropdowns.** Base UI `Select.Value` renders the stored value (a UUID, or `all`)
+  unless the root knows item labels. `components/ui/select.tsx` `Select` now walks its children for
+  `SelectItem`s and passes Base UI a value→label `items` map — fixes all 18 bare `<SelectValue />`s
+  at once (e.g. Admin › Taxonomy vertical picker showed GSI's UUID). Verified in headless Chrome.
+- **Admin → "Workspace settings"**: tab strip replaced by a left section menu in setup order (People,
+  Verticals, Channels & structure, Domains, Task fields, Budgets, Integrations), each with a one-line
+  subtitle; every section opens with a plain-language "what this is for" header. Budget/People labels
+  rewritten (e.g. "What does this budget cover?", "Planned on tasks", "Left"); scope shown as words.
+- **Custom Fields → "Task fields" builder** (`components/admin/task-fields-tab.tsx`): 4 numbered steps
+  (which channel · name + hint · answer type as icon tiles with examples · filled while planning vs.
+  when reporting results + "people must fill this in"), live preview, "What is a task field?" card.
+  Slug → "Internal key" and auto-calc under a collapsed Advanced; "Cascade to children" → "Also ask it
+  on this channel's sub-channels" (only shown when the channel has sub-channels); sort order removed —
+  saved fields are grouped by channel and **reordered by drag and drop** (@dnd-kit, writes sort_order).
+- **Task form** (`create-task-dialog.tsx`) rebuilt Asana-style: big "Write a task name" title, property
+  rows (Where / Owner / Due date / Priority / Campaign), priority as colored pills, owner pre-filled with
+  the creator (roles renamed Main owner / Helper / Reviewer / FYI), description, and checklist, targets,
+  links, budget, frequency and repeat collapsed under "More details" with one-line explanations.
+  Submit logic unchanged.
+- Sidebar: Resources now uses a folder icon (was the same book icon as Guide).
+- Smoke test: throwaway harness rendered the screens with seeded sample data (fetching disabled, no
+  live reads/writes) and screenshotted them in headless Chrome; harness deleted, not in the export.
+  `tsc` clean, 36 tests, 35 routes. User: rsync out/ → GSI_Tracker/ + push.
+
 ### 2026-09-28 (night), GSI Tracker: walkthrough + page intros become centered modals with feature run-throughs (GSI Tracker)
 - Per Kailash: the walkthrough is now a **centered modal** over a dimmed page (was a bottom-right
   floating card) — Next still navigates to each page (visible behind the dim), still survives
