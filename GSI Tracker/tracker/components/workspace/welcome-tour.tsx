@@ -11,12 +11,12 @@ import { useCurrentUser } from '@/lib/hooks/use-data'
 import { markIntroSeen } from '@/components/workspace/page-intro'
 import { cn } from '@/lib/utils'
 
-// Guided walkthrough. A sticky floating card, not a blocking modal: each
-// step NAVIGATES to the page it explains, the page stays fully usable behind
-// it, and the card survives navigation and reloads until Done or Close.
-// Opens automatically on first sign-in on this browser; restarts from the
-// account menu ("Replay the welcome tour") or the Guide page's "Guide
-// walkthrough" button. Pure explanation — it never writes anything.
+// Guided walkthrough. A centered modal over a dimmed page: each step
+// NAVIGATES to the page it explains (visible behind the dim), and the modal
+// survives navigation and reloads until Done or Close. Opens automatically on
+// first sign-in on this browser; restarts from the account menu ("Replay the
+// welcome tour") or the Guide page's "Guide walkthrough" button. Pure
+// explanation — it never writes anything.
 
 const DONE_KEY = 'gsi:tour:v2'
 const STEP_KEY = 'gsi:tour:v2:step' // present = walkthrough in progress (survives reloads)
@@ -57,8 +57,8 @@ const STEPS: Step[] = [
     body: (
       <>This is where the marketing team plans, runs and reports its work — tasks, channels,
       campaigns and budgets, in one place. This walkthrough takes you <strong>page by page</strong>:
-      every “Next” opens the page it talks about, and the page stays usable behind this card —
-      click around as much as you like, the walkthrough stays until you finish or close it.</>
+      every “Next” opens the page it talks about, so you see each one as it&apos;s explained. Close
+      it any time — you can restart it from the Guide page or your account menu.</>
     ),
   },
   {
@@ -80,8 +80,8 @@ const STEPS: Step[] = [
     body: (
       <>This is the <strong>Overview</strong> — the whole tree of work drawn as one picture:
       <strong> Group → Channel → Sub-channel → Task</strong>. A channel is a marketing motion
-      (Events, ABM, Paid…); every channel has an owner. Click any node to open it — the
-      walkthrough will still be here.</>
+      (Events, ABM, Paid…); every channel has an owner. After the tour, click any node here to
+      open its page.</>
     ),
     href: '/overview/?v=all',
     place: 'Overview',
@@ -118,8 +118,8 @@ const STEPS: Step[] = [
     title: 'All Tasks: the leadership view',
     body: (
       <><strong>All Tasks</strong> is every task in every vertical in one table. The summary tiles
-      at the top (Done, Not done, Live, Blocked, Overdue, Critical) filter the table when clicked —
-      try one now. <strong>Weekly</strong> shows the same work week by week: planned, done,
+      at the top (Done, Not done, Live, Blocked, Overdue, Critical) filter the table when
+      clicked. <strong>Weekly</strong> shows the same work week by week: planned, done,
       carried over.</>
     ),
     href: '/workspace/tasks/',
@@ -215,11 +215,14 @@ export function WelcomeTour() {
   const next = STEPS[step + 1]
 
   return (
-    <div
-      role="dialog"
-      aria-label={`Walkthrough step ${step + 1} of ${STEPS.length}: ${s.title}`}
-      className="fixed bottom-4 right-4 z-[60] w-[min(400px,calc(100vw-2rem))] rounded-2xl border border-zinc-200 bg-white shadow-2xl shadow-zinc-900/10 overflow-hidden"
-    >
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-zinc-900/40 backdrop-blur-[2px]" aria-hidden />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Walkthrough step ${step + 1} of ${STEPS.length}: ${s.title}`}
+        className="relative w-[min(480px,100%)] rounded-2xl border border-zinc-200 bg-white shadow-2xl shadow-zinc-900/20 overflow-hidden"
+      >
       <div className="p-5 space-y-3">
         <div className="flex items-start gap-3">
           <div className="shrink-0 mt-0.5">{s.icon}</div>
@@ -255,6 +258,7 @@ export function WelcomeTour() {
               </Button>
             )}
         </div>
+      </div>
       </div>
     </div>
   )

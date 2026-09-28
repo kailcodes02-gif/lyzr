@@ -468,6 +468,17 @@ Access if the data ever becomes confidential.
 - Event detail (invite view) gains Google's response summary under the guest count ("2 yes,
   1 awaiting"). 430 unit + calendar/smoke e2e green; deployed (Worker version d53988f6).
 
+### 2026-09-28 (night), GSI Tracker: walkthrough + page intros become centered modals with feature run-throughs (GSI Tracker)
+- Per Kailash: the walkthrough is now a **centered modal** over a dimmed page (was a bottom-right
+  floating card) — Next still navigates to each page (visible behind the dim), still survives
+  reloads via `gsi:tour:v2:step`. Copy that promised "click around behind the card" adjusted.
+- First-visit page intros are also centered modals now, and each one is a **feature run-through**:
+  a lead line plus a name→what table of the page's main features (Home lists its six blocks,
+  All Tasks its tiles/filter bar/tag columns/drawer, Members its four tabs, etc.). 18 intros.
+  Backdrop click, X or "Got it" closes; "Full walkthrough" hands over to the tour. Same seen-keys
+  (`gsi:intro:v1:*`), still quiet during the walkthrough. Commit 3543d39; `tsc` clean, 36 tests,
+  35 routes; rebuilt `out/` needs rsync → `GSI_Tracker/` + push (user step).
+
 ### 2026-09-28, GSI Tracker: sticky page-by-page walkthrough + first-visit page intros (GSI Tracker)
 - Why: the old welcome tour's "Open X now" link called finish() — clicking it killed the remaining
   steps ("the rest of the onboarding vanished"). Rewritten per user's spec.
