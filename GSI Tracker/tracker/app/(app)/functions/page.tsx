@@ -1,5 +1,6 @@
 'use client'
 
+import { PageIntro } from '@/components/ui/page-intro'
 import Link from 'next/link'
 import { useMemo } from 'react'
 import { Workflow, ArrowRight, Crown } from 'lucide-react'
@@ -51,6 +52,12 @@ export default function FunctionsPage() {
           One discipline across every vertical: Content, Social, Paid and so on. Open a function to see its work everywhere it runs.
         </p>
       </div>
+
+      <PageIntro k="domains">
+        A <strong>domain</strong> links the same discipline across verticals — one Events domain
+        covers the Events channel in GSI and in every other vertical — and gives it an owner
+        everywhere at once. Open one to see its work across the company.
+      </PageIntro>
 
       {isLoading ? <div className="h-64 bg-zinc-200 rounded-xl animate-pulse" /> : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

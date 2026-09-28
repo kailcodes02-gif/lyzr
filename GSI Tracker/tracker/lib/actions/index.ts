@@ -1788,6 +1788,14 @@ export async function updateVertical(args: {
   if (!user) throw new Error('Not authenticated')
   await assertCanManage(supabase, user.id, args.id)
 
+  // The Lyzr vertical is the permanent company-wide space: it can be renamed
+  // in description only, never deactivated or re-slugged. (Also enforced by a
+  // DB trigger in migration 026.)
+  const { data: target } = await supabase.from('verticals').select('slug').eq('id', args.id).single()
+  if (target?.slug === 'lyzr' && (args.is_active === false || (args.slug && args.slug !== 'lyzr'))) {
+    throw new Error('The Lyzr company-wide vertical is permanent — it cannot be deactivated or renamed.')
+  }
+
   const patch: Record<string, unknown> = {}
   for (const k of ['name', 'slug', 'description', 'icon', 'color', 'sort_order', 'is_active'] as const) {
     if (args[k] !== undefined) patch[k] = args[k]

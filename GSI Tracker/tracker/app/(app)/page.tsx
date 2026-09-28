@@ -15,8 +15,8 @@ import { VerticalCard } from '@/components/workspace/vertical-card'
 import { MyBoard } from '@/components/workspace/my-board'
 import { CampaignBanner } from '@/components/campaigns/campaign-banner'
 import { DomainGrid } from '@/components/workspace/domain-grid'
-import { PeopleMap } from '@/components/members/people-map'
 import { InboxCard } from '@/components/workspace/inbox-card'
+import { PageIntro } from '@/components/ui/page-intro'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -127,6 +127,13 @@ function WorkspaceHomePage() {
         </div>
       </div>
 
+      <PageIntro k="home">
+        <strong>Company home</strong> — the across-workspace view. The tiles count every task in
+        every vertical; below them are pinned campaigns, the domains grid, and one card per
+        vertical (each opens that vertical&apos;s own dashboard). Your personal work lives in{' '}
+        <strong>My Board</strong>; the full leadership table is <strong>All Tasks</strong>.
+      </PageIntro>
+
       {/* Workspace KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiTile label="Open tasks" value={open.length} icon={<CheckSquare className="w-5 h-5" />} accent="blue" />
@@ -180,11 +187,7 @@ function WorkspaceHomePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2"><PeopleMap compact /></div>
         <InboxCard />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="bg-white border-zinc-200 lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg font-semibold flex items-center gap-2 text-zinc-900">

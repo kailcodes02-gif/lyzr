@@ -1,5 +1,6 @@
 'use client'
 
+import { PageIntro } from '@/components/ui/page-intro'
 import { useState } from 'react'
 import { useRecentActivity, useUsers } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
@@ -60,6 +61,10 @@ export default function HistoryPage() {
           <p className="text-sm text-zinc-500 mt-1">
             Every logged edit across the tracker — who did what, and when.
           </p>
+          <div className="mt-2"><PageIntro k="history">
+            The audit trail. Every change anyone makes — creating, editing, commenting, status
+            moves — is logged here permanently, newest first. Nothing is ever silently changed.
+          </PageIntro></div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
         <DateRangePicker label="When" value={range} onChange={setRange} />

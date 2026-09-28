@@ -42,6 +42,7 @@ import { ALL_TIME, inRange, resolveRange, type DateRangeValue } from '@/lib/date
 import { ownerKeysOf } from '@/components/filters/task-filter-bar'
 import { useUsers } from '@/lib/hooks/use-data'
 import { cn } from '@/lib/utils'
+import { PageIntro } from '@/components/ui/page-intro'
 
 type SortKey = 'completed' | 'channel' | 'owner'
 type SortDir = 'asc' | 'desc'
@@ -335,6 +336,10 @@ export default function TrackerPage() {
           <p className="text-sm text-zinc-500 mt-1">
             All live, completed, and cancelled campaigns across every category
           </p>
+          <div className="mt-2"><PageIntro k="tracker">
+            The backward-looking side: what actually ran per channel — live, completed and
+            cancelled work with its tracker metrics. Planning looks forward; this looks back.
+          </PageIntro></div>
         </div>
 
         <div className="flex items-center gap-2">

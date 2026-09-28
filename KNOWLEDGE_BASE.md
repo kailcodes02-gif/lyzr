@@ -494,6 +494,36 @@ Access if the data ever becomes confidential.
   mailto sends via POST /me/sendMail after confirm; offers Move to Trash / Promotions. 396 unit + 48 browser
   tests; deployed.
 
+### 2026-09-28 (evening), GSI Tracker: onboarding tour, page intros, View-as previews, dummy-data purge, Lyzr vertical made permanent (GSI Tracker)
+- **DB state first:** migrations 024 + 025 verified applied live (service-role REST probe; anon now
+  sees nothing post-RLS-hardening — use the service key from `tracker/.env.local` for probes).
+- **Migration 026** (`026_clear_dummy_tasks_protect_lyzr.sql`, user pastes live): deletes every
+  blueprint-seeded task (all 126 live tasks are dummy — 0 user-created, 0 status changes; backed up
+  to `tracker/backups/2026-09-28T08-28-18-444Z` first). People (9 users), channels (100) and
+  channel_owners (115) are kept — per Kailash: "just the people and whatever channels are already
+  part of them". Also installs a `verticals` trigger making the **Lyzr vertical permanent** (no
+  delete, no deactivate, no re-slug); same guard added in `updateVertical` and the admin UI hides
+  Deactivate for it. 026 added to `build-reset-sql.mjs` ORDER; RESET_ALL.sql regenerated.
+- **First-run welcome tour** (`components/workspace/welcome-tour.tsx`, mounted in the app layout):
+  8 steps — what the tracker is, verticals + the permanent Lyzr company view, the
+  Group→Channel→Sub-channel→Task tree, My Board/My Tasks, campaigns + thunderclaps, the leadership
+  view (All Tasks), Members & roles, and View-as. Auto-opens once per browser
+  (`gsi:tour:v1`), replayable from the account menu ("Replay the welcome tour").
+- **Page intros**: new dismissible `PageIntro` card (`components/ui/page-intro.tsx`, remembered per
+  page, reopenable via "What is this page?") on 16 pages: home, My Board, My Tasks, All Tasks
+  ("This is the leadership view"), Campaigns (explains thunderclaps), Calendar, Overview, Owners,
+  Members, Domains, History, both Weekly pages, vertical Dashboard, Tracker, Budgets.
+- **View as** (`lib/hooks/use-view-as.ts`): admins pick Admin / Leadership / Vertical owner /
+  Channel owner / Member from the account menu at the bottom of the sidebar; masking applied in
+  `useMyBadges` + the vertical provider, amber banner with "Back to admin view" while previewing.
+  UI-only preview — writes still run as the real user; RLS unchanged.
+- **Home decluttered**: PeopleMap removed from home (lives on Members), My Day + Inbox + Activity
+  in one grid. Members People rows collapse channel chips past 4 ("+N more").
+- Answered: roles ARE manageable in-dashboard — `/members/` (admin/leadership badges, vertical
+  owners+members, domain owners, channel owners, all permission-scoped) + Admin › Verticals.
+- `tsc` clean, 36 tests, build 35 routes. User steps: paste 026 live, then rsync out/ →
+  `GSI_Tracker/`, commit, push.
+
 ### 2026-09-28 (later still), GSI Tracker: full Lyzr brand revamp of the dashboard (GSI Tracker)
 - Restyled the whole tracker to the Lyzr Brand Guidelines v1.0 (source: `lyzr-brand-build-reference.html`
   shared in chat). Done at the token level in `tracker/app/globals.css` so component code keeps its stock

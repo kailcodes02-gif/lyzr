@@ -9,6 +9,7 @@ import type {
   EffectiveChannelOwner, Campaign, CampaignOwner, CampaignParticipant, VerticalMember, TaskSuggestion,
 } from '@/lib/types/database'
 import { taskChannelIds } from '@/lib/task-channels'
+import { maskForPreview, useViewAs } from '@/lib/hooks/use-view-as'
 
 // A vertical scope: a vertical id, or 'all' for workspace-wide views.
 export type VerticalScope = string | 'all'
@@ -165,6 +166,7 @@ export function useBadgeEmails(kind: 'admin' | 'leadership') {
 }
 
 // Everything the signed-in person is, in one object. Drives Home and the drawer.
+// A real admin previewing another role ("View as") gets that role's slice.
 export function useMyBadges() {
   const { data: me } = useCurrentUser()
   const { data: leadership } = useBadgeEmails('leadership')
@@ -172,19 +174,22 @@ export function useMyBadges() {
   const { data: members } = useAllVerticalMembers()
   const { data: chOwners } = useAllChannelOwners()
   const { data: fnOwners } = useAllFunctionOwners()
+  const viewAs = useViewAs()
   const email = me?.email.toLowerCase()
   const mine = <T extends { email: string; user_id: string | null }>(rows?: T[]) =>
     (rows || []).filter(r => (me && r.user_id === me.id) || (email && r.email.toLowerCase() === email))
-  const isAdmin = me?.role === 'admin'
+  const realAdmin = me?.role === 'admin'
+  const mask = maskForPreview(realAdmin ? viewAs : 'admin')
+  const isAdmin = realAdmin && mask.isAdmin
   return {
     me,
     isAdmin,
-    isLeadership: isAdmin || (!!email && (leadership || []).includes(email)),
-    ownedVerticalIds: new Set(mine(vOwners).map(r => r.vertical_id)),
+    isLeadership: mask.isLeadership && (realAdmin || (!!email && (leadership || []).includes(email))),
+    ownedVerticalIds: new Set(mask.verticalOwnership ? mine(vOwners).map(r => r.vertical_id) : []),
     memberVerticalIds: new Set(mine(members).map(r => r.vertical_id)),
-    ownedChannelIds: new Set(mine(chOwners).filter(o => o.source === 'channel').map(r => r.channel_id)),
-    effectiveChannelIds: new Set(mine(chOwners).map(r => r.channel_id)),
-    ownedFunctionIds: new Set(mine(fnOwners).map(r => r.function_id)),
+    ownedChannelIds: new Set(mask.channelOwnership ? mine(chOwners).filter(o => o.source === 'channel').map(r => r.channel_id) : []),
+    effectiveChannelIds: new Set(mask.channelOwnership ? mine(chOwners).map(r => r.channel_id) : []),
+    ownedFunctionIds: new Set(mask.channelOwnership ? mine(fnOwners).map(r => r.function_id) : []),
   }
 }
 

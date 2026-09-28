@@ -1,5 +1,6 @@
 'use client'
 
+import { PageIntro } from '@/components/ui/page-intro'
 import { useCurrentUser, useTasks, useMentionsForUser, useRecentActivity, useAllChannelOwners } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { TaskFilterBar, EMPTY_FILTERS, applyTaskFilters, filterContextFrom, type TaskFilters } from '@/components/filters/task-filter-bar'
@@ -99,6 +100,11 @@ export default function MyTasksPage() {
           <Plus className="w-4 h-4 mr-2" /> New Task
         </Button>
       </div>
+
+      <PageIntro k="my-tasks">
+        Everything with your name on it, across all verticals — tasks assigned to you and tasks
+        where you were mentioned. My Board shows the same work arranged by due date.
+      </PageIntro>
 
       {/* Main Tabs */}
       <Tabs defaultValue="assigned" className="w-full">

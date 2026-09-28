@@ -1,5 +1,6 @@
 'use client'
 
+import { PageIntro } from '@/components/ui/page-intro'
 import { useMemo, useState } from 'react'
 import {
   startOfISOWeek, endOfISOWeek, addWeeks, format, parseISO, isWithinInterval, isBefore,
@@ -352,6 +353,10 @@ export default function WeeklyReviewPage() {
         <p className="text-sm text-zinc-500 mt-1">
           Time travel through completed ISO weeks. Pick a week to reconstruct the state of the world at end of week.
         </p>
+        <div className="mt-2"><PageIntro k="weekly">
+          The week-by-week review for this vertical: what was planned in a week, what got done,
+          what carried over. Pick any past week to see the world as it stood then.
+        </PageIntro></div>
       </div>
 
       {/* Any period: week, month, quarter or custom (live from tasks) */}

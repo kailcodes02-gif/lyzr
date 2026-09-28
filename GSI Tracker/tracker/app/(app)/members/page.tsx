@@ -21,9 +21,28 @@ import {
   removeVerticalMember, removeVerticalOwner, setBadge, setPrimaryChannelOwner, setPrimaryFunctionOwner, setPrimaryVerticalOwner,
 } from '@/lib/actions'
 import { cn } from '@/lib/utils'
+import { PageIntro } from '@/components/ui/page-intro'
 
 // Roles & members. Admins assign anything; vertical owners manage their
 // vertical's members and channel owners; channel owners set owners below them.
+
+// Channel/membership chips collapse past four per person — heavy owners
+// otherwise drown the row.
+function ChipList({ chips }: { chips: React.ReactNode[] }) {
+  const [showAll, setShowAll] = useState(false)
+  if (!chips.length) return null
+  const visible = showAll ? chips : chips.slice(0, 4)
+  return (
+    <>
+      {visible}
+      {chips.length > 4 && (
+        <button onClick={() => setShowAll(s => !s)} className="text-[10px] text-blue-600 hover:underline">
+          {showAll ? 'show less' : `+${chips.length - 4} more`}
+        </button>
+      )}
+    </>
+  )
+}
 
 export default function MembersPage() {
   const badges = useMyBadges()
@@ -81,6 +100,14 @@ export default function MembersPage() {
         <p className="text-sm text-zinc-500 mt-1">One person can hold several badges. Admins assign anything; vertical owners manage their vertical; channel owners set owners below them.</p>
       </div>
 
+      <PageIntro k="members">
+        <strong>Who is who.</strong> Each row is one person with their roles: Admin, Leadership,
+        vertical owner, and the channels they own. Use the <strong>Verticals</strong>,{' '}
+        <strong>Domains</strong> and <strong>Channels</strong> tabs to assign owners — admins can
+        assign anything; vertical owners manage their vertical; channel owners assign owners
+        below themselves.
+      </PageIntro>
+
       <Tabs defaultValue="people">
         <TabsList className="bg-zinc-100 border border-zinc-200">
           <TabsTrigger value="people" className="text-xs">People</TabsTrigger>
@@ -123,9 +150,11 @@ export default function MembersPage() {
                       {isA && <Badge tone="bg-red-50 border-red-200 text-red-700"><ShieldCheck className="w-3 h-3" /> Admin {isAdmin && <button onClick={() => toggleBadge('admin', e, false)} className="hover:text-red-900"><X className="w-3 h-3" /></button>}</Badge>}
                       {isL && <Badge tone="bg-violet-50 border-violet-200 text-violet-700"><Eye className="w-3 h-3" /> Leadership {isAdmin && <button onClick={() => toggleBadge('leadership', e, false)} className="hover:text-violet-900"><X className="w-3 h-3" /></button>}</Badge>}
                       {vo.map(r => <Badge key={r.vertical_id} tone="bg-amber-50 border-amber-200 text-amber-800"><Crown className="w-3 h-3" /> {vName(r.vertical_id)} owner</Badge>)}
-                      {fo.map(r => <Badge key={r.function_id} tone="bg-emerald-50 border-emerald-200 text-emerald-800"><Workflow className="w-3 h-3" /> {functions?.find(f => f.id === r.function_id)?.name} domain</Badge>)}
-                      {co.map(r => <Badge key={r.channel_id} tone="bg-blue-50 border-blue-200 text-blue-800"><Layers className="w-3 h-3" /> {vName(channels?.find(c => c.id === r.channel_id)?.vertical_id || '')} › {chName(r.channel_id)}</Badge>)}
-                      {vm.map(r => <Badge key={r.vertical_id} tone="bg-zinc-100 border-zinc-200 text-zinc-600"><Building2 className="w-3 h-3" /> {vName(r.vertical_id)} member</Badge>)}
+                      <ChipList chips={[
+                        ...fo.map(r => <Badge key={`f${r.function_id}`} tone="bg-emerald-50 border-emerald-200 text-emerald-800"><Workflow className="w-3 h-3" /> {functions?.find(f => f.id === r.function_id)?.name} domain</Badge>),
+                        ...co.map(r => <Badge key={`c${r.channel_id}`} tone="bg-blue-50 border-blue-200 text-blue-800"><Layers className="w-3 h-3" /> {vName(channels?.find(c => c.id === r.channel_id)?.vertical_id || '')} › {chName(r.channel_id)}</Badge>),
+                        ...vm.map(r => <Badge key={`v${r.vertical_id}`} tone="bg-zinc-100 border-zinc-200 text-zinc-600"><Building2 className="w-3 h-3" /> {vName(r.vertical_id)} member</Badge>),
+                      ]} />
                       {!isA && !isL && !vo.length && !fo.length && !co.length && !vm.length && <span className="text-[11px] text-zinc-400">member only</span>}
                       {isAdmin && !isA && <button onClick={() => toggleBadge('admin', e, true)} className="text-[10px] text-zinc-400 hover:text-red-700">+ admin</button>}
                       {isAdmin && !isL && <button onClick={() => toggleBadge('leadership', e, true)} className="text-[10px] text-zinc-400 hover:text-violet-700">+ leadership</button>}

@@ -33,6 +33,10 @@ const ORDER = [
   '021_auth_providers.sql',
   '022_one_person_two_emails.sql',
   '023_com_only.sql',
+  // 024 (ABM rename) + 025 (roles) are live-data-only; their effects don't
+  // apply to a fresh DB. 026 installs the Lyzr-vertical protection trigger
+  // (its dummy-task delete is a no-op on a fresh DB).
+  '026_clear_dummy_tasks_protect_lyzr.sql',
 ]
 
 let m001 = mig('001_initial_schema.sql')

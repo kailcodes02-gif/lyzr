@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   Calendar, LayoutDashboard, ListTodo, ChevronDown, ChevronRight, ChevronsUpDown,
   Bell, LogOut, Zap, Sparkles, Link2, GitBranch, DollarSign, Upload, Menu, X, Settings, LineChart, UserCircle,
-  CalendarRange, History, BookOpen, Layers, Building2, Crown, Table2, Workflow, Home,
+  CalendarRange, History, BookOpen, Layers, Building2, Crown, Table2, Workflow, Home, Eye,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -17,6 +17,8 @@ import { withVertical } from '@/lib/hooks/use-space-href'
 import { signOut } from '@/lib/actions'
 import { AssistantDialog } from '@/components/assistant/assistant-dialog'
 import { LyzrSail } from '@/components/ui/lyzr-logo'
+import { setViewAs, useViewAs, viewAsLabel, VIEW_AS_OPTIONS } from '@/lib/hooks/use-view-as'
+import { startTour } from '@/components/workspace/welcome-tour'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -219,6 +221,8 @@ function MyFunctionRows({ onNavigate }: { onNavigate: () => void }) {
 export function AppSidebar() {
   const router = useRouter()
   const { data: user } = useCurrentUser()
+  const viewAs = useViewAs()
+  const realAdmin = user?.role === 'admin'
   const { mode, slug, verticalId, vertical, flags, canManage } = useVertical()
   const { data: spaceChannels } = useChannels(verticalId)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -328,9 +332,9 @@ export function AppSidebar() {
               <p className="text-sm font-medium text-zinc-900 truncate">{user?.display_name}</p>
               <p className="text-[11px] text-zinc-500 truncate">{user?.email}</p>
             </div>
-            {user?.role === 'admin' && (
+            {realAdmin && (
               <Badge variant="outline" className="text-[10px] border-violet-300 text-violet-600">
-                Admin
+                {viewAs === 'admin' ? 'Admin' : `Viewing: ${viewAsLabel(viewAs)}`}
               </Badge>
             )}
           </DropdownMenuTrigger>
@@ -350,13 +354,30 @@ export function AppSidebar() {
                 <Link2 className="w-4 h-4 mr-2" /> Linked accounts
               </Link>
             </DropdownMenuItem>
-            {user?.role === 'admin' && (
+            {realAdmin && viewAs === 'admin' && (
               <DropdownMenuItem className="p-0">
                 <Link href="/admin/" className="flex items-center w-full px-2 py-1.5 text-zinc-700 hover:text-zinc-900 select-none outline-none">
                   <Settings className="w-4 h-4 mr-2" /> Admin
                 </Link>
               </DropdownMenuItem>
             )}
+            {realAdmin && (
+              <>
+                <DropdownMenuSeparator className="bg-zinc-200/70" />
+                <p className="px-2 pt-1.5 pb-1 brand-label text-[10px] text-zinc-500 flex items-center gap-1"><Eye className="w-3 h-3" /> View as</p>
+                {VIEW_AS_OPTIONS.map(o => (
+                  <DropdownMenuItem key={o.value} onClick={() => setViewAs(o.value)}
+                    className={cn('text-zinc-700 text-xs', viewAs === o.value && 'bg-zinc-100 font-medium text-zinc-900')}>
+                    <span className={cn('w-1.5 h-1.5 rounded-full mr-2', viewAs === o.value ? 'bg-orange-500' : 'bg-zinc-300')} />
+                    {o.label}
+                  </DropdownMenuItem>
+                ))}
+              </>
+            )}
+            <DropdownMenuSeparator className="bg-zinc-200/70" />
+            <DropdownMenuItem onClick={startTour} className="text-zinc-700 text-xs">
+              <BookOpen className="w-4 h-4 mr-2" /> Replay the welcome tour
+            </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-zinc-200/70" />
             <DropdownMenuItem onClick={handleSignOut} className="text-red-600 hover:text-red-700">
               <LogOut className="w-4 h-4 mr-2" /> Sign out
@@ -403,10 +424,23 @@ export function AppHeader() {
   const router = useRouter()
   const [assistantOpen, setAssistantOpen] = useState(false)
   const { data: notifications } = useNotifications()
+  const { data: user } = useCurrentUser()
   const { mode, vertical } = useVertical()
+  const viewAs = useViewAs()
   const unreadCount = notifications?.length || 0
+  const previewing = user?.role === 'admin' && viewAs !== 'admin'
 
   return (
+    <>
+    {previewing && (
+      <div className="sticky top-0 z-40 flex items-center justify-center gap-2 bg-amber-600 px-4 py-1.5 text-xs text-white">
+        <Eye className="w-3.5 h-3.5" />
+        Previewing the tracker as <strong>{viewAsLabel(viewAs)}</strong> — this is what that role sees.
+        <button onClick={() => setViewAs('admin')} className="underline underline-offset-2 hover:opacity-80 font-medium">
+          Back to admin view
+        </button>
+      </div>
+    )}
     <header className="sticky top-0 z-30 h-14 border-b border-zinc-200 bg-white/85 backdrop-blur-xl flex items-center justify-between px-4 lg:px-6">
       <div className="lg:hidden w-10" />
       <div className="flex-1 flex items-center gap-2 text-xs text-zinc-500 pl-2">
@@ -441,5 +475,6 @@ export function AppHeader() {
         </Button>
       </div>
     </header>
+    </>
   )
 }

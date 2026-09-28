@@ -1,5 +1,6 @@
 'use client'
 
+import { PageIntro } from '@/components/ui/page-intro'
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import {
@@ -145,6 +146,10 @@ function CalendarContent() {
             Content & Campaign Calendar
           </h1>
           <p className="text-xs text-zinc-600">Track and coordinate marketing timelines</p>
+          <div className="mt-2"><PageIntro k="calendar">
+            Every task with a due date on a week or month grid, so overlaps and crunch weeks are
+            visible before they happen. Click a day to add a task there.
+          </PageIntro></div>
         </div>
 
         <div className="flex items-center gap-2">

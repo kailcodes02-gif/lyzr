@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { AppSidebar, AppHeader } from '@/components/layout/app-shell'
 import { AuthGuard } from '@/components/layout/auth-guard'
 import { VerticalProvider } from '@/components/providers/vertical-provider'
+import { WelcomeTour } from '@/components/workspace/welcome-tour'
 
 export default function AuthenticatedLayout({
   children,
@@ -20,6 +21,7 @@ export default function AuthenticatedLayout({
               <main className="flex-1 overflow-y-auto">
                 {children}
               </main>
+              <WelcomeTour />
             </div>
           </div>
         </VerticalProvider>

@@ -1,5 +1,6 @@
 'use client'
 
+import { PageIntro } from '@/components/ui/page-intro'
 import { useMemo, useState } from 'react'
 import { CalendarRange } from 'lucide-react'
 import { useTasks, useVerticalLookup, useChannels } from '@/lib/hooks/use-data'
@@ -51,6 +52,11 @@ export default function WorkspaceWeeklyPage() {
         </div>
         <DateRangePicker label="Period" value={period} onChange={setPeriod} allowAll={false} />
       </div>
+
+      <PageIntro k="workspace-weekly">
+        The week-by-week review for leadership: what was planned in the period, what got done,
+        what carried over — for every vertical at once. Step through weeks or pick any range.
+      </PageIntro>
 
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-[10px] text-zinc-500 font-medium">Group by

@@ -233,10 +233,14 @@ function VerticalEditor({ vertical, owners, channelCount, templates, onChanged }
             onClick={() => run(() => updateVertical({ id: vertical.id, name, description, settings: flags }), 'Vertical saved')}>
             <Save className="w-3.5 h-3.5 mr-1" /> Save
           </Button>
-          <Button size="sm" variant="outline" disabled={busy} className="text-xs h-8 border-zinc-300"
-            onClick={() => run(() => updateVertical({ id: vertical.id, is_active: !vertical.is_active }), vertical.is_active ? 'Vertical deactivated' : 'Vertical reactivated')}>
-            {vertical.is_active ? 'Deactivate' : 'Reactivate'}
-          </Button>
+          {vertical.slug === 'lyzr' ? (
+            <span className="text-[11px] text-zinc-500">Lyzr is the company-wide space — it is always on and can never be removed.</span>
+          ) : (
+            <Button size="sm" variant="outline" disabled={busy} className="text-xs h-8 border-zinc-300"
+              onClick={() => run(() => updateVertical({ id: vertical.id, is_active: !vertical.is_active }), vertical.is_active ? 'Vertical deactivated' : 'Vertical reactivated')}>
+              {vertical.is_active ? 'Deactivate' : 'Reactivate'}
+            </Button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-zinc-100">

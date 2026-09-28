@@ -18,6 +18,7 @@ import { withVertical } from '@/lib/hooks/use-space-href'
 import { bucketWeek, currentWeek, OPEN_STATUSES } from '@/lib/week-logic'
 import { STATUS_CONFIG, type Task } from '@/lib/types/database'
 import { cn } from '@/lib/utils'
+import { PageIntro } from '@/components/ui/page-intro'
 
 // The simplest possible home for a channel or function owner: the hero
 // banner, the channels they own (in every vertical), and what they owe this
@@ -84,6 +85,12 @@ export function MyBoard({ showFullWorkspaceLink }: { showFullWorkspaceLink?: boo
           <Button onClick={() => { setCreateChannel(undefined); setCreateOpen(true) }} className="bg-orange-500 hover:bg-orange-600 text-white border-0"><Plus className="w-4 h-4 mr-2" /> New task</Button>
         </div>
       </div>
+
+      <PageIntro k="my-board">
+        <strong>My Board</strong> — just your work. Tasks assigned to you (or where you&apos;re
+        mentioned), grouped by when they&apos;re due, plus your channels and inbox. If you mainly
+        execute tasks, this is your home page.
+      </PageIntro>
 
       <CampaignBanner verticalId="all" compact canCreate={false} />
 

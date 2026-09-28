@@ -14,6 +14,7 @@ import { useCampaigns, useAllCampaignParticipants, useTasks } from '@/lib/hooks/
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { CAMPAIGN_KIND } from '@/lib/types/database'
 import { cn } from '@/lib/utils'
+import { PageIntro } from '@/components/ui/page-intro'
 
 export default function CampaignsPage() {
   const { isAdmin, ownedVerticalIds, verticals } = useVertical()
@@ -42,6 +43,13 @@ export default function CampaignsPage() {
         </div>
         {canCreate && <Button onClick={() => setCreateOpen(true)} className="bg-orange-500 hover:bg-orange-600 text-white border-0"><Plus className="w-4 h-4 mr-2" /> New campaign</Button>}
       </div>
+
+      <PageIntro k="campaigns">
+        A <strong>campaign</strong> is a big push that spans channels or verticals — a launch, an
+        event, a report. A <strong>thunderclap</strong> is a one-day coordinated blast where many
+        people post at the same time. Pin a campaign and it shows as a banner on every home page
+        until it&apos;s done.
+      </PageIntro>
 
       {isLoading ? <div className="h-40 bg-zinc-200 rounded-xl animate-pulse" /> : groups.length === 0 ? (
         <Card className="bg-white border-zinc-200"><CardContent className="p-10 text-center text-sm text-zinc-500">No campaigns yet.</CardContent></Card>

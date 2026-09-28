@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { VerticalContext, type VerticalMode } from '@/lib/hooks/use-vertical'
 import { useCategories, useChannels, useCurrentUser, useMyVerticalIds, useVerticals } from '@/lib/hooks/use-data'
 import { keyFor, usePersisted } from '@/lib/hooks/use-persisted'
+import { maskForPreview, useViewAs } from '@/lib/hooks/use-view-as'
 import { withVertical } from '@/lib/hooks/use-space-href'
 import { ALL_FLAGS_ON, resolveFlags } from '@/lib/vertical-flags'
 import type { Vertical } from '@/lib/types/database'
@@ -56,8 +57,14 @@ export function VerticalProvider({ children }: { children: ReactNode }) {
 
   const [lastSlug, setLastSlug] = usePersisted<string | null>(keyFor(user?.id, 'vertical:last'), null)
 
-  const ownedVerticalIds = useMemo(() => new Set(myVerticalIds || []), [myVerticalIds])
-  const isAdmin = user?.role === 'admin'
+  // "View as" preview only ever narrows what a real admin sees.
+  const viewAs = useViewAs()
+  const mask = maskForPreview(user?.role === 'admin' ? viewAs : 'admin')
+  const ownedVerticalIds = useMemo(
+    () => (mask.verticalOwnership ? new Set(myVerticalIds || []) : new Set<string>()),
+    [myVerticalIds, mask.verticalOwnership]
+  )
+  const isAdmin = user?.role === 'admin' && mask.isAdmin
 
   // ---------- resolve the current scope ----------
   const known = vParam && vParam !== 'all' ? verticals.find(v => v.slug === vParam) || null : null
