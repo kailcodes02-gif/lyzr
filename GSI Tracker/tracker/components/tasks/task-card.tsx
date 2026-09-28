@@ -379,9 +379,16 @@ export function TaskRow({ task, onClick, selectable, selected, onSelectChange, p
           ? new Date(task.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
           : '-'}
       </td>
-      <td className="py-3 px-4 text-xs text-zinc-500">
-        {parentChannel ? <><span className="text-zinc-400">{parentChannel.name} › </span>{task.channel?.name}</> : (task.channel?.name || '-')}
-      </td>
+      {showVerticalColumn ? (
+        <>
+          <td className="py-3 px-4 text-xs"><Badge variant="outline" className="text-[10px] border-zinc-300 bg-white text-zinc-700">{parentChannel ? parentChannel.name : (task.channel?.name || '-')}</Badge></td>
+          <td className="py-3 px-4 text-xs">{parentChannel ? <Badge variant="outline" className="text-[10px] border-violet-200 bg-violet-50 text-violet-700">{task.channel?.name}</Badge> : <span className="text-zinc-300">—</span>}</td>
+        </>
+      ) : (
+        <td className="py-3 px-4 text-xs text-zinc-500">
+          {parentChannel ? <><span className="text-zinc-400">{parentChannel.name} › </span>{task.channel?.name}</> : (task.channel?.name || '-')}
+        </td>
+      )}
       {showVerticalColumn && (
         <td className="py-3 px-4 text-xs text-zinc-500">{domainName ? <Badge variant="outline" className="text-[10px] border-emerald-200 bg-emerald-50 text-emerald-700">{domainName}</Badge> : <span className="text-zinc-300">unlinked</span>}</td>
       )}

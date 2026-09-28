@@ -355,6 +355,9 @@ function TaskTable({ tasks, onTaskClick, showCancelled, showChannelColumn, showV
               {showChannelColumn && (
                 <th className="text-left text-xs font-medium text-zinc-600 py-3 px-4">Channel</th>
               )}
+              {showChannelColumn && showVerticalColumn && (
+                <th className="text-left text-xs font-medium text-zinc-600 py-3 px-4">Sub-channel</th>
+              )}
               {showVerticalColumn && (
                 <th className="text-left text-xs font-medium text-zinc-600 py-3 px-4">Domain</th>
               )}
