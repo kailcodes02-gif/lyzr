@@ -351,8 +351,34 @@ export function CalendarApp() {
     closeAll();
   };
 
+  // Drag / resize = a real reschedule (PATCH to Graph). For a meeting the
+  // user organizes, Exchange then emails every attendee an updated
+  // invitation on its own — say so. For a meeting they were invited to, a
+  // PATCH moves only their copy (nobody is told, the organizer's time
+  // stands) — warn, with Undo putting their copy back.
   const onMove = (m: GridMove) => {
-    patch.mutate({ id: m.ev.id, body: moveBody(m, tz), quiet: true }, { onError: () => m.revert() });
+    const organizerAddr = m.ev.organizer?.emailAddress?.address;
+    const guests = (m.ev.attendees ?? []).filter((a) => a.emailAddress.address !== organizerAddr).length;
+    const mine = m.ev.isOrganizer ?? m.ev.responseStatus?.response === "organizer";
+    const undoBody = moveBody({ start: m.ev.startWall, end: m.ev.endWall, allDay: !!m.ev.isAllDay }, tz);
+    patch.mutate(
+      { id: m.ev.id, body: moveBody(m, tz), quiet: true },
+      {
+        onError: () => m.revert(),
+        onSuccess: () => {
+          if (!guests) return;
+          if (mine) {
+            toast.success(`Moved. An updated invitation is on its way to ${guests} ${guests === 1 ? "guest" : "guests"}.`);
+          } else {
+            toast.warning("Only your copy moved", {
+              description: "You are not the organizer: guests and the organizer keep the original time, and their next update can move it back.",
+              duration: 10_000,
+              action: { label: "Undo", onClick: () => patch.mutate({ id: m.ev.id, body: undoBody, quiet: true }) },
+            });
+          }
+        },
+      },
+    );
   };
 
   const onRsvp = (action: "accept" | "tentativelyAccept" | "decline") => {
