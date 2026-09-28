@@ -458,6 +458,13 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-09-28, MS UI: drag-reschedule feedback (MS UI)
+- Drag/resize was already a real Graph PATCH (Exchange auto-emails attendees when the organizer
+  moves a meeting — no "send update?" prompt exists in Graph). Now the UI says so: organizer moves
+  toast "updated invitation on its way to N guests"; moving a meeting you were only invited to
+  warns that only your copy moved (organizer's time stands) with a 10s Undo that PATCHes the
+  original times back. 430 unit + calendar e2e green; deployed (Worker version a84ccfe1).
+
 ### 2026-09-28, MS UI: Google-style calendar quick create (MS UI)
 - Quick-create popup rebuilt to mirror Google Calendar's: Event / Out of office / Focus time tabs
   (oof sets showAs oof + default title; both non-event kinds drop Teams), date field + start/end
