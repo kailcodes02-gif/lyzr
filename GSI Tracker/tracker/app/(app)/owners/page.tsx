@@ -1,6 +1,5 @@
 'use client'
 
-import { PageIntro } from '@/components/ui/page-intro'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
@@ -138,11 +137,6 @@ export default function OwnersPage() {
         </p>
       </div>
 
-      <PageIntro k="owners">
-        Tasks grouped by the person who owns them — who is carrying what, and how much of it is
-        open or overdue. For roles (admin, leadership, vertical and channel owners) see{' '}
-        <strong>Members</strong>.
-      </PageIntro>
 
       {(!users || users.length === 0) ? (
         <Card className="bg-white border-zinc-200 backdrop-blur-xl">

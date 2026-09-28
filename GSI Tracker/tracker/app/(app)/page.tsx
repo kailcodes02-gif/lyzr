@@ -16,7 +16,6 @@ import { MyBoard } from '@/components/workspace/my-board'
 import { CampaignBanner } from '@/components/campaigns/campaign-banner'
 import { DomainGrid } from '@/components/workspace/domain-grid'
 import { InboxCard } from '@/components/workspace/inbox-card'
-import { PageIntro } from '@/components/ui/page-intro'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -127,12 +126,6 @@ function WorkspaceHomePage() {
         </div>
       </div>
 
-      <PageIntro k="home">
-        <strong>Company home</strong> — the across-workspace view. The tiles count every task in
-        every vertical; below them are pinned campaigns, the domains grid, and one card per
-        vertical (each opens that vertical&apos;s own dashboard). Your personal work lives in{' '}
-        <strong>My Board</strong>; the full leadership table is <strong>All Tasks</strong>.
-      </PageIntro>
 
       {/* Workspace KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

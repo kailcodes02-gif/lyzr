@@ -21,7 +21,6 @@ import {
   removeVerticalMember, removeVerticalOwner, setBadge, setPrimaryChannelOwner, setPrimaryFunctionOwner, setPrimaryVerticalOwner,
 } from '@/lib/actions'
 import { cn } from '@/lib/utils'
-import { PageIntro } from '@/components/ui/page-intro'
 
 // Roles & members. Admins assign anything; vertical owners manage their
 // vertical's members and channel owners; channel owners set owners below them.
@@ -100,13 +99,6 @@ export default function MembersPage() {
         <p className="text-sm text-zinc-500 mt-1">One person can hold several badges. Admins assign anything; vertical owners manage their vertical; channel owners set owners below them.</p>
       </div>
 
-      <PageIntro k="members">
-        <strong>Who is who.</strong> Each row is one person with their roles: Admin, Leadership,
-        vertical owner, and the channels they own. Use the <strong>Verticals</strong>,{' '}
-        <strong>Domains</strong> and <strong>Channels</strong> tabs to assign owners — admins can
-        assign anything; vertical owners manage their vertical; channel owners assign owners
-        below themselves.
-      </PageIntro>
 
       <Tabs defaultValue="people">
         <TabsList className="bg-zinc-100 border border-zinc-200">

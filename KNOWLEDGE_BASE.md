@@ -472,6 +472,11 @@ Access if the data ever becomes confidential.
   mark their pages' intros as seen so nobody gets the same card twice.
 - Guide page: "Guide walkthrough" button next to the "How the tracker works" H1 restarts the
   walkthrough for anyone, any time. 36 unit tests green; static export merged into GSI_Tracker/.
+- **Follow-up cleanup (same day):** the earlier inline `components/ui/page-intro.tsx` cards
+  (added with the brand revamp) duplicated the new popup intros — removed from all 16 pages and
+  the component deleted; the popup cards in `components/workspace/page-intro.tsx` are now the one
+  intro system. `tsc` clean, 36 tests, build 35 routes; rebuilt `out/` needs a resync to
+  `GSI_Tracker/` + push (user step).
 
 ### 2026-09-28, MS UI: hands-free inbox sorting — invites to Calendar invites, notes to Meeting scripts (MS UI)
 - Why: user's real mailbox kept meeting invites ("All Hands Sync", "Accepted: Paid Ads GSI") and Gemini

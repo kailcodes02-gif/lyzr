@@ -1,6 +1,5 @@
 'use client'
 
-import { PageIntro } from '@/components/ui/page-intro'
 import { useMemo, useState } from 'react'
 import { Table2 } from 'lucide-react'
 import { useTasks, useChannels } from '@/lib/hooks/use-data'
@@ -28,12 +27,6 @@ export default function WorkspaceTasksPage() {
         <p className="text-sm text-zinc-500 mt-1">Every task in every vertical. Tagged by vertical, domain, channel and sub-channel. Click a tile to filter.</p>
       </div>
 
-      <PageIntro k="all-tasks">
-        <strong>This is the leadership view.</strong> Every task across every vertical in one
-        table, tagged by vertical, domain, channel and sub-channel. Click a summary tile (Done,
-        Not done, Live, Blocked, Overdue, Critical) to filter the table to just those tasks; the
-        filter bar narrows further by date, owner, status or priority.
-      </PageIntro>
 
       <TaskFilterBar
         value={filters} onChange={setFilters} tasks={tasks}

@@ -1,6 +1,5 @@
 'use client'
 
-import { PageIntro } from '@/components/ui/page-intro'
 import { useCurrentUser, useTasks, useMentionsForUser, useBudgetPeriods, useRecentActivity } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { InfoTip } from '@/components/ui/info-tip'
@@ -163,12 +162,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <PageIntro k="vertical-dashboard">
-        This is <strong>{vertical?.name || 'this vertical'}&apos;s own dashboard</strong> — its
-        KPIs, channels and tasks only. Switch verticals (or back to the company-wide view) with
-        the switcher at the top of the sidebar. Lyzr is the across-workspace space; each vertical
-        is its own dashboard like this one.
-      </PageIntro>
 
       {/* KPI Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

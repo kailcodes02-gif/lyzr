@@ -1,6 +1,5 @@
 'use client'
 
-import { PageIntro } from '@/components/ui/page-intro'
 import { useBudgetPeriods, useTasks, useCategories, useChannels } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { InfoTip } from '@/components/ui/info-tip'
@@ -87,10 +86,6 @@ export default function BudgetsPage() {
             <Landmark className="w-6 h-6 text-emerald-600" /> Budgets <InfoTip k="budgets" />
           </h1>
           <p className="text-sm text-zinc-500 mt-1">{vertical?.name || 'Marketing'} budget allocations and scope limits</p>
-          <div className="mt-2"><PageIntro k="budgets">
-            Monthly budgets at any level of the channel tree — a group, a channel or one
-            sub-channel. Spend recorded on tasks rolls up against these.
-          </PageIntro></div>
         </div>
 
         {/* Period Selector */}
