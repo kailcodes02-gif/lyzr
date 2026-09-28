@@ -1,6 +1,7 @@
 'use client'
 
 import { type Task, type TaskStatus, STATUS_CONFIG, PRIORITY_COLORS, GRADE_STAR } from '@/lib/types/database'
+import { GRADE_HELP } from '@/lib/field-copy'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -105,7 +106,7 @@ function GradeStar({ task }: { task: Task }) {
         <span className={cn('text-sm leading-none shrink-0', GRADE_STAR[grade])} aria-label={`${grade} star`}>★</span>
       </TooltipTrigger>
       <TooltipContent side="bottom" className="text-xs capitalize">
-        {grade} activity
+        {GRADE_HELP[grade] || `${grade} activity`}
       </TooltipContent>
     </Tooltip>
   )
@@ -147,7 +148,7 @@ function MetaChips({ task, tiny }: { task: Partial<Task>; tiny?: boolean }) {
         </span>
       )}
       {frequency && (
-        <span className="inline-flex items-center gap-1 rounded-md bg-violet-50 border border-violet-200 text-violet-700 px-1.5 py-0.5 text-[10px] font-medium max-w-[160px] truncate" title={`Frequency: ${frequency}`}>
+        <span className="inline-flex items-center gap-1 rounded-md bg-violet-50 border border-violet-200 text-violet-700 px-1.5 py-0.5 text-[10px] font-medium max-w-[160px] truncate" title={`How often: ${frequency}`}>
           <Repeat className="w-3 h-3 shrink-0" />{frequency}
         </span>
       )}

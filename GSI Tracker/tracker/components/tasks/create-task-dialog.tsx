@@ -510,7 +510,7 @@ export function CreateTaskDialog({
                   <Extra title="Budget ($)" hint="Money this task plans to spend.">
                     <Input type="number" value={budget} onChange={e => setBudget(e.target.value)} placeholder="e.g. 500" className="bg-white border-zinc-300 h-8 text-sm" />
                   </Extra>
-                  <Extra title="How often" hint="Free text, e.g. “Monthly” or “Ongoing”.">
+                  <Extra title="How often" hint="How often this runs — e.g. “Weekly”, “Monthly 1×”, “Ongoing”.">
                     <Input value={frequency} onChange={e => setFrequency(e.target.value)} placeholder="e.g. Monthly" className="bg-white border-zinc-300 h-8 text-sm" />
                   </Extra>
                 </div>

@@ -23,6 +23,8 @@ import { useChannels, useChannelFields, useVerticals } from '@/lib/hooks/use-dat
 import { upsertChannelField, deleteChannelField } from '@/lib/actions'
 import type { ChannelField } from '@/lib/types/database'
 import { cn } from '@/lib/utils'
+import { fieldCopy } from '@/lib/field-copy'
+import { InfoTip } from '@/components/ui/info-tip'
 
 // "Task fields" (stored as channel_fields): extra questions every task in a
 // channel asks, beyond title/owner/due date. Built as a guided form with a
@@ -463,7 +465,7 @@ function FieldRow({ field, editing, onEdit, onRemove }: { field: ChannelField; e
       </button>
       <k.icon className="w-4 h-4 text-zinc-500 shrink-0" />
       <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-medium text-zinc-900 truncate">{field.name}{field.is_required && <span className="text-orange-600"> *</span>}</div>
+        <div className="text-[13px] font-medium text-zinc-900 truncate flex items-center gap-1">{fieldCopy(field).label}{field.is_required && <span className="text-orange-600"> *</span>}{fieldCopy(field).help && <InfoTip text={fieldCopy(field).help} />}</div>
         <div className="text-[11px] text-zinc-500 truncate">
           {k.label} · {field.surface === 'tracker' ? 'filled in when reporting results' : 'filled in while planning'}
           {field.cascades_to_children && ' · also on sub-channels'}

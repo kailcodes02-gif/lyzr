@@ -771,7 +771,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
 
                   {/* Planning Fields (frequency, star grade, etc.) */}
                   <div>
-                    <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Planning Fields</h4>
+                    <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3 flex items-center gap-1">Plan <InfoTip text="Filled in before the work happens: how often it runs, its importance tier, targets and anything this channel asks for." /></h4>
                     <ChannelFields
                       channelSlug={task.channel?.slug || ''}
                       parentChannelSlug={(task.channel as any)?.parent_channel?.slug}
@@ -786,7 +786,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                   {showTrackerFields && (
                     <div>
                       <Separator className="bg-zinc-100 my-4" />
-                      <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Tracker Fields</h4>
+                      <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3 flex items-center gap-1">Results <InfoTip text="Filled in once it has gone live: what was achieved, what it cost and a link that proves it." /></h4>
                       <ChannelFields
                         channelSlug={task.channel?.slug || ''}
                         parentChannelSlug={(task.channel as any)?.parent_channel?.slug}

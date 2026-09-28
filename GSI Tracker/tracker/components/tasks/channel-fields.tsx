@@ -1,6 +1,8 @@
 'use client'
 
 import { Input } from '@/components/ui/input'
+import { InfoTip } from '@/components/ui/info-tip'
+import { fieldCopy } from '@/lib/field-copy'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
@@ -192,13 +194,15 @@ export function ChannelFields({
         const displayValue = isAutoCalc
           ? (autoCalcValues[field.slug] ?? '-')
           : (values[field.slug] ?? '')
+        const copy = fieldCopy(field)
 
         return (
           <div key={field.slug} className={field.field_type === 'long_text' ? 'col-span-2' : ''}>
-            <Label className="text-[11px] text-zinc-500 mb-1 block">
-              {field.name}
-              {field.is_required && <span className="text-red-600 ml-1">*</span>}
-              {isAutoCalc && <span className="ml-1 text-violet-600 font-medium">(auto)</span>}
+            <Label className="text-[11px] text-zinc-500 mb-1 flex items-center gap-1">
+              {copy.label}
+              {field.is_required && <span className="text-red-600">*</span>}
+              {isAutoCalc && <span className="text-violet-600 font-medium">(auto)</span>}
+              {copy.help && <InfoTip text={copy.help} />}
             </Label>
 
             {isAutoCalc ? (
@@ -211,7 +215,7 @@ export function ChannelFields({
                 onChange={e => handleChange(field.slug, e.target.value)}
                 disabled={disabled}
                 className="bg-zinc-100 border-zinc-300 text-sm min-h-[60px] disabled:opacity-50"
-                placeholder={field.name}
+                placeholder={copy.label}
               />
             ) : field.field_type === 'dropdown' ? (
               <Select
@@ -220,11 +224,11 @@ export function ChannelFields({
                 disabled={disabled}
               >
                 <SelectTrigger className="bg-zinc-100 border-zinc-300 text-sm h-9 disabled:opacity-50">
-                  <SelectValue placeholder={`Select ${field.name}`} />
+                  <SelectValue placeholder={`Choose ${copy.label.toLowerCase()}`} />
                 </SelectTrigger>
                 <SelectContent className="bg-white shadow-lg border-zinc-300 text-zinc-900">
                   {field.options?.map(opt => (
-                    <SelectItem key={opt} value={opt}>{opt.replace(/_/g, ' ')}</SelectItem>
+                    <SelectItem key={opt} value={opt}>{copy.optionLabel(opt)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -248,7 +252,7 @@ export function ChannelFields({
                           : 'bg-zinc-100 border-zinc-300 text-zinc-500 hover:text-zinc-700'
                       }`}
                     >
-                      {opt.replace(/_/g, ' ')}
+                      {copy.optionLabel(opt)}
                     </button>
                   )
                 })}
@@ -262,7 +266,7 @@ export function ChannelFields({
                   disabled={disabled}
                   className="rounded border-zinc-300 bg-zinc-100 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
                 />
-                <span className="text-xs text-zinc-600">Toggle {field.name}</span>
+                <span className="text-xs text-zinc-600">{copy.label}</span>
               </div>
             ) : field.field_type === 'date_range' ? (
               <div className="grid grid-cols-2 gap-2">
@@ -294,7 +298,7 @@ export function ChannelFields({
                 disabled={disabled}
               >
                 <SelectTrigger className="bg-zinc-100 border-zinc-300 text-sm h-9 disabled:opacity-50">
-                  <SelectValue placeholder={`Select ${field.name}`} />
+                  <SelectValue placeholder={`Choose ${copy.label.toLowerCase()}`} />
                 </SelectTrigger>
                 <SelectContent className="bg-white shadow-lg border-zinc-300 text-zinc-900">
                   {users?.map(u => (
@@ -334,7 +338,7 @@ export function ChannelFields({
                   className={`bg-zinc-100 border-zinc-300 text-sm h-9 disabled:opacity-50 ${
                     field.field_type === 'currency' ? 'pl-7' : ''
                   }`}
-                  placeholder={field.name}
+                  placeholder={copy.label}
                   step={field.field_type === 'currency' ? '0.01' : undefined}
                 />
               </div>

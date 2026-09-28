@@ -475,6 +475,18 @@ Access if the data ever becomes confidential.
 - Event detail (invite view) gains Google's response summary under the guest count ("2 yes,
   1 awaiting"). 430 unit + calendar/smoke e2e green; deployed (Worker version d53988f6).
 
+### 2026-09-29 (labels), GSI Tracker: plain names + (i) help for the seeded task fields; deploy of the rebuild (GSI Tracker)
+- The 8 task fields every channel got from `seed-gtm.mjs` now show friendly labels with an (i) tooltip
+  (`lib/field-copy.ts`, used by `channel-fields.tsx`, the admin Task fields list and card tooltips):
+  Frequency → "How often", Star grade → "Importance tier" (options "★ Gold — must-do flagship", Silver —
+  important, Bronze — good to have; Gold starts as Critical priority), KPI target → "Target", Opportunity
+  target → "Opportunities target", KPI actual → "Result achieved", Opportunities actual → "Opportunities
+  created", Spend → "Money spent", Evidence URL → "Proof link". Display-only: DB names/slugs unchanged; a
+  field an admin renamed keeps its name, and a field description overrides the default help. Task drawer
+  sections "Planning Fields"/"Tracker Fields" → "Plan"/"Results" with (i).
+- Deployed together with 5a48dfe (Projects Board/Table/List, simpler campaign form, traffic-light
+  status, leadership-only company view, sub-task owners). `tsc` clean, 36 tests, 36 routes.
+
 ### 2026-09-29 (rebuild), GSI Tracker: Projects with Board / Table / List, Kanban kept as the core; sub-task owners (GSI Tracker)
 - Rebuilt on the 65257f2 base after the rollback, this time keeping the Kanban/Jira structure as the
   core. `/projects/` (Asana/Jira-style): wide project list on the left (My tasks, Today, My projects, all
