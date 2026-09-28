@@ -472,6 +472,13 @@ Access if the data ever becomes confidential.
   mailto sends via POST /me/sendMail after confirm; offers Move to Trash / Promotions. 396 unit + 48 browser
   tests; deployed.
 
+### 2026-09-28, GSI Tracker: holistic All Tasks view (GSI Tracker)
+- All Tasks (`/workspace/tasks/`): new `TaskSummaryStrip` over the filtered set (All, Done with %,
+  Not done, Live, Blocked, Overdue, P0/P1 open; status tiles toggle the status filter; stacked
+  progress bar). Table columns in company mode: Title, Priority, Status, Owners, Due, Channel tag,
+  Sub-channel tag, Domain tag, Vertical tag. Migration 024 renames ABM sub-channels to "ABM SI" /
+  "ABM GSI" (user pastes). Staged in `GSI_Tracker/`.
+
 ### 2026-09-26, GSI Tracker: Microsoft-only login live, chat-style comments, tree Overview (GSI Tracker)
 - Auth: migration 023 (lyzr.com only; all .ai rows/accounts rewritten to .com) applied live by
   Kailash; Entra app `eb37cade…` has the Supabase callback + `email`/`xms_edov` ID-token claims;
