@@ -475,6 +475,27 @@ Access if the data ever becomes confidential.
 - Event detail (invite view) gains Google's response summary under the guest count ("2 yes,
   1 awaiting"). 430 unit + calendar/smoke e2e green; deployed (Worker version d53988f6).
 
+### 2026-09-29 (guide), GSI Tracker: Guide, walkthrough, page intros and hover help rewritten for the current structure (GSI Tracker)
+- Migration 027 verified applied live (service-role probe): Lyzr sort_order 0, GSI 1; one "No channel"
+  bucket (under a "General" group) in each vertical.
+- **Guide** (`app/(app)/guide/page.tsx`) rewritten, 11 sections in order: Lyzr is the primary board · how
+  work is organised (incl. "No channel") · Projects Board/Table/List (+ Everything, My tasks, Today, Add
+  task) · a task's life (traffic-light colours, owner roles, sub-task owners, Plan → Results with the new
+  field names) · who sees what (company view for admins/leadership, My Board for everyone else, View as) ·
+  every screen tagged everyone / admins & leadership / inside a vertical · roles · campaigns (banner
+  audience, leads picker, tasks inside) · filters · setup in Workspace settings · assistant. Removed stale
+  bits: Google sign-in, "Admin › Functions/Custom fields", vertical owners on Company home, out-of-order
+  numbering.
+- **Walkthrough** (`welcome-tour.tsx`) now 9 steps: Welcome → Lyzr primary board (/dashboard/?v=lyzr) →
+  Projects → Adding a task → My Board → Campaigns → company view for admins & leadership (All Tasks) →
+  Members → Guide. Storage keys bumped to `gsi:tour:v3` so everyone sees the updated tour once.
+- **Page intros** updated (Company home is for admins/leadership; Dashboard says Lyzr covers every
+  vertical; Projects mentions Everything and "No channel"; Vertical Settings says task fields).
+  **Hover help** (`lib/help-text.ts`): vertical, status (traffic light), priority (names + tier mapping),
+  results fields, Microsoft sign-in, task fields instead of custom fields.
+- Test: harness screenshots of the full Guide and the tour's first step (9 steps, Next → Lyzr).
+  `tsc` clean, 36 tests, 37 routes.
+
 ### 2026-09-29 (Lyzr board), GSI Tracker: Lyzr primary + all-verticals board, "No channel" tasks, logo favicon (GSI Tracker)
 - **Lyzr is the primary vertical**: listed first everywhere (vertical provider sorts it first; migration 027
   also moves its `sort_order` first) and it's the default when no vertical is remembered.

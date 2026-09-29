@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  BookOpen, Building2, FolderKanban, Layers, ListTodo, Table2, Users, X, Zap,
+  BookOpen, FolderKanban, ListTodo, Table2, Users, X, Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { LyzrSail } from '@/components/ui/lyzr-logo'
@@ -18,8 +18,8 @@ import { cn } from '@/lib/utils'
 // welcome tour") or the Guide page's "Guide walkthrough" button. Pure
 // explanation — it never writes anything.
 
-const DONE_KEY = 'gsi:tour:v2'
-const STEP_KEY = 'gsi:tour:v2:step' // present = walkthrough in progress (survives reloads)
+const DONE_KEY = 'gsi:tour:v3'
+const STEP_KEY = 'gsi:tour:v3:step' // present = walkthrough in progress (survives reloads)
 
 let openFn: (() => void) | null = null
 export function startTour() { openFn?.() }
@@ -56,72 +56,68 @@ const STEPS: Step[] = [
     title: 'Welcome to the Lyzr Marketing Tracker',
     body: (
       <>This is where the marketing team plans, runs and reports its work — tasks, channels,
-      campaigns and budgets, in one place. This walkthrough takes you <strong>page by page</strong>:
-      every “Next” opens the page it talks about, so you see each one as it&apos;s explained. Close
-      it any time — you can restart it from the Guide page or your account menu.</>
+      campaigns and budgets, in one place. This walkthrough goes <strong>page by page</strong>:
+      every “Next” opens the page it talks about. Close it any time — restart it from the Guide
+      page or your account menu.</>
     ),
   },
   {
-    icon: <Building2 className="w-6 h-6 text-blue-600" />,
-    title: 'Home: verticals, and the Lyzr company view',
+    icon: <LyzrSail className="w-8 h-5" />,
+    title: 'Lyzr is the primary board',
     body: (
-      <>You are on the <strong>Company Home</strong>. <strong>A vertical is a business line</strong> —
-      GSI is one, and more can be added. Each vertical has its own dashboard, channels and tasks.
-      <strong> Lyzr</strong> is the company-wide view that is always there. Switch between “Company”
-      and a vertical with the switcher at the top of the sidebar.</>
+      <>This is <strong>Lyzr</strong> — the primary vertical. Inside Lyzr, every page shows
+      <strong> every vertical’s tasks</strong>: a GSI task is on the Lyzr board automatically, and
+      from here you can create tasks for any vertical. <strong>GSI</strong> and other verticals show
+      only their own work. Switch vertical at the top of the sidebar.</>
     ),
-    href: '/',
-    place: 'Home',
-    introKey: 'workspace_home',
-  },
-  {
-    icon: <Layers className="w-6 h-6 text-blue-600" />,
-    title: 'Overview: how work is organised',
-    body: (
-      <>This is the <strong>Overview</strong> — the whole tree of work drawn as one picture:
-      <strong> Group → Channel → Sub-channel → Task</strong>. A channel is a marketing motion
-      (Events, ABM, Paid…); every channel has an owner. After the tour, click any node here to
-      open its page.</>
-    ),
-    href: '/overview/?v=all',
-    place: 'Overview',
-    introKey: 'overview',
-  },
-  {
-    icon: <ListTodo className="w-6 h-6 text-emerald-600" />,
-    title: 'My Board: your own page',
-    body: (
-      <><strong>My Board</strong> is your personal home — just the tasks assigned to you, grouped
-      by when they are due. Its sibling <strong>My Tasks</strong> is the full list of everything
-      with your name on it, across all verticals. If you mainly execute tasks, these two pages
-      are most of what you need.</>
-    ),
-    href: '/my-board/',
-    place: 'My Board',
-    introKey: 'my_board',
+    href: '/dashboard/?v=lyzr',
+    place: 'Lyzr',
+    introKey: 'space_dashboard',
   },
   {
     icon: <FolderKanban className="w-6 h-6 text-orange-500" />,
-    title: 'Projects: every channel’s work, Jira-style',
+    title: 'Projects: where work happens',
     body: (
-      <>Every channel is a <strong>project</strong>. Pick one on the left and see its work as a
-      <strong> Board</strong> (drag cards between columns), a <strong>Table</strong>, or a compact
-      <strong> List</strong>. Type a task at the top and press Enter to add it. Colours tell you where
-      things stand: <strong>green</strong> live or done, <strong>yellow</strong> in progress,
-      <strong> red</strong> blocked or overdue.</>
+      <>Every channel is a <strong>project</strong>. It opens on <strong>Everything</strong> — the Lyzr
+      board with every task. Pick a project on the left and see its work as a <strong>Board</strong>
+      (drag cards between columns), a <strong>Table</strong>, or a compact <strong>List</strong>.
+      Colours tell you where things stand: <strong>green</strong> live or done, <strong>yellow</strong>
+      in progress, <strong>red</strong> blocked or overdue.</>
     ),
     href: '/projects/',
     place: 'Projects',
     introKey: 'projects',
   },
   {
-    icon: <Zap className="w-6 h-6 text-orange-500" />,
-    title: 'Campaigns and Thunderclaps',
+    icon: <ListTodo className="w-6 h-6 text-emerald-600" />,
+    title: 'Adding a task',
     body: (
-      <>A <strong>campaign</strong> is a big push that spans channels or verticals — a launch,
-      an event, a report. A <strong>thunderclap</strong> is a one-day coordinated blast where
-      many people post at once. A pinned campaign shows as a banner on home pages so nobody
-      misses it.</>
+      <>Type what needs doing in <strong>+ Add task</strong> at the top and press Enter — that’s it.
+      For more detail use <strong>New task</strong>: pick the vertical and channel (or leave it on
+      <strong> No channel</strong>), the owner (you by default), due date and priority. Sub-tasks get
+      their own owner, starting with the parent task’s.</>
+    ),
+  },
+  {
+    icon: <ListTodo className="w-6 h-6 text-emerald-600" />,
+    title: 'My Board: your own page',
+    body: (
+      <><strong>My Board</strong> is your personal home — just the tasks assigned to you, grouped by
+      when they’re due. <strong>My Tasks</strong> is the full list of everything with your name on it.
+      Most people start their day here.</>
+    ),
+    href: '/my-board/',
+    place: 'My Board',
+    introKey: 'my_board',
+  },
+  {
+    icon: <Zap className="w-6 h-6 text-orange-500" />,
+    title: 'Campaigns: launches and thunderclaps',
+    body: (
+      <>A <strong>launch</strong> is a release everyone rallies behind, a <strong>thunderclap</strong>
+      is one day where everyone posts at once, and a <strong>campaign</strong> is a multi-week push.
+      Each shows as a banner on home pages — for the whole company or one vertical — and groups the
+      tasks that make it happen.</>
     ),
     href: '/campaigns/',
     place: 'Campaigns',
@@ -129,12 +125,12 @@ const STEPS: Step[] = [
   },
   {
     icon: <Table2 className="w-6 h-6 text-blue-600" />,
-    title: 'All Tasks: the leadership view',
+    title: 'For admins and leadership: the company view',
     body: (
-      <><strong>All Tasks</strong> is every task in every vertical in one table. The summary tiles
-      at the top (Done, Not done, Live, Blocked, Overdue, Critical) filter the table when
-      clicked. <strong>Weekly</strong> shows the same work week by week: planned, done,
-      carried over.</>
+      <>Admins and leadership start on <strong>Company home</strong> and get the company pages.
+      <strong> All Tasks</strong> is the leadership view: every task in every vertical in one table;
+      the tiles on top (Done, Not done, Live, Blocked, Overdue, Critical) filter it. Everyone else
+      starts on My Board with a shorter sidebar.</>
     ),
     href: '/workspace/tasks/',
     place: 'All Tasks',
@@ -145,8 +141,8 @@ const STEPS: Step[] = [
     title: 'Members: people and roles',
     body: (
       <>The <strong>Members</strong> page shows who is who: admins, leadership, vertical owners,
-      channel owners — and the people map of who owns what, where. Admins assign any role here;
-      vertical owners manage their vertical; channel owners assign owners below themselves.</>
+      domain and channel owners. Admins assign any role here; vertical owners manage their vertical;
+      channel owners assign owners below themselves.</>
     ),
     href: '/members/',
     place: 'Members',
@@ -156,11 +152,10 @@ const STEPS: Step[] = [
     icon: <BookOpen className="w-6 h-6 text-violet-600" />,
     title: 'The Guide — and seeing it as anyone',
     body: (
-      <>This <strong>Guide</strong> page repeats everything in five minutes, and the
-      “Guide walkthrough” button at the top restarts this walkthrough whenever anyone needs it.
-      One last trick: admins can switch <strong>“View as”</strong> in the account menu (bottom
-      left) to preview the tracker exactly as Leadership, a vertical owner, a channel owner or a
-      member sees it. That’s everything — enjoy!</>
+      <>This <strong>Guide</strong> covers everything in five minutes, and its “Guide walkthrough”
+      button restarts this tour. Admins can switch <strong>“View as”</strong> in the account menu
+      (bottom left) to see the tracker exactly as leadership, a vertical owner, a channel owner or a
+      member does. That’s everything — enjoy!</>
     ),
     href: '/guide/',
     place: 'Guide',

@@ -39,17 +39,18 @@ type Intro = {
 const INTROS: Intro[] = [
   {
     key: 'workspace_home', path: '/', icon: <Home className="w-5 h-5 text-blue-600" />,
-    title: 'Home — the company at a glance',
-    lead: 'The across-workspace view: everything the marketing team is doing, in every vertical.',
+    title: 'Company home — for admins and leadership',
+    lead: 'The whole company at a glance. Everyone else starts on My Board instead.',
     features: [
-      { name: 'KPI tiles', what: 'Open, overdue, live and this-week counts across the whole company.' },
-      { name: 'Campaign banner', what: 'Pinned campaigns and thunderclaps show here until they are done.' },
+      { name: 'KPI tiles', what: 'Open, overdue, live and this-week counts across every vertical.' },
+      { name: 'Campaign banner', what: 'Running and upcoming campaigns and thunderclaps.' },
       { name: 'Domains grid', what: 'Each discipline (Content, Social, Paid…) with its load, across verticals.' },
-      { name: 'Vertical cards', what: 'One card per vertical — its owners and progress; click to open its own dashboard.' },
+      { name: 'Vertical cards', what: 'One card per vertical — Lyzr first; click to open its board.' },
       { name: 'My Day & Inbox', what: 'What you personally owe today, and everything waiting on you.' },
       { name: 'Recent activity', what: 'The latest changes anyone made, newest first.' },
     ],
   },
+
   {
     key: 'overview', path: '/overview', icon: <GitBranch className="w-5 h-5 text-blue-600" />,
     title: 'Overview — the whole tree of work',
@@ -73,17 +74,18 @@ const INTROS: Intro[] = [
   },
   {
     key: 'projects', path: '/projects', icon: <FolderKanban className="w-5 h-5 text-orange-500" />,
-    title: 'Projects — every channel’s work in one place',
-    lead: 'Every channel is a project. Pick one, then view its work the way that suits you.',
+    title: 'Projects — where work happens',
+    lead: 'Every channel is a project. It opens on Everything, the Lyzr board with every task.',
     features: [
-      { name: 'Left panel', what: 'My tasks, Today, your projects, then every project grouped by vertical. Search to jump to one.' },
+      { name: 'Left panel', what: 'Everything, My tasks, Today, your projects, then every project by vertical (each has a “No channel”). Search to jump.' },
       { name: 'Board', what: 'Kanban columns by status — drag a card to move it along. The default view.' },
-      { name: 'Table', what: 'Every task as a row with owner, due date, priority and status; sort and bulk-edit.' },
+      { name: 'Table', what: 'Every task as a row with owner, due date, priority and status; tick rows to change many at once.' },
       { name: 'List', what: 'A compact to-do list: tick the round checkbox to finish a task.' },
       { name: 'Add task', what: 'Type what needs doing at the top and press Enter — works in every view.' },
       { name: 'Colours', what: 'Green = live or done, yellow = in progress, red = blocked or overdue.' },
     ],
   },
+
   {
     key: 'my_tasks', path: '/my-tasks', icon: <ListTodo className="w-5 h-5 text-emerald-600" />,
     title: 'My Tasks — everything with your name on it',
@@ -149,14 +151,16 @@ const INTROS: Intro[] = [
   },
   {
     key: 'space_dashboard', path: '/dashboard', icon: <LayoutDashboard className="w-5 h-5 text-blue-600" />,
-    title: 'Dashboard — this vertical only',
-    lead: 'One vertical’s own home. Lyzr is the company-wide space; each vertical gets a page like this.',
+    title: 'Dashboard — a vertical’s home',
+    lead: 'Inside Lyzr (the primary board) it covers every vertical. Inside GSI or another vertical, just that vertical.',
     features: [
-      { name: 'KPIs', what: 'Your open tasks, going live this week, overdue and budget for this vertical.' },
-      { name: 'Channels', what: 'This vertical’s channel tree lives in the sidebar under Channels.' },
-      { name: 'Recent activity', what: 'The latest changes inside this vertical.' },
+      { name: 'KPIs', what: 'Your open tasks, going live this week, overdue and budget.' },
+      { name: 'Channels', what: 'This vertical’s channels are in the sidebar; each opens its board.' },
+      { name: 'New task', what: 'In Lyzr you can create a task for any vertical, with or without a channel.' },
+      { name: 'Recent activity', what: 'The latest changes, newest first.' },
     ],
   },
+
   {
     key: 'calendar', path: '/calendar', icon: <Calendar className="w-5 h-5 text-blue-600" />,
     title: 'Calendar — tasks by due date',
@@ -227,7 +231,7 @@ const INTROS: Intro[] = [
     lead: 'Everything that shapes this vertical.',
     features: [
       { name: 'Owners', what: 'Who runs this vertical.' },
-      { name: 'Taxonomy', what: 'Its groups, channels, sub-channels and custom fields.' },
+      { name: 'Channels', what: 'Its groups, channels, sub-channels and task fields.' },
       { name: 'Features', what: 'Switches for leads pipeline, resources and more.' },
     ],
   },

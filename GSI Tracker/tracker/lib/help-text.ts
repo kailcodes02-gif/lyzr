@@ -3,7 +3,7 @@
 
 export const HELP: Record<string, string> = {
   // Taxonomy
-  vertical: 'A business line (GSI, a product, or the company-wide Lyzr space). Everything below it belongs to that vertical: channels, tasks, budgets, reports.',
+  vertical: 'A business line with its own channels, tasks and budget. Lyzr is the primary vertical: its board shows every vertical’s tasks, and you can add tasks for any vertical from it. GSI and others show only their own.',
   category: 'A group is only a folder for channels (Paid, Organic, Events). Nothing is owned or assigned at this level; it organises the channel list and can carry a budget.',
   channel: 'A marketing motion with owners, targets, budget and tasks (Paid Ads, Email, Content). Channels can have sub-channels.',
   sub_channel: 'A channel nested under a parent (LinkedIn Ads under Paid Ads). It has everything a channel has and inherits the parent function.',
@@ -17,38 +17,38 @@ export const HELP: Record<string, string> = {
 
   // People and permissions
   admin: 'Global administrator. Creates verticals and functions, manages users, edits everything everywhere.',
-  vertical_owner: 'Manages one vertical: its channels, owners, budgets, custom fields and resources. Set by an admin.',
+  vertical_owner: 'Manages one vertical: its channels, owners, budgets, task fields and resources. Set by an admin.',
   function_owner: 'Domain owner: default owner for every channel of that domain across verticals, unless a vertical sets its own channel owners.',
-  channel_owner: 'Owns a channel and its tasks. Primary owners are marked with a crown; a task without an owner inherits the channel owners.',
+  channel_owner: 'Owns a channel and its tasks. A task without an owner inherits the channel owners.',
   member: 'Everyone who signs in. Members see everything and can create and update tasks, comments and checklists.',
-  pending_owner: 'This person has not signed in yet. Their ownership and assignments attach automatically on first Google sign-in.',
+  pending_owner: 'This person has not signed in yet. Their ownership and assignments attach automatically the first time they sign in with Microsoft.',
 
   // Views
-  workspace_home: 'The company view: every vertical and domain at a glance, the hero campaigns, who is where, your day, and recent activity.',
-  space_dashboard: 'This vertical only: your tasks, what goes live this week, budget and activity.',
+  workspace_home: 'The company view, for admins and leadership: every vertical and domain at a glance, the campaign banner, your day and recent activity.',
+  space_dashboard: 'A vertical’s own home: tasks, what goes live this week, budget and activity. Inside Lyzr it covers every vertical.',
   calendar: 'Tasks by due date. Use the arrows or pick any range; filter by owner, channel and status.',
-  tracker: 'Results view: tasks that went live or finished, with their tracker fields (KPI actual, spend, evidence).',
+  tracker: 'Results view: tasks that went live or finished, with their results (result achieved, money spent, proof link).',
   weekly: 'Planned versus delivered: everything due in the period, split into done, not done and overdue carried in from earlier.',
   owners: 'Each person with open, overdue and live counts. Click through for their tasks, mentions, calendar and activity.',
-  budgets: 'Budget periods at vertical, category or channel level, and how much tasks have allocated against each.',
+  budgets: 'Budget periods at vertical, group or channel level, and how much tasks have planned against each.',
   leads_pipeline: 'Read-only HubSpot lead pull, email-interaction CSVs and lead imports, with per-lead outreach tracking. Enabled per vertical.',
   history: 'Every logged change, who made it and when.',
   functions_view: 'One domain across all verticals: its channels, tasks and weekly results everywhere it runs.',
   resources: 'Curated links for this vertical: sheets, asset folders, live pages.',
   saved_views: 'Save the current filters and sort under a name so you can reload them later.',
   feature_flags: 'Which optional modules this vertical shows. GSI integrations (HubSpot pull, Instantly report) are wired for GSI today.',
-  template: 'A snapshot of a vertical’s categories, channels, sub-channels and custom fields (no tasks or owners). New verticals can start from one.',
+  template: 'A snapshot of a vertical’s groups, channels, sub-channels and task fields (no tasks or owners). New verticals can start from one.',
   date_range: 'Pick a preset, or two dates on the calendar. The arrows step forward and back by the same length.',
   date_field: 'Which date the range applies to: when the task is due, was completed, was created, or went live.',
-  status: 'Not started, In progress, Live (running in market), Blocked, Done, Cancelled.',
-  priority: 'P0 critical, P1 high, P2 medium, P3 low, P4 backlog. Blueprint star grades map gold=P0, silver=P1, bronze=P2.',
-  tracker_fields: 'Results captured once a task is live or done. They lock 45 days after completion; admins can override.',
+  status: 'Colour tells you where it stands: grey Not started, yellow In progress, green Live or Done, red Blocked. Cancelled is hidden by default.',
+  priority: 'Critical (P0), High (P1), Medium (P2), Low (P3), Backlog (P4). The importance tier maps Gold = Critical, Silver = High, Bronze = Medium.',
+  tracker_fields: 'The Results section: what was achieved, what it cost and a proof link, filled in once a task is live or done. Locks 45 days after completion; admins can override.',
   custom_fields: 'Extra planning or tracker fields per channel (text, number, currency, date, dropdown...). Cascade to sub-channels.',
   campaign: 'A hero item the whole team rallies around: a product launch, a thunderclap or a big campaign. It sits as a banner on every dashboard, links tasks from any channel, and has its own tracker page.',
   launch: 'A product or feature launch. Link every launch task to it so leadership sees one progress bar.',
   thunderclap: 'Everyone must do one specific action (repost, comment, share) by a date. Each participant ticks their own row; the banner shows who is done.',
   champion: 'Campaign leads: the people driving it. They can edit it and are shown on the banner.',
-  my_board: 'Your simple home: the hero banner, your channels across every vertical, and what you owe this week. Nothing else.',
+  my_board: 'Your own home: the campaign banner, your channels across every vertical, and what you owe this week.',
   assistant: 'Ask it two things: create a task (it fills the form, you press Create) or find a task (status, owners and a link). It does nothing else.',
   leadership: 'A read-across badge. Leadership sees the whole company (every vertical, domain, campaign and task) and edits nothing unless they press Edit on a task.',
   vertical_member: 'Anyone who works in the vertical. Members create tasks and sub-tasks there. Owners of anything in the vertical are members automatically.',
@@ -60,7 +60,7 @@ export const HELP: Record<string, string> = {
   notifications: 'You hear about everything on tasks you are related to: asked to own, comments, edits, checklist ticks, new sub-tasks, suggestions, and thunderclap asks. Related = owner, creator, parent-task owner, channel owner above it.',
   linked_accounts: 'You are one person with one account. Add Google, Microsoft or Slack sign-in here; your lyzr.ai and lyzr.com addresses both attach to it. Never create a second account.',
   overview: 'The whole plan as one collapsible tree: vertical, group, channel, sub-channel, task, sub-task. Each row shows open, done and overdue for everything underneath it.',
-  recurring: 'Google-Calendar-style repeat: every N days, weeks or months, on chosen weekdays, ending never, on a date or after N times.',
+  recurring: 'Repeat a task automatically: every N days, weeks or months, on chosen weekdays, ending never, on a date or after N times.',
 }
 
 export type HelpKey = keyof typeof HELP
