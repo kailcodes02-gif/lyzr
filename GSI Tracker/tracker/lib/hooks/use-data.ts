@@ -754,7 +754,9 @@ export function useRecentActivity(limit = 20, verticalId: VerticalScope = 'all')
       let rows = data as ActivityLog[]
       if (verticalId !== 'all') {
         const ids = await verticalChannelIds(supabase, verticalId)
-        rows = rows.filter(r => !r.task?.channel_id || ids.has(r.task.channel_id)).slice(0, limit)
+        // Deleted tasks keep their channel in the log entry's from_value.
+        const chOf = (r: { task?: { channel_id?: string } | null; from_value?: unknown }) => r.task?.channel_id || (r.from_value as { channel_id?: string } | null)?.channel_id
+        rows = rows.filter(r => { const c = chOf(r); return !c || ids.has(c) }).slice(0, limit)
       }
       return rows
     },

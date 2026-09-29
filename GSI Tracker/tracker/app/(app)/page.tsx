@@ -241,7 +241,7 @@ function WorkspaceHomePage() {
                     {log.action === 'imported_leads' && 'imported CSV leads'}
                     {!['created', 'status_changed', 'commented', 'imported_leads'].includes(log.action) && log.action.replace(/_/g, ' ')}{' '}
                     <span onClick={() => log.task?.id && setSelectedTaskId(log.task.id)} className="text-blue-600 hover:underline cursor-pointer font-medium">
-                      {log.task?.title || 'a task'}
+                      {log.task?.title || (log.from_value as { title?: string } | null)?.title || 'a task'}
                     </span>
                   </p>
                   <p className="text-[10px] text-zinc-500">{format(new Date(log.created_at), 'd MMM · h:mm a')}</p>

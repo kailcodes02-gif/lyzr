@@ -475,6 +475,17 @@ Access if the data ever becomes confidential.
 - Event detail (invite view) gains Google's response summary under the guest count ("2 yes,
   1 awaiting"). 430 unit + calendar/smoke e2e green; deployed (Worker version d53988f6).
 
+### 2026-09-29 (history), GSI Tracker: History now records deleted tasks (GSI Tracker)
+- **Bug:** deleting a task left no trace. `activity_log.task_id` was `ON DELETE CASCADE`, so the delete wiped
+  the task's whole history, and nothing wrote a "deleted" entry (History already had a label for it).
+- **Fix — migration `028_history_keeps_deleted_tasks.sql` (user pastes live):** the FK becomes `ON DELETE SET
+  NULL` (entries survive), and an `AFTER DELETE` trigger `tasks_log_delete` writes a `deleted` entry with the
+  task's title, channel, parent, status, priority and due date in `from_value` (sub-tasks removed with their
+  parent are logged too). Deletions before 028 are unrecoverable. 028 added to RESET_ALL.
+- UI: History shows deleted tasks struck through with "task/sub-task · priority · status · deleted"; the home
+  activity feed falls back to the stored title; vertical-scoped activity uses the stored channel.
+- `tsc` clean, 36 tests, 37 routes.
+
 ### 2026-09-29 (guide), GSI Tracker: Guide, walkthrough, page intros and hover help rewritten for the current structure (GSI Tracker)
 - Migration 027 verified applied live (service-role probe): Lyzr sort_order 0, GSI 1; one "No channel"
   bucket (under a "General" group) in each vertical.

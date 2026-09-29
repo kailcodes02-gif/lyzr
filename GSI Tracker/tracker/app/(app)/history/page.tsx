@@ -21,6 +21,14 @@ const ACTION_LABELS: Record<string, string> = {
   deleted: 'deleted',
 }
 
+// A deleted task's title and place survive in its 'deleted' entry.
+const deletedTitle = (log: { action: string; from_value?: unknown }) =>
+  log.action === 'deleted' ? ((log.from_value as { title?: string } | null)?.title || null) : null
+function deletedSummary(log: { from_value?: unknown }) {
+  const f = (log.from_value || {}) as { status?: string; priority?: string; parent_task_id?: string | null }
+  return [f.parent_task_id ? 'sub-task' : 'task', f.priority, f.status?.replace(/_/g, ' ')].filter(Boolean).join(' · ') + ' · deleted'
+}
+
 // Compact human summary of a from→to change payload
 function changeSummary(from: unknown, to: unknown): string | null {
   if (!to || typeof to !== 'object') return null
@@ -83,7 +91,7 @@ export default function HistoryPage() {
             <p className="p-8 text-center text-sm text-zinc-500">No activity logged yet.</p>
           )}
           {filtered.map(log => {
-            const summary = changeSummary(log.from_value, log.to_value)
+            const summary = log.action === 'deleted' ? deletedSummary(log) : changeSummary(log.from_value, log.to_value)
             return (
               <div key={log.id} className="flex items-start gap-3 px-4 py-3 hover:bg-zinc-50">
                 <Avatar className="w-7 h-7 border border-zinc-200 shrink-0 mt-0.5">
@@ -103,6 +111,8 @@ export default function HistoryPage() {
                       >
                         {log.task.title}
                       </button>
+                    ) : deletedTitle(log) ? (
+                      <span className="font-medium text-zinc-500 line-through" title="This task was deleted">{deletedTitle(log)}</span>
                     ) : (
                       <span className="text-zinc-500">a task</span>
                     )}
