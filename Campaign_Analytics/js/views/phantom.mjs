@@ -5,6 +5,7 @@
 // invite ramp, one line per phantom, the recent runs, and a Claude read-out.
 import * as P from '../lib/phantom-agg.mjs';
 import { mountTrend } from '../trend.mjs';
+import { sectionCompare, deltaText } from '../compare.mjs';
 
 export const route = 'linkedin/phantom';
 export const title = 'PhantomBuster';
@@ -75,22 +76,17 @@ export async function render(el, ctx) {
   const mins = (a, b) => a && b ? Math.round((new Date(b) - new Date(a)) / 60000) : null;
 
   // ---- page ------------------------------------------------------------------------------------
-  let h = head(`${esc(F.rangeLabel(from, to))}. Counts come from each run's result file, by the day the run was launched (IST). ${cmp ? `Compared ${esc(F.vsLabel(cmp))}.` : 'No comparison selected.'}`);
+  let h = head(`${esc(F.rangeLabel(from, to))}. Counts come from each run's result file, by the day the run was launched (IST). ${cmp ? `Compared ${esc(F.vsLabel(cmp))} unless a section says otherwise.` : 'No comparison at the top; a section can still pick one.'}`);
   h += intro;
   h += `<div class="card" style="font-size:13px;margin:10px 0 6px;display:flex;gap:14px;flex-wrap:wrap;align-items:center">
     <span><b>PhantomBuster API:</b> ${fmt(agents.length)} phantom${agents.length === 1 ? '' : 's'} in the workspace, ${fmt(agents.filter(a => P.isOutreachScript(a.script) || P.isOutreachScript(a.name)).length)} outreach${sync ? `, synced ${esc(F.timeAgo(sync.finished_at || sync.started_at))}${sync.status === 'error' ? ' <span class="down">(last run failed)</span>' : sync.status === 'running' ? ' (running)' : ''}` : ', never synced'}.</span>
     <span style="margin-left:auto;display:flex;gap:6px">${isEditor ? '<button class="btn tiny" id="syncBtn">Pull PhantomBuster now</button>' : ''}<button class="btn tiny ghost" id="reloadBtn">Reload</button></span></div>
   <div class="toc"><span class="tl">On this page</span><a href="#pb-results">Results</a><a href="#pb-phantoms">Phantoms</a><a href="#pb-trend">Week on week</a><a href="#pb-runs">Runs</a><a href="#pb-ai">AI read-out</a></div>`;
 
-  // 1. results
-  h += ctx.ui.section('Results', `For ${esc(F.rangeLabel(from, to))}, every phantom. Invites as a share of profiles processed, acceptances as a share of invites, as in the weekly report.`, ctx.ui.tiles([
-    { k: 'Profiles processed', v: fmt(T.profiles), d: dl(T.profiles, TP.profiles) },
-    { k: 'Invites sent', v: fmt(T.invites_sent), d: `${pct(T.invite_rate, 0)} of profiles · ${dl(T.invites_sent, TP.invites_sent)}` },
-    { k: 'Accepted', v: fmt(T.accepted), d: `${pct(T.acceptance_rate, 0)} of invites · ${dl(T.accepted, TP.accepted)}` },
-    { k: 'Messages', v: fmt(T.messages_sent), d: dl(T.messages_sent, TP.messages_sent) },
-    { k: 'Replies', v: fmt(T.replies), d: `${T.messages_sent ? pct(T.reply_rate, 0) + ' of messages · ' : ''}${dl(T.replies, TP.replies)}` },
-    { k: 'Active phantoms', v: fmt(active.size), d: `of ${fmt(agents.length)} in the workspace · ${dl(active.size, activePrev.size)}` },
-  ]), 'pb-results');
+  // 1. results. The tiles compare with the range chosen in this section (the top bar by default);
+  // daily rows are the whole history, so the comparison is worked out in memory, no refetch.
+  const cmpResults = sectionCompare(ctx, 'phantom:results', p => drawResults(p));
+  h += ctx.ui.section('Results', `For ${esc(F.rangeLabel(from, to))}, every phantom. Invites as a share of profiles processed, acceptances as a share of invites, as in the weekly report. ${cmpResults.html()}`, '<div id="pb-results-body"></div>', 'pb-results');
 
   // 2. per phantom
   const phantomRows = agents.map(a => ({ a, t: byAgent.get(a.id) || P.totals([]), p: byAgentPrev.get(a.id) || P.totals([]) }))
@@ -137,6 +133,24 @@ export async function render(el, ctx) {
   el.innerHTML = h;
 
   // ---- wiring ----------------------------------------------------------------------------------
+  let lastPrev = cmp, TR = TP, activeR = activePrev;
+  function drawResults(p) {
+    const box = el.querySelector('#pb-results-body'); if (!box) return;
+    const rows = p ? P.inRange(daily, p.from, p.to) : [];
+    TR = P.totals(rows); activeR = P.activeAgents(rows); lastPrev = p;
+    const d = (a, b, invert) => deltaText(p, a, b, invert);
+    box.innerHTML = ctx.ui.tiles([
+      { k: 'Profiles processed', v: fmt(T.profiles), d: d(T.profiles, TR.profiles) },
+      { k: 'Invites sent', v: fmt(T.invites_sent), d: `${pct(T.invite_rate, 0)} of profiles · ${d(T.invites_sent, TR.invites_sent)}` },
+      { k: 'Accepted', v: fmt(T.accepted), d: `${pct(T.acceptance_rate, 0)} of invites · ${d(T.accepted, TR.accepted)}` },
+      { k: 'Messages', v: fmt(T.messages_sent), d: d(T.messages_sent, TR.messages_sent) },
+      { k: 'Replies', v: fmt(T.replies), d: `${T.messages_sent ? pct(T.reply_rate, 0) + ' of messages · ' : ''}${d(T.replies, TR.replies)}` },
+      { k: 'Active phantoms', v: fmt(active.size), d: `of ${fmt(agents.length)} in the workspace · ${d(active.size, activeR.size)}` },
+    ]);
+  }
+  cmpResults.wire(el);
+  drawResults(cmpResults.prev);
+
   wireSync(el, ctx, () => { CACHE.data = null; render(el, ctx); });
   el.querySelector('#reloadBtn').onclick = () => { CACHE.data = null; render(el, ctx); };
   trend = mountTrend(el.querySelector('#trendBox'), ctx, { id: 'phantom', items: daily, dayOf: r => r.day, metrics: P.TREND_METRICS, defaults: { gran: 'week', metrics: ['invites_sent', 'accepted', 'acceptRate'], compare: 'prev' }, range: { from, to },
@@ -146,7 +160,7 @@ export async function render(el, ctx) {
   const inputProvider = async () => ({
     channel: 'phantombuster',
     range: { from, to, label: F.rangeLabel(from, to) },
-    comparison: cmp ? { label: cmp.label, from: cmp.from, to: cmp.to, totals: TP } : null,
+    comparison: lastPrev ? { label: lastPrev.label, from: lastPrev.from, to: lastPrev.to, totals: TR, active_phantoms: activeR.size } : null,
     totals: T,
     active_phantoms: active.size,
     phantoms: phantomRows.map(x => ({ name: x.a.name, script: x.a.script, status: x.a.status, last_run_at: x.a.last_run_at, ...x.t })),

@@ -3,7 +3,7 @@
 // Uploads live on the channel pages (LinkedIn, Instantly), not here.
 export const noRange = true;
 
-const TABS = [['gsi', 'GSI accounts'], ['regions', 'Regions'], ['targets', 'Targets'], ['email', 'Email rules'], ['icp', 'Reach pools'], ['editors', 'Editors'], ['connection', 'Connections and pulls']];
+const TABS = [['gsi', 'GSI accounts'], ['regions', 'Regions'], ['targets', 'Targets'], ['email', 'Email rules'], ['icp', 'Reach pools'], ['editors', 'Editors'], ['coverage', 'Data coverage'], ['connection', 'Connections and pulls']];
 const SEED_FILE = { accounts: 'accounts.json', bands: 'band_titles.json', regions: 'regions.json', icp_pool: 'icp_pool.json' };
 const DEFAULTS = { targets: { leads_per_month: 200, demo_mqls_per_month: 30, frequency: 3.5, reach_frequency: 3 }, editors: [] };
 const REDIRECT_URI = 'https://lyzr.kailash-gm.com/Campaign_Analytics/';
@@ -22,7 +22,7 @@ export async function render(el, ctx) {
   draw();
 }
 
-const TAB_RENDER = { email: emailRulesTab, gsi: async (b, c, e) => { const top = document.createElement('div'); const extra = document.createElement('div'); b.append(top, extra); await settingTab(top, c, e, 'accounts'); await gsiTab(extra, c, e); }, regions: (b, c, e) => settingTab(b, c, e, 'regions'), icp: (b, c, e) => settingTab(b, c, e, 'icp_pool'), targets: async (b, c, e) => { const top = document.createElement('div'); const extra = document.createElement('div'); b.append(top, extra); await settingTab(top, c, e, 'targets'); await settingTab(extra, c, e, 'contact_lists'); }, editors: (b, c, e) => settingTab(b, c, e, 'editors'), connection: connectionTab };
+const TAB_RENDER = { email: emailRulesTab, gsi: async (b, c, e) => { const top = document.createElement('div'); const extra = document.createElement('div'); b.append(top, extra); await settingTab(top, c, e, 'accounts'); await gsiTab(extra, c, e); }, regions: (b, c, e) => settingTab(b, c, e, 'regions'), icp: (b, c, e) => settingTab(b, c, e, 'icp_pool'), targets: async (b, c, e) => { const top = document.createElement('div'); const extra = document.createElement('div'); b.append(top, extra); await settingTab(top, c, e, 'targets'); await settingTab(extra, c, e, 'contact_lists'); }, editors: (b, c, e) => settingTab(b, c, e, 'editors'), coverage: coverageTab, connection: connectionTab };
 
 // ---------------- generic setting tabs ----------------
 const META = {
@@ -184,4 +184,47 @@ async function gsiTab(body, ctx, isEditor) {
     catch (e) { msg.textContent = 'Save failed: ' + (e.message || e); }
     save.disabled = false;
   };
+}
+
+// ---- Data coverage: what is stored, for which dates, and when each pull last ran ----
+async function coverageTab(body, ctx) {
+  const { esc, fmt } = ctx.fmt;
+  const F = ctx.fmt;
+  body.innerHTML = ctx.ui.section('Data coverage', 'What the database holds right now. Nothing here depends on the dates at the top: this is the whole store.', ctx.ui.spinner('Reading the store'));
+  let c;
+  try { c = await ctx.api.get('coverage'); } catch (e) { body.innerHTML = ctx.ui.section('Data coverage', '', ctx.ui.empty('Could not read coverage: ' + (e.message || e))); return; }
+  const day = d => d ? esc(F.dayLabel(d) + (String(d).slice(0, 4) !== String(F.today()).slice(0, 4) ? ' ' + String(d).slice(0, 4) : '')) : '–';
+  const span = r => r && r.from ? `${day(r.from)} to ${day(r.to)}` : '<span class="muted">nothing yet</span>';
+  const sync = x => !x ? '<span class="muted">never</span>' : x.error ? `<span class="down">error: ${esc(x.error)}</span>` : `${esc(F.istDateTime(x.finished_at || x.started_at))} · ${esc(x.status)}${x.started_by ? ' · ' + esc(x.started_by) : ''}`;
+  const errBox = (name, e) => `<p class="muted" style="font-size:13px">${esc(name)}: ${esc(e)} (run the matching SQL file from supabase/ if the table is missing).</p>`;
+  const P = { linkedin: 'LinkedIn', google: 'Google Ads', meta: 'Meta', taboola: 'Taboola', chatgpt: 'ChatGPT', x: 'X (Twitter)', bing: 'Microsoft Bing' };
+  let h = `<div class="intro"><b>How saving works.</b> Ad exports are stored per day per ad the moment they are uploaded: upload a file once and every later date range reads from the store, no re-upload needed. Overlapping days from a newer export overwrite the older rows (never added twice). Demographics exports are stored per export window and a date range picks up every window that overlaps it. Instantly exports only add events not seen before; the Instantly API, HubSpot leads, deals and PhantomBuster are pulled every morning at 07:00 IST (and by the Pull now buttons) into the same store. Actions live in the database from the moment you press Track or Add, with their status and notes. Sample data mode saves nothing.</div>`;
+
+  // ads
+  h += '<h3 style="margin-top:18px">Ad platforms (uploads)</h3>';
+  if (c.ads && c.ads.error) h += errBox('Ads', c.ads.error);
+  else if (!c.ads || !Object.keys(c.ads).length) h += '<p class="muted" style="font-size:13px">No ad exports uploaded yet.</p>';
+  else h += ctx.ui.table({ cols: [
+    { h: 'Platform', k: 'p', left: true, f: r => `<b>${esc(P[r.p] || r.p)}</b>` },
+    { h: 'Performance days stored', k: 'perf', left: true, f: r => r.perf ? `${span(r.perf)}<br><span class="muted" style="font-size:11.5px">${fmt(r.perf.days_covered)} days from ${fmt(r.perf.uploads)} upload${r.perf.uploads === 1 ? '' : 's'}</span>` : '–' },
+    { h: 'Missing days', k: 'gaps', left: true, f: r => !r.perf || !r.perf.gaps.length ? '<span class="up">none</span>' : `<span class="down">${fmt(r.perf.days_missing)}</span><br><span class="muted" style="font-size:11.5px">${r.perf.gaps.slice(0, 4).map(g => g.from === g.to ? day(g.from) : `${day(g.from)} to ${day(g.to)}`).join('; ')}${r.perf.gaps.length > 4 ? '…' : ''}</span>` },
+    { h: 'Demographics windows', k: 'demo', left: true, f: r => r.demo.length ? r.demo.map(w => `${day(w.from)} to ${day(w.to)} <span class="muted">(${fmt(w.rows)} rows)</span>`).join('<br>') : '<span class="muted">none</span>' },
+  ], rows: Object.entries(c.ads).map(([p, v]) => ({ p, perf: v.performance, demo: v.demographics || [] })) });
+
+  // API sources
+  const em = c.email || {}, hs = c.hubspot || {}, dl = c.deals || {}, pb = c.phantom || {};
+  h += '<h3 style="margin-top:22px">Pulled sources</h3>' + ctx.ui.table({ cols: [
+    { h: 'Source', k: 's', left: true, f: r => `<b>${esc(r.s)}</b>` }, { h: 'Stored', k: 'st', left: true, f: r => r.st }, { h: 'Last pull', k: 'ls', left: true, f: r => r.ls },
+  ], rows: [
+    { s: 'Instantly API (daily rows)', st: em.error ? errBox('Email', em.error) : `${span(em.daily)}<br><span class="muted" style="font-size:11.5px">${fmt(em.gsi_campaigns)} GSI campaigns of ${fmt(em.campaigns)} in the workspace</span>`, ls: sync(em.last_sync) },
+    { s: 'Instantly exports (events)', st: em.error ? '–' : span(em.events), ls: '<span class="muted">on upload</span>' },
+    { s: 'HubSpot leads', st: hs.error ? errBox('HubSpot', hs.error) : `${span(hs.contacts)} <span class="muted">(created dates)</span>`, ls: sync(hs.last_sync) },
+    { s: 'HubSpot deals', st: dl.error ? errBox('Deals', dl.error) : `${fmt(dl.count)} deals`, ls: sync(dl.last_sync) },
+    { s: 'PhantomBuster', st: pb.error ? errBox('PhantomBuster', pb.error) : span(pb.daily), ls: sync(pb.last_sync) },
+  ] });
+
+  const a = c.actions || {};
+  h += `<h3 style="margin-top:22px">Action tracker</h3><p style="font-size:13.5px">${a.error ? errBox('Actions', a.error) : `${fmt(a.open)} open · ${fmt(a.in_progress)} in progress · ${fmt(a.blocked)} blocked · ${fmt(a.done)} done · ${fmt(a.dropped)} dropped, all stored in the database (ca_actions) with who added them, when, status changes and notes.`}</p>
+  <p class="muted" style="font-size:12.5px;margin-top:10px">Read at ${esc(F.istDateTime(c.generated_at))}.</p>`;
+  body.innerHTML = ctx.ui.section('Data coverage', 'What the database holds right now. Nothing here depends on the dates at the top: this is the whole store.', h);
 }

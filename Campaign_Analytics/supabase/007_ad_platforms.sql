@@ -8,3 +8,5 @@ alter table ca_uploads add column if not exists platform text;
 alter table ca_li_perf drop constraint if exists ca_li_perf_pkey;
 alter table ca_li_perf add primary key (platform, day, campaign_id, ad_id);
 create index if not exists ca_li_perf_platform_day on ca_li_perf(platform, day);
+-- Uploads made before this migration are LinkedIn files; label them so the per-platform lists keep showing them.
+update ca_uploads set platform = 'linkedin' where channel = 'linkedin' and platform is null;

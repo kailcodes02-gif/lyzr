@@ -40,6 +40,13 @@ into the next read-out.
    HubSpot messaging page (read-only pull). Settings › GSI companies holds the list that makes a lead a GSI
    lead; Settings › Email rules holds the fast-click threshold and the Book a Demo rule.
 
+## How data is saved
+Uploads are stored the moment they finish: ad exports per day per ad (overlapping days overwrite, never double
+count), demographics per export window, Instantly exports as de-duplicated events. API pulls (Instantly, HubSpot
+leads, deals, PhantomBuster) run every morning and on the Admin Pull now buttons into the same store. Every date
+range you pick reads from the store; nothing needs re-uploading. Actions (Track / Add) are rows in `ca_actions`.
+Admin › Data coverage shows exactly which dates each source covers and where the gaps are.
+
 ## Demo mode
 `?demo=1` (or the "Explore in demo mode" button) runs the whole UI on generated data shaped like the
 September 2026 reports, with no backend. Useful for reviewing layout and copy.

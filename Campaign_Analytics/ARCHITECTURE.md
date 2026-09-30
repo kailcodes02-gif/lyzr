@@ -54,6 +54,7 @@ data derived from the September 2026 reports so the UI can be exercised with no 
 | `POST uploads` | `{ channel, kind, file_name, period_start, period_end, columns, rows:[...] }` rows already normalised by `js/csv.mjs` (perf rows keyed `day,campaign_id,ad_id,...`; demo rows `segment,value,campaign,...`). Max 2,000 rows per call; client chunks and sends `upload_id` on continuation | `{ upload_id, inserted }` |
 | `DELETE uploads?id=` | | `{ ok }` (cascades rows) |
 | `GET linkedin` | `?from&to&platform=` | `{ platform, perf:[daily rows in range], demo:[{upload:{...}, rows:[...]}] for uploads overlapping the range], uploads:[...] }`. `platform` = `linkedin` (default), `google`, `meta`, `taboola`, `chatgpt`, `x`, `bing` or `all`; rows carry `platform` (`007_ad_platforms.sql`) |
+| `GET coverage` | | what the store holds per source: ad platform day coverage and gaps (from uploads + table edges), demographics windows, Instantly/HubSpot/deals/PhantomBuster edges and last sync, action counts. Admin › Data coverage |
 | `GET hubspot/deals` | `?from&to` | GSI/SI pipeline: deals with bucket/substage/amount/owner, weekly snapshots and what changed since last week (`004_deals.sql`) |
 | `POST hubspot/deals-sync` | `{ cursor? }` editors or `X-CA-Cron` | resumable, read-only: deals with the `gsi` property or a company on the GSI list |
 | `GET phantom` | `?from&to` | `{ agents, runs (launched in range), daily (all), last_sync, configured }` (`006_phantom.sql`) |
@@ -104,6 +105,8 @@ Implementation notes (backend, `functions/api/ca/`), where the built code adds t
   `views/ads-platform.mjs`: uploads of daily exports parsed by `js/ads-csv.mjs`, stored in `ca_li_perf` with
   `platform`), `#/linkedin/phantom` (PhantomBuster outreach), `#/email/instantly`, `#/hubspot/leads`,
   `#/hubspot/messaging`, `#/hubspot/pipeline` (deals), `#/admin`. Old routes redirect.
+- Comparison: the top bar sets `ctx.state.prev`; every comparison-bearing section also has its own selector
+  (`js/compare.mjs` `sectionCompare`, memoised fetches with `memoGet`), overrides reset when the top bar changes.
 - Overview: channels at a glance (one row per ad platform with data), target vs today, alerts, the programme
   board (every tracked action by status: open, in progress, blocked, done in 30 days), sections, AI read-out.
 - Uploads live on the channel pages (`js/uploader.mjs`); Admin holds lists and "pull now" buttons.

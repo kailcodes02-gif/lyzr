@@ -458,6 +458,16 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01, Campaign Analytics: per-section comparison, data coverage panel
+- Every section that compares (tiles, comparison columns, "what changed", "what worked") now has its own
+  "Compare" selector next to the section title (`js/compare.mjs` `sectionCompare`): the page loads from the
+  top-bar dates and comparison, a section can then switch to the period before / last week / last month /
+  N weeks or months ago / nothing and redraws alone (comparison data memoised per range with `memoGet`).
+  Overrides reset whenever the top bar changes. `compareRange` moved from app.mjs to compare.mjs (re-exported).
+- Admin › **Data coverage** (`GET /api/ca/coverage`): per ad platform the days stored, missing days and
+  demographics windows (from uploads + table edges); Instantly, HubSpot, deals and PhantomBuster edges and last
+  pull; action counts by status; and a plain explanation of how uploads and pulls are saved.
+
 ### 2026-10-01, Campaign Analytics: cumulative penetration map and darker text
 - New LinkedIn section "Penetration by company, region and designation": one cumulative map over every
   demographics window in range. Company rows (sum of regions) open into region rows; columns MD, MD-1, MD-2,

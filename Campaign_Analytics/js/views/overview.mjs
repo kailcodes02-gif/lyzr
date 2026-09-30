@@ -3,6 +3,7 @@
 import { enrich, summary, hasMessage } from '../lib/leads-agg.mjs';
 import { PLATFORM_LABEL } from '../ads-csv.mjs';
 import { mountBoard } from '../actions.mjs';
+import { sectionCompare, memoGet, deltaText } from '../compare.mjs';
 
 export const route = 'overview';
 export const title = 'Overview';
@@ -40,7 +41,9 @@ export async function render(el, ctx) {
   const scale = n => n / Math.max(1, days) * 30;
 
   el.innerHTML = `<div class="seghead">GSI and SI programme</div><h1>Overview</h1><div class="intro"><b>What this page is:</b> every channel side by side for the dates at the top (${esc(rangeLabel(from, to))}). <b>Channels at a glance</b> puts ads, email and HubSpot leads in one table. <b>Target vs today</b> takes the pace of the selected dates, scales it to a 30-day month and compares it with the monthly targets (Admin › Targets). <b>Needs attention</b> lists what the numbers flag this period. The <b>AI read-out</b> is Claude reading all of it and suggesting what to do; suggestions you track are checked again next time.</div>` + spinner('Loading channels');
-  const [liR, liPrevR, hsR, emR, adsR] = await Promise.allSettled([ctx.api.get('linkedin', { from, to }), (cmp ? ctx.api.get('linkedin', { from: prevFrom, to: prevTo }) : Promise.resolve(null)), ctx.api.get('hubspot', { from, to }), ctx.api.get('email', { offset: 0 }), ctx.api.get('linkedin', { from, to, platform: 'all' })]);
+  // The comparison pull for the top-bar range is memoised, so the glance section's first draw (which
+  // uses the same range unless the user picks another one there) does not fetch it twice.
+  const [liR, liPrevR, hsR, emR, adsR] = await Promise.allSettled([ctx.api.get('linkedin', { from, to }), (cmp ? memoGet(ctx, 'linkedin', { from: prevFrom, to: prevTo }) : Promise.resolve(null)), ctx.api.get('hubspot', { from, to }), ctx.api.get('email', { offset: 0 }), ctx.api.get('linkedin', { from, to, platform: 'all' })]);
   // Other ad platforms (Google, Meta, Bing, Taboola, X, ChatGPT): one glance row per platform with rows in range.
   const otherAds = adsR.status === 'fulfilled' && adsR.value ? [...new Set((adsR.value.perf || []).map(r => r.platform).filter(p => p && p !== 'linkedin'))].sort().map(p => { const rows = adsR.value.perf.filter(r => r.platform === p && r.day >= from && r.day <= to); const t = liTotals({ perf: rows }); return { platform: p, name: PLATFORM_LABEL[p] || p, ...t }; }) : [];
   // Email: the daily Instantly API rows (all GSI-tagged campaigns) summed over the range.
@@ -59,10 +62,13 @@ export async function render(el, ctx) {
 
   // ---- both channels at a glance -------------------------------------------------------------
   const conf = (level) => pill(level, level === 'High' ? 'p-high' : level === 'Medium' ? 'p-med' : 'p-low');
-  const glance = `${liErr ? errBox('LinkedIn ads', liErr) : ''}${hsErr ? errBox('HubSpot', hsErr) : ''}` + table({ cols: [
+  // The table for one comparison: p is the range chosen for this section ({from,to,label} or null),
+  // TG the LinkedIn totals for that range (null when there is nothing to compare with).
+  const small = s => `<br><span class="muted" style="font-size:11.5px">${s}</span>`;
+  const glanceHtml = (p, TG) => `${liErr ? errBox('LinkedIn ads', liErr) : ''}${hsErr ? errBox('HubSpot', hsErr) : ''}` + table({ cols: [
     { h: 'Channel', k: 'ch', left: true, f: r => r.ch }, { h: 'Active since', k: 'since', f: r => r.since }, { h: 'Spend', k: 'spend', f: r => r.spend }, { h: 'Reach', k: 'reach', f: r => r.reach }, { h: 'Engagement', k: 'eng', f: r => r.eng }, { h: 'Hand-raisers', k: 'hand', f: r => r.hand }, { h: 'Conversions measured', k: 'conv', f: r => r.conv }, { h: 'Confidence', k: 'conf', f: r => r.conf },
   ], rows: [
-    T ? { ch: '<b>LinkedIn ads</b>', since: T.firstDay ? esc(monthLabel(T.firstDay.slice(0, 7))) : '<span class="muted">no data in range</span>', spend: usd(T.spend), reach: `${fmt(T.impressions)} impressions<br><span class="muted" style="font-size:11.5px">${fmt(T.reach)} reach (sum of daily)</span>`, eng: `${fmt(T.clicks)} clicks${T.video ? `, ${fmt(T.video)} video views` : ''}<br><span class="muted" style="font-size:11.5px">${pct(T.ctr, 2)} CTR</span>`, hand: `${fmt(T.leads)} form leads<br><span class="muted" style="font-size:11.5px">${usd(T.cpl)} per lead</span>`, conv: H ? `${fmt(H.adMqls)} of ${fmt(H.adLeads)} ad leads reached MQL` : 'Needs the HubSpot pull', conf: conf(T.leads ? 'High' : 'Low') } : { ch: '<b>LinkedIn ads</b>', since: '–', spend: '–', reach: '–', eng: '–', hand: '–', conv: '<span class="muted">not loaded</span>', conf: conf('Low') },
+    T ? (() => { const dl = (cur, prevV, invert = false) => deltaText(p, cur, prevV, invert); const G = TG || {}; return { ch: '<b>LinkedIn ads</b>', since: T.firstDay ? esc(monthLabel(T.firstDay.slice(0, 7))) : '<span class="muted">no data in range</span>', spend: `${usd(T.spend)}${small(dl(T.spend, G.spend))}`, reach: `${fmt(T.impressions)} impressions${small(dl(T.impressions, G.impressions))}${small(`${fmt(T.reach)} reach (sum of daily)`)}`, eng: `${fmt(T.clicks)} clicks${T.video ? `, ${fmt(T.video)} video views` : ''}${small(`${pct(T.ctr, 2)} CTR, clicks ${dl(T.clicks, G.clicks)}`)}`, hand: `${fmt(T.leads)} form leads${small(dl(T.leads, G.leads))}${small(`${usd(T.cpl)} per lead, ${dl(T.cpl, G.cpl, true)}`)}`, conv: H ? `${fmt(H.adMqls)} of ${fmt(H.adLeads)} ad leads reached MQL` : 'Needs the HubSpot pull', conf: conf(T.leads ? 'High' : 'Low') }; })() : { ch: '<b>LinkedIn ads</b>', since: '–', spend: '–', reach: '–', eng: '–', hand: '–', conv: '<span class="muted">not loaded</span>', conf: conf('Low') },
     ...otherAds.map(o => ({ ch: `<b>${esc(o.name)} ads</b>`, since: o.firstDay ? esc(monthLabel(o.firstDay.slice(0, 7))) : '–', spend: usd(o.spend), reach: `${fmt(o.impressions)} impressions`, eng: `${fmt(o.clicks)} clicks<br><span class="muted" style="font-size:11.5px">${pct(o.ctr, 2)} CTR</span>`, hand: `${fmt(o.leads)} leads<br><span class="muted" style="font-size:11.5px">${usd(o.cpl)} per lead</span>`, conv: '<span class="muted">platform-reported</span>', conf: conf(o.leads ? 'Medium' : 'Low') })),
     EM && (EM.sent || EM.uploads) ? { ch: '<b>Instantly email</b>', since: EM.since ? esc(monthLabel(EM.since.slice(0, 7))) : 'Jul 2026', spend: '<span class="muted">Tools and domains only</span>', reach: `${fmt(EM.sent)} emails sent<br><span class="muted" style="font-size:11.5px">${fmt(EM.newLeads)} new people · ${fmt(EM.campaigns)} active GSI campaigns</span>`, eng: `${fmt(EM.opens)} opens, ${fmt(EM.clicks)} unique clicks<br><span class="muted" style="font-size:11.5px">API clicks include scanners; see Email for human clicks</span>`, hand: `${fmt(EM.replies)} replies`, conv: `${fmt(EM.opps)} opportunities<br><span class="muted" style="font-size:11.5px"><a href="#/email/instantly">Book a Demo clickers in Email</a></span>`, conf: pill(EM.synced ? 'Medium' : 'Low', EM.synced ? 'p-med' : 'p-low') }
       : { ch: '<b>Instantly email</b>', since: 'Jul 2026', spend: '<span class="muted">Tools and domains only</span>', reach: '<span class="muted">No data yet</span>', eng: '<span class="muted">Upload exports or run the Instantly sync</span>', hand: '–', conv: '–', conf: pill('No data', 'p-na') },
@@ -121,20 +127,34 @@ export async function render(el, ctx) {
     ['admin', 'Admin', 'GSI account list, designations, regions, targets, connections.'],
   ];
 
+  // Channels at a glance picks its own comparison; the page still loads from the top bar and
+  // Needs attention keeps the top-bar comparison. Only the glance table is redrawn on a change.
+  const cmpGlance = sectionCompare(ctx, 'overview:glance', p => drawGlance(p));
+  let TG = TP, dsGlance = dsPrev, lastPrev = cmp;
+  async function drawGlance(p) {
+    const box = el.querySelector('#o-glance-body'); if (!box) return;
+    const data = p ? await memoGet(ctx, 'linkedin', { from: p.from, to: p.to }).catch(() => null) : null;
+    if (!el.isConnected) return;
+    TG = data ? liTotals(data) : null; dsGlance = data ? directorShare(data) : null; lastPrev = p;
+    box.innerHTML = glanceHtml(p, TG);
+  }
+
   el.innerHTML = `<div class="seghead">GSI and SI programme</div><h1>Overview</h1><div class="intro"><b>What this page is:</b> every channel side by side for the dates at the top (${esc(rangeLabel(from, to))}). <b>Channels at a glance</b> puts ads, email and HubSpot leads in one table. <b>Target vs today</b> takes the pace of the selected dates, scales it to a 30-day month and compares it with the monthly targets (Admin › Targets). <b>Needs attention</b> lists what the numbers flag this period. The <b>AI read-out</b> is Claude reading all of it and suggesting what to do; suggestions you track are checked again next time.</div>
     <div class="toc"><span class="tl">On this page</span><a href="#o-glance">Channels</a><a href="#o-target">Target vs today</a><a href="#o-alerts">Needs attention</a><a href="#o-board">Programme board</a><a href="#o-links">Sections</a><a href="#o-ai">AI read-out</a></div>
-    ${section('Channels at a glance', 'Paid ads and email produce hand-raisers; HubSpot shows what happened to the leads afterwards. Email numbers here come from the daily Instantly pull of every GSI-tagged campaign.', glance, 'o-glance')}
+    ${section('Channels at a glance', `Paid ads and email produce hand-raisers; HubSpot shows what happened to the leads afterwards. Email numbers here come from the daily Instantly pull of every GSI-tagged campaign. LinkedIn changes are against the period chosen here. ${cmpGlance.html()}`, `<div id="o-glance-body">${spinner('Loading comparison')}</div>`, 'o-glance')}
     ${section('Target vs today', 'Monthly run-rate targets against the pace of the selected range.', targetsHtml, 'o-target')}
     ${section('Needs attention', 'Computed by rule from the data in range: CPL up more than 30% on the prior period, Director+ share down 10 points, one country over 70% of impressions, MD-band leads without an owner, no upload in 16 days, HubSpot not synced in 3 days.', alertsHtml, 'o-alerts')}
     ${section('Programme board', 'Every tracked action across ads, email and HubSpot by status. Change a status on the channel page; the next AI read-out is told what moved.', `<div id="ovBoard">${spinner('Loading actions')}</div>`, 'o-board')}
     ${section('Sections', '', `<div class="steps" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">${links.map(([r, t, d]) => `<a class="step" href="#/${r}" style="text-decoration:none;color:inherit"><b>${esc(t)}</b><p class="muted" style="font-size:12.5px;margin-top:4px">${esc(d)}</p></a>`).join('')}</div>`, 'o-links')}
     ${section('AI read-out', 'Claude reads both channels and the target gap.', `<div id="ovInsights"></div>`, 'o-ai')}`;
 
+  cmpGlance.wire(el);
+  drawGlance(cmpGlance.prev);
   mountBoard(el.querySelector('#ovBoard'), ctx);
   ctx.mountInsights(el.querySelector('#ovInsights'), ctx, { scope: `overview:${from}:${to}`, kind: 'overview', title: 'Where the programme stands', inputProvider: () => ({
     range: { from, to, days }, targets,
     email: EM ? { sent: EM.sent, new_people: EM.newLeads, unique_opens: EM.opens, unique_clicks: EM.clicks, replies: EM.replies, opportunities: EM.opps, active_campaigns: EM.campaigns } : null,
-    linkedin: T ? { spend: T.spend, impressions: T.impressions, clicks: T.clicks, leads: T.leads, cpl: T.cpl, videoViews: T.video, directorPlusShare: ds, topCountry: tc, prior: TP ? { spend: TP.spend, leads: TP.leads, cpl: TP.cpl, directorPlusShare: dsPrev } : null } : null,
+    linkedin: T ? { spend: T.spend, impressions: T.impressions, clicks: T.clicks, leads: T.leads, cpl: T.cpl, videoViews: T.video, directorPlusShare: ds, topCountry: tc, prior: TG && lastPrev ? { label: lastPrev.label, spend: TG.spend, leads: TG.leads, cpl: TG.cpl, directorPlusShare: dsGlance } : null } : null,
     hubspot: H ? { leads: H.leads, withMessage: H.withMessage, withActivity: H.withActivity, target: H.target, md: H.md, md1: H.md1, md2: H.md2, unowned: H.unowned, mqls: H.mqls, adLeads: H.adLeads, adMqls: H.adMqls } : null,
     pace: { leads: leadsPace, demos: demoPace, spend: spendPace },
     alerts: alerts.map(a => ({ title: a.title, evidence: a.evidence, why: a.why, action: a.action, owner: a.owner })),

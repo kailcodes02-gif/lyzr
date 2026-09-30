@@ -11,6 +11,7 @@ import * as E from '../lib/email-agg.mjs';
 import { campaignLabel } from '../email-csv.mjs';
 import { mountTrend } from '../trend.mjs';
 import { mountUploader } from '../uploader.mjs';
+import { sectionCompare, deltaText } from '../compare.mjs';
 
 export const route = 'email';
 export const title = 'Email';
@@ -86,32 +87,41 @@ export async function render(el, ctx) {
   const scoped = all.filter(pick);
   const days = F.daysBetween(from, to);
   const cmp = ctx.state.prev || null;
-  const prevFrom = cmp ? cmp.from : '9999', prevTo = cmp ? cmp.to : '0000';
   const cur = scoped.filter(e => E.inRange(e, from, to));
-  const prev = scoped.filter(e => E.inRange(e, prevFrom, prevTo));
-  const T = E.funnel(cur), TP = E.funnel(prev);
+  const T = E.funnel(cur);
   const apiScoped = apiDaily.filter(r => !S.campaign || r.campaign === S.campaign);
   const apiSum = (rows, k) => rows.reduce((a, r) => a + (Number(r[k]) || 0), 0);
-  const apiCur = apiScoped.filter(r => r.day >= from && r.day <= to), apiPrev = apiScoped.filter(r => r.day >= prevFrom && r.day <= prevTo);
+  const apiCur = apiScoped.filter(r => r.day >= from && r.day <= to);
+  // Comparison numbers for any range, from the events and daily rows already in memory (no fetch).
+  // The page loads with the top-bar comparison; the API tiles and "what worked" can then pick their own.
+  const PREV = new Map();
+  const prevOf = p => {
+    const k = p ? `${p.from}|${p.to}` : '';
+    if (!PREV.has(k)) {
+      const ev = p ? scoped.filter(e => E.inRange(e, p.from, p.to)) : [];
+      const rows = p ? apiScoped.filter(r => r.day >= p.from && r.day <= p.to) : [];
+      PREV.set(k, { TP: E.funnel(ev), apiPrev: rows, API_TP: E.apiTotals(rows), apiRepliesP: apiSum(rows, 'unique_replies') });
+    }
+    return PREV.get(k);
+  };
   const P = E.people(cur);
   const CAMPS = E.campaigns(cur);
   const CAMPS_ALL = S.campaign ? E.campaigns(all.filter(e => (!S.company || e.company === S.company) && E.inRange(e, from, to))) : CAMPS;   // navigator ignores the campaign filter
   const POOL = E.leadPool(gsiCamps);
   const UNC = E.uncontacted(gsiCamps, api.daily || []);
   const SHARE = E.workspaceShare(api.campaigns || [], api.workspace);
-  const API_T = E.apiTotals(apiCur), API_TP = E.apiTotals(apiPrev);
+  const API_T = E.apiTotals(apiCur);
   const ACC = E.accounts(cur);
   const SEND = E.senders(cur);
   const CAT = E.catStats(cur);
   const byEmail = new Map(P.map(p => [p.email, p]));
-  const dl = (a, b, invert) => { if (!cmp) return '<span class="muted">no comparison</span>'; if (!b || a == null) return '<span class="muted">nothing to compare</span>'; const g = (a - b) / b * 100; const good = invert ? g <= 0 : g >= 0; return `<span class="${good ? 'up' : 'down'}">${g > 0 ? '+' : ''}${fmt(g, 0)}%</span> vs ${esc(cmp.label)}`; };
   const emailBtn = (email, extra = '') => `<button type="button" class="em" data-person="${esc(email)}" title="Open this person">${esc(email)}</button><button type="button" class="cp" data-copy="${esc(email)}" title="Copy email">copy</button>${extra}`;
   const lastUpload = uploads.reduce((m, u) => !m || u.uploaded_at > m ? u.uploaded_at : m, null);
   const eventDays = all.map(e => e.day).sort();
   const sync = api.last_sync;
 
   // ---- page ----------------------------------------------------------------------------------
-  let h = head(`${esc(F.rangeLabel(from, to))}${S.campaign ? ` · ${esc(campaignLabel(S.campaign))}` : ''}${S.company ? ` · ${esc(S.company)}` : ''}. People are unique contacts. Human clicks leave out clicks within ${fmt(rules.fast_click_seconds)} seconds of the send (likely link scanners). Book a Demo counts the direct calendar${rules.gsi_page_counts_as_demo ? ' and the GSI/SI page (split out as "via GSI/SI page")' : ''}. ${cmp ? `Compared ${esc(F.vsLabel(cmp))}.` : 'No comparison selected.'}`);
+  let h = head(`${esc(F.rangeLabel(from, to))}${S.campaign ? ` · ${esc(campaignLabel(S.campaign))}` : ''}${S.company ? ` · ${esc(S.company)}` : ''}. People are unique contacts. Human clicks leave out clicks within ${fmt(rules.fast_click_seconds)} seconds of the send (likely link scanners). Book a Demo counts the direct calendar${rules.gsi_page_counts_as_demo ? ' and the GSI/SI page (split out as "via GSI/SI page")' : ''}. ${cmp ? `Compared ${esc(F.vsLabel(cmp))} unless a section says otherwise.` : 'No comparison at the top; a section can still pick one.'}`);
   h += `<div class="card" style="font-size:13px;margin-bottom:6px;display:flex;gap:14px;flex-wrap:wrap;align-items:center">
     <span><b>CSV exports:</b> ${fmt(uploads.length)} upload${uploads.length === 1 ? '' : 's'}, ${fmt(new Set(all.map(e => e.campaign)).size)} campaigns, events ${eventDays.length ? `${esc(F.dayLabel(eventDays[0]))} to ${esc(F.dayLabel(eventDays[eventDays.length - 1]))}` : 'none'}${lastUpload ? `, last upload ${esc(F.timeAgo(lastUpload))}` : ''}.</span>
     <span><b>Instantly API:</b> ${api.configured === false ? 'not configured' : `${fmt(gsiCamps.length)} GSI-tagged campaigns of ${fmt(SHARE.wsCampaigns)} in the workspace${sync ? `, synced ${esc(F.timeAgo(sync.finished_at || sync.started_at))}${sync.status === 'error' ? ' <span class="down">(last run failed)</span>' : ''}` : ', never synced'}`}.</span>
@@ -124,23 +134,11 @@ export async function render(el, ctx) {
 
   // 0. Instantly API: every GSI-tagged campaign, straight from Instantly (no upload needed)
   const apiCampsInRange = new Set(apiCur.filter(r => Number(r.sent) > 0).map(r => r.campaign)).size;
-  h += ctx.ui.section('Instantly: all GSI campaigns', `Straight from the Instantly API for ${esc(F.rangeLabel(from, to))}, every campaign tagged GSI in Instantly. Pulled every morning at 07:00 IST${sync ? `, last pulled ${esc(F.timeAgo(sync.finished_at || sync.started_at))}` : ''}. Clicks here include link scanners; the exports below separate human clicks. Lead pool, uncontacted and bounce rate are all time; the rates are on new people contacted in the range.`, apiCur.length || gsiCamps.length ? ctx.ui.tiles([
-    { k: 'Emails sent', v: fmt(API_T.sent), d: dl(API_T.sent, API_TP.sent) },
-    { k: 'New people contacted', v: fmt(API_T.newLeads), d: dl(API_T.newLeads, API_TP.newLeads) },
-    { k: 'Unique vs total sends', v: `${fmt(API_T.contacted)} / ${fmt(API_T.sent)}`, d: 'people contacted / emails sent in range' },
-    { k: 'Campaigns sending', v: fmt(apiCampsInRange), d: `of ${fmt(gsiCamps.length)} GSI-tagged, ${fmt(POOL.active)} active` },
-    { k: 'Total contacts', v: fmt(POOL.leads), d: `lead pool of every GSI campaign, ${fmt(POOL.contacted)} contacted so far` },
-    { k: 'Uncontacted leads', v: fmt(POOL.uncontacted), d: `left in ${fmt(POOL.active)} active campaign${POOL.active === 1 ? '' : 's'}` },
-    { k: 'Unique opens', v: fmt(API_T.opened), d: 'weak: some mailboxes have open tracking off' },
-    { k: 'Open rate', v: pct(API_T.openRate, 1), d: 'unique opens / new people contacted (weak)' },
-    { k: 'Unique clicks', v: fmt(API_T.clicks), d: dl(API_T.clicks, API_TP.clicks) },
-    { k: 'Click rate', v: pct(API_T.clickRate, 1), d: 'unique clicks / new people contacted, scanners included' },
-    { k: 'Replies', v: fmt(API_T.replies), d: dl(API_T.replies, API_TP.replies) },
-    { k: 'Reply rate', v: pct(API_T.replyRate, 1), d: 'unique replies / new people contacted' },
-    { k: 'Bounce rate', v: pct(POOL.bounceRate, 1), d: `${fmt(POOL.bounced)} bounces / ${fmt(POOL.contacted)} contacted, all time` },
-    { k: 'Opportunities', v: fmt(API_T.opps), d: 'marked in Instantly' },
-    { k: 'Auto replies', v: fmt(API_T.auto), d: 'out of office and similar' },
-  ]) : ctx.ui.empty('Nothing pulled from Instantly yet. Use "Pull Instantly now" above.'), 'e-api');
+  // Section comparison controls. The API tiles' choice also drives the "who did what" tiles below
+  // (the only other place on the page that says "vs" the comparison); "what worked" has its own.
+  const cmpApi = sectionCompare(ctx, 'email:api', p => { drawApi(p); drawResults(p); });
+  const cmpWorked = sectionCompare(ctx, 'email:worked', p => drawWorked(p));
+  h += ctx.ui.section('Instantly: all GSI campaigns', `Straight from the Instantly API for ${esc(F.rangeLabel(from, to))}, every campaign tagged GSI in Instantly. Pulled every morning at 07:00 IST${sync ? `, last pulled ${esc(F.timeAgo(sync.finished_at || sync.started_at))}` : ''}. Clicks here include link scanners; the exports below separate human clicks. Lead pool, uncontacted and bounce rate are all time; the rates are on new people contacted in the range. ${cmpApi.html()}`, '<div id="e-api-body"></div>', 'e-api');
 
   // 0b. GSI share of the workspace (all-time totals of every campaign; only GSI campaigns have daily rows)
   const shareBar = (label, n, max, color) => `<div style="display:grid;grid-template-columns:150px 1fr 110px;gap:10px;align-items:center;margin-top:8px"><div><b>${esc(label)}</b></div><div style="background:var(--soft);border-radius:6px;height:22px;overflow:hidden"><i style="display:block;height:100%;width:${Math.max(n ? 1.5 : 0, max ? n / max * 100 : 0)}%;background:${color}"></i></div><div style="text-align:right;font-variant-numeric:tabular-nums"><b>${fmt(n)}</b></div></div>`;
@@ -160,24 +158,13 @@ export async function render(el, ctx) {
   h += `<details class="card" style="margin-top:14px" ${uploads.length ? '' : 'open'}><summary style="cursor:pointer"><span class="ui-label">Upload Instantly exports</span> <span class="muted" style="font-size:13px">· for person-level detail below · ${uploads.length} file${uploads.length === 1 ? '' : 's'} so far</span></summary><div id="uploader" style="margin-top:12px"></div></details>`;
 
   // 1. results
-  const apiReplies = apiSum(apiCur, 'unique_replies'), apiRepliesP = apiSum(apiPrev, 'unique_replies');
+  const apiReplies = apiSum(apiCur, 'unique_replies');
   const apiSent = apiSum(apiCur, 'sent');
-  h += ctx.ui.section('From the uploaded exports: who did what', all.length ? 'Person-level numbers from the Instantly exports uploaded above, for the campaigns and dates they cover. Human clicks leave out link scanners.' : 'Upload Instantly campaign exports above to see who opened, who clicked what and who clicked Book a Demo.', !all.length ? '' : `${ctx.ui.tiles([
-    { k: 'Emails sent', v: fmt(T.sent), d: dl(T.sent, TP.sent) + (apiSent ? ` · API ${fmt(apiSent)}` : '') },
-    { k: 'Contacts reached', v: fmt(T.reached), d: dl(T.reached, TP.reached) },
-    { k: 'Opened (weak)', v: fmt(T.opened), d: `${pct(T.openRate, 0)} of reached` },
-    { k: 'Human clickers', v: fmt(T.clickers), d: `${pct(T.clickRate, 1)} of reached · ${dl(T.clickers, TP.clickers)}` },
-    { k: 'Book a Demo people', v: fmt(T.demo), d: `${fmt(T.demoDirect)} direct · ${fmt(T.demoVia)} via GSI/SI · ${dl(T.demo, TP.demo)}` },
-    { k: 'Fast clicks flagged', v: fmt(T.fastClicks), d: `under ${fmt(rules.fast_click_seconds)}s from send, excluded` },
-    { k: 'Replies (Instantly API)', v: apiCur.length ? fmt(apiReplies) : '–', d: apiCur.length ? dl(apiReplies, apiRepliesP) : 'run the Instantly sync' },
-    { k: 'Accounts engaged', v: fmt(ACC.filter(a => a.clickers).length), d: `of ${fmt(ACC.filter(a => a.reached).length)} reached` },
-  ])}
-  <div class="card" style="margin-top:14px"><h3>Combined funnel</h3><p class="muted" style="font-size:12.5px;margin:2px 0 4px">Each step as a share of people reached, and of the step before it (opened of reached, clickers of opened, Book a Demo of clickers).</p>${funnelHtml(T, F)}</div>`, 'e-results');
+  h += ctx.ui.section('From the uploaded exports: who did what', all.length ? 'Person-level numbers from the Instantly exports uploaded above, for the campaigns and dates they cover. Human clicks leave out link scanners. Changes follow the comparison chosen for the Instantly tiles above.' : 'Upload Instantly campaign exports above to see who opened, who clicked what and who clicked Book a Demo.', '<div id="e-results-body"></div>', 'e-results');
 
   // 1b. achieved / not achieved
-  const bullets = E.emailBullets({ T, TP, cmp, camps: CAMPS, senders: SEND, apiCur: apiCur.length ? API_T : null, apiPrev: apiPrev.length ? API_TP : null, pool: gsiCamps.length ? POOL : null, unc: UNC.rows.length ? UNC : null, label: campaignLabel });
   const li = list => list.length ? `<ul>${list.map(b => `<li><b>${esc(b.b)}</b> ${esc(b.s)}</li>`).join('')}</ul>` : '<p class="muted" style="margin-top:8px">Nothing to report yet for this range.</p>';
-  h += ctx.ui.section('What worked and what did not', `Rule-based reads of the numbers above: click rate against a 3% bar, Book a Demo clickers ${cmp ? 'against ' + esc(cmp.label) : '(pick a comparison at the top to see the change)'}, campaigns and mailboxes that need attention, bounce rate and the uncontacted pool. Each line only appears when the data behind it exists.`, `<div class="grid g2"><div class="panel win"><h3>Achieved</h3>${li(bullets.achieved)}</div><div class="panel loss"><h3>Not achieved</h3>${li(bullets.missed)}</div></div>`, 'e-worked');
+  h += ctx.ui.section('What worked and what did not', `Rule-based reads of the numbers above: click rate against a 3% bar, Book a Demo clickers against the comparison chosen here, campaigns and mailboxes that need attention, bounce rate and the uncontacted pool. Each line only appears when the data behind it exists. ${cmpWorked.html()}`, '<div id="e-worked-body"></div>', 'e-worked');
 
   // 2. trend
   h += ctx.ui.section('Week on week and month on month', 'The whole history, not only the selected range (the range is the darker bars). Switch metrics on and off, compare each week or month with the one before or with the average of all earlier ones, and see the week or month in progress against the same days of earlier ones, with a straight-line projection.', '<div id="trendBox"></div>', 'e-trend');
@@ -247,6 +234,57 @@ export async function render(el, ctx) {
     <div id="plist"></div>`, 'e-people');
   h += ctx.ui.section('AI read-out', 'Claude reads the campaign, account, week and link numbers on this page, and the actions already tracked for email.', '<div id="aiPanel"></div>', 'e-ai');
   el.innerHTML = h;
+  cmpApi.wire(el); cmpWorked.wire(el);
+
+  // ---- comparison-driven sections (each redraws only itself; the rest of the page stays) ------
+  let lastPrev = cmpApi.prev, lastTP = prevOf(lastPrev).TP, bullets = { achieved: [], missed: [] };
+  function drawApi(p) {
+    const box = el.querySelector('#e-api-body'); if (!box) return;
+    const { API_TP } = prevOf(p);
+    lastPrev = p;
+    const dl = (a, b, invert) => deltaText(p, a, b, invert);
+    box.innerHTML = apiCur.length || gsiCamps.length ? ctx.ui.tiles([
+      { k: 'Emails sent', v: fmt(API_T.sent), d: dl(API_T.sent, API_TP.sent) },
+      { k: 'New people contacted', v: fmt(API_T.newLeads), d: dl(API_T.newLeads, API_TP.newLeads) },
+      { k: 'Unique vs total sends', v: `${fmt(API_T.contacted)} / ${fmt(API_T.sent)}`, d: 'people contacted / emails sent in range' },
+      { k: 'Campaigns sending', v: fmt(apiCampsInRange), d: `of ${fmt(gsiCamps.length)} GSI-tagged, ${fmt(POOL.active)} active` },
+      { k: 'Total contacts', v: fmt(POOL.leads), d: `lead pool of every GSI campaign, ${fmt(POOL.contacted)} contacted so far` },
+      { k: 'Uncontacted leads', v: fmt(POOL.uncontacted), d: `left in ${fmt(POOL.active)} active campaign${POOL.active === 1 ? '' : 's'}` },
+      { k: 'Unique opens', v: fmt(API_T.opened), d: 'weak: some mailboxes have open tracking off' },
+      { k: 'Open rate', v: pct(API_T.openRate, 1), d: 'unique opens / new people contacted (weak)' },
+      { k: 'Unique clicks', v: fmt(API_T.clicks), d: dl(API_T.clicks, API_TP.clicks) },
+      { k: 'Click rate', v: pct(API_T.clickRate, 1), d: 'unique clicks / new people contacted, scanners included' },
+      { k: 'Replies', v: fmt(API_T.replies), d: dl(API_T.replies, API_TP.replies) },
+      { k: 'Reply rate', v: pct(API_T.replyRate, 1), d: 'unique replies / new people contacted' },
+      { k: 'Bounce rate', v: pct(POOL.bounceRate, 1), d: `${fmt(POOL.bounced)} bounces / ${fmt(POOL.contacted)} contacted, all time` },
+      { k: 'Opportunities', v: fmt(API_T.opps), d: 'marked in Instantly' },
+      { k: 'Auto replies', v: fmt(API_T.auto), d: 'out of office and similar' },
+    ]) : ctx.ui.empty('Nothing pulled from Instantly yet. Use "Pull Instantly now" above.');
+  }
+  function drawResults(p) {
+    const box = el.querySelector('#e-results-body'); if (!box) return;
+    const { TP, apiRepliesP } = prevOf(p);
+    lastTP = TP;
+    const dl = (a, b, invert) => deltaText(p, a, b, invert);
+    box.innerHTML = !all.length ? '' : `${ctx.ui.tiles([
+      { k: 'Emails sent', v: fmt(T.sent), d: dl(T.sent, TP.sent) + (apiSent ? ` · API ${fmt(apiSent)}` : '') },
+      { k: 'Contacts reached', v: fmt(T.reached), d: dl(T.reached, TP.reached) },
+      { k: 'Opened (weak)', v: fmt(T.opened), d: `${pct(T.openRate, 0)} of reached` },
+      { k: 'Human clickers', v: fmt(T.clickers), d: `${pct(T.clickRate, 1)} of reached · ${dl(T.clickers, TP.clickers)}` },
+      { k: 'Book a Demo people', v: fmt(T.demo), d: `${fmt(T.demoDirect)} direct · ${fmt(T.demoVia)} via GSI/SI · ${dl(T.demo, TP.demo)}` },
+      { k: 'Fast clicks flagged', v: fmt(T.fastClicks), d: `under ${fmt(rules.fast_click_seconds)}s from send, excluded` },
+      { k: 'Replies (Instantly API)', v: apiCur.length ? fmt(apiReplies) : '–', d: apiCur.length ? dl(apiReplies, apiRepliesP) : 'run the Instantly sync' },
+      { k: 'Accounts engaged', v: fmt(ACC.filter(a => a.clickers).length), d: `of ${fmt(ACC.filter(a => a.reached).length)} reached` },
+    ])}
+    <div class="card" style="margin-top:14px"><h3>Combined funnel</h3><p class="muted" style="font-size:12.5px;margin:2px 0 4px">Each step as a share of people reached, and of the step before it (opened of reached, clickers of opened, Book a Demo of clickers).</p>${funnelHtml(T, F)}</div>`;
+  }
+  function drawWorked(p) {
+    const box = el.querySelector('#e-worked-body'); if (!box) return;
+    const { TP, apiPrev, API_TP } = prevOf(p);
+    bullets = E.emailBullets({ T, TP, cmp: p, camps: CAMPS, senders: SEND, apiCur: apiCur.length ? API_T : null, apiPrev: apiPrev.length ? API_TP : null, pool: gsiCamps.length ? POOL : null, unc: UNC.rows.length ? UNC : null, label: campaignLabel });
+    box.innerHTML = `<p class="muted" style="font-size:12.5px;margin:0 0 8px">${p ? `Changes are against ${esc(p.label)}.` : 'No comparison picked, so the lines that need one are left out.'}</p><div class="grid g2"><div class="panel win"><h3>Achieved</h3>${li(bullets.achieved)}</div><div class="panel loss"><h3>Not achieved</h3>${li(bullets.missed)}</div></div>`;
+  }
+  drawApi(cmpApi.prev); drawResults(cmpApi.prev); drawWorked(cmpWorked.prev);
 
   // ---- wiring --------------------------------------------------------------------------------
   el.querySelector('#fCamp').onchange = e => { S.campaign = e.target.value; S.open = S.campaign || null; render(el, ctx); };
@@ -411,8 +449,8 @@ export async function render(el, ctx) {
     const mo = new Map(); for (const e of scoped) { const k = e.day.slice(0, 7); if (!mo.has(k)) mo.set(k, []); mo.get(k).push(e); }
     const slim = f => ({ sent: f.sent, reached: f.reached, opened: f.opened, clickers: f.clickers, demo: f.demo, demo_direct: f.demoDirect, demo_via: f.demoVia, fast_clicks: f.fastClicks, click_rate: f.clickRate && Math.round(f.clickRate * 10) / 10 });
     return {
-      range: { from, to, days }, comparison: cmp ? { from: cmp.from, to: cmp.to, label: cmp.label } : null, filter: { campaign: S.campaign || 'all', account: S.company || 'all' }, rules: { fast_click_seconds: rules.fast_click_seconds, gsi_page_counts_as_demo: rules.gsi_page_counts_as_demo },
-      totals: slim(T), previous_totals: slim(TP), api_in_range: apiCur.length ? { sent: apiSent, replies: apiReplies, unique_clicks: apiSum(apiCur, 'unique_clicks'), opportunities: apiSum(apiCur, 'opportunities') } : null,
+      range: { from, to, days }, comparison: lastPrev ? { from: lastPrev.from, to: lastPrev.to, label: lastPrev.label } : null, filter: { campaign: S.campaign || 'all', account: S.company || 'all' }, rules: { fast_click_seconds: rules.fast_click_seconds, gsi_page_counts_as_demo: rules.gsi_page_counts_as_demo },
+      totals: slim(T), previous_totals: slim(lastTP), api_in_range: apiCur.length ? { sent: apiSent, replies: apiReplies, unique_clicks: apiSum(apiCur, 'unique_clicks'), opportunities: apiSum(apiCur, 'opportunities') } : null,
       by_week: [...wk.entries()].sort().slice(-12).map(([k, v]) => ({ week: k, ...slim(E.funnel(v)) })),
       by_month: [...mo.entries()].sort().slice(-6).map(([k, v]) => ({ month: k, ...slim(E.funnel(v)) })),
       lead_pool: gsiCamps.length ? { leads: POOL.leads, contacted: POOL.contacted, uncontacted_in_active: POOL.uncontacted, active_campaigns: POOL.active, bounce_rate: POOL.bounceRate && Math.round(POOL.bounceRate * 10) / 10 } : null,

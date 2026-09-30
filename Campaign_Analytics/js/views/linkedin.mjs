@@ -2,6 +2,7 @@
 import * as A from '../lib/linkedin-agg.mjs';
 import { mountTrend } from '../trend.mjs';
 import { mountUploader } from '../uploader.mjs';
+import { sectionCompare, memoGet, deltaText } from '../compare.mjs';
 export const route = 'linkedin';
 export const title = 'Ads · LinkedIn';
 
@@ -20,19 +21,21 @@ export async function render(el, ctx) {
   el.innerHTML = `<div class="seghead">Ads · LinkedIn</div><h1>LinkedIn ads</h1><p class="sub">${esc(F.rangeLabel(from, to))}</p>${ctx.ui.spinner('Loading LinkedIn data')}`;
   if (window.Chart) { Chart.defaults.font.family = "'General Sans','Inter',system-ui,sans-serif"; Chart.defaults.color = css('--ink2') || '#4A4744'; Chart.defaults.borderColor = css('--line') || '#E3E1DE'; }
 
-  // Comparison range from the global "Compare with" control (null = no comparison).
+  // Comparison range from the global "Compare with" control (null = no comparison). The page loads
+  // against it; the sections that show a comparison can then each pick their own (sectionCompare).
   const prev = ctx.state.prev || null;
-  let data, prevData, histData;
-  try { [data, prevData, histData] = await Promise.all([ctx.api.get('linkedin', { from, to }), (prev ? ctx.api.get('linkedin', { from: prev.from, to: prev.to }).catch(() => null) : Promise.resolve(null)), ctx.api.get('linkedin', { from: '2025-01-01', to: F.today() }).catch(() => null)]); }
+  // Comparison data (perf rows + demographics windows) for any range, memoised, so a section that
+  // switches its comparison back and forth never refetches, and the current range is fetched once.
+  const prevBundle = async p => { if (!p) return { perf: [], demo: [] }; const d = (await memoGet(ctx, 'linkedin', { from: p.from, to: p.to }).catch(() => null)) || {}; return { perf: d.perf || [], demo: d.demo || [] }; };
+  let data, histData;
+  try { [data, , histData] = await Promise.all([memoGet(ctx, 'linkedin', { from, to }), prevBundle(prev), memoGet(ctx, 'linkedin', { from: '2025-01-01', to: F.today() }).catch(() => null)]); }
   catch (e) { el.innerHTML = `<div class="seghead">Ads · LinkedIn</div><h1>LinkedIn ads</h1>${ctx.ui.empty('LinkedIn data could not be loaded: ' + (e.message || e))}`; return; }
   const S = ctx.settings || {};
   const accounts = Array.isArray(S.accounts) ? S.accounts : [], bands = S.bands || {}, icp_pool = Array.isArray(S.icp_pool) ? S.icp_pool : [], regions = S.regions || {}, stages = S.stages || undefined;
   const frequency = Number((S.targets || {}).frequency) || 3.5;
   const rf = Number((S.targets || {}).reach_frequency) || 3; // impressions per person for the reach estimates
   const perf = (data.perf || []).filter(r => r.day >= from && r.day <= to);
-  const prevPerf = (prevData && prevData.perf) || [];
   const windows = [...(data.demo || [])].sort((a, b) => a.upload.period_start < b.upload.period_start ? -1 : 1);
-  const prevWindows = (prevData && prevData.demo) || [];
   const demoRows = windows.flatMap(w => w.rows);
   const uploads = data.uploads || [];
 
@@ -45,75 +48,57 @@ export async function render(el, ctx) {
   }
 
   // ---- aggregates ----
-  const T = A.totals(perf), TP = A.totals(prevPerf);
+  const T = A.totals(perf);
   const days = A.daysBetween(from, to);
   const perfDays = [...new Set(perf.map(r => r.day))].sort();
   const P = A.programs(perf, stages);
   const ads = A.ads(perf);
   const stageGran = days > 70 ? 'month' : days > 21 ? 'week' : 'day';
   const SS = A.stageSplit(perf, stageGran, stages);
-  const bullets = A.bullets({ rows: perf, prevRows: prevPerf, demoWindows: windows, prevDemoWindows: prevWindows, from, to, stages, bands });
   const matched = new Map(); // canonical account -> impressions in range
   for (const r of A.segRows(demoRows, 'Company')) { const a = A.matchAccount(r.value, accounts); if (a && (Number(r.impressions) || 0) > 0) matched.set(a, (matched.get(a) || 0) + Number(r.impressions)); }
   const metricsPresent = Object.keys(METRIC_LABEL).filter(m => demoRows.some(r => Number(r[m]) > 0));
   const winLabel = w => `${F.dayLabel(w.upload.period_start)} to ${F.dayLabel(w.upload.period_end)}`;
-  const dl = (cur, prevV, invert = false) => { if (!prev) return '<span class="muted">no comparison</span>'; if (prevV == null || !prevV || cur == null) return '<span class="muted">nothing to compare</span>'; const g = (cur - prevV) / prevV * 100; const good = invert ? g <= 0 : g >= 0; return `<span class="${good ? 'up' : 'down'}">${g > 0 ? '+' : ''}${fmt(g, 0)}%</span> vs ${esc(prev.label)}`; };
   const topSet = P.programs.flatMap(p => p.campaigns).filter(c => c.leads > 0).sort((a, b) => b.leads - a.leads)[0];
   // White Path sections: ad sets, targeting approach, senders, creative reach, company splits.
-  const sets = A.adSets(perf, { to, prevRows: prev ? prevPerf : null });
+  // The scorecard and the efficiency map only read the current range; the ad set table adds its
+  // own comparison figures in drawAdSets below.
+  const sets = A.adSets(perf, { to });
   const SC = A.scorecard(sets);
   const senders = A.messagingBySender(perf);
   const CA = A.creativeAudience(perf, demoRows);
   const ACS = A.assetCompanySplit(demoRows, accounts);
   const RC = A.reachVsContacts(demoRows, accounts, { contact_lists: S.contact_lists, frequency: rf });
-  // Compact delta under a table figure (spend, leads, CPL) against the comparison range.
-  const sd = (cur, prevV, invert = false) => { if (!prev) return ''; if (prevV == null || !prevV || cur == null) return `<br><span class="muted" style="font-size:11px">${cur && !prevV ? 'new' : '–'}</span>`; const g = (cur - prevV) / prevV * 100; const good = invert ? g <= 0 : g >= 0; return `<br><span class="${good ? 'up' : 'down'}" style="font-size:11px" title="${esc(prev.label)}: ${invert ? usd(prevV) : fmt(prevV)}">${g > 0 ? '+' : ''}${fmt(g, 0)}%</span>`; };
+  // Compact delta under a table figure (spend, leads, CPL) against a comparison range p.
+  const sd = (p, cur, prevV, invert = false) => { if (!p) return ''; if (prevV == null || !prevV || cur == null) return `<br><span class="muted" style="font-size:11px">${cur && !prevV ? 'new' : '–'}</span>`; const g = (cur - prevV) / prevV * 100; const good = invert ? g <= 0 : g >= 0; return `<br><span class="${good ? 'up' : 'down'}" style="font-size:11px" title="${esc(p.label)}: ${invert ? usd(prevV) : fmt(prevV)}">${g > 0 ? '+' : ''}${fmt(g, 0)}%</span>`; };
+
+  // Per-section comparison controls. Each starts on the top-bar comparison (prev) and redraws only
+  // its own section when changed.
+  const cmpResults = sectionCompare(ctx, 'linkedin:results', p => drawResults(p));
+  const cmpWorked = sectionCompare(ctx, 'linkedin:worked', p => drawWorked(p));
+  const cmpReach = sectionCompare(ctx, 'linkedin:reach', p => drawReach(p));
+  const cmpSets = sectionCompare(ctx, 'linkedin:adsets', p => drawAdSets(p));
 
   // ---- page ----
   let h = `<div class="seghead">Ads · LinkedIn</div><h1>LinkedIn ads</h1>
-  <p class="sub">${esc(F.rangeLabel(from, to))}. Leads are LinkedIn lead form submissions. Money is USD. ${prev ? `Compared ${esc(F.vsLabel(prev))}.` : 'No comparison selected.'}</p>
+  <p class="sub">${esc(F.rangeLabel(from, to))}. Leads are LinkedIn lead form submissions. Money is USD. ${prev ? `Compared ${esc(F.vsLabel(prev))} unless a section says otherwise.` : 'No comparison at the top; each section can still pick one.'}</p>
   <div class="card" style="font-size:13px;margin-bottom:6px"><b>Included data.</b> Performance: ${perfDays.length ? `${perfDays.length} of ${days} days have rows (${esc(F.dayLabel(perfDays[0]))} to ${esc(F.dayLabel(perfDays[perfDays.length - 1]))})` : 'no daily rows in this range'}.
   Demographics: ${windows.length ? `${windows.length} window${windows.length === 1 ? '' : 's'} overlap this range: ${windows.map(w => esc(winLabel(w))).join('; ')}. Demographics are totals per export window, so a person seen in two windows is counted twice.` : 'no export window overlaps this range.'}</div>`;
 
   h += `<details class="card" style="margin:10px 0 0" ${uploads.length ? '' : 'open'}><summary style="cursor:pointer"><span class="ui-label">Upload LinkedIn exports</span> <span class="muted" style="font-size:13px">· ${uploads.length} file${uploads.length === 1 ? '' : 's'} so far, last ${uploads[0] ? esc(F.timeAgo(uploads[0].uploaded_at)) : 'never'}</span></summary><div id="uploader" style="margin-top:12px"></div></details>`;
 
-  // 1. hero + tiles
-  h += ctx.ui.section('Results', 'The headline numbers for the range, each compared with the same number of days before it.', `
-  <div class="hero">
-    <div class="big"><div class="n">${fmt(T.leads)}</div><div class="l">LinkedIn leads in ${esc(F.rangeLabel(from, to))}${prev && TP.leads ? `, ${fmt(TP.leads)} ${esc(prev.label)}` : ''}.</div>
-      <div class="split">
-        <div><b>${usd(T.cpl)}</b><span>blended cost per lead</span></div>
-        <div><b>${usd(T.spend)}</b><span>spend</span></div>
-        ${topSet ? `<div><b>${fmt(topSet.leads)}</b><span>leads from the best ad set (${esc(shortName(topSet.name))})</span></div>` : ''}
-        <div><b>${fmt(SS.totals.ToFu.leads)}</b><span>leads from awareness spend (${usd(SS.totals.ToFu.spend)})</span></div>
-      </div></div>
-    ${ctx.ui.tiles([
-      { k: 'Total spend', v: usd(T.spend), d: dl(T.spend, TP.spend) },
-      { k: 'Impressions', v: fmt(T.impressions), d: dl(T.impressions, TP.impressions) },
-      { k: 'Reach (sum of daily)', v: fmt(T.reach), d: 'Not de-duplicated across days' },
-      { k: 'Clicks', v: fmt(T.clicks), d: `${pct(T.ctr, 2)} CTR` },
-    ]).replace('class="tiles"', 'class="tiles" style="grid-template-columns:1fr 1fr"')}
-  </div>
-  ${ctx.ui.tiles([
-    { k: 'CTR', v: pct(T.ctr, 2), d: dl(T.ctr, TP.ctr) },
-    { k: 'Leads', v: fmt(T.leads), d: dl(T.leads, TP.leads) },
-    { k: 'Lead form completion', v: pct(T.completion, 1), d: `${fmt(T.leads)} submits from ${fmt(T.lead_forms_opened)} opens` },
-    { k: 'Cost per lead', v: usd(T.cpl), d: dl(T.cpl, TP.cpl, true) },
-    { k: 'Message ad opens', v: pct(T.open_rate, 1), d: `${fmt(T.opens)} of ${fmt(T.sends)} sends` },
-    { k: 'Video views', v: fmt(T.video_views), d: dl(T.video_views, TP.video_views) },
-    { k: 'Accounts reached', v: `${fmt(matched.size)} of ${fmt(accounts.length)}`, d: windows.length ? 'Named target pages in demographics' : 'Needs a demographics upload' },
-    { k: 'Awareness CPM', v: usd(SS.totals.ToFu.impressions ? SS.totals.ToFu.spend / SS.totals.ToFu.impressions * 1000 : null, 2), d: 'ToFu spend per 1,000 impressions' },
-  ])}`);
+  // 1. hero + tiles (filled by drawResults against the comparison chosen in the section)
+  h += ctx.ui.section('Results', `The headline numbers for the range, each compared with the period chosen here. ${cmpResults.html()}`, `<div id="li-results-body">${ctx.ui.spinner('Loading comparison')}</div>`, 'li-results');
 
-  // 2. achieved / not achieved
+  // 2. achieved / not achieved (filled by drawWorked)
   const li = list => list.length ? `<ul>${list.map(b => `<li><b>${esc(b.b)}</b> ${esc(b.s)}</li>`).join('')}</ul>` : '<p class="muted" style="margin-top:8px">Nothing to report yet for this range.</p>';
-  h += ctx.ui.section('What worked and what did not', 'Rule-based reads of the numbers above. Each line only appears when the data behind it exists.', `<div class="grid g2"><div class="panel win"><h3>Achieved</h3>${li(bullets.achieved)}</div><div class="panel loss"><h3>Not achieved</h3>${li(bullets.missed)}</div></div>`);
+  h += ctx.ui.section('What worked and what did not', `Rule-based reads of the numbers above, against the period chosen here. Each line only appears when the data behind it exists. ${cmpWorked.html()}`, `<div id="li-worked-body">${ctx.ui.spinner('Loading comparison')}</div>`, 'li-worked');
 
   // 3. trend (whole history)
   h += ctx.ui.section('Week on week and month on month', 'The whole history of uploaded performance data (the selected range is the darker bars). Switch metrics on and off, compare with the previous week or month or with the average of all earlier ones, and see the week or month in progress against the same days of earlier ones, with a straight-line projection.', `<div id="trendX"></div>`);
 
   // 3a. reach heat maps: impressions ÷ reach_frequency (default 3) = people
-  h += ctx.ui.section('Reach: people by account, designation and region', `Estimated people reached, counting ${fmt(rf, 1)} impressions as one person (Admin › Targets). Columns are the demographics export windows in the selected dates; the last columns total them and compare with ${prev ? esc(prev.label) : 'nothing (pick a comparison at the top)'}. A person seen in two windows counts twice.`, `<div id="reachSeg"></div><div class="card"><div class="tblwrap" style="border:none" id="reachHeat"></div>${ctx.heat.legend('orange', 'square-root scale on the current windows')}</div>`);
+  h += ctx.ui.section('Reach: people by account, designation and region', `Estimated people reached, counting ${fmt(rf, 1)} impressions as one person (Admin › Targets). Columns are the demographics export windows in the selected dates; the last columns total them and compare with the period chosen here. A person seen in two windows counts twice. ${cmpReach.html()}`, `<div id="reachSeg"></div><div class="card"><div class="tblwrap" style="border:none" id="reachHeat"></div>${ctx.heat.legend('orange', 'square-root scale on the current windows')}</div>`, 'li-reach');
 
   // 3a. cumulative penetration cube: company x region x designation
   h += ctx.ui.section('Penetration by company, region and designation', `Cumulative over every demographics window in the selected dates: for each company, how much of its MD, MD-1 and MD-2 pool in each region the ads reached. People reached = impressions ÷ ${fmt(frequency, 1)}, spread by the window's country share and job-title mix (LinkedIn exports no cross-tab); pool = Apollo headcount per company, country and band (Admin › Reach pools), countries rolled up with Admin › Regions. Company rows are the sum of their regions; click a company row to open or close its regions.`, `<div class="row" style="gap:16px;flex-wrap:wrap;align-items:center"><div id="cubeMetric"></div><div id="cubeRegion"></div><span id="cubeCount" class="muted" style="font-size:12.5px"></span></div><div class="card"><div class="tblwrap" style="border:none" id="cubeHeat"></div><div class="legend" id="cubeLegend"></div></div>`, 'li-cube');
@@ -136,9 +121,9 @@ export async function render(el, ctx) {
   const topAds = ads.slice(0, 12);
   h += ctx.ui.section('Ads and creatives', 'Which creatives produced leads, ranked by leads then cost per lead. Concentration on one asset is the thing to watch.', `<div class="grid g2"><div class="card"><h3>Top creatives, leads and spend</h3><div class="chartbox tall"><canvas id="adChart"></canvas></div></div><div class="card pad0"><div class="tblwrap" style="border:none"><table><thead><tr><th class="l">Creative</th><th>Spend</th><th>Impr.</th><th>CTR</th><th>Leads</th><th>CPL</th></tr></thead><tbody>${topAds.map(a => `<tr><td class="l" style="white-space:normal;min-width:220px">${esc(a.ad_name)}<br><span class="muted" style="font-size:12px">${esc(shortName(a.campaign || ''))}${a.format ? ' · ' + esc(a.format) : ''}</span></td><td>${usd(a.spend)}</td><td>${a.impressions ? fmt(a.impressions) : (a.sends ? fmt(a.sends) + ' sends' : '–')}</td><td>${pct(a.ctr, 2)}</td><td>${fmt(a.leads)}</td><td>${usd(a.cpl)}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">No ads in range</td></tr>'}</tbody></table></div></div></div>`);
 
-  // 6a. ad set performance
-  h += ctx.ui.section('Ad set performance', `Every ad set in the range, largest spend first. Active means it spent in the last 7 days of the range (${esc(F.dayLabel(A.addDays(to, -6)))} to ${esc(F.dayLabel(to))}); otherwise Paused. CPM and CTR need impressions, so message ad sets show sends and open rate instead.${prev ? ` The small figures under spend, leads and CPL compare with ${esc(prev.label)}.` : ''}`,
-    `<div class="tblwrap"><table><thead><tr><th class="l">Ad set</th><th>Status</th><th class="l">Approach</th><th>Spend</th><th>Reach</th><th>Impressions</th><th>CPM</th><th>CTR</th><th>Clicks</th><th>Leads</th><th>Sends</th><th>Open rate</th><th>CPL</th></tr></thead><tbody>${sets.map(s => `<tr><td class="l" style="white-space:normal;min-width:220px">${esc(shortName(s.name, 60))}<br><span class="muted" style="font-size:12px">${esc(shortName(s.campaign_group || '', 50))}</span></td><td>${ctx.ui.pill(s.status, s.status === 'Active' ? 'p-high' : 'p-na')}</td><td class="l">${esc(s.approach)}</td><td>${usd(s.spend)}${sd(s.spend, s.prev && s.prev.spend)}</td><td>${s.reach ? fmt(s.reach) : '–'}</td><td>${s.impressions ? fmt(s.impressions) : '–'}</td><td>${usd(s.cpm, 2)}</td><td>${pct(s.ctr, 2)}</td><td>${fmt(s.clicks)}</td><td>${fmt(s.leads)}${sd(s.leads, s.prev && s.prev.leads)}</td><td>${s.sends ? fmt(s.sends) : '–'}</td><td>${pct(s.open_rate, 1)}</td><td>${usd(s.cpl)}${sd(s.cpl, s.prev && s.prev.cpl, true)}</td></tr>`).join('') || '<tr><td colspan="13" class="muted">No ad sets in range</td></tr>'}</tbody></table></div>`);
+  // 6a. ad set performance (filled by drawAdSets)
+  h += ctx.ui.section('Ad set performance', `Every ad set in the range, largest spend first. Active means it spent in the last 7 days of the range (${esc(F.dayLabel(A.addDays(to, -6)))} to ${esc(F.dayLabel(to))}); otherwise Paused. CPM and CTR need impressions, so message ad sets show sends and open rate instead. The small figures under spend, leads and CPL compare with the period chosen here. ${cmpSets.html()}`,
+    `<div id="li-adsets-body">${ctx.ui.spinner('Loading comparison')}</div>`, 'li-adsets');
 
   // 6b. targeting scorecard
   const maxCpm = Math.max(1, ...SC.rows.map(r => r.cpm || 0));
@@ -190,7 +175,56 @@ export async function render(el, ctx) {
   }
   h += `<div class="section" id="aiPanel"></div>`;
   el.innerHTML = h;
+  cmpResults.wire(el); cmpWorked.wire(el); cmpReach.wire(el); cmpSets.wire(el);
   mountUploader(el.querySelector('#uploader'), ctx, { channel: 'linkedin', isEditor: isEditorOf(ctx), onDone: () => render(el, ctx) });
+
+  // ---- sections with their own comparison: each fetches the comparison rows it needs (memoised)
+  // and redraws only itself. lastPrev / TP / lastBullets feed the AI read-out below. ----
+  let TP = A.totals([]), TPn = 0, lastPrev = prev, lastBullets = { achieved: [], missed: [] }, lastWorkedPrev = prev;
+  async function drawResults(p) {
+    const box = el.querySelector('#li-results-body'); if (!box) return;
+    const rows = (await prevBundle(p)).perf; if (!el.isConnected) return;
+    TP = A.totals(rows); TPn = rows.length; lastPrev = p;
+    const dl = (cur, prevV, invert = false) => deltaText(p, cur, prevV, invert);
+    box.innerHTML = `<div class="hero">
+    <div class="big"><div class="n">${fmt(T.leads)}</div><div class="l">LinkedIn leads in ${esc(F.rangeLabel(from, to))}${p && TP.leads ? `, ${fmt(TP.leads)} ${esc(p.label)}` : ''}.</div>
+      <div class="split">
+        <div><b>${usd(T.cpl)}</b><span>blended cost per lead</span></div>
+        <div><b>${usd(T.spend)}</b><span>spend</span></div>
+        ${topSet ? `<div><b>${fmt(topSet.leads)}</b><span>leads from the best ad set (${esc(shortName(topSet.name))})</span></div>` : ''}
+        <div><b>${fmt(SS.totals.ToFu.leads)}</b><span>leads from awareness spend (${usd(SS.totals.ToFu.spend)})</span></div>
+      </div></div>
+    ${ctx.ui.tiles([
+      { k: 'Total spend', v: usd(T.spend), d: dl(T.spend, TP.spend) },
+      { k: 'Impressions', v: fmt(T.impressions), d: dl(T.impressions, TP.impressions) },
+      { k: 'Reach (sum of daily)', v: fmt(T.reach), d: 'Not de-duplicated across days' },
+      { k: 'Clicks', v: fmt(T.clicks), d: `${pct(T.ctr, 2)} CTR` },
+    ]).replace('class="tiles"', 'class="tiles" style="grid-template-columns:1fr 1fr"')}
+  </div>
+  ${ctx.ui.tiles([
+    { k: 'CTR', v: pct(T.ctr, 2), d: dl(T.ctr, TP.ctr) },
+    { k: 'Leads', v: fmt(T.leads), d: dl(T.leads, TP.leads) },
+    { k: 'Lead form completion', v: pct(T.completion, 1), d: `${fmt(T.leads)} submits from ${fmt(T.lead_forms_opened)} opens` },
+    { k: 'Cost per lead', v: usd(T.cpl), d: dl(T.cpl, TP.cpl, true) },
+    { k: 'Message ad opens', v: pct(T.open_rate, 1), d: `${fmt(T.opens)} of ${fmt(T.sends)} sends` },
+    { k: 'Video views', v: fmt(T.video_views), d: dl(T.video_views, TP.video_views) },
+    { k: 'Accounts reached', v: `${fmt(matched.size)} of ${fmt(accounts.length)}`, d: windows.length ? 'Named target pages in demographics' : 'Needs a demographics upload' },
+    { k: 'Awareness CPM', v: usd(SS.totals.ToFu.impressions ? SS.totals.ToFu.spend / SS.totals.ToFu.impressions * 1000 : null, 2), d: 'ToFu spend per 1,000 impressions' },
+  ])}`;
+  }
+  async function drawWorked(p) {
+    const box = el.querySelector('#li-worked-body'); if (!box) return;
+    const b = await prevBundle(p); if (!el.isConnected) return;
+    lastBullets = A.bullets({ rows: perf, prevRows: b.perf, demoWindows: windows, prevDemoWindows: b.demo, from, to, stages, bands }); lastWorkedPrev = p;
+    box.innerHTML = `<div class="grid g2"><div class="panel win"><h3>Achieved</h3>${li(lastBullets.achieved)}</div><div class="panel loss"><h3>Not achieved</h3>${li(lastBullets.missed)}</div></div>`;
+  }
+  async function drawAdSets(p) {
+    const box = el.querySelector('#li-adsets-body'); if (!box) return;
+    const rows = (await prevBundle(p)).perf; if (!el.isConnected) return;
+    const setsP = A.adSets(perf, { to, prevRows: p ? rows : null });
+    box.innerHTML = `<div class="tblwrap"><table><thead><tr><th class="l">Ad set</th><th>Status</th><th class="l">Approach</th><th>Spend</th><th>Reach</th><th>Impressions</th><th>CPM</th><th>CTR</th><th>Clicks</th><th>Leads</th><th>Sends</th><th>Open rate</th><th>CPL</th></tr></thead><tbody>${setsP.map(s => `<tr><td class="l" style="white-space:normal;min-width:220px">${esc(shortName(s.name, 60))}<br><span class="muted" style="font-size:12px">${esc(shortName(s.campaign_group || '', 50))}</span></td><td>${ctx.ui.pill(s.status, s.status === 'Active' ? 'p-high' : 'p-na')}</td><td class="l">${esc(s.approach)}</td><td>${usd(s.spend)}${sd(p, s.spend, s.prev && s.prev.spend)}</td><td>${s.reach ? fmt(s.reach) : '–'}</td><td>${s.impressions ? fmt(s.impressions) : '–'}</td><td>${usd(s.cpm, 2)}</td><td>${pct(s.ctr, 2)}</td><td>${fmt(s.clicks)}</td><td>${fmt(s.leads)}${sd(p, s.leads, s.prev && s.prev.leads)}</td><td>${s.sends ? fmt(s.sends) : '–'}</td><td>${pct(s.open_rate, 1)}</td><td>${usd(s.cpl)}${sd(p, s.cpl, s.prev && s.prev.cpl, true)}</td></tr>`).join('') || '<tr><td colspan="13" class="muted">No ad sets in range</td></tr>'}</tbody></table></div>`;
+  }
+  drawResults(cmpResults.prev); drawWorked(cmpWorked.prev); drawAdSets(cmpSets.prev);
 
   // ---- trend explorer (whole history) ----
   const hist = ((histData && histData.perf) || perf);
@@ -249,10 +283,15 @@ export async function render(el, ctx) {
     return m;
   });
   const sumMaps = maps => { const t = new Map(); for (const m of maps) for (const [k, v] of m) t.set(k, (t.get(k) || 0) + v); return t; };
-  let reachDim = 'account';
-  const drawReach = () => {
-    const box = el.querySelector('#reachHeat');
+  // p is the comparison range for this section (its own control, starting on the top-bar one); the
+  // dimension toggle redraws with the last one used.
+  let reachDim = 'account', reachPrev = cmpReach.prev;
+  const drawReach = async (p = reachPrev) => {
+    const box = el.querySelector('#reachHeat'); if (!box) return;
+    reachPrev = p;
     if (!windows.length) { box.innerHTML = ctx.ui.empty('No demographics export covers this range. Upload one at the top of this page.'); return; }
+    const prevWindows = (await prevBundle(p)).demo; if (!el.isConnected || p !== reachPrev) return;
+    const prev = p;
     const curMaps = reachMaps(windows, reachDim), curTot = sumMaps(curMaps);
     const cmpTot = prev ? sumMaps(reachMaps(prevWindows, reachDim)) : null;
     const keys = [...new Set([...curTot.keys(), ...(cmpTot ? cmpTot.keys() : [])])].filter(k => (curTot.get(k) || 0) > 0 || (cmpTot && cmpTot.get(k) > 0));
@@ -451,14 +490,14 @@ export async function render(el, ctx) {
     const share = (segment, top = 8) => { const s = A.segmentShare(demoRows, segment, 'impressions'); return [...s.values.entries()].sort((a, b) => b[1] - a[1]).slice(0, top).map(([k, v]) => ({ [segment === 'Country' ? 'country' : 'value']: k, share_pct: s.total ? Math.round(v / s.total * 1000) / 10 : null })); };
     const bs = A.bandShares(A.segRows(demoRows, 'Job Title'), bands);
     const input = {
-      range: { from, to, days }, previous_range: prev ? { from: prev.from, to: prev.to, label: prev.label } : null,
-      totals: round(T), previous_totals: prevPerf.length ? round(TP) : null,
+      range: { from, to, days }, previous_range: lastPrev ? { from: lastPrev.from, to: lastPrev.to, label: lastPrev.label } : null,
+      totals: round(T), previous_totals: lastPrev && TPn ? round(TP) : null,
       trend_by_week: wk.slice(-16),
       stage_split: Object.fromEntries(Object.entries(SS.totals).map(([k, v]) => [k, { spend: Math.round(v.spend), leads: v.leads, impressions: v.impressions }])),
       programs: progs,
       top_ads: ads.slice(0, 6).map(a => ({ name: a.ad_name, spend: Math.round(a.spend), leads: a.leads, cpl: a.cpl && Math.round(a.cpl), ctr: a.ctr && Math.round(a.ctr * 100) / 100 })),
       bottom_ads: ads.filter(a => a.spend > 50 && !a.leads).slice(-5).map(a => ({ name: a.ad_name, spend: Math.round(a.spend), impressions: a.impressions })),
-      achieved: bullets.achieved.map(b => b.b + ' ' + b.s), not_achieved: bullets.missed.map(b => b.b + ' ' + b.s),
+      achieved: lastBullets.achieved.map(b => b.b + ' ' + b.s), not_achieved: lastBullets.missed.map(b => b.b + ' ' + b.s), bullets_compared_with: lastWorkedPrev ? lastWorkedPrev.label : null,
       demographics_windows: windows.map(winLabel),
       seniority_share: share('Job Seniority'), geography_share: share('Country'), function_share: share('Job Function', 6),
       band_share: Object.fromEntries(A.BANDS.map(b => [b, Math.round(bs.share[b] * 1000) / 10])),

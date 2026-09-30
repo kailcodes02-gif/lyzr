@@ -3,6 +3,7 @@ import { isBridging, signIn, restore, signOut, getToken } from './auth.mjs';
 import { createApi } from './api.mjs';
 import * as fmt from './fmt.mjs';
 import * as heat from './heatmap.mjs';
+import { COMPARE, compareRange } from './compare.mjs';
 import * as ui from './ui.mjs';
 import { mountInsights } from './insights.mjs';
 
@@ -37,20 +38,7 @@ const PRESETS = [
   ['last90', 'Last 90 days'], ['ytd', 'This year'], ['all', 'All time'], ['custom', 'Custom'],
 ];
 // "Compare with": every page's "vs" numbers use this comparison range.
-const COMPARE = [
-  ['prev', 'the period before'], ['week', 'same dates last week'], ['month', 'same dates last month'],
-  ['weeks', 'same dates N weeks ago'], ['months', 'same dates N months ago'], ['none', 'nothing'],
-];
-export function compareRange(from, to, mode, n = 1) {
-  const days = fmt.daysBetween(from, to);
-  const shiftMonths = (iso, k) => { const d = new Date(iso + 'T00:00:00'); const day = d.getDate(); d.setDate(1); d.setMonth(d.getMonth() - k); const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); d.setDate(Math.min(day, last)); return fmt.isoDay(d); };
-  if (mode === 'none') return null;
-  if (mode === 'week') return { from: fmt.addDays(from, -7), to: fmt.addDays(to, -7), label: 'same dates last week' };
-  if (mode === 'weeks') return { from: fmt.addDays(from, -7 * n), to: fmt.addDays(to, -7 * n), label: `same dates ${n} weeks ago` };
-  if (mode === 'month') return { from: shiftMonths(from, 1), to: shiftMonths(to, 1), label: 'same dates last month' };
-  if (mode === 'months') return { from: shiftMonths(from, n), to: shiftMonths(to, n), label: `same dates ${n} months ago` };
-  return { from: fmt.addDays(from, -days), to: fmt.addDays(from, -1), label: `the ${days} days before` };
-}
+export { compareRange };
 const $ = id => document.getElementById(id);
 const ctx = { api: null, state: null, user: null, fmt, heat, ui, toast, mountInsights, nav: go, ROUTES: PAGES };
 let current = null, currentMod = null;

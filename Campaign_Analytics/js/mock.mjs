@@ -61,6 +61,15 @@ export function createMockApi() {
       const notes_by_contact = {}; for (const c of contacts) if (hubspotMock.notes_by_contact[c.hs_id]) notes_by_contact[c.hs_id] = hubspotMock.notes_by_contact[c.hs_id];
       return { contacts, notes_by_contact, last_sync: lastSync };
     }
+    if (p === 'coverage') {
+      const li = uploads.filter(u => u.channel === 'linkedin');
+      const ads = {};
+      for (const u of li) { const k = u.platform || 'linkedin'; ads[k] = ads[k] || { performance: { from: null, to: null, days_covered: 0, days_missing: 0, gaps: [], uploads: 0 }, demographics: [] }; if (u.kind === 'performance') { const pf = ads[k].performance; pf.uploads++; pf.from = !pf.from || u.period_start < pf.from ? u.period_start : pf.from; pf.to = !pf.to || u.period_end > pf.to ? u.period_end : pf.to; } else ads[k].demographics.push({ from: u.period_start, to: u.period_end, rows: u.row_count, uploaded_at: u.uploaded_at }); }
+      for (const k of Object.keys(ads)) { const pf = ads[k].performance; if (pf.from) pf.days_covered = Math.round((Date.parse(pf.to) - Date.parse(pf.from)) / 864e5) + 1; ads[k].demographics.sort((a, b) => a.from < b.from ? -1 : 1); }
+      const E = em();
+      const days = (E.api.daily || []).map(r => r.day).sort();
+      return { ads, email: { events: { from: '2026-07-01', to: '2026-09-24' }, daily: { from: days[0] || null, to: days[days.length - 1] || null }, campaigns: E.api.campaigns.length, gsi_campaigns: E.api.campaigns.filter(c => c.gsi !== false).length, last_sync: E.api.last_sync }, hubspot: { contacts: { from: '2026-04-06', to: '2026-09-24' }, last_sync: lastSync }, deals: { count: 60, last_sync: { status: 'done', finished_at: '2026-09-30T01:40:00Z', started_by: 'daily job' } }, phantom: { daily: { from: '2026-07-06', to: '2026-09-30' }, last_sync: { status: 'done', finished_at: '2026-09-30T01:42:00Z', started_by: 'daily job' } }, actions: actions.reduce((o, a) => { o[a.status] = (o[a.status] || 0) + 1; return o; }, { open: 0, in_progress: 0, blocked: 0, done: 0, dropped: 0 }), generated_at: new Date().toISOString() };
+    }
     if (p === 'phantom') return phantomGet(params);
     if (p === 'hubspot/deals') return dealsGet(params);
     if (p === 'insights') { const hit = insights.get(params.scope); if (!hit) throw new MockError(404, 'No cached insight for this scope'); return { scope: params.scope, ...hit }; }

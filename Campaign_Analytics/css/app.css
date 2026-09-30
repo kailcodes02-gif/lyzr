@@ -260,3 +260,9 @@ tr.sel td{background:rgba(254,75,30,.05)}
 .heat tr.grp td{border-top:2px solid var(--line)}
 .heat tr.grp td.l{background:var(--fill)}
 .heat tr.child td.l{padding-left:26px}
+
+/* per-section comparison override (js/compare.mjs) */
+.cmpbox{display:inline-flex;align-items:center;gap:6px;margin-left:10px;vertical-align:middle;white-space:nowrap}
+.cmpbox select,.cmpbox input{font:inherit;font-size:12.5px;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink)}
+.cmpbox input{width:56px}
+h2 .cmpbox,.sub .cmpbox{font-family:var(--font);text-transform:none;letter-spacing:0}

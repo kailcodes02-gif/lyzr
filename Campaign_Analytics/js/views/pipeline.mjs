@@ -2,6 +2,7 @@
 // "what changed" computed from ca_hs_deal_history over the global range. All aggregation
 // lives in js/lib/pipeline-agg.mjs (unit-tested); this file only draws.
 import { BUCKETS, BUCKET_LABELS, BUCKET_COLORS, filterDeals, searchDeals, sortDeals, partners, kpis, byQuarter, byPartner, byMotion, stageMix, bySubstage, acvByPartner, changesIn, compareChanges, insightInput, isOpen } from '../lib/pipeline-agg.mjs';
+import { sectionCompare, memoGet } from '../compare.mjs';
 
 export const route = 'hubspot/pipeline';
 export const title = 'Pipeline';
@@ -28,6 +29,11 @@ export async function render(el, ctx) {
   try { data = await ctx.api.get('hubspot/deals', { from, to }); } catch (e) { el.innerHTML = head + `<div class="empty">Pipeline data could not be loaded: ${esc(e.message || e)}</div>`; return; }
   const all = data.deals || [];
   const history = data.history || [];
+  // The GET only returns history rows dated inside the range asked for, so the comparison period
+  // needs its own (memoised) fetch. Rows from both periods are merged by id so the aggregation
+  // helpers, which filter by date themselves, can count each period from one list.
+  const historyFor = async p => p ? ((await memoGet(ctx, 'hubspot/deals', { from: p.from, to: p.to }).catch(() => null)) || {}).history || [] : [];
+  const mergeHistory = (a, b) => { const seen = new Set(); const out = []; for (const h of [...a, ...b]) { const k = h.id != null ? String(h.id) : `${h.hs_id}|${h.kind}|${h.at}|${h.from_value}|${h.to_value}`; if (seen.has(k)) continue; seen.add(k); out.push(h); } return out; };
   const ls = data.last_sync;
   const syncHtml = `<div><b>Last sync</b> <span class="muted">${ls && ls.finished_at ? `${esc(istDateTime(ls.finished_at))} (${esc(timeAgo(ls.finished_at))}) · ${fmt(ls.deals)} deals, ${fmt(ls.changes)} changes${ls.status && ls.status !== 'done' ? ' · ' + esc(ls.status) : ''}${ls.error ? ' · ' + esc(ls.error) : ''}` : 'never'}</span></div>
     ${isEditor ? `<button class="btn tiny primary" id="dealsSync">Sync from HubSpot now</button>` : `<span class="muted" style="font-size:12.5px">Synced automatically every morning at 07:00 IST</span>`}
@@ -46,11 +52,35 @@ export async function render(el, ctx) {
     const rows = filterDeals(all, { mode: S.mode, partner: S.partner });
     const k = kpis(rows);
     const ch = changesIn(history, rows, from, to);
-    const cmp = compareChanges(history, rows, from, to, prev);
-    const vs = (key) => cmp.prev ? `<span class="muted">vs ${fmt(cmp.prev[key])} ${esc(prev.label)}</span>` : '';
     const filterLabel = S.partner ? S.partner : S.mode === 'accenture' ? 'Accenture' : S.mode === 'other' ? 'other GSIs and SIs' : 'all partners';
     const q = (r) => `<span class="muted" style="font-size:11.5px">${esc(dayLabel(r.at.slice(0, 10)))}</span>`;
     const changeList = (list, line) => list.length ? `<div style="max-height:320px;overflow:auto">${list.map(r => `<div style="border-top:1px solid var(--line);padding:7px 0;font-size:13px"><b>${esc(truncate(r.name, 60))}</b> <span class="muted">${esc(r.partner)}</span><br>${line(r)} ${q(r)}</div>`).join('')}</div>` : '<p class="muted" style="font-size:13px">Nothing in this period.</p>';
+
+    // "What changed" has its own comparison control: the page loads with the top-bar comparison
+    // (ctx.state.prev) and this one section can be redrawn against another range without
+    // touching the rest of the page. lastPrev and lastHistory feed the AI read-out.
+    let lastPrev = prev || null, lastHistory = history;
+    const cmpChanges = sectionCompare(ctx, 'pipeline:changes', p => drawChanges(p));
+    async function drawChanges(p) {
+      const box = el.querySelector('#p-changes-body'); if (!box) return;
+      const prevHist = await historyFor(p); if (!el.isConnected) return;
+      const hist = p ? mergeHistory(history, prevHist) : history;
+      const cmp = compareChanges(hist, rows, from, to, p);
+      lastPrev = p || null; lastHistory = hist;
+      const vs = (key) => cmp.prev ? `<span class="muted">vs ${fmt(cmp.prev[key])} ${esc(p.label)}</span>` : '';
+      box.innerHTML = `<p class="muted" style="font-size:12.5px;margin:0 0 10px">${p ? `Compared with ${esc(p.label)} (${esc(rangeLabel(p.from, p.to))}).` : 'No comparison for this section.'}</p>` + tiles([
+        { k: 'New deals', v: fmt(ch.counts.new), d: vs('new') },
+        { k: 'Stage moves', v: fmt(ch.counts.stage), d: vs('stage') },
+        { k: 'Amount changes', v: fmt(ch.counts.amount), d: `${ch.counts.amount_delta >= 0 ? '+' : ''}${usd(ch.counts.amount_delta)} net ${vs('amount')}` },
+        { k: 'Closed won', v: `<span class="up">${fmt(ch.counts.won)}</span>`, d: vs('won') },
+        { k: 'Closed lost', v: `<span class="down">${fmt(ch.counts.lost)}</span>`, d: vs('lost') },
+      ]) + `<div class="grid g2" style="margin-top:14px">
+        <div class="card"><h3>New deals (${fmt(ch.new.length)})</h3>${changeList(ch.new, r => `entered at ${esc(r.to_value || 'unknown stage')} · ${money(usd, r.amount)}`)}</div>
+        <div class="card"><h3>Stage movements (${fmt(ch.stage.length)})</h3>${changeList(ch.stage, r => `${esc(r.from_value || '?')} → <b>${esc(r.to_value || '?')}</b> · ${money(usd, r.amount)}`)}</div>
+        <div class="card"><h3>Closed (${fmt(ch.closed.length)})</h3>${changeList(ch.closed, r => `${r.to_value === 'won' ? '<span class="up">Won</span>' : '<span class="down">Lost</span>'} from ${esc(r.from_value || 'open')} · ${money(usd, r.amount)}`)}</div>
+        <div class="card"><h3>Amount changes (${fmt(ch.amount.length)})</h3>${changeList(ch.amount, r => `${usd(Number(r.from_value) || 0)} → <b>${usd(Number(r.to_value) || 0)}</b>`)}</div>
+      </div>`;
+    }
 
     el.innerHTML = head + syncCard + `
       <div class="toc"><span class="tl">On this page</span><a href="#p-kpis">Numbers</a><a href="#p-changes">What changed</a><a href="#p-charts">Charts</a><a href="#p-table">All deals</a><a href="#p-ai">AI read-out</a>
@@ -68,18 +98,7 @@ export async function render(el, ctx) {
         { k: 'Open pipeline ACV', v: usd(k.open_acv), d: `${fmt(k.open_with_amount)} open deals with an amount` },
       ]), 'p-kpis')}
 
-      ${section('What changed', `Sync history for ${esc(rangeLabel(from, to))}${cmp.prev ? `, compared with ${esc(prev.label)} (${esc(rangeLabel(prev.from, prev.to))})` : ''}. New deals are dated by their HubSpot create date; moves, amount changes and closes by the sync that noticed them, so the first sync after a quiet spell can bunch changes on one day.`, tiles([
-        { k: 'New deals', v: fmt(ch.counts.new), d: vs('new') },
-        { k: 'Stage moves', v: fmt(ch.counts.stage), d: vs('stage') },
-        { k: 'Amount changes', v: fmt(ch.counts.amount), d: `${ch.counts.amount_delta >= 0 ? '+' : ''}${usd(ch.counts.amount_delta)} net ${vs('amount')}` },
-        { k: 'Closed won', v: `<span class="up">${fmt(ch.counts.won)}</span>`, d: vs('won') },
-        { k: 'Closed lost', v: `<span class="down">${fmt(ch.counts.lost)}</span>`, d: vs('lost') },
-      ]) + `<div class="grid g2" style="margin-top:14px">
-        <div class="card"><h3>New deals (${fmt(ch.new.length)})</h3>${changeList(ch.new, r => `entered at ${esc(r.to_value || 'unknown stage')} · ${money(usd, r.amount)}`)}</div>
-        <div class="card"><h3>Stage movements (${fmt(ch.stage.length)})</h3>${changeList(ch.stage, r => `${esc(r.from_value || '?')} → <b>${esc(r.to_value || '?')}</b> · ${money(usd, r.amount)}`)}</div>
-        <div class="card"><h3>Closed (${fmt(ch.closed.length)})</h3>${changeList(ch.closed, r => `${r.to_value === 'won' ? '<span class="up">Won</span>' : '<span class="down">Lost</span>'} from ${esc(r.from_value || 'open')} · ${money(usd, r.amount)}`)}</div>
-        <div class="card"><h3>Amount changes (${fmt(ch.amount.length)})</h3>${changeList(ch.amount, r => `${usd(Number(r.from_value) || 0)} → <b>${usd(Number(r.to_value) || 0)}</b>`)}</div>
-      </div>`, 'p-changes')}
+      ${section('What changed', `Sync history for ${esc(rangeLabel(from, to))}, compared with the period chosen here. New deals are dated by their HubSpot create date; moves, amount changes and closes by the sync that noticed them, so the first sync after a quiet spell can bunch changes on one day. ${cmpChanges.html()}`, `<div id="p-changes-body">${spinner('Loading comparison')}</div>`, 'p-changes')}
 
       ${section('Charts', 'Timeline: deals by projected close quarter (close date, else create date). Companies: the top partners. Motion: the HubSpot deal type. Stage mix and sub-stage: where deals sit. ACV: money by partner, closed against open.', `<div id="tabSeg"></div><div class="grid g2w"><div class="card"><div class="chartbox tall"><canvas id="tabChart"></canvas></div></div><div id="tabTable"></div></div>`, 'p-charts')}
 
@@ -88,6 +107,8 @@ export async function render(el, ctx) {
 
     // ---- wiring ------------------------------------------------------------------------------
     wireSync();
+    cmpChanges.wire(el);
+    drawChanges(cmpChanges.prev);
     seg(el.querySelector('#modeSeg'), [{ value: 'all', label: 'All' }, { value: 'accenture', label: 'Accenture' }, { value: 'other', label: 'Other GSIs' }], v => { S.mode = v; S.partner = ''; draw(); }, S.mode);
     el.querySelector('#partnerSel').onchange = e => { S.partner = e.target.value; draw(); };
     seg(el.querySelector('#tabSeg'), TABS, v => { S.tab = v; drawChart(rows); }, S.tab);
@@ -116,7 +137,7 @@ export async function render(el, ctx) {
     let t = null; el.querySelector('#dealQ').oninput = e => { clearTimeout(t); t = setTimeout(() => { S.q = e.target.value.trim(); S.limit = 100; drawTable(); }, 150); };
 
     // AI
-    ctx.mountInsights(el.querySelector('#pipeInsights'), ctx, { scope: `pipeline:${from}:${to}`, kind: 'overview', channel: 'overview', title: 'What the pipeline says', inputProvider: () => insightInput(rows, history, { from, to, prev, mode: S.mode, partner: S.partner }) });
+    ctx.mountInsights(el.querySelector('#pipeInsights'), ctx, { scope: `pipeline:${from}:${to}`, kind: 'overview', channel: 'overview', title: 'What the pipeline says', inputProvider: () => insightInput(rows, lastHistory, { from, to, prev: lastPrev, mode: S.mode, partner: S.partner }) });
   }
 
   // ---- charts (one canvas, redrawn per tab) ----------------------------------------------------
