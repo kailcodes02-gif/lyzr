@@ -216,6 +216,165 @@ export function creativesForCountry(perfRows, country, countries, limit = 6) {
   return out.sort((a, b) => b.leads - a.leads || (b.ctr || 0) - (a.ctr || 0) || b.impressions - a.impressions).slice(0, limit);
 }
 
+// ---- White Path: targeting approach, ad sets, scorecard ----
+// Approach is read from the ad set name. "Combined" is checked first so a name such as
+// "Custom + Native" lands there instead of in Custom list.
+export const APPROACHES = ['Custom list', 'Native', 'Combined', 'Retargeting', 'Other'];
+export function approachOf(name) {
+  const t = String(name || '');
+  if (/combined|mix|\+/i.test(t)) return 'Combined';
+  if (/custom|list|upload|matched|abm/i.test(t)) return 'Custom list';
+  if (/native|heatmap|seniorit|title|function/i.test(t)) return 'Native';
+  if (/retarget|website|visit|engag/i.test(t)) return 'Retargeting';
+  return 'Other';
+}
+// One row per ad set (LinkedIn campaign). Active = spend in the last 7 days of the range (to, or the
+// last day with rows when no range is given). prevRows adds { spend, leads, cpl, impressions, ctr } from the comparison range.
+export function adSets(rows, { to, prevRows } = {}) {
+  const days = rows.map(r => r.day).filter(Boolean).sort();
+  const end = to || days[days.length - 1] || null;
+  const cutoff = end ? addDays(end, -6) : null;
+  const key = r => r.campaign || '(no ad set)';
+  const g = groupBy(rows, key), prevG = prevRows ? groupBy(prevRows, key) : null;
+  const out = [...g.entries()].map(([name, rs]) => {
+    const s = summarise(name, rs);
+    const recent = cutoff ? rs.filter(r => r.day >= cutoff && r.day <= end).reduce((a, r) => a + n(r.spend), 0) : 0;
+    const o = { ...s, campaign_group: rs[0].campaign_group || '', objective: rs[0].objective || '', approach: approachOf(name), status: recent > 0 ? 'Active' : 'Paused', recent_spend: recent, prev: null };
+    if (prevG && prevG.has(name)) { const pt = totals(prevG.get(name)); o.prev = { spend: pt.spend, leads: pt.leads, cpl: pt.cpl, impressions: pt.impressions, ctr: pt.ctr }; }
+    return o;
+  });
+  return out.sort((a, b) => b.spend - a.spend);
+}
+// Approaches side by side. Grade A = CTR at or above the median and CPM at or below it, B = one of the two, C = neither.
+// Medians are taken across the approaches that have impressions; message-only approaches get no grade.
+export function scorecard(sets) {
+  const g = groupBy(sets, s => s.approach);
+  const rows = APPROACHES.filter(a => g.has(a)).map(a => {
+    const ss = g.get(a); const t = { approach: a, sets: ss.length, names: ss.map(s => s.name) };
+    for (const k of ['spend', 'impressions', 'clicks', 'leads', 'sends', 'opens']) t[k] = ss.reduce((x, s) => x + n(s[k]), 0);
+    t.ctr = t.impressions ? t.clicks / t.impressions * 100 : null; t.cpm = t.impressions ? t.spend / t.impressions * 1000 : null; t.cpl = div(t.spend, t.leads);
+    return t;
+  });
+  const withImp = rows.filter(r => r.impressions > 0);
+  const median_ctr = median(withImp.map(r => r.ctr)), median_cpm = median(withImp.map(r => r.cpm));
+  const p2 = v => (Math.round(v * 100) / 100).toFixed(2), d0 = v => Math.round(v);
+  for (const r of rows) {
+    if (!r.impressions) { r.grade = null; r.verdict = r.sends ? 'Message ads only: sends carry no impressions, so CTR and CPM do not apply.' : 'No impressions in this range.'; continue; }
+    const goodCtr = r.ctr >= median_ctr, goodCpm = r.cpm <= median_cpm;
+    r.grade = goodCtr && goodCpm ? 'A' : (goodCtr || goodCpm) ? 'B' : 'C';
+    if (r.grade === 'A') r.verdict = `Clicks at ${p2(r.ctr)}% and reach at $${p2(r.cpm)} per 1,000 both beat or match the medians. Put more budget here.`;
+    else if (goodCtr) r.verdict = `People click (${p2(r.ctr)}% CTR) but reach is dear at $${p2(r.cpm)} per 1,000 against a $${p2(median_cpm)} median. Widen the audience to bring the cost down.`;
+    else if (goodCpm) r.verdict = `Cheap reach at $${p2(r.cpm)} per 1,000 but only ${p2(r.ctr)}% click against a ${p2(median_ctr)}% median. Refresh the creative before scaling.`;
+    else r.verdict = `$${p2(r.cpm)} per 1,000 and ${p2(r.ctr)}% CTR are both on the wrong side of the medians on $${d0(r.spend)}. Pause or rebuild the audience.`;
+  }
+  return { rows, median_ctr, median_cpm };
+}
+
+// ---- messaging senders ----
+// Sender persona from an ad or ad set name: a short "Name:" prefix (one or two words), or a first word from the
+// known sender list. Several names can be passed; the first that yields a sender wins.
+export const SENDERS = ['ani', 'jessica', 'siva', 'kailash'];
+const capWords = s => s.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+export function senderOf(...names) {
+  for (const raw of names) {
+    const s = String(raw || '').trim(); if (!s) continue;
+    const m = s.match(/^([A-Za-z][A-Za-z.'-]*(?:\s+[A-Za-z][A-Za-z.'-]*)?)\s*:/); if (m) return capWords(m[1].trim());
+    const w = s.match(/^([A-Za-z]+)\b/); if (w && SENDERS.includes(w[1].toLowerCase())) return capWords(w[1]);
+  }
+  return 'Unknown sender';
+}
+// Message and conversation ads (rows with sends) grouped by sender, then by ad set inside each sender.
+export function messagingBySender(rows) {
+  const msg = rows.filter(r => n(r.sends) > 0);
+  const bySender = groupBy(msg, r => senderOf(r.ad_name, r.campaign));
+  const rates = o => { o.open_rate = o.sends ? o.opens / o.sends * 100 : null; o.click_to_open = o.opens ? o.clicks / o.opens * 100 : null; o.cpl = div(o.spend, o.leads); return o; };
+  const senders = [...bySender.entries()].map(([sender, rs]) => {
+    const bySet = groupBy(rs, r => r.campaign || '(no ad set)');
+    const sets = [...bySet.entries()].map(([name, srs]) => { const t = totals(srs); const ad = srs.find(r => r.ad_name) || srs[0]; return rates({ name, ad_name: ad.ad_name || '', campaign_group: srs[0].campaign_group || '', spend: t.spend, sends: t.sends, opens: t.opens, clicks: t.clicks, leads: t.leads }); }).sort((a, b) => b.sends - a.sends);
+    const o = { sender, sets }; for (const k of ['spend', 'sends', 'opens', 'clicks', 'leads']) o[k] = sets.reduce((a, s) => a + s[k], 0);
+    return rates(o);
+  });
+  return senders.sort((a, b) => b.sends - a.sends);
+}
+
+// ---- creative audience reach ----
+// Top creatives by impressions with the job titles and countries of the demographics rows whose campaign is the
+// creative's ad set. has_split is false when no demographics row carries a campaign value.
+export function creativeAudience(perfRows, demoRows, { top = 6, limit = 5 } = {}) {
+  const split = (demoRows || []).filter(r => String(r.campaign || '').trim());
+  const creatives = ads(perfRows).filter(a => a.impressions > 0 || a.sends > 0).sort((a, b) => b.impressions - a.impressions || b.sends - a.sends).slice(0, top);
+  const topOf = (rows, segment) => { const sh = segmentShare(rows, segment, 'impressions'); return [...sh.values.entries()].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, limit).map(([value, impressions]) => ({ value, impressions, share: sh.total ? impressions / sh.total * 100 : 0 })); };
+  return { has_split: split.length > 0, creatives: creatives.map(c => { const rows = split.filter(r => normName(r.campaign) === normName(c.campaign)); return { ad_name: c.ad_name, campaign: c.campaign, format: c.format, impressions: c.impressions, clicks: c.clicks, ctr: c.ctr, leads: c.leads, sends: c.sends, has_rows: rows.length > 0, titles: topOf(rows, 'Job Title'), countries: topOf(rows, 'Country') }; }) };
+}
+
+// ---- asset x company split ----
+// Company rows that carry a campaign value, mapped to canonical accounts (else Other) x the approach of that campaign.
+export function assetCompanySplit(demoRows, accounts, { limit = 25 } = {}) {
+  const rows = segRows(demoRows || [], 'Company').filter(r => String(r.campaign || '').trim());
+  const cells = new Map(), compTot = new Map(), apprSet = new Set();
+  for (const r of rows) {
+    const company = matchAccount(r.value, accounts) || 'Other', approach = approachOf(r.campaign); apprSet.add(approach);
+    const k = company + '||' + approach;
+    if (!cells.has(k)) cells.set(k, { company, approach, impressions: 0, clicks: 0, sets: new Set() });
+    const c = cells.get(k); c.impressions += n(r.impressions); c.clicks += n(r.clicks); c.sets.add(r.campaign);
+    compTot.set(company, (compTot.get(company) || 0) + n(r.impressions));
+  }
+  const companies = [...compTot.entries()].filter(e => e[0] !== 'Other').sort((a, b) => b[1] - a[1]).map(e => e[0]).slice(0, limit);
+  if (compTot.has('Other')) companies.push('Other');
+  const list = [...cells.values()].map(c => ({ ...c, sets: [...c.sets], ctr: c.impressions ? c.clicks / c.impressions * 100 : null }));
+  // Approaches with no impressions at all (message-only ad sets) would be an empty column.
+  const approaches = APPROACHES.filter(a => apprSet.has(a) && list.some(c => c.approach === a && c.impressions > 0));
+  const byKey = new Map(list.map(c => [c.company + '||' + c.approach, c]));
+  return { has_split: rows.length > 0, companies, approaches, cells: list, at: (company, approach) => byKey.get(company + '||' + approach) || null };
+}
+
+// ---- reach vs contacts ----
+// Company impressions (matched accounts, else "Other pages") against uploaded contact list sizes
+// (contact_lists = { 'Account name': number }, keys matched like page names). est_reach = impressions / frequency.
+export function reachVsContacts(demoRows, accounts, { contact_lists, frequency = 3, limit = 30 } = {}) {
+  const has_contacts = !!contact_lists && typeof contact_lists === 'object' && Object.keys(contact_lists).length > 0;
+  const contacts = new Map();
+  if (has_contacts) for (const [k, v] of Object.entries(contact_lists)) { const acc = matchAccount(k, accounts) || k; contacts.set(acc, (contacts.get(acc) || 0) + n(v)); }
+  const m = new Map();
+  const bucket = company => { if (!m.has(company)) m.set(company, { company, matched: company !== 'Other pages', impressions: 0, clicks: 0 }); return m.get(company); };
+  for (const r of segRows(demoRows || [], 'Company')) { const c = bucket(matchAccount(r.value, accounts) || 'Other pages'); c.impressions += n(r.impressions); c.clicks += n(r.clicks); }
+  for (const acc of contacts.keys()) bucket(acc);
+  const f = frequency || 3;
+  const all = [...m.values()].map(c => { const ct = has_contacts && contacts.has(c.company) ? contacts.get(c.company) : null; const est = c.impressions / f; return { ...c, contacts: ct, est_reach: est, ratio: ct ? est / ct : null }; });
+  const named = all.filter(c => c.matched).sort((a, b) => b.impressions - a.impressions).slice(0, limit);
+  const rows = [...named, ...all.filter(c => !c.matched)];
+  const total = { contacts: has_contacts ? all.reduce((a, c) => a + (c.contacts || 0), 0) : null, impressions: all.reduce((a, c) => a + c.impressions, 0), clicks: all.reduce((a, c) => a + c.clicks, 0) };
+  total.est_reach = total.impressions / f; total.ratio = total.contacts ? total.est_reach / total.contacts : null;
+  return { has_contacts, frequency: f, rows, total };
+}
+
+// ---- geography x seniority per audience ----
+// LinkedIn reports Country and Job Seniority as separate lists, so each cell is the region total spread by the
+// seniority mix of the same audience (an estimate). Audience = demographics campaign value when the rows carry one,
+// otherwise a single "All audiences" table.
+export const SENIORITY_ORDER = ['Unpaid', 'Training', 'Entry', 'Senior', 'Manager', 'Director', 'VP', 'CXO', 'Partner', 'Owner'];
+export const ALL_AUDIENCES = 'All audiences';
+export function geoSeniority(demoRows, { regions, metric = 'impressions' } = {}) {
+  const rows = demoRows || [];
+  const split = rows.filter(r => String(r.campaign || '').trim());
+  const groups = split.length ? groupBy(split, r => r.campaign) : new Map([[ALL_AUDIENCES, rows]]);
+  const audiences = [];
+  for (const [name, rs] of groups) {
+    const geo = segmentShare(rs, 'Country', metric, r => regionOf(r.value, regions));
+    const sen = segmentShare(rs, 'Job Seniority', metric);
+    const regionsSorted = [...geo.values.entries()].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).map(e => e[0]);
+    const senKeys = [...sen.values.keys()].filter(k => sen.values.get(k) > 0);
+    const seniorities = [...SENIORITY_ORDER.filter(k => senKeys.includes(k)), ...senKeys.filter(k => !SENIORITY_ORDER.includes(k))];
+    const cells = {}, regionTotal = {}, senTotal = {};
+    for (const r of regionsSorted) { cells[r] = {}; regionTotal[r] = geo.values.get(r); for (const s of seniorities) { const v = geo.values.get(r) * (sen.values.get(s) / sen.total); cells[r][s] = v; senTotal[s] = (senTotal[s] || 0) + v; } }
+    audiences.push({ name, approach: name === ALL_AUDIENCES ? null : approachOf(name), total: geo.total && sen.total ? geo.total : 0, regions: regionsSorted, seniorities, cells, regionTotal, senTotal });
+  }
+  audiences.sort((a, b) => b.total - a.total);
+  // Audiences with no country or seniority rows (message-only ad sets) are dropped unless nothing else exists.
+  const live = audiences.filter(a => a.total > 0);
+  return { split: split.length > 0, estimated: true, metric, audiences: live.length ? live : audiences.slice(0, 1) };
+}
+
 // ---- achieved / not achieved bullets ----
 export function bullets({ rows, prevRows, demoWindows, prevDemoWindows, from, to, stages, bands }) {
   const ach = [], miss = [];

@@ -1,6 +1,9 @@
 // Demo-mode API. Same surface as js/api.mjs (get/post/put/del) and the same paths as
 // ARCHITECTURE.md, served from in-memory data derived from the September 2026 reports.
 import { linkedinMock } from './mock/linkedin.mjs';
+import { adsMock } from './mock/ads.mjs';
+import { phantomGet, phantomSyncPost } from './mock/phantom.mjs';
+import { dealsGet, dealsSyncPost } from './mock/deals.mjs';
 import { hubspotMock } from './mock/hubspot.mjs';
 import { buildEmailMock, emailPage } from './mock/email.mjs';
 import { countBy, sortedEntries, clusterLabel } from './lib/leads-agg.mjs';
@@ -13,7 +16,7 @@ const dayOf = ts => ts ? new Date(new Date(ts).getTime() + 330 * 60000).toISOStr
 export function createMockApi() {
   const seeds = {};
   const overrides = {};                                    // PUT settings
-  let uploads = linkedinMock.uploads.map(u => ({ ...u }));
+  let uploads = [...linkedinMock.uploads.map(u => ({ ...u, platform: 'linkedin' })), ...adsMock.uploads.map(u => ({ ...u }))];
   const insights = new Map();                              // scope -> {content, created_at, model}
   let lastSync = { ...hubspotMock.last_sync };
   let emailMock = null; const em = () => (emailMock = emailMock || buildEmailMock());
@@ -32,22 +35,25 @@ export function createMockApi() {
   }
   async function settings() {
     const [bands, icp_pool, accounts, regions] = await Promise.all([seed('band_titles'), seed('icp_pool'), seed('accounts'), seed('regions')]);
-    return { bands, icp_pool, accounts, regions: (regions && regions.regions) || regions, targets: DEFAULT_TARGETS, editors: EDITORS, email_rules: { fast_click_seconds: 180, gsi_page_counts_as_demo: true, link_rules: [], domains: DEMO_DOMAINS }, gsi_companies: ['Accenture', 'TCS', 'Infosys', 'Wipro', 'HCL', 'Tech Mahindra', 'LTI Mindtree', 'Cognizant', 'Capgemini', 'Deloitte', 'KPMG', 'EY', 'PwC', 'McKinsey', 'BCG', 'Bain', 'Genpact', 'Firstsource'], ...overrides, updated_at: overrides.__updated_at || '2026-09-24T10:00:00.000Z' };
+    return { bands, icp_pool, accounts, regions: (regions && regions.regions) || regions, targets: DEFAULT_TARGETS, contact_lists: { Accenture: 1200, TCS: 800, Infosys: 650, Wipro: 500, Capgemini: 420 }, editors: EDITORS, email_rules: { fast_click_seconds: 180, gsi_page_counts_as_demo: true, link_rules: [], domains: DEMO_DOMAINS }, gsi_companies: ['Accenture', 'TCS', 'Infosys', 'Wipro', 'HCL', 'Tech Mahindra', 'LTI Mindtree', 'Cognizant', 'Capgemini', 'Deloitte', 'KPMG', 'EY', 'PwC', 'McKinsey', 'BCG', 'Bain', 'Genpact', 'Firstsource'], ...overrides, updated_at: overrides.__updated_at || '2026-09-24T10:00:00.000Z' };
   }
 
   async function get(path, params = {}) {
     await sleep(60);
     const p = path.replace(/^\//, '');
-    if (p === 'health') return { ok: true, db: true, hubspot: true, claude: true, instantly: true, cron: true, user: { name: 'Demo viewer', email: 'demo@lyzr.com', isEditor: true } };
+    if (p === 'health') return { ok: true, db: true, hubspot: true, claude: true, instantly: true, phantom: true, cron: true, user: { name: 'Demo viewer', email: 'demo@lyzr.com', isEditor: true } };
     if (p === 'settings') return settings();
-    if (p === 'uploads') return { uploads: [...uploads, ...em().uploads].filter(u => !params.channel || u.channel === params.channel).sort((a, b) => a.uploaded_at < b.uploaded_at ? 1 : -1) };
+    if (p === 'uploads') return { uploads: [...uploads, ...em().uploads].filter(u => (!params.channel || u.channel === params.channel) && (!params.platform || (u.platform || 'linkedin') === params.platform)).sort((a, b) => a.uploaded_at < b.uploaded_at ? 1 : -1) };
     if (p === 'email') return emailPage(em(), Number(params.offset) || 0);
     if (p === 'actions') return { actions: actions.filter(a => !params.channel || a.channel === params.channel).sort((a, b) => a.created_at < b.created_at ? 1 : -1) };
     if (p === 'linkedin') {
-      const { from = '0000', to = '9999' } = params;
-      const perf = linkedinMock.perf.filter(r => r.day >= from && r.day <= to);
-      const demo = linkedinMock.demo.filter(d => uploads.some(u => u.id === d.upload.id) && overlaps(from, to, d.upload.period_start, d.upload.period_end)).map(d => ({ upload: d.upload, rows: d.rows }));
-      return { perf, demo, uploads: uploads.filter(u => u.channel === 'linkedin') };
+      const { from = '0000', to = '9999', platform = 'linkedin' } = params;
+      // Ad platform: 'linkedin' (default), one of the other platforms, or 'all'.
+      const uploadedIds = new Set(uploads.map(u => u.id));
+      const allPerf = [...linkedinMock.perf.map(r => r.platform ? r : { ...r, platform: 'linkedin' }), ...adsMock.perf.filter(r => uploadedIds.has('u-' + r.platform))];
+      const perf = allPerf.filter(r => r.day >= from && r.day <= to && (platform === 'all' || r.platform === platform));
+      const demo = platform === 'linkedin' || platform === 'all' ? linkedinMock.demo.filter(d => uploads.some(u => u.id === d.upload.id) && overlaps(from, to, d.upload.period_start, d.upload.period_end)).map(d => ({ upload: d.upload, rows: d.rows })) : [];
+      return { platform, perf, demo, uploads: uploads.filter(u => u.channel === 'linkedin' && (platform === 'all' || (u.platform || 'linkedin') === platform)) };
     }
     if (p === 'hubspot') {
       const { from = '0000', to = '9999' } = params;
@@ -55,6 +61,8 @@ export function createMockApi() {
       const notes_by_contact = {}; for (const c of contacts) if (hubspotMock.notes_by_contact[c.hs_id]) notes_by_contact[c.hs_id] = hubspotMock.notes_by_contact[c.hs_id];
       return { contacts, notes_by_contact, last_sync: lastSync };
     }
+    if (p === 'phantom') return phantomGet(params);
+    if (p === 'hubspot/deals') return dealsGet(params);
     if (p === 'insights') { const hit = insights.get(params.scope); if (!hit) throw new MockError(404, 'No cached insight for this scope'); return { scope: params.scope, ...hit }; }
     throw new MockError(404, `Mock API: unknown GET ${p}`);
   }
@@ -65,12 +73,14 @@ export function createMockApi() {
       await sleep(200);
       const id = body.upload_id || 'u' + Math.random().toString(36).slice(2, 8);
       let u = uploads.find(x => x.id === id);
-      if (!u) { u = { id, channel: body.channel || 'linkedin', kind: body.kind, file_name: body.file_name, uploaded_by: 'demo@lyzr.com', uploaded_at: new Date().toISOString(), period_start: body.period_start, period_end: body.period_end, row_count: 0, notes: body.notes || null }; uploads.push(u); }
+      if (!u) { u = { id, channel: body.channel || 'linkedin', platform: body.channel === 'email' ? null : (body.platform || 'linkedin'), kind: body.kind, file_name: body.file_name, uploaded_by: 'demo@lyzr.com', uploaded_at: new Date().toISOString(), period_start: body.period_start, period_end: body.period_end, row_count: 0, notes: body.notes || null }; uploads.push(u); }
       u.row_count += (body.rows || []).length;
       return { upload_id: id, inserted: (body.rows || []).length };
     }
     if (p === 'actions') { const a = { id: 'a' + Math.random().toString(36).slice(2, 8), channel: body.channel || 'overview', title: body.title, detail: body.detail || null, owner: body.owner || null, source: body.source || 'manual', scope: body.scope || null, status: 'open', created_at: new Date().toISOString(), created_by: 'demo@lyzr.com' }; actions.unshift(a); return { action: a }; }
     if (p === 'instantly/sync') { await sleep(500); if (!body.cursor) return { done: false, cursor: { step: 1 }, campaigns: em().api.campaigns.length, days: 0, warnings: [], progress: { phase: 'daily', done: 0, total: em().api.campaigns.length } }; em().api.last_sync = { status: 'done', started_at: new Date(Date.now() - 4000).toISOString(), finished_at: new Date().toISOString() }; return { done: true, campaigns: em().api.campaigns.length, days: em().api.daily.length, warnings: [], progress: { phase: 'done', done: em().api.campaigns.length, total: em().api.campaigns.length } }; }
+    if (p === 'phantom/sync') { await sleep(400); return phantomSyncPost(body); }
+    if (p === 'hubspot/deals-sync') { await sleep(500); try { return dealsSyncPost(body); } catch (e) { throw new MockError(e.status || 500, e.message); } }
     if (p === 'hubspot/classify') { await sleep(300); return { done: true, classified: 0, remaining: 0, model: 'demo (no Claude call)' }; }
     if (p === 'hubspot/refresh') {
       const steps = { '': ['p2', 96, 41, []], p2: ['p3', 182, 98, ['3 contacts had no email and were skipped']], p3: [null, hubspotMock.contacts.length, Object.values(hubspotMock.notes_by_contact).flat().length, []] };

@@ -458,6 +458,31 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01, Campaign Analytics: every gap from the report audit (pipeline, ad platforms, White Path, Instantly extras, PhantomBuster, programme board)
+- **HubSpot deals pipeline** (`#/hubspot/pipeline`, `functions/api/ca/hubspot/deals.js` + `deals-sync.js`,
+  `supabase/004_deals.sql`): GSI/SI conversations by stage bucket with amounts, owners, weekly snapshots and
+  "what changed since last week". Daily pull step + Admin "Pull deals now".
+- **Cross-platform ads**: Google Ads, Meta, Taboola, ChatGPT, X and Bing pages are live (`views/ads-platform.mjs`,
+  one shared view). Daily campaign/ad exports are recognised by their columns (`js/ads-csv.mjs`, tested on Google,
+  Meta and Bing header shapes) and stored in `ca_li_perf` with a `platform` column (`supabase/007_ad_platforms.sql`,
+  primary key now `platform, day, campaign_id, ad_id`). `GET linkedin?platform=` and `GET uploads?platform=`.
+  Overview shows one "Channels at a glance" row per platform with data. The old "soon" page is gone.
+- **White Path ad analytics on LinkedIn**: ad set performance with status, targeting scorecard (approach grades),
+  efficiency map (CPM x CTR bubbles), messaging ads by sender, creative audience reach, asset x company split,
+  reach vs contacts by company (new Admin setting `contact_lists`), geography x seniority x audience.
+- **Instantly extras**: whole-workspace campaign totals (`gsi:false` rows) so "GSI share of the workspace" is
+  real, remaining uncontacted leads with days-left pace, campaign categories (GSI partner / cold / retarget),
+  campaign navigator by engagement tier, "All campaigns" stacked drill-downs with per-campaign funnels,
+  "What worked and what did not" bullets.
+- **PhantomBuster** (`#/linkedin/phantom`, `functions/api/ca/phantom/*`, `supabase/006_phantom.sql`): outreach
+  phantoms only (invites, acceptances, messages, replies per run, rolled up by IST day). Needs the new Pages
+  secret `PHANTOMBUSTER_API_KEY`; daily pull step + Admin "Pull PhantomBuster now".
+- **Programme board** on the Overview: every tracked action by status; actions now have
+  open / in progress / blocked / done / dropped (status select on every tracker).
+- Daily workflow `.github/workflows/ca-daily-pull.yml`: Instantly, HubSpot, HubSpot deals, PhantomBuster, Claude.
+- User must paste `004_deals.sql`, `006_phantom.sql`, `007_ad_platforms.sql` in Supabase and set
+  `PHANTOMBUSTER_API_KEY`. Tests: 125+ passing (`node --test 'Campaign_Analytics/tests/**/*.test.mjs'`).
+
 ### 2026-10-01, Campaign Analytics: global "Compare with" and reach heat maps
 - Top bar gains "Compare with": the period before (default), same dates last week / last month / N weeks ago /
   N months ago, or nothing. `ctx.state.prev = {from, to, label}` (js/app.mjs `compareRange`); Overview, LinkedIn

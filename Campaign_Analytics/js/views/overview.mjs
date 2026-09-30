@@ -1,6 +1,8 @@
 // Overview: both channels at a glance, target vs today, what needs attention, quick links and
 // a Claude read-out. Every data block loads on its own so one failing API does not hide the rest.
 import { enrich, summary, hasMessage } from '../lib/leads-agg.mjs';
+import { PLATFORM_LABEL } from '../ads-csv.mjs';
+import { mountBoard } from '../actions.mjs';
 
 export const route = 'overview';
 export const title = 'Overview';
@@ -38,7 +40,9 @@ export async function render(el, ctx) {
   const scale = n => n / Math.max(1, days) * 30;
 
   el.innerHTML = `<div class="seghead">GSI and SI programme</div><h1>Overview</h1><div class="intro"><b>What this page is:</b> every channel side by side for the dates at the top (${esc(rangeLabel(from, to))}). <b>Channels at a glance</b> puts ads, email and HubSpot leads in one table. <b>Target vs today</b> takes the pace of the selected dates, scales it to a 30-day month and compares it with the monthly targets (Admin › Targets). <b>Needs attention</b> lists what the numbers flag this period. The <b>AI read-out</b> is Claude reading all of it and suggesting what to do; suggestions you track are checked again next time.</div>` + spinner('Loading channels');
-  const [liR, liPrevR, hsR, emR] = await Promise.allSettled([ctx.api.get('linkedin', { from, to }), (cmp ? ctx.api.get('linkedin', { from: prevFrom, to: prevTo }) : Promise.resolve(null)), ctx.api.get('hubspot', { from, to }), ctx.api.get('email', { offset: 0 })]);
+  const [liR, liPrevR, hsR, emR, adsR] = await Promise.allSettled([ctx.api.get('linkedin', { from, to }), (cmp ? ctx.api.get('linkedin', { from: prevFrom, to: prevTo }) : Promise.resolve(null)), ctx.api.get('hubspot', { from, to }), ctx.api.get('email', { offset: 0 }), ctx.api.get('linkedin', { from, to, platform: 'all' })]);
+  // Other ad platforms (Google, Meta, Bing, Taboola, X, ChatGPT): one glance row per platform with rows in range.
+  const otherAds = adsR.status === 'fulfilled' && adsR.value ? [...new Set((adsR.value.perf || []).map(r => r.platform).filter(p => p && p !== 'linkedin'))].sort().map(p => { const rows = adsR.value.perf.filter(r => r.platform === p && r.day >= from && r.day <= to); const t = liTotals({ perf: rows }); return { platform: p, name: PLATFORM_LABEL[p] || p, ...t }; }) : [];
   // Email: the daily Instantly API rows (all GSI-tagged campaigns) summed over the range.
   const em = emR.status === 'fulfilled' ? emR.value : null;
   const emDaily = em && em.api ? (em.api.daily || []).filter(r => r.day >= from && r.day <= to) : [];
@@ -59,6 +63,7 @@ export async function render(el, ctx) {
     { h: 'Channel', k: 'ch', left: true, f: r => r.ch }, { h: 'Active since', k: 'since', f: r => r.since }, { h: 'Spend', k: 'spend', f: r => r.spend }, { h: 'Reach', k: 'reach', f: r => r.reach }, { h: 'Engagement', k: 'eng', f: r => r.eng }, { h: 'Hand-raisers', k: 'hand', f: r => r.hand }, { h: 'Conversions measured', k: 'conv', f: r => r.conv }, { h: 'Confidence', k: 'conf', f: r => r.conf },
   ], rows: [
     T ? { ch: '<b>LinkedIn ads</b>', since: T.firstDay ? esc(monthLabel(T.firstDay.slice(0, 7))) : '<span class="muted">no data in range</span>', spend: usd(T.spend), reach: `${fmt(T.impressions)} impressions<br><span class="muted" style="font-size:11.5px">${fmt(T.reach)} reach (sum of daily)</span>`, eng: `${fmt(T.clicks)} clicks${T.video ? `, ${fmt(T.video)} video views` : ''}<br><span class="muted" style="font-size:11.5px">${pct(T.ctr, 2)} CTR</span>`, hand: `${fmt(T.leads)} form leads<br><span class="muted" style="font-size:11.5px">${usd(T.cpl)} per lead</span>`, conv: H ? `${fmt(H.adMqls)} of ${fmt(H.adLeads)} ad leads reached MQL` : 'Needs the HubSpot pull', conf: conf(T.leads ? 'High' : 'Low') } : { ch: '<b>LinkedIn ads</b>', since: '–', spend: '–', reach: '–', eng: '–', hand: '–', conv: '<span class="muted">not loaded</span>', conf: conf('Low') },
+    ...otherAds.map(o => ({ ch: `<b>${esc(o.name)} ads</b>`, since: o.firstDay ? esc(monthLabel(o.firstDay.slice(0, 7))) : '–', spend: usd(o.spend), reach: `${fmt(o.impressions)} impressions`, eng: `${fmt(o.clicks)} clicks<br><span class="muted" style="font-size:11.5px">${pct(o.ctr, 2)} CTR</span>`, hand: `${fmt(o.leads)} leads<br><span class="muted" style="font-size:11.5px">${usd(o.cpl)} per lead</span>`, conv: '<span class="muted">platform-reported</span>', conf: conf(o.leads ? 'Medium' : 'Low') })),
     EM && (EM.sent || EM.uploads) ? { ch: '<b>Instantly email</b>', since: EM.since ? esc(monthLabel(EM.since.slice(0, 7))) : 'Jul 2026', spend: '<span class="muted">Tools and domains only</span>', reach: `${fmt(EM.sent)} emails sent<br><span class="muted" style="font-size:11.5px">${fmt(EM.newLeads)} new people · ${fmt(EM.campaigns)} active GSI campaigns</span>`, eng: `${fmt(EM.opens)} opens, ${fmt(EM.clicks)} unique clicks<br><span class="muted" style="font-size:11.5px">API clicks include scanners; see Email for human clicks</span>`, hand: `${fmt(EM.replies)} replies`, conv: `${fmt(EM.opps)} opportunities<br><span class="muted" style="font-size:11.5px"><a href="#/email/instantly">Book a Demo clickers in Email</a></span>`, conf: pill(EM.synced ? 'Medium' : 'Low', EM.synced ? 'p-med' : 'p-low') }
       : { ch: '<b>Instantly email</b>', since: 'Jul 2026', spend: '<span class="muted">Tools and domains only</span>', reach: '<span class="muted">No data yet</span>', eng: '<span class="muted">Upload exports or run the Instantly sync</span>', hand: '–', conv: '–', conf: pill('No data', 'p-na') },
     H ? { ch: '<b>HubSpot leads</b>', since: H.firstDay ? esc(monthLabel(H.firstDay.slice(0, 7))) : '–', spend: '<span class="muted">–</span>', reach: `${fmt(H.leads)} contacts pulled`, eng: `${fmt(H.withMessage)} wrote a message, ${fmt(H.withActivity)} touched`, hand: `${fmt(H.md + H.md1)} MD / MD-1, ${fmt(H.target)} at target accounts`, conv: `${fmt(H.mqls)} at MQL or later`, conf: conf(hs.last_sync && hs.last_sync.finished_at && (now - new Date(hs.last_sync.finished_at)) < 3 * 864e5 ? 'High' : 'Medium') } : { ch: '<b>HubSpot leads</b>', since: '–', spend: '–', reach: '–', eng: '–', hand: '–', conv: '<span class="muted">not loaded</span>', conf: conf('Low') },
@@ -107,20 +112,25 @@ export async function render(el, ctx) {
   // ---- links ---------------------------------------------------------------------------------
   const links = [
     ['ads/linkedin', 'Ads · LinkedIn', 'Spend, leads, CPL, month on month, account and seniority heat maps.'],
+    ['ads/google', 'Ads · other platforms', 'Google, Meta, Taboola, ChatGPT, X and Bing: drop daily exports, get the same trends and read-out.'],
     ['email/instantly', 'Email · Instantly', 'Instantly GSI campaigns: Book a Demo, accounts, weeks, people lists.'],
     ['hubspot/messaging', 'HubSpot · Messaging', 'What leads are asking, by intent cluster, account and region.'],
     ['hubspot/leads', 'HubSpot · Leads', 'Bands, trend, heat maps, follow-up health, the full lead table.'],
+    ['hubspot/pipeline', 'HubSpot · Pipeline', 'GSI/SI conversations by stage, partner and quarter, and what changed this week.'],
+    ['linkedin/phantom', 'PhantomBuster', 'LinkedIn outreach phantoms: invites, acceptances, messages, replies per day.'],
     ['admin', 'Admin', 'GSI account list, designations, regions, targets, connections.'],
   ];
 
   el.innerHTML = `<div class="seghead">GSI and SI programme</div><h1>Overview</h1><div class="intro"><b>What this page is:</b> every channel side by side for the dates at the top (${esc(rangeLabel(from, to))}). <b>Channels at a glance</b> puts ads, email and HubSpot leads in one table. <b>Target vs today</b> takes the pace of the selected dates, scales it to a 30-day month and compares it with the monthly targets (Admin › Targets). <b>Needs attention</b> lists what the numbers flag this period. The <b>AI read-out</b> is Claude reading all of it and suggesting what to do; suggestions you track are checked again next time.</div>
-    <div class="toc"><span class="tl">On this page</span><a href="#o-glance">Channels</a><a href="#o-target">Target vs today</a><a href="#o-alerts">Needs attention</a><a href="#o-links">Sections</a><a href="#o-ai">AI read-out</a></div>
+    <div class="toc"><span class="tl">On this page</span><a href="#o-glance">Channels</a><a href="#o-target">Target vs today</a><a href="#o-alerts">Needs attention</a><a href="#o-board">Programme board</a><a href="#o-links">Sections</a><a href="#o-ai">AI read-out</a></div>
     ${section('Channels at a glance', 'Paid ads and email produce hand-raisers; HubSpot shows what happened to the leads afterwards. Email numbers here come from the daily Instantly pull of every GSI-tagged campaign.', glance, 'o-glance')}
     ${section('Target vs today', 'Monthly run-rate targets against the pace of the selected range.', targetsHtml, 'o-target')}
     ${section('Needs attention', 'Computed by rule from the data in range: CPL up more than 30% on the prior period, Director+ share down 10 points, one country over 70% of impressions, MD-band leads without an owner, no upload in 16 days, HubSpot not synced in 3 days.', alertsHtml, 'o-alerts')}
-    ${section('Sections', '', `<div class="steps" style="grid-template-columns:repeat(5,1fr)">${links.map(([r, t, d]) => `<a class="step" href="#/${r}" style="text-decoration:none;color:inherit"><b>${esc(t)}</b><p class="muted" style="font-size:12.5px;margin-top:4px">${esc(d)}</p></a>`).join('')}</div>`, 'o-links')}
+    ${section('Programme board', 'Every tracked action across ads, email and HubSpot by status. Change a status on the channel page; the next AI read-out is told what moved.', `<div id="ovBoard">${spinner('Loading actions')}</div>`, 'o-board')}
+    ${section('Sections', '', `<div class="steps" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">${links.map(([r, t, d]) => `<a class="step" href="#/${r}" style="text-decoration:none;color:inherit"><b>${esc(t)}</b><p class="muted" style="font-size:12.5px;margin-top:4px">${esc(d)}</p></a>`).join('')}</div>`, 'o-links')}
     ${section('AI read-out', 'Claude reads both channels and the target gap.', `<div id="ovInsights"></div>`, 'o-ai')}`;
 
+  mountBoard(el.querySelector('#ovBoard'), ctx);
   ctx.mountInsights(el.querySelector('#ovInsights'), ctx, { scope: `overview:${from}:${to}`, kind: 'overview', title: 'Where the programme stands', inputProvider: () => ({
     range: { from, to, days }, targets,
     email: EM ? { sent: EM.sent, new_people: EM.newLeads, unique_opens: EM.opens, unique_clicks: EM.clicks, replies: EM.replies, opportunities: EM.opps, active_campaigns: EM.campaigns } : null,

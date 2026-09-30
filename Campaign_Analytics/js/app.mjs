@@ -7,23 +7,25 @@ import * as ui from './ui.mjs';
 import { mountInsights } from './insights.mjs';
 
 
-// Sidebar: channels grouped by type. `file` is the view module; ad platforms that are
-// not wired yet share views/ads-soon.mjs and read their name from ctx.routeDef.
+// Sidebar: channels grouped by type. `file` is the view module; every ad platform other than
+// LinkedIn shares views/ads-platform.mjs and reads its name from ctx.routeDef.
 const ROUTES = [
   { route: 'overview', title: 'Overview', file: 'overview' },
   { grp: 'Ads' },
   { route: 'ads/linkedin', title: 'LinkedIn', group: 'Ads', file: 'linkedin' },
-  { route: 'ads/google', title: 'Google Ads', group: 'Ads', file: 'ads-soon', soon: true },
-  { route: 'ads/meta', title: 'Meta', group: 'Ads', file: 'ads-soon', soon: true },
-  { route: 'ads/taboola', title: 'Taboola', group: 'Ads', file: 'ads-soon', soon: true },
-  { route: 'ads/chatgpt', title: 'ChatGPT', group: 'Ads', file: 'ads-soon', soon: true },
-  { route: 'ads/x', title: 'X (Twitter)', group: 'Ads', file: 'ads-soon', soon: true },
-  { route: 'ads/bing', title: 'Microsoft Bing', group: 'Ads', file: 'ads-soon', soon: true },
+  { route: 'ads/google', title: 'Google Ads', group: 'Ads', file: 'ads-platform' },
+  { route: 'ads/meta', title: 'Meta', group: 'Ads', file: 'ads-platform' },
+  { route: 'ads/taboola', title: 'Taboola', group: 'Ads', file: 'ads-platform' },
+  { route: 'ads/chatgpt', title: 'ChatGPT', group: 'Ads', file: 'ads-platform' },
+  { route: 'ads/x', title: 'X (Twitter)', group: 'Ads', file: 'ads-platform' },
+  { route: 'ads/bing', title: 'Microsoft Bing', group: 'Ads', file: 'ads-platform' },
+  { route: 'linkedin/phantom', title: 'PhantomBuster', group: 'Ads', file: 'phantom' },
   { grp: 'Email' },
   { route: 'email/instantly', title: 'Instantly', group: 'Email', file: 'email' },
   { grp: 'HubSpot' },
   { route: 'hubspot/leads', title: 'Leads', group: 'HubSpot', file: 'leads' },
   { route: 'hubspot/messaging', title: 'Messaging', group: 'HubSpot', file: 'messaging' },
+  { route: 'hubspot/pipeline', title: 'Pipeline', group: 'HubSpot', file: 'pipeline' },
   { grp: 'Admin' },
   { route: 'admin', title: 'Lists and connections', group: 'Admin', file: 'settings' },
 ].map(r => r.grp ? r : { ...r, sub: !!r.group });

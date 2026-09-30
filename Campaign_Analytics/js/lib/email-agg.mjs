@@ -258,3 +258,141 @@ export function peopleTsv(list) {
   const rows = list.map(p => [p.email, p.company, SEGMENT_LABEL[p.segment], p.demo, p.demoDirect, p.demoVia, p.clicks, p.fastClicks, p.opens, p.sent, Object.keys(p.cats).join('; '), p.campaignList.join('; '), p.lastClick || '']);
   return [head, ...rows].map(r => r.map(tsvCell).join('\t')).join('\n');
 }
+
+// ---- Instantly API helpers (campaign totals and daily rows) ------------------------------------
+const sum = (rows, k) => (rows || []).reduce((a, r) => a + (Number(r[k]) || 0), 0);
+const num = v => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
+const rate = (a, b) => b ? a / b * 100 : null;
+export const isGsi = c => !!c && c.gsi !== false;
+export const isActive = c => !!c && Number(c.status) === 1;
+
+/** Totals over daily API rows. Rates are on new people contacted in the same rows. */
+export function apiTotals(rows) {
+  const t = { sent: sum(rows, 'sent'), contacted: sum(rows, 'contacted'), newLeads: sum(rows, 'new_leads_contacted'), opened: sum(rows, 'unique_opened'), clicks: sum(rows, 'unique_clicks'), replies: sum(rows, 'unique_replies'), auto: sum(rows, 'replies_automatic'), opps: sum(rows, 'opportunities') };
+  t.openRate = rate(t.opened, t.newLeads); t.clickRate = rate(t.clicks, t.newLeads); t.replyRate = rate(t.replies, t.newLeads);
+  return t;
+}
+
+/** Lead pool across GSI campaigns (all time, from the campaign totals). Uncontacted counts active campaigns only. */
+export function leadPool(camps) {
+  const g = (camps || []).filter(isGsi);
+  const active = g.filter(isActive);
+  const contacted = sum(g, 'contacted'), bounced = sum(g, 'bounced');
+  return { campaigns: g.length, active: active.length, leads: sum(g, 'leads_count'), contacted, uncontacted: active.reduce((a, c) => a + Math.max(0, num(c.leads_count) - num(c.contacted)), 0), bounced, bounceRate: rate(bounced, contacted) };
+}
+
+/** GSI share of the whole Instantly workspace (all-time totals of every campaign). */
+export function workspaceShare(camps, workspace) {
+  const g = (camps || []).filter(isGsi);
+  const ws = workspace || { sent: sum(camps, 'sent'), contacted: sum(camps, 'contacted'), campaigns: (camps || []).length };
+  const gsiSent = sum(g, 'sent'), gsiContacted = sum(g, 'contacted');
+  return { gsiSent, wsSent: num(ws.sent), gsiContacted, wsContacted: num(ws.contacted), gsiCampaigns: g.length, wsCampaigns: num(ws.campaigns) || (camps || []).length, sentShare: rate(gsiSent, num(ws.sent)), contactShare: rate(gsiContacted, num(ws.contacted)) };
+}
+
+const GENERIC = new Set(['global', 'digital', 'group', 'systems', 'system', 'tech', 'technology', 'technologies', 'consulting', 'services', 'solutions', 'software', 'partners', 'international', 'india', 'infotech', 'labs', 'company', 'limited', 'inc', 'llc', 'ltd', 'corp', 'corporation', 'the', 'and', 'us', 'uk', 'usa']);
+const tokens = s => String(s || '').toLowerCase().replace(/&/g, ' and ').split(/[^a-z0-9]+/).filter(Boolean);
+/** Account matched by a campaign name: the full account name or alias as consecutive words, or the account's domain root as one word. */
+export function campaignAccount(name, accounts = []) {
+  const padded = ' ' + tokens(name).join(' ') + ' ';
+  if (padded.trim() === '') return null;
+  for (const a of accounts || []) {
+    const keys = [];
+    for (const nm of [a.name, ...(a.aliases || [])]) { const t = tokens(nm); if (t.length && t.join('').length >= 2 && !(t.length === 1 && GENERIC.has(t[0]))) keys.push(t.join(' ')); }
+    for (const d of [a.domain, ...(a.domains || [])]) { const root = String(d || '').toLowerCase().split('.')[0]; if (root.length >= 4 && !GENERIC.has(root)) keys.push(root); }
+    for (const k of keys) if (padded.includes(' ' + k + ' ')) return a.name;
+  }
+  return null;
+}
+/** Category of a campaign for the tables: GSI Partner (named account), Cold outreach, Retarget or Other. */
+export function campaignCategory(name, accounts = []) {
+  if (campaignAccount(name, accounts)) return 'GSI Partner';
+  if (/cold/i.test(name)) return 'Cold outreach';
+  if (/openers?|clickers?|retarget/i.test(name)) return 'Retarget';
+  return 'Other';
+}
+
+/** Remaining uncontacted leads per active GSI campaign, with the pace of the last 14 daily rows and days to finish. */
+export function uncontacted(camps, daily, asOf) {
+  const rows = daily || [];
+  const last = asOf || rows.reduce((m, r) => r.day > m ? r.day : m, '');
+  const startMs = last ? Date.parse(last + 'T00:00:00Z') - 13 * 864e5 : 0;
+  const start = last ? new Date(startMs).toISOString().slice(0, 10) : '';
+  const byCamp = new Map();
+  for (const r of rows) { if (!last || r.day < start || r.day > last) continue; const k = String(r.campaign_id); const c = byCamp.get(k) || { sent: 0, newLeads: 0 }; c.sent += num(r.sent); c.newLeads += num(r.new_leads_contacted); byCamp.set(k, c); }
+  const list = (camps || []).filter(c => isGsi(c) && isActive(c)).map(c => {
+    const leads = num(c.leads_count), contacted = num(c.contacted), left = Math.max(0, leads - contacted);
+    const p = byCamp.get(String(c.id)) || { sent: 0, newLeads: 0 };
+    const perDay = p.sent / 14, newPerDay = p.newLeads / 14;
+    return { id: c.id, name: c.name, status: c.status, leads, contacted, uncontacted: left, perDay, newPerDay, daysToFinish: left ? (perDay > 0 ? left / perDay : null) : 0, daysToFinishNew: left ? (newPerDay > 0 ? left / newPerDay : null) : 0 };
+  }).sort((a, b) => b.uncontacted - a.uncontacted || a.name.localeCompare(b.name));
+  const total = list.reduce((t, r) => ({ leads: t.leads + r.leads, contacted: t.contacted + r.contacted, uncontacted: t.uncontacted + r.uncontacted, perDay: t.perDay + r.perDay, newPerDay: t.newPerDay + r.newPerDay }), { leads: 0, contacted: 0, uncontacted: 0, perDay: 0, newPerDay: 0 });
+  total.daysToFinish = total.uncontacted ? (total.perDay > 0 ? total.uncontacted / total.perDay : null) : 0;
+  total.daysToFinishNew = total.uncontacted ? (total.newPerDay > 0 ? total.uncontacted / total.newPerDay : null) : 0;
+  return { rows: list, total, window: last ? { from: start, to: last } : null };
+}
+
+/** Step-to-step conversion of a funnel: opened of reached, clickers of opened, demo of clickers. */
+export function funnelSteps(f) {
+  return { openedOfReached: rate(f.opened, f.reached), clickersOfReached: rate(f.clickers, f.reached), clickersOfOpened: rate(f.clickers, f.opened), demoOfReached: rate(f.demo, f.reached), demoOfClickers: rate(f.clickers ? f.demo : 0, f.clickers) };
+}
+
+/** Campaign navigator: every campaign (from campaigns()) in its best tier in the range. */
+export const TIERS = [['demo', 'Demo intent'], ['engaged', 'Engaged'], ['opened', 'Opens only'], ['sent', 'No activity']];
+export function campaignTiers(camps) {
+  const groups = new Map(TIERS.map(([k]) => [k, []]));
+  for (const c of camps || []) {
+    const tier = c.demo ? 'demo' : c.clickers ? 'engaged' : c.opened ? 'opened' : 'sent';
+    groups.get(tier).push({ name: c.name, demo: c.demo, other: Math.max(0, c.clickers - c.demo), opened: c.opened, reached: c.reached });
+  }
+  return TIERS.map(([key, label]) => ({ key, label, items: groups.get(key).sort((a, b) => b.demo - a.demo || b.other - a.other || b.opened - a.opened || b.reached - a.reached) }));
+}
+
+// ---- achieved / not achieved bullets ---------------------------------------------------------
+const r1 = v => Math.round(v * 10) / 10;
+const list3 = names => names.slice(0, 3).join(', ') + (names.length > 3 ? ` and ${names.length - 3} more` : '');
+/** Rule-based reads of the range: { achieved:[{b,s}], missed:[{b,s}] }. Every rule only fires when its data exists. */
+export function emailBullets({ T, TP, cmp, camps = [], senders = [], apiCur = null, apiPrev = null, pool = null, unc = null, label = n => n } = {}) {
+  const achieved = [], missed = [];
+  const f = T || funnel([]), p = TP || funnel([]);
+  const vs = cmp ? ` vs ${cmp.label}` : '';
+  const chg = (a, b) => b ? Math.round((a - b) / b * 100) : null;
+  if (f.reached >= 20 && f.clickRate != null) {
+    if (f.clickRate > 3) achieved.push({ b: `Click rate ${r1(f.clickRate)}%.`, s: `${f.clickers} human clickers of ${f.reached} people reached, above the 3% bar.` });
+    else if (f.reached >= 100 && f.clickRate < 1) missed.push({ b: `Click rate ${r1(f.clickRate)}%.`, s: `Only ${f.clickers} human clickers of ${f.reached} reached. Below 1%: the copy or the list is not landing.` });
+  }
+  if (f.demo) {
+    const g = cmp ? chg(f.demo, p.demo) : null;
+    if (cmp && p.demo) {
+      if (g >= 0) achieved.push({ b: `Book a Demo clickers ${g > 0 ? 'up ' + g + '%' : 'held'}${vs}.`, s: `${f.demo} people now, ${p.demo} before (${f.demoDirect} direct calendar, ${f.demoVia} via the GSI/SI page).` });
+      else missed.push({ b: `Book a Demo clickers down ${Math.abs(g)}%${vs}.`, s: `${f.demo} people now, ${p.demo} before.` });
+    } else achieved.push({ b: `${f.demo} ${f.demo === 1 ? 'person' : 'people'} clicked Book a Demo.`, s: `${f.demoDirect} direct calendar, ${f.demoVia} via the GSI/SI page${cmp ? ', none in the comparison period' : ''}.` });
+  } else if (f.reached >= 100) missed.push({ b: 'No Book a Demo clicks.', s: `${f.reached} people reached and nobody clicked a demo link.` });
+  const top = camps.filter(c => c.reached >= 30 && c.demoRate != null && c.demoRate >= 2).sort((a, b) => b.demoRate - a.demoRate);
+  if (top.length) achieved.push({ b: `${label(top[0].name)} converts to demo intent at ${r1(top[0].demoRate)}%.`, s: `${top[0].demo} of ${top[0].reached} reached clicked Book a Demo${top.length > 1 ? `; ${top.length - 1} more campaign${top.length > 2 ? 's' : ''} above 2%` : ''}.` });
+  const dead = camps.filter(c => c.reached >= 100 && !c.clickers);
+  if (dead.length) missed.push({ b: `${dead.length} campaign${dead.length === 1 ? '' : 's'} with no human click after 100+ people.`, s: `${list3(dead.map(c => label(c.name)))}: pause or rewrite before adding leads.` });
+  const noOpens = senders.filter(s => s.clickers && !s.opened);
+  if (noOpens.length) missed.push({ b: `${noOpens.length} mailbox${noOpens.length === 1 ? '' : 'es'} with clicks but no opens.`, s: `${list3(noOpens.map(s => s.sender))}: open tracking is off or blocked, so open rates understate.` });
+  const silent = senders.filter(s => s.reached > 50 && !s.opened && !s.clickers);
+  if (silent.length) missed.push({ b: `${silent.length} mailbox${silent.length === 1 ? '' : 'es'} with no opens and no clicks.`, s: `${list3(silent.map(s => s.sender))}: check deliverability, they may be landing in spam.` });
+  const clicksAll = f.clicks + f.fastClicks;
+  if (clicksAll >= 20 && f.fastClicks / clicksAll > 0.3) missed.push({ b: `${Math.round(f.fastClicks / clicksAll * 100)}% of clicks were scanner-fast.`, s: `${f.fastClicks} of ${clicksAll} clicks came within seconds of the send and are excluded; the raw Instantly click numbers overstate.` });
+  if (apiCur && apiCur.newLeads >= 50) {
+    if (apiCur.replies && cmp && apiPrev) {
+      const g = chg(apiCur.replies, apiPrev.replies);
+      if (g != null && g >= 0) achieved.push({ b: `Replies ${g > 0 ? 'up ' + g + '%' : 'held'}${vs}.`, s: `${apiCur.replies} replies now, ${apiPrev.replies} before (Instantly API).` });
+      else if (g != null) missed.push({ b: `Replies down ${Math.abs(g)}%${vs}.`, s: `${apiCur.replies} replies now, ${apiPrev.replies} before (Instantly API).` });
+    } else if (!apiCur.replies) missed.push({ b: 'No replies.', s: `${apiCur.newLeads} new people contacted with no reply recorded in Instantly.` });
+    if (apiCur.openRate != null && apiCur.openRate >= 30) achieved.push({ b: `Open rate ${r1(apiCur.openRate)}%.`, s: `${apiCur.opened} unique opens on ${apiCur.newLeads} new people contacted (Instantly API, weak signal).` });
+  }
+  if (pool && pool.contacted >= 200 && pool.bounceRate != null) {
+    if (pool.bounceRate > 3) missed.push({ b: `Bounce rate ${r1(pool.bounceRate)}% all time.`, s: `${pool.bounced} bounces on ${pool.contacted} contacts across GSI campaigns, above 3%: verify the lists before loading more.` });
+    else achieved.push({ b: `Bounce rate ${r1(pool.bounceRate)}% all time.`, s: `${pool.bounced} bounces on ${pool.contacted} contacts across GSI campaigns, under 3%.` });
+  }
+  if (unc && unc.rows.length) {
+    const slow = unc.rows.filter(r => r.uncontacted >= 100 && (r.daysToFinishNew == null || r.daysToFinishNew > 60));
+    if (slow.length) missed.push({ b: `${slow.length} active campaign${slow.length === 1 ? '' : 's'} will take over 60 days to finish.`, s: `${list3(slow.map(r => label(r.name)))}: ${slow.reduce((a, r) => a + r.uncontacted, 0)} uncontacted leads at the pace of the last 14 days.` });
+    if (unc.total.daysToFinishNew != null && unc.total.daysToFinishNew > 0 && unc.total.daysToFinishNew <= 30) achieved.push({ b: `Uncontacted pool clears in about ${Math.ceil(unc.total.daysToFinishNew)} days.`, s: `${unc.total.uncontacted} leads left across ${unc.rows.length} active campaigns at ${Math.round(unc.total.newPerDay)} new people a day.` });
+  }
+  return { achieved, missed };
+}

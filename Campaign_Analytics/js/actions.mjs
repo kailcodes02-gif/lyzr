@@ -5,6 +5,9 @@
 import { esc, timeAgo } from './fmt.mjs';
 
 export const CHANNEL_OF_KIND = { ads: 'linkedin', leads: 'leads', messaging: 'messaging', overview: 'overview', email: 'email' };
+export const STATUS_LABEL = { open: 'Open', in_progress: 'In progress', blocked: 'Blocked', done: 'Done', dropped: 'Dropped' };
+export const CHANNEL_LABEL = { linkedin: 'Ads', email: 'Email', leads: 'Leads', messaging: 'Messaging', overview: 'Programme', pipeline: 'Pipeline', phantom: 'PhantomBuster' };
+const ACTIVE = new Set(['open', 'in_progress', 'blocked']);
 const STATE = new Map(); // channel -> { filter }
 
 export async function loadActions(ctx, channel) {
@@ -29,10 +32,10 @@ export async function mountActions(el, ctx, { channel, title = 'Action tracker' 
   let list = [], error = null;
   const load = async () => { try { list = await loadActions(ctx, channel); error = null; } catch (e) { error = e.message || String(e); } draw(); };
   const draw = () => {
-    const shown = list.filter(a => st.filter === 'all' ? true : st.filter === 'open' ? a.status === 'open' : a.status !== 'open');
-    const nOpen = list.filter(a => a.status === 'open').length, nDone = list.filter(a => a.status === 'done').length;
+    const shown = list.filter(a => st.filter === 'all' ? true : st.filter === 'open' ? ACTIVE.has(a.status) : !ACTIVE.has(a.status));
+    const nOpen = list.filter(a => a.status === 'open').length, nProg = list.filter(a => a.status === 'in_progress').length, nBlock = list.filter(a => a.status === 'blocked').length, nDone = list.filter(a => a.status === 'done').length;
     el.innerHTML = `<div class="actions"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">${esc(title)}</h3>
-      <span class="tag">${nOpen} open</span><span class="tag">${nDone} done</span><span style="margin-left:auto" data-seg></span></div>
+      <span class="tag">${nOpen} open</span>${nProg ? `<span class="tag">${nProg} in progress</span>` : ''}${nBlock ? `<span class="tag" style="color:var(--bad)">${nBlock} blocked</span>` : ''}<span class="tag">${nDone} done</span><span style="margin-left:auto" data-seg></span></div>
       <p class="muted" style="font-size:12.5px;margin:4px 0 8px">Suggestions from the read-out (press Track on a finding) and your own to-dos. Tick one off when it is done and add what happened; the next read-out is told what is done and what is still open.</p>
       ${error ? `<p class="err">${esc(error)}</p>` : ''}
       ${shown.length ? shown.map(a => `<div class="act-row ${a.status}" data-id="${esc(a.id)}">
@@ -41,16 +44,15 @@ export async function mountActions(el, ctx, { channel, title = 'Action tracker' 
           <div class="am">${a.owner ? esc(a.owner) + ' · ' : ''}${a.source === 'ai' ? 'from the AI read-out' : 'added by hand'}${channel === 'overview' ? ' · ' + esc(a.channel) : ''} · ${esc(timeAgo(a.created_at))}${a.status === 'done' && a.done_at ? ' · done ' + esc(timeAgo(a.done_at)) : ''}${a.status === 'dropped' ? ' · dropped' : ''}</div>
           ${a.detail ? `<div class="am" style="margin-top:2px">${esc(a.detail)}</div>` : ''}
           <input type="text" data-note placeholder="What happened (optional)" value="${esc(a.note || '')}" style="margin-top:6px;width:100%;font-size:12.5px"></div>
-        <div style="display:flex;flex-direction:column;gap:4px">${a.status === 'dropped' ? '<button class="btn tiny ghost" data-reopen>Reopen</button>' : `<button class="btn tiny ghost" data-drop>${a.status === 'done' ? 'Reopen' : 'Drop'}</button>`}</div></div>`).join('')
+        <div style="display:flex;flex-direction:column;gap:4px"><select data-status aria-label="Status" style="font-size:12px">${Object.entries(STATUS_LABEL).map(([k, l]) => `<option value="${k}" ${a.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>`).join('')
         : `<p class="muted" style="font-size:13px">${st.filter === 'open' ? 'Nothing open.' : 'Nothing here yet.'}</p>`}
       <form data-add class="row" style="margin-top:10px;align-items:center"><input type="text" name="t" placeholder="Add an action" style="flex:1;min-width:220px"><input type="text" name="o" placeholder="Owner" style="width:140px"><button class="btn tiny" type="submit">Add</button></form></div>`;
-    ctx.ui.seg(el.querySelector('[data-seg]'), [{ value: 'open', label: 'Open' }, { value: 'closed', label: 'Done / dropped' }, { value: 'all', label: 'All' }], v => { st.filter = v; draw(); }, st.filter);
+    ctx.ui.seg(el.querySelector('[data-seg]'), [{ value: 'open', label: 'Active' }, { value: 'closed', label: 'Done / dropped' }, { value: 'all', label: 'All' }], v => { st.filter = v; draw(); }, st.filter);
     el.querySelectorAll('.act-row').forEach(row => {
       const id = row.dataset.id, a = list.find(x => x.id === id);
       const put = async patch => { try { const r = await ctx.api.put('actions', { id, ...patch }); Object.assign(a, r.action || patch); draw(); } catch (e) { ctx.toast('Could not update: ' + e.message, 'err'); } };
       row.querySelector('[data-done]').onchange = e => put({ status: e.target.checked ? 'done' : 'open' });
-      const drop = row.querySelector('[data-drop]'); if (drop) drop.onclick = () => put({ status: a.status === 'done' ? 'open' : 'dropped' });
-      const re = row.querySelector('[data-reopen]'); if (re) re.onclick = () => put({ status: 'open' });
+      const sel = row.querySelector('[data-status]'); if (sel) sel.onchange = () => put({ status: sel.value });
       const note = row.querySelector('[data-note]'); note.onchange = () => put({ note: note.value });
     });
     el.querySelector('[data-add]').onsubmit = async e => {
@@ -61,4 +63,25 @@ export async function mountActions(el, ctx, { channel, title = 'Action tracker' 
   el.innerHTML = '<p class="muted"><span class="spin"></span> Loading actions…</p>';
   await load();
   return { reload: load };
+}
+
+/**
+ * Programme board for the Overview: every tracked action across all channels, grouped by
+ * status (open, in progress, blocked, done in the last 30 days). Read-only here; each card
+ * links to the channel page where it is edited.
+ */
+export async function mountBoard(el, ctx) {
+  let list = [];
+  try { list = await loadActions(ctx, 'overview'); } catch (e) { el.innerHTML = `<p class="err">${esc(e.message || e)}</p>`; return; }
+  const cutoff = Date.now() - 30 * 864e5;
+  const cols = [
+    ['open', 'Open', list.filter(a => a.status === 'open')],
+    ['in_progress', 'In progress', list.filter(a => a.status === 'in_progress')],
+    ['blocked', 'Blocked', list.filter(a => a.status === 'blocked')],
+    ['done', 'Done, last 30 days', list.filter(a => a.status === 'done' && a.done_at && new Date(a.done_at) > cutoff)],
+  ];
+  const ROUTE = { linkedin: 'ads/linkedin', email: 'email/instantly', leads: 'hubspot/leads', messaging: 'hubspot/messaging', pipeline: 'hubspot/pipeline', phantom: 'linkedin/phantom', overview: 'overview' };
+  el.innerHTML = list.length ? `<div class="board">${cols.map(([k, label, items]) => `<div class="bcol ${k}"><div class="bh"><span class="ui-label">${esc(label)}</span><span class="tag">${items.length}</span></div>
+    ${items.length ? items.map(a => `<a class="bcard" href="#/${ROUTE[a.channel] || 'overview'}"><div class="at">${esc(a.title)}</div><div class="am">${esc(CHANNEL_LABEL[a.channel] || a.channel)}${a.owner ? ' · ' + esc(a.owner) : ''} · ${esc(timeAgo(a.status === 'done' ? a.done_at : a.created_at))}${a.note ? `<br><i>${esc(a.note)}</i>` : ''}</div></a>`).join('') : '<p class="muted" style="font-size:12.5px">None</p>'}</div>`).join('')}</div>`
+    : '<p class="muted" style="font-size:13px">Nothing tracked yet. Press Track on a finding in any AI read-out, or add an action on a channel page.</p>';
 }

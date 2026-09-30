@@ -36,7 +36,7 @@ const CAMPAIGNS = [
   { prog: 'LinkedIn Ads-GSI & SI|Playbook Lead Gen', obj: 'Lead generation', stage: 'MoFu', name: "Native Targeting(Heatmap)|GSI|Playbooks-2 Sept'26", months: [5], start: '2026-09-02', spend: 638.97, leads: 56, impr: 26863, ads: PLAYBOOKS },
   { prog: 'LinkedIn Ads-GSI & SI|Playbook Lead Gen', obj: 'Lead generation', stage: 'MoFu', name: "Playbooks|GSI&SI|Seniorities|Lead Gen- 14 Aug'26", months: [4, 5], start: '2026-08-14', spend: 1352.67, leads: 27, impr: 11929, ads: PLAYBOOKS },
   { prog: 'LinkedIn Ads-GSI & SI|Playbook Lead Gen', obj: 'Lead generation', stage: 'MoFu', name: "Retargeting Aud|GSI&SI|Playbooks - 21 July'26", months: [3, 4, 5], start: '2026-07-21', spend: 1811.48, leads: 17, impr: 32799, ads: PLAYBOOKS },
-  { prog: 'LinkedIn Ads-GSI & SI|Playbook Lead Gen', obj: 'Lead generation', stage: 'MoFu', name: "Native Targeting|SI|Playbooks-16 Sept'26", months: [5], start: '2026-09-16', spend: 1032.9, leads: 14, impr: 20613, ads: PLAYBOOKS.slice(0, 2) },
+  { prog: 'LinkedIn Ads-GSI & SI|Playbook Lead Gen', obj: 'Lead generation', stage: 'MoFu', name: "Combined Native + Custom|SI|Playbooks-16 Sept'26", months: [5], start: '2026-09-16', spend: 1032.9, leads: 14, impr: 20613, ads: PLAYBOOKS.slice(0, 2) },
   { prog: 'LinkedIn Ads-GSI & SI|Playbook Lead Gen', obj: 'Lead generation', stage: 'MoFu', name: 'Custom Aud|GSI&SI|Playbooks|Lead Gen- 1/09/26', months: [5], start: '2026-09-01', spend: 82.51, leads: 3, impr: 1197, ads: PLAYBOOKS.slice(0, 1) },
   { prog: 'LinkedIn Ads-GSI & SI|Playbook Lead Gen', obj: 'Lead generation', stage: 'MoFu', name: "HR Playbooks|GSI&SI|Seniorities|Lead Gen - 21 July'26", months: [3], start: '2026-07-21', spend: 60.27, leads: 0, impr: 534, ads: [VERTICAL[2]] },
   { prog: 'LinkedIn Ads-GSI & SI|Playbook Lead Gen', obj: 'Lead generation', stage: 'MoFu', name: "All Playbooks|GSI&SI|Lead Gen - 18 June'26", months: [3], start: '2026-07-01', spend: 154.96, leads: 0, impr: 924, ads: [VERTICAL[1], PLAYBOOKS[2]] },
@@ -63,7 +63,7 @@ const monthDays = mi => { const y = 2026, m = +MONTHS[mi].slice(5); return Array
 const dow = iso => new Date(iso + 'T00:00:00Z').getUTCDay();
 // Rows are stored sparse: numeric zeros are dropped except the core metrics (readers treat a missing metric as 0).
 const KEEP = new Set(['impressions', 'clicks', 'spend', 'leads']);
-const sparse = row => { for (const k of Object.keys(row)) if (row[k] === 0 && !KEEP.has(k)) delete row[k]; return row; };
+const sparse = row => { for (const k of Object.keys(row)) if ((row[k] === 0 && !KEEP.has(k)) || (k === 'campaign' && row[k] === '')) delete row[k]; return row; };
 // Largest-remainder rounding of an array of non-negative reals to integers with the same (rounded) total.
 function roundKeep(arr, total = null) {
   const T = total == null ? Math.round(arr.reduce((a, b) => a + b, 0)) : total;
@@ -187,6 +187,17 @@ const TITLES = {
 const FUNCS = [['Consulting', 22], ['Information Technology', 20], ['Engineering', 14], ['Business Development', 9], ['Operations', 8], ['Program and Project Management', 7], ['Finance', 5], ['Sales', 4], ['Marketing', 3], ['Human Resources', 3], ['Research', 2], ['Product Management', 3]];
 const CITIES = { India: [['Bengaluru', 30], ['Mumbai Metropolitan Region', 18], ['Delhi NCR', 17], ['Hyderabad', 12], ['Pune', 10], ['Chennai', 8], ['Kolkata', 5]], 'United States': [['New York City Metropolitan Area', 35], ['San Francisco Bay Area', 20], ['Dallas-Fort Worth Metroplex', 15], ['Greater Chicago Area', 15], ['Washington DC-Baltimore Area', 15]], 'United Kingdom': [['London Area', 100]], 'Saudi Arabia': [['Riyadh', 100]], 'United Arab Emirates': [['Dubai', 80], ['Abu Dhabi', 20]], Australia: [['Sydney', 60], ['Melbourne', 40]], Singapore: [['Singapore', 100]], Japan: [['Tokyo', 100]], Canada: [['Greater Toronto Area', 100]] };
 const SIZES = [['10,001+ employees', 78], ['5,001-10,000 employees', 6], ['1,001-5,000 employees', 8], ['501-1,000 employees', 2], ['201-500 employees', 3], ['51-200 employees', 2], ['11-50 employees', 1]];
+// September demographics exports carry a campaign column: Company, Job Title, Country and Job Seniority rows are
+// split across these ad sets (one per targeting approach); `india` skews the country split. Sends and opens sit on
+// the conversation ad set, which has no impressions.
+const SPLIT_SETS = [
+  { name: CAMPAIGNS[0].name, w: 0.28, india: 1 },   // Native Targeting(Heatmap)
+  { name: CAMPAIGNS[18].name, w: 0.42, india: 1.4 }, // Brand Awareness native, India
+  { name: CAMPAIGNS[4].name, w: 0.06, india: 0.4 },  // Custom Aud
+  { name: CAMPAIGNS[3].name, w: 0.24, india: 0.8 },  // Combined Native + Custom
+];
+const SPLIT_MSG_SET = CAMPAIGNS[12].name; // GSI&SI|ANI|Conversation Ads
+const SPLIT_SEGMENTS = new Set(['Company', 'Job Title', 'Country', 'Job Seniority']);
 
 function buildDemo(perf) {
   const windows = [];
@@ -204,7 +215,14 @@ function buildDemo(perf) {
     const mi = w.mi, f = w.share, ctr = MON.clicks[mi] / Math.max(1, MON.impr[mi]);
     const rows = [];
     // LinkedIn hides tiny segments, so rows under 8 impressions are dropped.
-    const push = (segment, value, impressions, clicks, extra = {}) => { impressions = Math.round(impressions); if (impressions < 8 && !(extra.sends > 0)) return; rows.push(sparse({ segment, value, campaign: '', impressions, clicks: Math.round(clicks), ...extra })); };
+    const add = (campaign, segment, value, impressions, clicks, extra = {}) => { impressions = Math.round(impressions); if (impressions < 8 && !(extra.sends > 0)) return; rows.push(sparse({ segment, value, campaign, impressions, clicks: Math.round(clicks), ...extra })); };
+    const push = (segment, value, impressions, clicks, extra = {}) => {
+      if (mi !== 5 || !SPLIT_SEGMENTS.has(segment)) return add('', segment, value, impressions, clicks, extra);
+      const india = segment === 'Country' && value === 'India';
+      const ws = SPLIT_SETS.map(s => s.w * (segment === 'Country' ? (india ? s.india : 2 - s.india) : 1) * jitter(0.15)); const tot = ws.reduce((a, b) => a + b, 0);
+      SPLIT_SETS.forEach((s, i) => add(s.name, segment, value, impressions * ws[i] / tot, clicks * ws[i] / tot, i === 0 && extra.leads ? { leads: extra.leads } : {}));
+      if (extra.sends > 0) add(SPLIT_MSG_SET, segment, value, 0, 0, { sends: extra.sends, opens: extra.opens });
+    };
     // Company
     ACC.rows.forEach((name, i) => {
       const imp = ACC.Impressions[i][mi] * f * jitter(0.08), clk = ACC.Clicks[i][mi] * f * jitter(0.1);

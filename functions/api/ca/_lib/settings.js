@@ -6,7 +6,7 @@ import { db, dbConfigured } from './db.js'
 import { bandsFromSeeds } from './classify.js'
 import { DEFAULT_EDITORS, parseEmails } from './auth.js'
 
-export const SETTING_KEYS = ['bands', 'icp_pool', 'accounts', 'regions', 'targets', 'editors', 'email_rules', 'gsi_companies']
+export const SETTING_KEYS = ['bands', 'icp_pool', 'accounts', 'regions', 'targets', 'editors', 'email_rules', 'gsi_companies', 'contact_lists']
 
 export const DEFAULT_TARGETS = { leads_per_month: 200, demo_mqls_per_month: 30, frequency: 3.5, reach_frequency: 3 }
 
@@ -78,6 +78,8 @@ export async function loadSettings(env, request, { keys = SETTING_KEYS } = {}) {
   if (keys.includes('email_rules')) { pick('email_rules', DEFAULT_EMAIL_RULES); out.email_rules = { ...DEFAULT_EMAIL_RULES, ...(out.email_rules || {}) } }
   // Extra company names on top of the account list (seed/accounts.json), which is the GSI list.
   if (keys.includes('gsi_companies')) pick('gsi_companies', [])
+  // Contact list sizes per account ({ 'Account name': number }) for LinkedIn "Reach vs contacts by company".
+  if (keys.includes('contact_lists')) pick('contact_lists', {})
   if (keys.includes('editors')) {
     pick('editors', parseEmails(env && env.CA_EDITORS).length ? parseEmails(env.CA_EDITORS) : DEFAULT_EDITORS)
     if (byKey.editors) out.editors = parseEmails(byKey.editors.value)

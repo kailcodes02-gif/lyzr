@@ -17,23 +17,26 @@ into the next read-out.
 
 ## Runbook
 1. Database. Either create a dedicated Supabase project (recommended, full isolation) or reuse an
-   existing one. Paste `supabase/001_campaign_analytics.sql`, `002_email_actions.sql`, then `003_message_ai.sql`,
-   into its SQL Editor (project `gfzimvqfmninrcyapike`).
+   existing one. Paste `supabase/001_campaign_analytics.sql`, `002_email_actions.sql`, `003_message_ai.sql`, then
+   `004_deals.sql`, `006_phantom.sql` and `007_ad_platforms.sql` into its SQL Editor (project `gfzimvqfmninrcyapike`).
 2. Secrets on Pages (run from the repo root, wrangler is already logged in):
    ```
    npx wrangler pages secret put CA_SUPABASE_URL --project-name lyzr-work-os      # https://<ref>.supabase.co
    npx wrangler pages secret put CA_SUPABASE_KEY --project-name lyzr-work-os      # service_role key of that project
    npx wrangler pages secret put ANTHROPIC_API_KEY --project-name lyzr-work-os    # Claude (also used by the tracker assistant)
    npx wrangler pages secret put CA_CRON_SECRET --project-name lyzr-work-os      # any long random string
+   npx wrangler pages secret put PHANTOMBUSTER_API_KEY --project-name lyzr-work-os # PhantomBuster › Org settings › API keys
    ```
    `HUBSPOT_ACCESS_TOKEN` and `INSTANTLY_API_KEY` are already set. Add the same `CA_CRON_SECRET` value as a
    GitHub Actions secret: `.github/workflows/ca-daily-pull.yml` runs every day at 07:00 IST: Instantly (all
-   GSI-tagged campaigns, full history), HubSpot (GSI leads), then Claude Sonnet 5 reads new lead messages.
+   GSI-tagged campaigns, full history), HubSpot (GSI leads), HubSpot deals, PhantomBuster, then Claude Sonnet 5
+   reads new lead messages.
 3. Entra redirect URI (step above). Then push to `main`; Pages deploys in about a minute.
 4. Open the dashboard, Settings › Connection shows which of the three pieces are live.
-5. Whenever you have them: Settings › Uploads takes any number of files at once (CSV or Excel) and routes
-   each one: LinkedIn Performance and Demographics exports to Ads, Instantly campaign exports to Email (the
-   campaign comes from the file name). Re-uploads never double count. HubSpot: the Refresh button on the
+5. Whenever you have them: the upload box on any channel page takes any number of files at once (CSV or Excel)
+   and routes each one: LinkedIn Performance and Demographics exports to Ads › LinkedIn, daily campaign exports
+   from Google Ads, Meta, Bing, Taboola, X or ChatGPT to their own Ads page (recognised by their columns),
+   Instantly campaign exports to Email (the campaign comes from the file name). Re-uploads never double count. HubSpot: the Refresh button on the
    HubSpot messaging page (read-only pull). Settings › GSI companies holds the list that makes a lead a GSI
    lead; Settings › Email rules holds the fast-click threshold and the Book a Demo rule.
 

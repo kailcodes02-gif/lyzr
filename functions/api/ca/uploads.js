@@ -22,6 +22,7 @@ export { corsPreflight as onRequestOptions } from './_lib/http.js'
 
 export const CHANNELS = ['linkedin', 'email']
 export const KINDS = ['performance', 'demographics', 'events']
+export const PLATFORMS = ['linkedin', 'google', 'meta', 'taboola', 'chatgpt', 'x', 'bing']
 export const EVENTS = ['sent', 'opened', 'clicked', 'bounced', 'auto_reply', 'replied', 'unsubscribed', 'other']
 export const MAX_ROWS = 2000
 export const BATCH = 500
@@ -34,11 +35,12 @@ const DEMO_NUM = ['impressions', 'clicks', 'spend', 'sends', 'opens', 'engagemen
 const str = (v) => (v === null || v === undefined ? '' : String(v).trim())
 
 // Coerce one performance row; returns null when it cannot be stored.
-export function normalisePerfRow(r, uploadId) {
+export function normalisePerfRow(r, uploadId, platform = 'linkedin') {
   if (!r || typeof r !== 'object') return null
   const day = str(r.day).slice(0, 10)
   if (!isoDay(day)) return null
   const row = {
+    platform,
     day,
     campaign_id: str(r.campaign_id),
     ad_id: str(r.ad_id),
@@ -57,12 +59,12 @@ export function normalisePerfRow(r, uploadId) {
   return row
 }
 
-export function normaliseDemoRow(r, uploadId) {
+export function normaliseDemoRow(r, uploadId, platform = 'linkedin') {
   if (!r || typeof r !== 'object') return null
   const segment = str(r.segment)
   const value = str(r.value)
   if (!segment || !value) return null
-  const row = { upload_id: uploadId, segment, value, campaign: str(r.campaign), extra: null }
+  const row = { upload_id: uploadId, platform, segment, value, campaign: str(r.campaign), extra: null }
   for (const k of DEMO_NUM) row[k] = num(r[k], 0)
   const extra = {}
   for (const [k, v] of Object.entries(r)) {
@@ -111,11 +113,13 @@ export const onRequestGet = handle(async ({ request, env }) => {
   if (!user) return json({ error: 'Sign in required' }, 401)
   const url = new URL(request.url)
   const channel = url.searchParams.get('channel')
+  const platform = url.searchParams.get('platform')
   const params = {}
   if (channel) params.channel = `eq.${channel}`
+  if (platform) params.platform = `eq.${platform}`
   const uploads = await db(env).select('ca_uploads', {
     params,
-    select: 'id,channel,kind,file_name,uploaded_by,uploaded_at,period_start,period_end,row_count,notes',
+    select: 'id,channel,kind,platform,file_name,uploaded_by,uploaded_at,period_start,period_end,row_count,notes',
     order: 'uploaded_at.desc',
     limit: 500,
   })
@@ -133,6 +137,8 @@ export const onRequestPost = handle(async ({ request, env }) => {
   if (!CHANNELS.includes(channel)) return json({ error: `channel must be one of ${CHANNELS.join(', ')}` }, 400)
   if (!KINDS.includes(kind)) return json({ error: `kind must be one of ${KINDS.join(', ')}` }, 400)
   if ((channel === 'email') !== (kind === 'events')) return json({ error: 'email uploads use kind "events"; LinkedIn uploads use performance or demographics' }, 400)
+  const platform = channel === 'email' ? null : (str(b.platform || 'linkedin').toLowerCase() || 'linkedin')
+  if (platform && !PLATFORMS.includes(platform)) return json({ error: `platform must be one of ${PLATFORMS.join(', ')}` }, 400)
   const rows = Array.isArray(b.rows) ? b.rows : []
   if (rows.length > MAX_ROWS) return json({ error: `Send at most ${MAX_ROWS} rows per call` }, 413)
   const periodStart = str(b.period_start) || null
@@ -151,7 +157,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
     if (kind === 'demographics' && periodStart && periodEnd) {
       // Re-upload replaces: same window and kind means the old upload goes.
       const dupes = await d.select('ca_uploads', {
-        params: { channel: `eq.${channel}`, kind: `eq.${kind}`, period_start: `eq.${periodStart}`, period_end: `eq.${periodEnd}` },
+        params: { channel: `eq.${channel}`, kind: `eq.${kind}`, period_start: `eq.${periodStart}`, period_end: `eq.${periodEnd}`, platform: `eq.${platform}` },
         select: 'id',
       })
       if (dupes.length) {
@@ -161,6 +167,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
     const inserted = await d.insert('ca_uploads', {
       channel,
       kind,
+      platform,
       file_name: str(b.file_name).slice(0, 300) || null,
       uploaded_by: user.email,
       uploaded_at: new Date().toISOString(),
@@ -179,15 +186,15 @@ export const onRequestPost = handle(async ({ request, env }) => {
   let table
   let onConflict
   if (kind === 'performance') {
-    clean = dedupe(rows.map((r) => normalisePerfRow(r, uploadId)).filter(Boolean), (r) => `${r.day}|${r.campaign_id}|${r.ad_id}`)
+    clean = dedupe(rows.map((r) => normalisePerfRow(r, uploadId, platform)).filter(Boolean), (r) => `${r.day}|${r.campaign_id}|${r.ad_id}`)
     table = 'ca_li_perf'
-    onConflict = 'day,campaign_id,ad_id'
+    onConflict = 'platform,day,campaign_id,ad_id'
   } else if (kind === 'events') {
     clean = dedupe(rows.map((r) => normaliseEventRow(r, uploadId)).filter(Boolean), (r) => `${r.campaign}|${r.contact}|${r.step}|${r.event}|${r.ts}|${r.link}`)
     table = 'ca_em_events'
     onConflict = 'campaign,contact,step,event,ts,link'
   } else {
-    clean = dedupe(rows.map((r) => normaliseDemoRow(r, uploadId)).filter(Boolean), (r) => `${r.upload_id}|${r.segment}|${r.value}|${r.campaign}`)
+    clean = dedupe(rows.map((r) => normaliseDemoRow(r, uploadId, platform)).filter(Boolean), (r) => `${r.upload_id}|${r.segment}|${r.value}|${r.campaign}`)
     table = 'ca_li_demo'
     onConflict = 'upload_id,segment,value,campaign'
   }

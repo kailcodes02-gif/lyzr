@@ -12,8 +12,9 @@ import { db } from './_lib/db.js'
 
 export { corsPreflight as onRequestOptions } from './_lib/http.js'
 
-export const CHANNELS = ['overview', 'linkedin', 'email', 'leads', 'messaging']
-export const STATUSES = ['open', 'done', 'dropped']
+export const CHANNELS = ['overview', 'linkedin', 'email', 'leads', 'messaging', 'pipeline', 'phantom']
+// open -> in_progress -> done; blocked and dropped are side exits. The Overview programme board groups by these.
+export const STATUSES = ['open', 'in_progress', 'blocked', 'done', 'dropped']
 const str = (v, max = 2000) => (v === null || v === undefined ? '' : String(v).trim().slice(0, max))
 const isUuid = (s) => /^[0-9a-f-]{36}$/i.test(String(s || ''))
 const day = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null)

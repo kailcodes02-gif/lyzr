@@ -1,5 +1,5 @@
 // POST /api/ca/instantly/sync { cursor? }   editors, or the daily job (X-CA-Cron)
-// -> { done, cursor?, campaigns, days, warnings:[], progress:{ phase, done, total } }
+// -> { done, cursor?, campaigns, workspace_campaigns, days, warnings:[], progress:{ phase, done, total } }
 //
 // READ-ONLY against Instantly: nothing is ever written there. Pulls every
 // campaign tagged GSI in Instantly (tag id verified 2026-08-11, same as
@@ -7,6 +7,8 @@
 // to campaign names containing "GSI"), their all-time totals, and the daily
 // breakdown per campaign over each campaign's whole life, every time (57
 // campaigns is a handful of calls, and a full pull also picks up late opens).
+// Every other campaign in the workspace is stored too (gsi:false, totals only,
+// no daily rows) so the dashboard can show the GSI share of workspace sends.
 // Resumable like hubspot/refresh.js: keep calling with `cursor` until done.
 
 import { json, handle, readJson, HttpError } from '../_lib/http.js'
@@ -60,13 +62,13 @@ export async function resolveGsiCampaigns(token, warnings = []) {
 const n = (v) => { const x = Number(v); return Number.isFinite(x) ? x : 0 }
 const iso = (ms) => new Date(ms).toISOString().slice(0, 10)
 
-export function mapCampaign(c, a, syncedAt) {
+export function mapCampaign(c, a, syncedAt, gsi = true) {
   a = a || {}
   return {
     id: String(c.id),
     name: c.name || a.campaign_name || 'Untitled campaign',
     status: c.status ?? a.campaign_status ?? null,
-    gsi: true,
+    gsi: gsi !== false,
     leads_count: n(a.leads_count),
     contacted: n(a.contacted_count),
     sent: n(a.emails_sent_count),
@@ -132,7 +134,11 @@ export const onRequestPost = handle(async ({ request, env }) => {
       const byId = new Map((Array.isArray(totals) ? totals : []).map((a) => [String(a.campaign_id), a]))
       const syncedAt = new Date().toISOString()
       const mapped = list.map((c) => mapCampaign(c, byId.get(String(c.id)), syncedAt))
-      for (let i = 0; i < mapped.length; i += 200) await d.upsert('ca_em_campaigns', mapped.slice(i, i + 200), 'id')
+      const gsiIds = new Set(mapped.map((c) => c.id))
+      // the rest of the workspace: totals only, so the GSI share of sends can be shown
+      const others = [...byId.values()].filter((a) => a && a.campaign_id != null && !gsiIds.has(String(a.campaign_id))).map((a) => mapCampaign({ id: a.campaign_id, name: a.campaign_name, status: a.campaign_status, timestamp_created: a.campaign_created_at || null }, a, syncedAt, false))
+      const all = [...mapped, ...others]
+      for (let i = 0; i < all.length; i += 200) await d.upsert('ca_em_campaigns', all.slice(i, i + 200), 'id')
       const today = iso(Date.now())
       cursor = {
         sync_id: syncId,
@@ -140,10 +146,11 @@ export const onRequestPost = handle(async ({ request, env }) => {
         queue: mapped.map((c) => { const start = (c.created_at || FIRST_DAY).slice(0, 10); return { id: c.id, from: start < FIRST_DAY ? FIRST_DAY : start } }),
         index: 0,
         campaigns: mapped.length,
+        workspace_campaigns: all.length,
         days: 0,
       }
       await mark(d, syncId, { campaigns: mapped.length })
-      return json({ done: !mapped.length, cursor: mapped.length ? cursor : undefined, campaigns: mapped.length, days: 0, warnings, progress: { phase: 'daily', done: 0, total: mapped.length } })
+      return json({ done: !mapped.length, cursor: mapped.length ? cursor : undefined, campaigns: mapped.length, workspace_campaigns: all.length, days: 0, warnings, progress: { phase: 'daily', done: 0, total: mapped.length } })
     }
 
     const queue = Array.isArray(cursor.queue) ? cursor.queue : []
@@ -161,7 +168,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
     cursor.days = (Number(cursor.days) || 0) + out.length
     const done = index >= queue.length
     await mark(d, cursor.sync_id, done ? { status: 'done', finished_at: new Date().toISOString(), days: cursor.days } : { days: cursor.days })
-    return json({ done, cursor: done ? undefined : cursor, campaigns: cursor.campaigns, days: cursor.days, warnings, progress: { phase: done ? 'done' : 'daily', done: index, total: queue.length } })
+    return json({ done, cursor: done ? undefined : cursor, campaigns: cursor.campaigns, workspace_campaigns: cursor.workspace_campaigns, days: cursor.days, warnings, progress: { phase: done ? 'done' : 'daily', done: index, total: queue.length } })
   } catch (e) {
     if (syncId) await mark(d, syncId, { status: 'error', finished_at: new Date().toISOString(), error: String(e.message || e).slice(0, 500) })
     throw e

@@ -118,3 +118,89 @@ test('leads: GSI list matching, source channel, recent activity', () => {
   assert.equal(r.label, 'Replied to a sales email');
   assert.equal(recentActivity({}), null);
 });
+
+test('api totals, lead pool and workspace share', () => {
+  const camps = [
+    { id: 'g1', name: 'GSI_Sep_D_Big4_Cold', status: 1, gsi: true, leads_count: 400, contacted: 150, sent: 300, bounced: 6 },
+    { id: 'g2', name: 'Deloitte - US - July', status: 3, gsi: true, leads_count: 100, contacted: 100, sent: 500, bounced: 2 },
+    { id: 'w1', name: 'Fintech CFO Outreach', status: 1, gsi: false, leads_count: 900, contacted: 700, sent: 2000, bounced: 40 },
+  ];
+  const pool = E.leadPool(camps);
+  assert.deepEqual([pool.campaigns, pool.active, pool.leads, pool.contacted, pool.uncontacted, pool.bounced], [2, 1, 500, 250, 250, 8]);
+  assert.equal(Math.round(pool.bounceRate * 10) / 10, 3.2);
+  const share = E.workspaceShare(camps, { sent: 2800, contacted: 950, campaigns: 3 });
+  assert.deepEqual([share.gsiSent, share.wsSent, share.gsiCampaigns, share.wsCampaigns], [800, 2800, 2, 3]);
+  assert.equal(Math.round(share.sentShare), 29);
+  assert.equal(E.workspaceShare(camps).wsSent, 2800); // falls back to summing the rows
+  const t = E.apiTotals([{ sent: 100, contacted: 80, new_leads_contacted: 50, unique_opened: 20, unique_clicks: 4, unique_replies: 1, replies_automatic: 2, opportunities: 1 }, { sent: 50, new_leads_contacted: 50, unique_opened: 5 }]);
+  assert.deepEqual([t.sent, t.newLeads, t.opened, t.openRate, t.clickRate, t.replyRate], [150, 100, 25, 25, 4, 1]);
+  assert.equal(E.apiTotals([]).openRate, null);
+});
+
+test('campaign category and account match from the name', () => {
+  const accounts = [{ name: 'Tata Consultancy Services', aliases: ['TCS'], domain: 'tcs.com' }, { name: 'Firstsource', domain: 'firstsource.com' }, { name: 'EY', aliases: ['Ernst & Young (EY)'], domain: 'ey.com' }, { name: 'Global Services', domain: 'global.com' }, { name: 'BIP', domain: 'bip.com' }];
+  assert.equal(E.campaignAccount('TCS - US - July', accounts), 'Tata Consultancy Services');
+  assert.equal(E.campaignAccount('GSI_Sep_D_Firstsource_Cold', accounts), 'Firstsource');
+  assert.equal(E.campaignAccount('EY - UK - Aug', accounts), 'EY');
+  assert.equal(E.campaignAccount('GSI_Sep_A1_Openers_High_Intent', accounts), null);
+  assert.equal(E.campaignAccount('Global Services Cold', accounts), 'Global Services'); // full name as consecutive words still matches
+  assert.equal(E.campaignAccount('Global Cold', accounts), null);                      // a generic single word does not
+  assert.equal(E.campaignAccount('Bipartisan outreach', accounts), null);               // whole words only
+  assert.equal(E.campaignCategory('GSI_Sep_D_Firstsource_Cold', accounts), 'GSI Partner');
+  assert.equal(E.campaignCategory('GSI_Sep_D_Big4_Cold', accounts), 'Cold outreach');
+  assert.equal(E.campaignCategory('GSI_Sep_A2_Openers_Medium', accounts), 'Retarget');
+  assert.equal(E.campaignCategory('GSI_Sep_C_Demo_Clickers_Retarget', accounts), 'Retarget');
+  assert.equal(E.campaignCategory('Agent Roadmap ClusterA', accounts), 'Other');
+});
+
+test('uncontacted projection per active campaign with the 14 day pace', () => {
+  const camps = [
+    { id: 'a', name: 'A', status: 1, gsi: true, leads_count: 1000, contacted: 300 },
+    { id: 'b', name: 'B', status: 1, gsi: true, leads_count: 200, contacted: 200 },
+    { id: 'c', name: 'C', status: 3, gsi: true, leads_count: 500, contacted: 100 },  // completed: left out
+    { id: 'd', name: 'D', status: 1, gsi: false, leads_count: 500, contacted: 0 },   // not GSI: left out
+    { id: 'e', name: 'E', status: 1, gsi: true, leads_count: 50, contacted: 10 },    // no sends in the window
+  ];
+  const daily = [];
+  for (let i = 0; i < 20; i++) { const day = new Date(Date.parse('2026-09-10T00:00:00Z') + i * 864e5).toISOString().slice(0, 10); daily.push({ campaign_id: 'a', day, sent: 70, new_leads_contacted: 35 }); }
+  daily.push({ campaign_id: 'e', day: '2026-09-01', sent: 10, new_leads_contacted: 10 });
+  const u = E.uncontacted(camps, daily);
+  assert.deepEqual(u.window, { from: '2026-09-16', to: '2026-09-29' });
+  assert.deepEqual(u.rows.map(r => r.name), ['A', 'E', 'B']);
+  const a = u.rows[0];
+  assert.deepEqual([a.uncontacted, a.perDay, a.newPerDay, a.daysToFinish, a.daysToFinishNew], [700, 70, 35, 10, 20]);
+  assert.deepEqual([u.rows[1].uncontacted, u.rows[1].daysToFinish], [40, null]);
+  assert.deepEqual([u.rows[2].uncontacted, u.rows[2].daysToFinish], [0, 0]);
+  assert.deepEqual([u.total.leads, u.total.contacted, u.total.uncontacted, u.total.perDay], [1250, 510, 740, 70]);
+  assert.equal(Math.round(u.total.daysToFinishNew * 10) / 10, 21.1);
+  assert.equal(E.uncontacted(camps, []).window, null);
+  assert.equal(E.uncontacted(camps, daily, '2026-09-12').rows[0].perDay, 70 * 3 / 14);
+});
+
+test('funnel steps, campaign tiers and the what-worked bullets', () => {
+  const st = E.funnelSteps({ reached: 200, opened: 50, clickers: 10, demo: 4 });
+  assert.deepEqual([st.openedOfReached, st.clickersOfOpened, st.demoOfClickers, st.demoOfReached], [25, 20, 40, 2]);
+  assert.equal(E.funnelSteps({ reached: 0, opened: 0, clickers: 0, demo: 0 }).clickersOfOpened, null);
+  const camps = [
+    { name: 'Hot', reached: 120, opened: 40, clickers: 9, demo: 3, demoRate: 2.5 },
+    { name: 'Warm', reached: 300, opened: 80, clickers: 12, demo: 0, demoRate: 0 },
+    { name: 'Opens', reached: 90, opened: 20, clickers: 0, demo: 0, demoRate: 0 },
+    { name: 'Dead', reached: 150, opened: 0, clickers: 0, demo: 0, demoRate: 0 },
+    { name: 'Quiet', reached: 20, opened: 0, clickers: 0, demo: 0, demoRate: 0 },
+  ];
+  const tiers = E.campaignTiers(camps);
+  assert.deepEqual(tiers.map(t => [t.label, t.items.map(i => i.name)]), [['Demo intent', ['Hot']], ['Engaged', ['Warm']], ['Opens only', ['Opens']], ['No activity', ['Dead', 'Quiet']]]);
+  assert.deepEqual([tiers[0].items[0].demo, tiers[0].items[0].other], [3, 6]);
+  const T = { sent: 900, reached: 680, opened: 140, clickers: 21, demo: 3, demoDirect: 2, demoVia: 1, clicks: 30, fastClicks: 20, openRate: 20.6, clickRate: 3.09, demoRate: 0.44 };
+  const TP = { ...T, demo: 5, clickers: 15 };
+  const senders = [{ sender: 'a@s.example', reached: 300, opened: 0, clickers: 5 }, { sender: 'b@s.example', reached: 300, opened: 100, clickers: 16 }, { sender: 'c@s.example', reached: 80, opened: 0, clickers: 0 }];
+  const b = E.emailBullets({ T, TP, cmp: { label: 'the period before' }, camps, senders, apiCur: { newLeads: 600, replies: 4, opened: 200, openRate: 33 }, apiPrev: { replies: 2 }, pool: { contacted: 5000, bounced: 200, bounceRate: 4 }, unc: { rows: [{ name: 'Big', uncontacted: 900, daysToFinishNew: 90 }], total: { uncontacted: 900, newPerDay: 10, daysToFinishNew: 90 } } });
+  const heads = list => list.map(x => x.b);
+  assert.deepEqual(heads(b.achieved), ['Click rate 3.1%.', 'Hot converts to demo intent at 2.5%.', 'Replies up 100% vs the period before.', 'Open rate 33%.']);
+  assert.deepEqual(heads(b.missed), ['Book a Demo clickers down 40% vs the period before.', '1 campaign with no human click after 100+ people.', '1 mailbox with clicks but no opens.', '1 mailbox with no opens and no clicks.', '40% of clicks were scanner-fast.', 'Bounce rate 4% all time.', '1 active campaign will take over 60 days to finish.']);
+  assert.match(b.missed[1].s, /^Dead:/);
+  const quiet = E.emailBullets({ T: { ...T, reached: 10, clickers: 0, demo: 0, clicks: 0, fastClicks: 0, clickRate: 0 }, TP: null, cmp: null });
+  assert.deepEqual([quiet.achieved.length, quiet.missed.length], [0, 0]);
+  const noCmp = E.emailBullets({ T, TP: null, cmp: null });
+  assert.equal(noCmp.achieved[1].b, '3 people clicked Book a Demo.');
+});

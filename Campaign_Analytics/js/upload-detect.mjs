@@ -1,8 +1,10 @@
 // Bulk upload: read any dropped file (CSV, TSV, TXT, XLSX, XLS) and work out what it is and where it goes.
-//   detectFile(file) -> { id, file, channel:'linkedin'|'email', kind:'performance'|'demographics'|'events', parsed, label, needs:[...] }
+//   detectFile(file) -> { id, file, channel:'linkedin'|'email', platform?, kind:'performance'|'demographics'|'events', parsed, label, needs:[...] }
+//   platform is the ad platform for channel 'linkedin' rows: linkedin, google, meta, bing, taboola, x or chatgpt.
 //   or throws with a readable reason. Excel files are converted to CSV with SheetJS (loaded on first use).
 import { parseLinkedInCsv, decodeCsvBuffer, parseRows, detectDelimiter } from './csv.mjs';
 import { parseInstantlyCsv, isInstantlyHeader, campaignLabel } from './email-csv.mjs';
+import { parseAdsCsv, PLATFORM_LABEL } from './ads-csv.mjs';
 
 const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
 let xlsxLoading = null;
@@ -34,13 +36,18 @@ export function detectText(text, fileName) {
     const parsed = parseInstantlyCsv(text, fileName);
     return { channel: 'email', kind: 'events', parsed, label: `Email · ${campaignLabel(parsed.campaign)}`, needs: parsed.campaign ? [] : ['campaign'] };
   }
-  const NOT = 'Not recognised: expected an Instantly campaign export or a LinkedIn Campaign Manager export (ad performance or demographics).';
+  // Other ad platforms (Google Ads, Meta, Bing, Taboola, X, ChatGPT): recognised from their
+  // header row or the file name; anything else falls through to the LinkedIn parser.
+  let ads = null;
+  try { ads = parseAdsCsv(text, fileName); } catch { ads = null; }
+  if (ads && ads.rows.length) return { channel: 'linkedin', platform: ads.platform, kind: 'performance', parsed: ads, label: `Ads · ${PLATFORM_LABEL[ads.platform] || ads.platform}`, needs: [] };
+  const NOT = 'Not recognised: expected an Instantly campaign export, a LinkedIn Campaign Manager export (ad performance or demographics), or a daily campaign export from Google Ads, Meta, Bing, Taboola or X.';
   let parsed;
   try { parsed = parseLinkedInCsv(text, fileName); } catch (e) { throw new Error(`${NOT} (${e.message})`); }
   const known = Object.values(parsed.columns || {}).filter(f => !String(f).startsWith('extra:')).length;
   if (known < 3 || !parsed.rows.length) throw new Error(NOT);
   const needs = parsed.kind === 'demographics' && (!parsed.period_start || !parsed.period_end) ? ['window'] : [];
-  return { channel: 'linkedin', kind: parsed.kind, parsed, label: parsed.kind === 'performance' ? 'Ads · LinkedIn performance' : 'Ads · LinkedIn demographics', needs };
+  return { channel: 'linkedin', platform: 'linkedin', kind: parsed.kind, parsed, label: parsed.kind === 'performance' ? 'Ads · LinkedIn performance' : 'Ads · LinkedIn demographics', needs };
 }
 
 export async function detectFile(file) {

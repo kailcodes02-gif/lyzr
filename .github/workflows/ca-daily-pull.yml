@@ -1,10 +1,11 @@
 name: Campaign Analytics · daily pull
 
 # Every morning: Instantly (all GSI-tagged campaigns, full history), then HubSpot
-# (GSI leads: form submitters at companies on the GSI account list), then Claude
-# reads any lead message it has not read yet. All read-only against Instantly and
-# HubSpot. Each step is a resumable Pages Function: keep calling with the returned
-# cursor until it answers done:true.
+# (GSI leads: form submitters at companies on the GSI account list), HubSpot deals
+# (GSI pipeline with a weekly snapshot), PhantomBuster (LinkedIn outreach phantoms),
+# then Claude reads any lead message it has not read yet. All read-only against
+# Instantly, HubSpot and PhantomBuster. Each step is a resumable Pages Function:
+# keep calling with the returned cursor until it answers done:true.
 #
 # Needs the same secret in two places:
 #   GitHub Actions secret  CA_CRON_SECRET
@@ -16,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "all | instantly | hubspot | messages"
+        description: "all | instantly | hubspot | messages | phantom | deals"
         default: "all"
         required: false
 
@@ -68,6 +69,30 @@ jobs:
             body=$(echo "$res" | jq -c '{cursor: .cursor}')
           done
           echo "HubSpot pull did not finish"; exit 1
+      - name: HubSpot deals
+        if: ${{ always() && contains(fromJSON('["all","hubspot","deals"]'), env.ONLY) }}
+        run: |
+          set -euo pipefail
+          body='{}'
+          for i in $(seq 1 200); do
+            res=$(/tmp/call.sh hubspot/deals-sync "$body")
+            echo "$res" | jq -c '{done, deals, changes, progress, warnings}'
+            [ "$(echo "$res" | jq -r '.done')" = "true" ] && exit 0
+            body=$(echo "$res" | jq -c '{cursor: .cursor}')
+          done
+          echo "Deals pull did not finish"; exit 1
+      - name: PhantomBuster
+        if: ${{ always() && contains(fromJSON('["all","phantom"]'), env.ONLY) }}
+        run: |
+          set -euo pipefail
+          body='{}'
+          for i in $(seq 1 120); do
+            res=$(/tmp/call.sh phantom/sync "$body")
+            echo "$res" | jq -c '{done, agents, runs, progress, warnings}'
+            [ "$(echo "$res" | jq -r '.done')" = "true" ] && exit 0
+            body=$(echo "$res" | jq -c '{cursor: .cursor}')
+          done
+          echo "PhantomBuster sync did not finish"; exit 1
       - name: Read lead messages (Claude)
         if: ${{ always() && contains(fromJSON('["all","hubspot","messages"]'), env.ONLY) }}
         run: |

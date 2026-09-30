@@ -8,8 +8,11 @@
 //   campaigns: [names]  senders: [mailboxes]   (ci / si index into these, per page)
 //   next: offset | null,
 //   // first page only (offset 0):
-//   uploads:[...], api:{ campaigns:[...], daily:[...], last_sync }
+//   uploads:[...], api:{ campaigns:[...], daily:[...], workspace:{sent, contacted, campaigns}, last_sync, configured }
 // }
+// api.campaigns holds every campaign in the Instantly workspace with a `gsi`
+// flag; daily rows exist for GSI campaigns only. api.workspace sums every
+// campaign (GSI and not) so the view can show the GSI share of sends.
 // Every event is returned (no date filter): the view needs the whole history
 // for month-on-month and week-on-week comparisons and filters by range itself.
 
@@ -27,6 +30,13 @@ export function compact(rows) {
   const idx = (m, list, v) => { const k = v || ''; if (!m.has(k)) { m.set(k, list.length); list.push(k) } return m.get(k) }
   const events = rows.map((r) => [idx(ci, campaigns, r.campaign), r.contact, r.step, r.event, r.ts, idx(si, senders, r.sender), r.link || '', r.lag_s == null ? null : Number(r.lag_s)])
   return { events, campaigns, senders }
+}
+
+/** All-time totals over every campaign row (GSI and not). */
+export function workspaceTotals(campaigns) {
+  const n = (v) => { const x = Number(v); return Number.isFinite(x) ? x : 0 }
+  const list = Array.isArray(campaigns) ? campaigns : []
+  return { sent: list.reduce((a, c) => a + n(c.sent), 0), contacted: list.reduce((a, c) => a + n(c.contacted), 0), campaigns: list.length, gsi_campaigns: list.filter((c) => c.gsi !== false).length }
 }
 
 export const onRequestGet = handle(async ({ request, env }) => {
@@ -65,7 +75,7 @@ export const onRequestGet = handle(async ({ request, env }) => {
       d.select('ca_em_sync', { order: 'started_at.desc', limit: 1 }).catch(() => []),
     ])
     out.uploads = uploads
-    out.api = { campaigns, daily, last_sync: syncs[0] || null, configured: Boolean(env.INSTANTLY_API_KEY) }
+    out.api = { campaigns, daily, workspace: workspaceTotals(campaigns), last_sync: syncs[0] || null, configured: Boolean(env.INSTANTLY_API_KEY) }
   }
   return json(out)
 })

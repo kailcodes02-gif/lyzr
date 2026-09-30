@@ -4,6 +4,7 @@
 // sends the queue two files at a time.
 import { detectFile } from './upload-detect.mjs';
 import { campaignLabel } from './email-csv.mjs';
+import { PLATFORM_LABEL } from './ads-csv.mjs';
 
 const CHUNK = 1500;
 const STATE = {};
@@ -12,11 +13,14 @@ const STATE = {};
 // (js/upload-detect.mjs): LinkedIn performance, LinkedIn demographics or an Instantly campaign
 // export. "Upload all" sends the queue two files at a time. Uploads can happen at any cadence;
 // overlapping LinkedIn days overwrite, repeated Instantly exports only add new events.
-export async function mountUploader(body, ctx, { channel, isEditor, onDone } = {}) {
-  const state = STATE[channel] || (STATE[channel] = { pending: [], failed: [], busy: false });
+export async function mountUploader(body, ctx, { channel, platform, isEditor, onDone } = {}) {
+  const stateKey = platform ? `${channel}:${platform}` : channel;
+  const state = STATE[stateKey] || (STATE[stateKey] = { pending: [], failed: [], busy: false });
+  const pname = PLATFORM_LABEL[platform] || 'LinkedIn';
   const { esc, fmt } = ctx.fmt;
   const what = channel === 'email'
     ? 'Instantly campaign exports (Campaign › Analytics › Export CSV). The campaign comes from the file name. Exports are cumulative, so upload the newest export whenever you like: nothing is double counted.'
+    : platform && platform !== 'linkedin' ? `${pname} campaign or ad reports exported by day (one row per campaign or ad per day). Upload whenever you have them; overlapping days are overwritten, not added twice.`
     : 'LinkedIn Campaign Manager exports: Ads › Export (ad level, daily) and Demographics › Export. Upload whenever you have them; overlapping days are overwritten, not added twice.';
   body.innerHTML = `${isEditor ? `<div class="drop" id="drop">Drop CSV or Excel files here, or click to choose. Many at once is fine.<br><span class="muted" style="font-size:12.5px">${what} A file from another channel is recognised and filed where it belongs.</span><input type="file" id="file" accept=".csv,.tsv,.txt,.xlsx,.xls,text/csv,text/plain" multiple class="hidden"></div>` : ctx.ui.empty('Only editors can upload files.')}
      <div id="pending" style="margin-top:14px"></div>
@@ -50,6 +54,7 @@ export async function mountUploader(body, ctx, { channel, isEditor, onDone } = {
     const q = state.pending;
     if (!q.length && !(state.failed || []).length) { box.innerHTML = ''; return; }
     const by = {}; for (const p of q) by[p.label.startsWith('Email') ? 'Email' : p.label] = (by[p.label.startsWith('Email') ? 'Email' : p.label] || 0) + 1;
+    const kindPill = p => ctx.ui.pill(p.channel === 'email' ? 'Email' : p.kind === 'performance' ? `Ads · ${PLATFORM_LABEL[p.platform || 'linkedin'] || p.platform}` : 'Ads · LinkedIn demographics', p.channel === 'email' ? 'p-med' : p.kind === 'performance' ? 'p-high' : 'p-low');
     const waiting = q.filter(p => p.status !== 'done' && p.status !== 'uploading');
     box.innerHTML = `<div class="card">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b>${fmt(q.length)} file${q.length === 1 ? '' : 's'} ready</b>${Object.entries(by).map(([k, n]) => `<span class="tag">${esc(k)}: ${n}</span>`).join('')}
@@ -58,7 +63,7 @@ export async function mountUploader(body, ctx, { channel, isEditor, onDone } = {
       <div class="tblwrap" style="margin-top:10px"><table><thead><tr><th class="l">File</th><th class="l">Goes to</th><th class="l">Campaign / window</th><th>Rows</th><th class="l">Checks</th><th class="l">Status</th><th></th></tr></thead><tbody>
       ${q.map(p => { const r = p.parsed; const email = p.channel === 'email';
         return `<tr data-id="${p.id}"><td class="l mono" style="max-width:260px;word-break:break-all">${esc(p.file)}</td>
-          <td class="l">${ctx.ui.pill(email ? 'Email' : p.kind === 'performance' ? 'Ads · performance' : 'Ads · demographics', email ? 'p-med' : p.kind === 'performance' ? 'p-high' : 'p-low')}</td>
+          <td class="l">${kindPill(p)}</td>
           <td class="l">${email ? `<input type="text" data-k="campaign" value="${esc(r.campaign)}" style="width:100%;min-width:200px"><div class="muted" style="font-size:11.5px">${esc(r.stats.from || '')} to ${esc(r.stats.to || '')} · ${fmt(r.stats.contacts)} contacts</div>`
             : p.kind === 'demographics' ? `<input type="date" data-k="start" value="${esc(r.period_start || '')}"> <input type="date" data-k="end" value="${esc(r.period_end || '')}">`
             : `<span class="muted">per day in file${r.period_start ? `: ${esc(r.period_start)} to ${esc(r.period_end || '')}` : ''}</span>`}</td>
@@ -86,7 +91,7 @@ export async function mountUploader(body, ctx, { channel, isEditor, onDone } = {
       const period_end = p.channel === 'email' ? r.stats.to : r.period_end || null;
       for (let i = 0; i < r.rows.length; i += CHUNK) {
         const chunk = r.rows.slice(i, i + CHUNK);
-        const res = await ctx.api.post('uploads', { channel: p.channel, kind: p.kind, file_name: p.file, period_start, period_end, columns: r.columns, rows: chunk, notes: p.channel === 'email' ? r.campaign : undefined, upload_id: upload_id || undefined, final: i + CHUNK >= r.rows.length });
+        const res = await ctx.api.post('uploads', { channel: p.channel, platform: p.channel === 'email' ? undefined : (p.platform || 'linkedin'), kind: p.kind, file_name: p.file, period_start, period_end, columns: r.columns, rows: chunk, notes: p.channel === 'email' ? r.campaign : undefined, upload_id: upload_id || undefined, final: i + CHUNK >= r.rows.length });
         upload_id = upload_id || res.upload_id; sent += chunk.length;
         p.progress = `${fmt(sent)} of ${fmt(r.rows.length)} rows`; drawPending();
       }
@@ -112,10 +117,10 @@ export async function mountUploader(body, ctx, { channel, isEditor, onDone } = {
   async function drawList() {
     const list = body.querySelector('#list'); if (!list) return;
     try {
-      const { uploads } = await ctx.api.get('uploads', { channel });
+      const { uploads } = await ctx.api.get('uploads', { channel, platform: platform || undefined });
       if (!uploads || !uploads.length) { list.innerHTML = '<p class="muted" style="font-size:13px">Nothing uploaded yet.</p>'; return; }
       list.innerHTML = ctx.ui.table({ cols: [
-        { h: 'Tab', k: 'channel', left: true, f: u => ctx.ui.pill(u.channel === 'email' ? 'Email' : u.kind === 'performance' ? 'Ads · performance' : 'Ads · demographics', u.channel === 'email' ? 'p-med' : u.kind === 'performance' ? 'p-high' : 'p-low') },
+        { h: 'Tab', k: 'channel', left: true, f: u => ctx.ui.pill(u.channel === 'email' ? 'Email' : u.kind === 'performance' ? `Ads · ${PLATFORM_LABEL[u.platform || 'linkedin'] || u.platform}` : 'Ads · LinkedIn demographics', u.channel === 'email' ? 'p-med' : u.kind === 'performance' ? 'p-high' : 'p-low') },
         { h: 'Campaign / window', k: 'w', left: true, f: u => u.channel === 'email' ? `${esc(campaignLabel(u.notes || ''))}<br><span class="muted" style="font-size:11.5px">${u.period_start ? esc(ctx.fmt.rangeLabel(u.period_start, u.period_end)) : ''}</span>` : u.period_start ? esc(ctx.fmt.rangeLabel(u.period_start, u.period_end)) : '<span class="muted">per day</span>' },
         { h: 'Rows', k: 'row_count', f: u => fmt(u.row_count) },
         { h: 'File', k: 'file_name', left: true, f: u => `<span class="mono">${esc(u.file_name || '')}</span>` },

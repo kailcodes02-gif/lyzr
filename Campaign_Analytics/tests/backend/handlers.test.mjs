@@ -189,7 +189,7 @@ test('settings GET: seeds merged under ca_settings rows', async () => {
   const r = await run(settings.onRequestGet, req('GET', 'settings', { token: 'tok-viewer' }), w)
   assert.equal(r.status, 200)
   const b = r.body
-  assert.deepEqual(Object.keys(b).sort(), ['accounts', 'bands', 'db', 'editors', 'email_rules', 'gsi_companies', 'icp_pool', 'regions', 'source', 'targets', 'updated_at'])
+  assert.deepEqual(Object.keys(b).sort(), ['accounts', 'bands', 'contact_lists', 'db', 'editors', 'email_rules', 'gsi_companies', 'icp_pool', 'regions', 'source', 'targets', 'updated_at'])
   assert.deepEqual(b.targets, { leads_per_month: 250, demo_mqls_per_month: 30, frequency: 3.5, reach_frequency: 3 })
   assert.equal(b.source.targets, 'db')
   assert.equal(b.source.accounts, 'seed')
@@ -233,7 +233,8 @@ test('uploads POST: creates the upload, coerces rows, upserts in batches of 500,
   assert.equal(r.body.skipped, 2)
   const perfPosts = w.calls.filter((c) => c.method === 'POST' && c.url.includes('ca_li_perf'))
   assert.deepEqual(perfPosts.map((c) => c.body.length), [500, 500, 203])
-  assert.ok(perfPosts[0].url.includes('on_conflict=day%2Ccampaign_id%2Cad_id'))
+  assert.ok(perfPosts[0].url.includes('on_conflict=platform%2Cday%2Ccampaign_id%2Cad_id'))
+  assert.equal(perfPosts[0].body[0].platform, 'linkedin')
   const first = perfPosts[0].body.find((x) => x.ad_id === 'a0')
   assert.equal(first.impressions, 999)
   assert.equal(first.clicks, 0)
@@ -258,7 +259,7 @@ test('uploads POST: creates the upload, coerces rows, upserts in batches of 500,
 })
 
 test('uploads POST demographics: replaces an upload with the same window, and validates rows', async () => {
-  const w = world({ tables: { ca_uploads: [{ id: 'old-1', channel: 'linkedin', kind: 'demographics', period_start: '2026-09-01', period_end: '2026-09-14' }] } })
+  const w = world({ tables: { ca_uploads: [{ id: 'old-1', channel: 'linkedin', kind: 'demographics', platform: 'linkedin', period_start: '2026-09-01', period_end: '2026-09-14' }] } })
   const rows = [
     { segment: 'Company', value: 'Accenture', campaign: 'GSI', impressions: '120', clicks: '4' },
     { segment: 'Company', value: 'Accenture', campaign: 'GSI', impressions: '130', clicks: '5' },
@@ -295,12 +296,12 @@ test('uploads GET and DELETE', async () => {
 test('linkedin GET: perf in range, demo uploads that overlap, all uploads', async () => {
   const w = world({ tables: {
     ca_uploads: [
-      { id: 'd1', channel: 'linkedin', kind: 'demographics', period_start: '2026-09-01', period_end: '2026-09-14' },
-      { id: 'd2', channel: 'linkedin', kind: 'demographics', period_start: '2026-09-15', period_end: '2026-09-28' },
-      { id: 'd3', channel: 'linkedin', kind: 'demographics', period_start: '2026-08-01', period_end: '2026-08-14' },
-      { id: 'p1', channel: 'linkedin', kind: 'performance', period_start: '2026-09-01', period_end: '2026-09-28' },
+      { id: 'd1', channel: 'linkedin', kind: 'demographics', platform: 'linkedin', period_start: '2026-09-01', period_end: '2026-09-14' },
+      { id: 'd2', channel: 'linkedin', kind: 'demographics', platform: 'linkedin', period_start: '2026-09-15', period_end: '2026-09-28' },
+      { id: 'd3', channel: 'linkedin', kind: 'demographics', platform: 'linkedin', period_start: '2026-08-01', period_end: '2026-08-14' },
+      { id: 'p1', channel: 'linkedin', kind: 'performance', platform: 'linkedin', period_start: '2026-09-01', period_end: '2026-09-28' },
     ],
-    ca_li_perf: [{ day: '2026-09-10', campaign_id: 'c', ad_id: 'a', impressions: 5 }],
+    ca_li_perf: [{ platform: 'linkedin', day: '2026-09-10', campaign_id: 'c', ad_id: 'a', impressions: 5 }],
     ca_li_demo: [{ id: 1, upload_id: 'd1', segment: 'Company', value: 'EY' }, { id: 2, upload_id: 'd2', segment: 'Company', value: 'PwC' }, { id: 3, upload_id: 'd3', segment: 'Company', value: 'Old' }],
   } })
   let r = await run(linkedin.onRequestGet, req('GET', 'linkedin?from=2026-09-10&to=2026-09-20', { token: 'tok-viewer' }), w)
@@ -583,7 +584,7 @@ test('uploads POST events: email channel, normalised rows, idempotent key', asyn
 test('email GET: compact pages, first page carries uploads and the API mirror', async () => {
   const ev = (i) => ({ campaign: i % 2 ? 'A' : 'B', contact: `p${i}@x.example`, step: 1, event: 'sent', ts: `2026-09-01T04:00:${String(i % 60).padStart(2, '0')}Z`, sender: 's@x.example', link: '', lag_s: null })
   const all = Array.from({ length: 1500 }, (_, i) => ev(i))
-  const w = world({ tables: { ca_settings: [], ca_uploads: [{ id: 'u1', channel: 'email' }], ca_em_campaigns: [{ id: 'c1', name: 'A' }], ca_em_daily: [{ campaign_id: 'c1', day: '2026-09-01', sent: 3 }], ca_em_sync: [] },
+  const w = world({ tables: { ca_settings: [], ca_uploads: [{ id: 'u1', channel: 'email' }], ca_em_campaigns: [{ id: 'c1', name: 'A', gsi: true, sent: 120, contacted: 40 }, { id: 'w1', name: 'Other workspace campaign', gsi: false, sent: 880, contacted: 300 }], ca_em_daily: [{ campaign_id: 'c1', day: '2026-09-01', sent: 3 }], ca_em_sync: [] },
     postgrest: ({ table, method, u }) => {
       if (table === 'ca_em_events' && method === 'GET') { const off = Number(u.searchParams.get('offset') || 0), lim = Number(u.searchParams.get('limit')); return new Response(JSON.stringify(all.slice(off, off + lim)), { headers: { 'content-type': 'application/json' } }) }
     } })
@@ -594,7 +595,9 @@ test('email GET: compact pages, first page carries uploads and the API mirror', 
   assert.equal(r.body.next, null)
   assert.deepEqual(r.body.campaigns.sort(), ['A', 'B'])
   assert.equal(r.body.events[0].length, 8)
-  assert.equal(r.body.api.campaigns.length, 1)
+  assert.equal(r.body.api.campaigns.length, 2, 'every workspace campaign is returned, with its gsi flag')
+  assert.deepEqual(r.body.api.campaigns.map((c) => c.gsi), [true, false])
+  assert.deepEqual(r.body.api.workspace, { sent: 1000, contacted: 340, campaigns: 2, gsi_campaigns: 1 })
   assert.equal(r.body.api.configured, true)
   const r2 = await run(email.onRequestGet, req('GET', 'email?offset=1000'), w)
   assert.equal(r2.body.events.length, 500)
@@ -621,13 +624,13 @@ test('actions: anyone signed in can add and tick off, only editors delete', asyn
   assert.equal((await run(actions.onRequestDelete, req('DELETE', 'actions?id=' + id), w)).status, 200)
 })
 
-test('instantly sync: GSI tag, totals joined by id, daily rows in batches, cron secret, read-only', async () => {
+test('instantly sync: GSI tag, totals joined by id, whole workspace stored with gsi flag, daily rows for GSI only, cron secret, read-only', async () => {
   const daily = (id) => [{ date: '2026-09-20', sent: 30, contacted: 30, new_leads_contacted: 10, unique_opened: 3, unique_replies: 1, unique_clicks: 2, unique_opportunities: 0 }]
   const w = world({ tables: { ca_settings: [], ca_em_sync: [] }, instantly: ({ url, method }) => {
     assert.equal(method, 'GET', 'never writes to Instantly')
     const j = (b) => new Response(JSON.stringify(b), { headers: { 'content-type': 'application/json' } })
     if (url.includes('/campaigns?tag_ids=')) return j({ items: Array.from({ length: 25 }, (_, i) => ({ id: 'c' + i, name: 'GSI_' + i, status: 1, timestamp_created: '2026-09-01T00:00:00Z' })) })
-    if (url.endsWith('/campaigns/analytics')) return j([{ campaign_id: 'c0', emails_sent_count: 100, contacted_count: 50, reply_count_unique: 2, bounced_count: 1 }, { campaign_id: 'other', emails_sent_count: 9 }])
+    if (url.endsWith('/campaigns/analytics')) return j([{ campaign_id: 'c0', emails_sent_count: 100, contacted_count: 50, reply_count_unique: 2, bounced_count: 1 }, { campaign_id: 'other', campaign_name: 'Not GSI', campaign_status: 2, emails_sent_count: 9, leads_count: 40, contacted_count: 9 }])
     if (url.includes('/campaigns/analytics/daily')) return j(daily())
     throw new Error('unexpected ' + url)
   } })
@@ -638,9 +641,14 @@ test('instantly sync: GSI tag, totals joined by id, daily rows in batches, cron 
   const a = await run(isync.onRequestPost, cronReq({}), w)
   assert.equal(a.status, 200)
   assert.equal(a.body.campaigns, 25)
+  assert.equal(a.body.workspace_campaigns, 26)
   const up = w.calls.find((c) => c.url.includes('/ca_em_campaigns') && c.method === 'POST')
-  assert.equal(up.body.length, 25)
+  assert.equal(up.body.length, 26, 'GSI campaigns plus the rest of the workspace')
   assert.deepEqual([up.body[0].sent, up.body[0].contacted, up.body[0].replied_unique, up.body[1].sent], [100, 50, 2, 0])
+  assert.ok(up.body.slice(0, 25).every((c) => c.gsi === true))
+  assert.deepEqual([up.body[25].id, up.body[25].name, up.body[25].status, up.body[25].gsi, up.body[25].sent, up.body[25].leads_count], ['other', 'Not GSI', 2, false, 9, 40])
+  assert.equal(a.body.cursor.queue.length, 25, 'only GSI campaigns get daily rows')
+  assert.ok(!a.body.cursor.queue.some((q) => q.id === 'other'))
   const b = await run(isync.onRequestPost, cronReq({ cursor: a.body.cursor }), w)
   assert.equal(b.body.done, false)
   assert.equal(b.body.progress.done, isync.DAILY_BUDGET)

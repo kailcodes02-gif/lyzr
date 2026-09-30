@@ -1,4 +1,4 @@
-// GET /api/ca/health -> { ok, db, hubspot, claude, instantly, cron, user }
+// GET /api/ca/health -> { ok, db, hubspot, claude, instantly, phantom, cron, user }
 // db = env present and one cheap select works; hubspot / claude = env present only.
 
 import { json, handle } from './_lib/http.js'
@@ -24,6 +24,7 @@ export const onRequestGet = handle(async ({ request, env }) => {
   const hubspot = Boolean(env.HUBSPOT_ACCESS_TOKEN)
   const claude = Boolean(env.ANTHROPIC_API_KEY)
   const instantly = Boolean(env.INSTANTLY_API_KEY)
+  const phantom = Boolean(env.PHANTOMBUSTER_API_KEY)
   return json({
     ok: dbOk && hubspot && claude,
     db: dbOk,
@@ -31,6 +32,7 @@ export const onRequestGet = handle(async ({ request, env }) => {
     hubspot,
     claude,
     instantly,
+    phantom,
     cron: Boolean(env.CA_CRON_SECRET),
     user,
   })

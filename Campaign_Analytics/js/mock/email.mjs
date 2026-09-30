@@ -1,4 +1,5 @@
-// Demo-mode email data: synthetic Instantly events shaped like the GSI sequences of Jul to Sep 2026.
+// Demo-mode email data: synthetic Instantly events shaped like the GSI sequences of Jul to Sep 2026,
+// plus a few non-GSI campaigns (totals only) so the workspace share has something to show.
 // Every person and domain is made up (".example" domains). Deterministic (seeded) so the demo is stable.
 const CAMPAIGNS = [
   ['TCS - US - July', '2026-07-07', 'tcs', 380, 5, .08, .5, 'direct'],
@@ -12,6 +13,16 @@ const CAMPAIGNS = [
   ['GSI_Sep_D_Indian_SIs_Cold', '2026-09-04', 'indian', 700, 4, .012, .6, 'via'],
   ['GSI_Sep_D_Big4_Cold', '2026-09-05', 'big4', 420, 4, .006, .45, 'via'],
   ['GSI_Sep_D_Firstsource_Cold', '2026-09-04', 'firstsource', 181, 3, 0, 0, 'via'],
+];
+// Campaigns in the same Instantly workspace that are not tagged GSI: totals only, no events, no daily rows.
+// [name, start, status, leads, contacted, sent, opened, clicked, replied, bounced]
+const OTHER_CAMPAIGNS = [
+  ['Fintech CFO Outreach Q3', '2026-07-14', 1, 4200, 3350, 9870, 1240, 61, 38, 41],
+  ['Healthcare CIO Agents', '2026-08-03', 1, 3600, 2410, 6120, 980, 44, 22, 29],
+  ['Retail Ops Automation', '2026-06-22', 3, 2800, 2800, 8400, 1330, 72, 31, 33],
+  ['Insurance Claims AI', '2026-08-18', 1, 5100, 1980, 3960, 610, 27, 12, 24],
+  ['Manufacturing Plant Leaders', '2026-07-28', 2, 2200, 1640, 4270, 520, 19, 9, 18],
+  ['SaaS Founders Agent Studio', '2026-09-08', 1, 6400, 2210, 3310, 700, 58, 17, 20],
 ];
 const DOMAINS = {
   tcs: ['tcs.example'], deloitte: ['deloitte.example'], firstsource: ['firstsource.example'],
@@ -73,9 +84,13 @@ export function buildEmailMock(today = '2026-09-30') {
     });
     api.push({ id, name, status: start >= '2026-09-01' ? 1 : 3, gsi: true, leads_count: n, contacted: n, sent, new_leads_contacted: n, opened_unique: opened, clicked_unique: clicked, replied_unique: replies, replies_automatic: Math.round(n * .02), bounced: Math.round(n * .01), unsubscribed: 0, completed: start >= '2026-09-01' ? Math.round(n * .4) : n, opportunities: Math.round(replies * .3), created_at: start + 'T00:00:00Z', synced_at: today + 'T01:30:00Z' });
   });
+  OTHER_CAMPAIGNS.forEach(([name, start, status, leads, contacted, sent, opened, clicked, replied, bounced], i) => {
+    api.push({ id: 'ws-' + (i + 1), name, status, gsi: false, leads_count: leads, contacted, sent, new_leads_contacted: contacted, opened_unique: opened, clicked_unique: clicked, replied_unique: replied, replies_automatic: Math.round(contacted * .015), bounced, unsubscribed: Math.round(contacted * .004), completed: status === 3 ? contacted : Math.round(contacted * .5), opportunities: Math.round(replied * .2), created_at: start + 'T00:00:00Z', synced_at: today + 'T01:30:00Z' });
+  });
+  const workspace = { sent: api.reduce((a, c) => a + c.sent, 0), contacted: api.reduce((a, c) => a + c.contacted, 0), campaigns: api.length, gsi_campaigns: api.filter(c => c.gsi).length };
   events.sort((a, b) => a.ts < b.ts ? -1 : 1);
   const uploads = CAMPAIGNS.filter(c => c[6] || c[0].includes('Firstsource')).map((c, i) => ({ id: 'em' + i, channel: 'email', kind: 'events', file_name: `${c[0]}_analytics_29_09_2026, 10_00_00.csv`, uploaded_by: 'demo@lyzr.com', uploaded_at: '2026-09-29T05:00:00.000Z', period_start: c[1], period_end: today, row_count: events.filter(e => e.campaign === c[0]).length, notes: c[0] }));
-  return { events, api: { campaigns: api, daily: [...daily.values()].sort((a, b) => a.day < b.day ? -1 : 1), last_sync: { status: 'done', started_at: today + 'T01:29:00Z', finished_at: today + 'T01:30:00Z', campaigns: api.length }, configured: true }, uploads };
+  return { events, api: { campaigns: api, daily: [...daily.values()].sort((a, b) => a.day < b.day ? -1 : 1), workspace, last_sync: { status: 'done', started_at: today + 'T01:29:00Z', finished_at: today + 'T01:30:00Z', campaigns: workspace.gsi_campaigns }, configured: true }, uploads };
 }
 
 /** Same compact page shape as GET /api/ca/email. */

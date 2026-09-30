@@ -22,7 +22,7 @@ export async function render(el, ctx) {
   draw();
 }
 
-const TAB_RENDER = { email: emailRulesTab, gsi: async (b, c, e) => { const top = document.createElement('div'); const extra = document.createElement('div'); b.append(top, extra); await settingTab(top, c, e, 'accounts'); await gsiTab(extra, c, e); }, regions: (b, c, e) => settingTab(b, c, e, 'regions'), icp: (b, c, e) => settingTab(b, c, e, 'icp_pool'), targets: (b, c, e) => settingTab(b, c, e, 'targets'), editors: (b, c, e) => settingTab(b, c, e, 'editors'), connection: connectionTab };
+const TAB_RENDER = { email: emailRulesTab, gsi: async (b, c, e) => { const top = document.createElement('div'); const extra = document.createElement('div'); b.append(top, extra); await settingTab(top, c, e, 'accounts'); await gsiTab(extra, c, e); }, regions: (b, c, e) => settingTab(b, c, e, 'regions'), icp: (b, c, e) => settingTab(b, c, e, 'icp_pool'), targets: async (b, c, e) => { const top = document.createElement('div'); const extra = document.createElement('div'); b.append(top, extra); await settingTab(top, c, e, 'targets'); await settingTab(extra, c, e, 'contact_lists'); }, editors: (b, c, e) => settingTab(b, c, e, 'editors'), connection: connectionTab };
 
 // ---------------- generic setting tabs ----------------
 const META = {
@@ -30,6 +30,7 @@ const META = {
   regions: { title: 'Regions', sub: 'Which countries roll up into which region. Used wherever a page groups by region: leads by region, where the ads land. A country that is in no list shows as Other.' },
   icp_pool: { title: 'Reach pools', sub: 'How many people work at each account, by country and band (Apollo headcounts). The LinkedIn page divides people reached by these numbers to show how much of each account the ads cover.' },
   targets: { title: 'Targets', sub: 'Monthly goals the Overview compares the current pace against, and two divisors that turn LinkedIn impressions into people: reach heat maps use impressions ÷ 3, penetration uses impressions ÷ 3.5 (people reached = impressions divided by the divisor).' },
+  contact_lists: { title: 'Contact list sizes', sub: 'How many contacts each account has in the LinkedIn custom lists, as { "Account name": number }. Used by Ads › LinkedIn › Reach vs contacts by company. Optional.' },
   editors: { title: 'Editors', sub: 'People allowed to upload files, change these lists and run pulls. Everyone else at Lyzr can view.' },
 };
 function readable(key, value, ctx) {
@@ -101,14 +102,17 @@ async function connectionTab(body, ctx) {
     ${row('HubSpot (read-only)', h.hubspot, 'Set HUBSPOT_ACCESS_TOKEN (private app token) on the Pages site.')}
     ${row('Claude (AI panels)', h.claude, 'Set ANTHROPIC_API_KEY on the Pages site. Until then the AI panels show "Generate" but return an error.')}
     ${row('Instantly API (daily campaign pull)', h.instantly, 'Set INSTANTLY_API_KEY on the Pages site (already used by the GSI Tracker weekly report).')}
+    ${row('PhantomBuster API (LinkedIn automation pull)', h.phantom, 'Set PHANTOMBUSTER_API_KEY on the Pages site (Org settings › API keys in PhantomBuster). Read-only.')}
     ${row('Daily schedule', h.cron, 'Set CA_CRON_SECRET on the Pages site and the same value as a GitHub Actions secret; .github/workflows/ca-daily-pull.yml runs the pull every morning at 07:00 IST.')}
     </tbody></table></div>
     ${h.error ? `<p class="err" style="margin-top:10px">Health check failed: ${esc(h.error)}</p>` : ''}
     <h3 style="margin-top:22px">Pull now</h3>
-    <p class="muted" style="font-size:13px;margin-bottom:10px">Everything below also runs by itself every morning at 07:00 IST. Use these to pull straight away. Pulls only read from Instantly and HubSpot; nothing is written back.</p>
+    <p class="muted" style="font-size:13px;margin-bottom:10px">Everything below also runs by itself every morning at 07:00 IST. Use these to pull straight away. Pulls only read from Instantly, HubSpot and PhantomBuster; nothing is written back.</p>
     <div class="grid g3">
       <div class="card"><div class="ui-label">Instantly</div><p style="margin:6px 0 10px;font-size:13px">Every GSI-tagged campaign, full history: sends, opens, clicks, replies, bounces, opportunities per day.</p><button class="btn" data-pull="instantly">Pull Instantly now</button><p class="muted" data-out="instantly" style="font-size:12.5px;margin-top:8px"></p></div>
       <div class="card"><div class="ui-label">HubSpot</div><p style="margin:6px 0 10px;font-size:13px">GSI leads (form submitters at GSI accounts), their owner, status, notes and activity, then Claude reads any new message.</p><button class="btn" data-pull="hubspot">Pull HubSpot now</button><p class="muted" data-out="hubspot" style="font-size:12.5px;margin-top:8px"></p></div>
+      <div class="card"><div class="ui-label">PhantomBuster</div><p style="margin:6px 0 10px;font-size:13px">Every LinkedIn outreach phantom: invites, acceptances, messages and replies per run, rolled up by day.</p><button class="btn" data-pull="phantom">Pull PhantomBuster now</button><p class="muted" data-out="phantom" style="font-size:12.5px;margin-top:8px"></p></div>
+      <div class="card"><div class="ui-label">HubSpot deals</div><p style="margin:6px 0 10px;font-size:13px">Open and closed deals at GSI accounts: stage, amount, owner, close date, with a weekly snapshot for "what changed".</p><button class="btn" data-pull="deals">Pull deals now</button><p class="muted" data-out="deals" style="font-size:12.5px;margin-top:8px"></p></div>
       <div class="card"><div class="ui-label">Messages</div><p style="margin:6px 0 10px;font-size:13px">Only the Claude step: read lead messages that have not been read yet (Sonnet 5, once per message).</p><button class="btn" data-pull="messages">Read new messages now</button><p class="muted" data-out="messages" style="font-size:12.5px;margin-top:8px"></p></div>
     </div>
     <div class="grid g2" style="margin-top:16px">
@@ -122,6 +126,8 @@ async function connectionTab(body, ctx) {
     const loop = async (path, label, show) => { let cursor = null; for (let i = 0; i < 500; i++) { const r = await ctx.api.post(path, cursor ? { cursor } : {}); out.textContent = `${label}: ${show(r)}`; if (r.done) return r; cursor = r.cursor || null; } };
     try {
       if (kind === 'instantly') await loop('instantly/sync', 'Instantly', r => `${r.campaigns} campaigns, ${r.days} daily rows${r.progress ? ` (${r.progress.done} of ${r.progress.total})` : ''}`);
+      if (kind === 'phantom') await loop('phantom/sync', 'PhantomBuster', r => `${r.agents} phantoms, ${r.runs} runs${r.progress ? ` · ${r.progress.phase} ${r.progress.done} of ${r.progress.total}` : ''}`);
+      if (kind === 'deals') await loop('hubspot/deals-sync', 'HubSpot deals', r => `${r.deals ?? 0} deals, ${r.changes ?? 0} changes${r.progress ? ` · ${r.progress.phase || ''} ${r.progress.done} of ${r.progress.total}` : ''}`);
       if (kind === 'hubspot') await loop('hubspot/refresh', 'HubSpot', r => `${r.contacts} leads, ${r.notes} notes${r.progress ? ` · ${r.progress.phase} ${r.progress.done} of ${r.progress.total}` : ''}`);
       if (kind === 'hubspot' || kind === 'messages') { let n = 0; for (let i = 0; i < 300; i++) { const r = await ctx.api.post('hubspot/classify', {}); n += r.classified || 0; out.textContent = `Claude has read ${n} message${n === 1 ? '' : 's'}${r.done ? ', all done' : '…'}`; if (r.done) break; } }
       ctx.toast('Pull finished.');

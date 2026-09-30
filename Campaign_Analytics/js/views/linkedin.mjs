@@ -7,6 +7,7 @@ export const title = 'Ads · LinkedIn';
 
 const C = { orange: '#FE4B1E', navy: '#043E77', forest: '#063B28', oxblood: '#593D3D', stone: '#A8A298', g300: '#CFCCC7' };
 const STAGE_COLOR = { ToFu: C.stone, MoFu: C.orange, BoFu: C.navy, Other: C.g300 };
+const APPROACH_COLOR = { 'Custom list': C.orange, Native: C.navy, Combined: '#1F2022', Retargeting: '#6B675F', Other: C.stone };
 const METRIC_LABEL = { impressions: 'Impressions', clicks: 'Clicks', spend: 'Spend', sends: 'Sends', opens: 'Opens', leads: 'Leads' };
 let charts = [], trendX = null;
 export function destroy() { for (const c of charts) { try { c.destroy(); } catch { /* ignore */ } } charts = []; if (trendX) { trendX.destroy(); trendX = null; } }
@@ -27,6 +28,7 @@ export async function render(el, ctx) {
   const S = ctx.settings || {};
   const accounts = Array.isArray(S.accounts) ? S.accounts : [], bands = S.bands || {}, icp_pool = Array.isArray(S.icp_pool) ? S.icp_pool : [], regions = S.regions || {}, stages = S.stages || undefined;
   const frequency = Number((S.targets || {}).frequency) || 3.5;
+  const rf = Number((S.targets || {}).reach_frequency) || 3; // impressions per person for the reach estimates
   const perf = (data.perf || []).filter(r => r.day >= from && r.day <= to);
   const prevPerf = (prevData && prevData.perf) || [];
   const windows = [...(data.demo || [])].sort((a, b) => a.upload.period_start < b.upload.period_start ? -1 : 1);
@@ -57,6 +59,15 @@ export async function render(el, ctx) {
   const winLabel = w => `${F.dayLabel(w.upload.period_start)} to ${F.dayLabel(w.upload.period_end)}`;
   const dl = (cur, prevV, invert = false) => { if (!prev) return '<span class="muted">no comparison</span>'; if (prevV == null || !prevV || cur == null) return '<span class="muted">nothing to compare</span>'; const g = (cur - prevV) / prevV * 100; const good = invert ? g <= 0 : g >= 0; return `<span class="${good ? 'up' : 'down'}">${g > 0 ? '+' : ''}${fmt(g, 0)}%</span> vs ${esc(prev.label)}`; };
   const topSet = P.programs.flatMap(p => p.campaigns).filter(c => c.leads > 0).sort((a, b) => b.leads - a.leads)[0];
+  // White Path sections: ad sets, targeting approach, senders, creative reach, company splits.
+  const sets = A.adSets(perf, { to, prevRows: prev ? prevPerf : null });
+  const SC = A.scorecard(sets);
+  const senders = A.messagingBySender(perf);
+  const CA = A.creativeAudience(perf, demoRows);
+  const ACS = A.assetCompanySplit(demoRows, accounts);
+  const RC = A.reachVsContacts(demoRows, accounts, { contact_lists: S.contact_lists, frequency: rf });
+  // Compact delta under a table figure (spend, leads, CPL) against the comparison range.
+  const sd = (cur, prevV, invert = false) => { if (!prev) return ''; if (prevV == null || !prevV || cur == null) return `<br><span class="muted" style="font-size:11px">${cur && !prevV ? 'new' : '–'}</span>`; const g = (cur - prevV) / prevV * 100; const good = invert ? g <= 0 : g >= 0; return `<br><span class="${good ? 'up' : 'down'}" style="font-size:11px" title="${esc(prev.label)}: ${invert ? usd(prevV) : fmt(prevV)}">${g > 0 ? '+' : ''}${fmt(g, 0)}%</span>`; };
 
   // ---- page ----
   let h = `<div class="seghead">Ads · LinkedIn</div><h1>LinkedIn ads</h1>
@@ -102,7 +113,6 @@ export async function render(el, ctx) {
   h += ctx.ui.section('Week on week and month on month', 'The whole history of uploaded performance data (the selected range is the darker bars). Switch metrics on and off, compare with the previous week or month or with the average of all earlier ones, and see the week or month in progress against the same days of earlier ones, with a straight-line projection.', `<div id="trendX"></div>`);
 
   // 3a. reach heat maps: impressions ÷ reach_frequency (default 3) = people
-  const rf = Number((S.targets || {}).reach_frequency) || 3;
   h += ctx.ui.section('Reach: people by account, designation and region', `Estimated people reached, counting ${fmt(rf, 1)} impressions as one person (Admin › Targets). Columns are the demographics export windows in the selected dates; the last columns total them and compare with ${prev ? esc(prev.label) : 'nothing (pick a comparison at the top)'}. A person seen in two windows counts twice.`, `<div id="reachSeg"></div><div class="card"><div class="tblwrap" style="border:none" id="reachHeat"></div>${ctx.heat.legend('orange', 'square-root scale on the current windows')}</div>`);
 
   // 3b. reach quality over time
@@ -122,6 +132,38 @@ export async function render(el, ctx) {
   // 6. ads
   const topAds = ads.slice(0, 12);
   h += ctx.ui.section('Ads and creatives', 'Which creatives produced leads, ranked by leads then cost per lead. Concentration on one asset is the thing to watch.', `<div class="grid g2"><div class="card"><h3>Top creatives, leads and spend</h3><div class="chartbox tall"><canvas id="adChart"></canvas></div></div><div class="card pad0"><div class="tblwrap" style="border:none"><table><thead><tr><th class="l">Creative</th><th>Spend</th><th>Impr.</th><th>CTR</th><th>Leads</th><th>CPL</th></tr></thead><tbody>${topAds.map(a => `<tr><td class="l" style="white-space:normal;min-width:220px">${esc(a.ad_name)}<br><span class="muted" style="font-size:12px">${esc(shortName(a.campaign || ''))}${a.format ? ' · ' + esc(a.format) : ''}</span></td><td>${usd(a.spend)}</td><td>${a.impressions ? fmt(a.impressions) : (a.sends ? fmt(a.sends) + ' sends' : '–')}</td><td>${pct(a.ctr, 2)}</td><td>${fmt(a.leads)}</td><td>${usd(a.cpl)}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">No ads in range</td></tr>'}</tbody></table></div></div></div>`);
+
+  // 6a. ad set performance
+  h += ctx.ui.section('Ad set performance', `Every ad set in the range, largest spend first. Active means it spent in the last 7 days of the range (${esc(F.dayLabel(A.addDays(to, -6)))} to ${esc(F.dayLabel(to))}); otherwise Paused. CPM and CTR need impressions, so message ad sets show sends and open rate instead.${prev ? ` The small figures under spend, leads and CPL compare with ${esc(prev.label)}.` : ''}`,
+    `<div class="tblwrap"><table><thead><tr><th class="l">Ad set</th><th>Status</th><th class="l">Approach</th><th>Spend</th><th>Reach</th><th>Impressions</th><th>CPM</th><th>CTR</th><th>Clicks</th><th>Leads</th><th>Sends</th><th>Open rate</th><th>CPL</th></tr></thead><tbody>${sets.map(s => `<tr><td class="l" style="white-space:normal;min-width:220px">${esc(shortName(s.name, 60))}<br><span class="muted" style="font-size:12px">${esc(shortName(s.campaign_group || '', 50))}</span></td><td>${ctx.ui.pill(s.status, s.status === 'Active' ? 'p-high' : 'p-na')}</td><td class="l">${esc(s.approach)}</td><td>${usd(s.spend)}${sd(s.spend, s.prev && s.prev.spend)}</td><td>${s.reach ? fmt(s.reach) : '–'}</td><td>${s.impressions ? fmt(s.impressions) : '–'}</td><td>${usd(s.cpm, 2)}</td><td>${pct(s.ctr, 2)}</td><td>${fmt(s.clicks)}</td><td>${fmt(s.leads)}${sd(s.leads, s.prev && s.prev.leads)}</td><td>${s.sends ? fmt(s.sends) : '–'}</td><td>${pct(s.open_rate, 1)}</td><td>${usd(s.cpl)}${sd(s.cpl, s.prev && s.prev.cpl, true)}</td></tr>`).join('') || '<tr><td colspan="13" class="muted">No ad sets in range</td></tr>'}</tbody></table></div>`);
+
+  // 6b. targeting scorecard
+  const maxCpm = Math.max(1, ...SC.rows.map(r => r.cpm || 0));
+  const gradeCls = g => g === 'A' ? 'p-high' : g === 'B' ? 'p-med' : 'p-low';
+  h += ctx.ui.section('Targeting scorecard', `Ad sets grouped by the targeting approach written in their name: Custom list (custom, list, upload, matched, ABM), Native (native, heatmap, seniority, title, function), Combined (combined, mix, +), Retargeting (retarget, website, visit, engage), else Other. Grade A = CTR at or above the median (${pct(SC.median_ctr, 2)}) and CPM at or below it (${usd(SC.median_cpm, 2)}); B = one of the two; C = neither.`,
+    `<div class="tblwrap"><table><thead><tr><th class="l">Approach</th><th>Sets</th><th>Spend</th><th>Impressions</th><th>CTR</th><th class="l">CPM</th><th>Leads</th><th>CPL</th><th>Grade</th><th class="l">Verdict</th></tr></thead><tbody>${SC.rows.map(r => `<tr><td class="l"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${APPROACH_COLOR[r.approach]};margin-right:6px;vertical-align:-1px"></span><b>${esc(r.approach)}</b></td><td>${fmt(r.sets)}</td><td>${usd(r.spend)}</td><td>${r.impressions ? fmt(r.impressions) : (r.sends ? fmt(r.sends) + ' sends' : '–')}</td><td>${pct(r.ctr, 2)}</td><td class="l" style="min-width:170px">${r.cpm != null ? `<div style="display:flex;align-items:center;gap:8px"><div style="flex:none;width:90px;height:8px;background:var(--fill);border-radius:4px;overflow:hidden"><div style="width:${Math.round(r.cpm / maxCpm * 100)}%;height:100%;background:${C.navy}"></div></div><span>${usd(r.cpm, 2)}</span></div>` : '–'}</td><td>${fmt(r.leads)}</td><td>${usd(r.cpl)}</td><td>${r.grade ? ctx.ui.pill(r.grade, gradeCls(r.grade)) : '<span class="muted">n/a</span>'}</td><td class="l" style="white-space:normal;min-width:280px;font-size:13px">${esc(r.verdict)}</td></tr>`).join('') || '<tr><td colspan="10" class="muted">No ad sets in range</td></tr>'}</tbody></table></div>`);
+
+  // 6c. efficiency map
+  h += ctx.ui.section('The efficiency map', 'Each ad set placed by cost per 1,000 impressions (across) and click rate (up). Bubble size is spend, colour is the targeting approach. Top left is the best corner: cheap reach that people click. Message ad sets have no impressions and are left out.', `<div class="card"><div class="chartbox tall" id="wpEffBox"><canvas id="wpEff"></canvas></div></div>`);
+
+  // 6d. messaging by sender
+  h += ctx.ui.section('Messaging ads by sender', 'Conversation and message ads grouped by the sending profile, read from the ad or ad set name. Open rate is opens over sends; click to open is clicks over opens. Click a sender row to see its ad sets.', senders.length ?
+    `<div class="tblwrap"><table id="wpMsg"><thead><tr><th class="l">Sender / ad set</th><th>Ad sets</th><th>Spend</th><th>Sends</th><th>Opens</th><th>Open rate</th><th>Clicks</th><th>Click to open</th><th>Leads</th><th>CPL</th></tr></thead><tbody>${senders.map((s, i) => `<tr class="wp-sender" data-i="${i}" style="cursor:pointer;background:var(--soft)"><td class="l" style="font-weight:600"><span class="wp-caret" style="display:inline-block;width:14px;color:var(--ink2)">+</span>${esc(s.sender)}</td><td>${fmt(s.sets.length)}</td><td>${usd(s.spend)}</td><td>${fmt(s.sends)}</td><td>${fmt(s.opens)}</td><td>${pct(s.open_rate, 1)}</td><td>${fmt(s.clicks)}</td><td>${pct(s.click_to_open, 1)}</td><td>${fmt(s.leads)}</td><td>${usd(s.cpl)}</td></tr>${s.sets.map(x => `<tr class="wp-set" data-i="${i}" style="display:none"><td class="l" style="padding-left:26px;white-space:normal;min-width:220px">${esc(shortName(x.name, 60))}<br><span class="muted" style="font-size:12px">${esc(shortName(x.ad_name, 60))}</span></td><td></td><td>${usd(x.spend)}</td><td>${fmt(x.sends)}</td><td>${fmt(x.opens)}</td><td>${pct(x.open_rate, 1)}</td><td>${fmt(x.clicks)}</td><td>${pct(x.click_to_open, 1)}</td><td>${fmt(x.leads)}</td><td>${usd(x.cpl)}</td></tr>`).join('')}`).join('')}</tbody></table></div>`
+    : ctx.ui.empty('No message or conversation ads (rows with sends) in this range.'));
+
+  // 6e. creative audience reach
+  const reachList = (items, unit) => items.length ? items.map(t => `<div style="font-size:12.5px;padding:3px 0"><div style="display:flex;justify-content:space-between;gap:8px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.value)}</span><span class="muted" style="flex:none">${fmt(t.impressions)} · ${pct(t.share, 0)}</span></div><div style="height:4px;background:var(--fill);border-radius:2px;margin-top:2px"><div style="width:${Math.min(100, Math.round(t.share))}%;height:100%;background:${C.navy};border-radius:2px"></div></div></div>`).join('') : `<p class="muted" style="font-size:12.5px">No ${unit} rows</p>`;
+  h += ctx.ui.section('Creative audience reach', 'The top creatives by impressions and who saw each one: the top job titles and countries from the demographics rows of the ad set that ran it. LinkedIn demographics only split by ad set when the export carries a campaign column.', (CA.creatives.length ? `${CA.has_split ? '' : `<p class="muted" style="font-size:13px;margin-bottom:8px">The demographics exports in this range have no campaign split, so reach cannot be tied to a creative. Export demographics by campaign and upload them again.</p>`}<div class="grid g2">${CA.creatives.map(c => `<div class="card"><h3 style="white-space:normal">${esc(shortName(c.ad_name, 80))}</h3><p class="muted" style="font-size:12px;margin:2px 0 8px">${esc(shortName(c.campaign || '', 60))}${c.format ? ' · ' + esc(c.format) : ''} · ${c.impressions ? fmt(c.impressions) + ' impressions' : fmt(c.sends) + ' sends'} · ${pct(c.ctr, 2)} CTR · ${fmt(c.leads)} lead${c.leads === 1 ? '' : 's'}</p>${c.has_rows ? `<div class="grid g2" style="gap:14px"><div><div class="ui-label" style="font-size:10.5px;margin-bottom:4px">Top job titles</div>${reachList(c.titles, 'job title')}</div><div><div class="ui-label" style="font-size:10.5px;margin-bottom:4px">Top countries</div>${reachList(c.countries, 'country')}</div></div>` : `<p class="muted" style="font-size:12.5px">${CA.has_split ? 'No demographics rows for this ad set in the included windows.' : 'No campaign split in the demographics exports.'}</p>`}</div>`).join('')}</div>` : ctx.ui.empty('No creatives with impressions in this range.')));
+
+  // 6f. asset x company split
+  h += ctx.ui.section('Asset × company split', 'Which targeting approach put ads in front of which target account, from the demographics rows that carry an ad set (campaign) value. Company pages are matched to the accounts in Settings; pages matching no account are grouped as Other.', ACS.has_split ? `<div id="wpAssetSeg"></div><div class="card"><div class="tblwrap" style="border:none" id="wpAsset"></div>${ctx.heat.legend('navy', 'square-root scale, per metric')}</div>` : ctx.ui.empty('The demographics exports in this range have no campaign split, so impressions cannot be tied to an ad set. Export demographics by campaign and upload them again.'));
+
+  // 6g. reach vs contacts
+  h += ctx.ui.section('Reach vs contacts by company', `Impressions per company from the demographics windows in range, turned into estimated people by counting ${fmt(rf, 1)} impressions as one person (Admin › Targets, reach_frequency). Contacts are the uploaded list sizes per account. A ratio above 1 means the ads reached more people than the list holds, which happens when native targeting is layered on top of a list.`,
+    `${RC.has_contacts ? '' : '<p class="muted" style="font-size:13px;margin-bottom:8px">Add contact list sizes in Admin › Targets as contact_lists</p>'}<div class="tblwrap"><table><thead><tr><th class="l">Company</th><th>Contacts</th><th>Impressions</th><th>Est. reach</th><th>Reach ÷ contacts</th><th>Clicks</th></tr></thead><tbody>${RC.rows.map(r => `<tr><td class="l">${esc(r.company)}${r.company === 'Other pages' ? '<br><span class="muted" style="font-size:11.5px">pages matching no account</span>' : ''}</td><td>${r.contacts != null ? fmt(r.contacts) : '–'}</td><td>${fmt(r.impressions)}</td><td>${fmt(r.est_reach)}</td><td>${r.ratio != null ? fmt(r.ratio, 2) + 'x' : '–'}</td><td>${fmt(r.clicks)}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">No company rows in the demographics windows for this range</td></tr>'}${RC.rows.length ? `<tr class="total"><td class="l">Total</td><td>${RC.total.contacts != null ? fmt(RC.total.contacts) : '–'}</td><td>${fmt(RC.total.impressions)}</td><td>${fmt(RC.total.est_reach)}</td><td>${RC.total.ratio != null ? fmt(RC.total.ratio, 2) + 'x' : '–'}</td><td>${fmt(RC.total.clicks)}</td></tr>` : ''}</tbody></table></div>`);
+
+  // 6h. geography x seniority x audience
+  h += ctx.ui.section('Geography × seniority × audience', 'For each audience (an ad set with its own demographics rows, or all audiences together), where the impressions landed by region and seniority. LinkedIn reports region and seniority as separate lists, so each cell is the region total spread by the seniority mix of the same audience: an estimate, not a count.', windows.length ? `<div id="wpGeoSeg" style="display:flex;gap:14px;flex-wrap:wrap"><div id="wpGeoAud"></div><div id="wpGeoMetric"></div></div><div class="card"><div class="tblwrap" style="border:none" id="wpGeo"></div>${ctx.heat.legend('orange', 'square-root scale on the chosen audience')}</div>` : ctx.ui.empty('No demographics export covers this range. Upload one at the top of this page.'));
 
   // 7. heat maps
   if (!windows.length) {
@@ -243,6 +285,55 @@ export async function render(el, ctx) {
     { label: 'Spend ($)', data: adTop.map(a => Math.round(a.spend)), backgroundColor: C.stone, borderRadius: 4, xAxisID: 'x2' }] },
     options: { indexAxis: 'y', maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { afterBody: it => { const a = adTop[it[0].dataIndex]; return 'CPL: ' + (a.leads ? usd(a.cpl) : 'no leads') + '\nImpressions: ' + fmt(a.impressions); } } } },
       scales: { x: { position: 'bottom', beginAtZero: true, title: { display: true, text: 'Leads' } }, x2: { position: 'top', beginAtZero: true, grid: { display: false }, title: { display: true, text: 'Spend ($)' } }, y: { grid: { display: false }, ticks: { font: { size: 11 } } } } } });
+
+  // ---- efficiency map (bubble: CPM x CTR, size = spend, colour = approach) ----
+  const effSets = sets.filter(s => s.impressions > 0 && s.cpm != null);
+  if (effSets.length) {
+    const maxSp = Math.max(1, ...effSets.map(s => s.spend));
+    chart(el.querySelector('#wpEff'), { type: 'bubble', data: { datasets: A.APPROACHES.filter(a => effSets.some(s => s.approach === a)).map(a => ({ label: a, data: effSets.filter(s => s.approach === a).map(s => ({ x: Math.round(s.cpm * 100) / 100, y: Math.round(s.ctr * 100) / 100, r: 5 + 22 * Math.sqrt(s.spend / maxSp), set: s })), backgroundColor: APPROACH_COLOR[a] + 'B3', borderColor: APPROACH_COLOR[a], borderWidth: 1 })) },
+      options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { title: it => shortName(it[0].raw.set.name, 60), label: c => { const s = c.raw.set; return [`Spend ${usd(s.spend)}`, `Leads ${fmt(s.leads)}`, `CPM ${usd(s.cpm, 2)}`, `CTR ${pct(s.ctr, 2)}`, `Impressions ${fmt(s.impressions)}`]; } } } },
+        scales: { x: { beginAtZero: true, title: { display: true, text: 'CPM ($ per 1,000 impressions)' }, ticks: { callback: v => '$' + v } }, y: { beginAtZero: true, title: { display: true, text: 'CTR' }, ticks: { callback: v => v + '%' } } } } });
+  } else el.querySelector('#wpEffBox').innerHTML = ctx.ui.empty('No ad set with impressions in this range.');
+
+  // ---- messaging: expand a sender's ad sets ----
+  const msgTable = el.querySelector('#wpMsg');
+  if (msgTable) msgTable.querySelectorAll('tr.wp-sender').forEach(tr => tr.addEventListener('click', () => { const open = tr.dataset.open === '1'; tr.dataset.open = open ? '0' : '1'; tr.querySelector('.wp-caret').textContent = open ? '+' : '–'; msgTable.querySelectorAll(`tr.wp-set[data-i="${tr.dataset.i}"]`).forEach(x => { x.style.display = open ? 'none' : ''; }); }));
+
+  // ---- asset x company heat map ----
+  if (ACS.has_split) {
+    let acsMetric = 'impressions';
+    const drawAsset = () => {
+      const rows = ACS.companies.map(k => ({ key: k, label: k, sub: k === 'Other' ? 'pages matching no account' : (accounts.find(a => a.name === k) || {}).category || '' }));
+      const cols = ACS.approaches.map(a => ({ key: a, label: a }));
+      const colTot = c => ACS.cells.filter(x => x.approach === c).reduce((s, x) => ({ impressions: s.impressions + x.impressions, clicks: s.clicks + x.clicks }), { impressions: 0, clicks: 0 });
+      const rowTot = r => ACS.cells.filter(x => x.company === r).reduce((s, x) => ({ impressions: s.impressions + x.impressions, clicks: s.clicks + x.clicks }), { impressions: 0, clicks: 0 });
+      const show = t => acsMetric === 'ctr' ? pct(t.impressions ? t.clicks / t.impressions * 100 : null, 2) : fmt(t[acsMetric]);
+      ctx.heat.renderHeat(el.querySelector('#wpAsset'), { corner: 'Account', rows, cols, color: 'navy', scale: acsMetric === 'ctr' ? 'linear' : 'sqrt', sortRows: false,
+        cell: (r, c) => { const x = ACS.at(r, c); if (!x || !x.impressions) return { v: null, text: '·', title: `${r} · ${c}: no impressions` }; const v = acsMetric === 'ctr' ? x.ctr : x[acsMetric]; return { v, text: acsMetric === 'ctr' ? pct(v, 2) : fmt(v), sub: acsMetric === 'ctr' ? `${fmt(x.impressions)} impr.` : `${pct(x.ctr, 2)} CTR`, title: `${r} · ${c}\nImpressions ${fmt(x.impressions)}\nClicks ${fmt(x.clicks)}\nCTR ${pct(x.ctr, 2)}\nAd sets: ${x.sets.join('; ')}` }; },
+        rowTotal: r => show(rowTot(r)), colTotal: c => show(colTot(c)) });
+    };
+    ctx.ui.seg(el.querySelector('#wpAssetSeg'), [{ value: 'impressions', label: 'Impressions' }, { value: 'clicks', label: 'Clicks' }, { value: 'ctr', label: 'CTR' }], v => { acsMetric = v; drawAsset(); }, acsMetric);
+    drawAsset();
+  }
+
+  // ---- geography x seniority per audience ----
+  if (windows.length) {
+    const G0 = A.geoSeniority(demoRows, { regions, metric: 'impressions' });
+    let geoAud = G0.audiences[0] ? G0.audiences[0].name : null, geoMet = 'impressions';
+    const drawGeoSen = () => {
+      const box = el.querySelector('#wpGeo');
+      const G = A.geoSeniority(demoRows, { regions, metric: geoMet });
+      const aud = G.audiences.find(a => a.name === geoAud) || G.audiences[0];
+      if (!aud || !aud.total) { box.innerHTML = ctx.ui.empty('No country and seniority rows for this audience in the included windows.'); return; }
+      const unit = METRIC_LABEL[geoMet].toLowerCase();
+      ctx.heat.renderHeat(box, { corner: 'Region', rows: aud.regions.map(r => ({ key: r, label: r })), cols: aud.seniorities.map(s => ({ key: s, label: s })), scale: 'sqrt', sortRows: false,
+        cell: (r, c) => { const v = (aud.cells[r] || {})[c] || 0; return { v, text: v >= 1 ? fmt(v) : '–', title: `${r} · ${c}: about ${fmt(v)} ${unit} (estimated: region total spread by the seniority mix)` }; },
+        rowTotal: r => fmt(aud.regionTotal[r]), colTotal: c => fmt(aud.senTotal[c]) });
+    };
+    ctx.ui.seg(el.querySelector('#wpGeoAud'), G0.audiences.map(a => ({ value: a.name, label: a.name === A.ALL_AUDIENCES ? a.name : shortName(a.name, 36) })), v => { geoAud = v; drawGeoSen(); }, geoAud);
+    ctx.ui.seg(el.querySelector('#wpGeoMetric'), [{ value: 'impressions', label: 'Impressions' }, { value: 'clicks', label: 'Clicks' }], v => { geoMet = v; drawGeoSen(); }, geoMet);
+    drawGeoSen();
+  }
 
   // ---- heat maps ----
   let penSummary = null;

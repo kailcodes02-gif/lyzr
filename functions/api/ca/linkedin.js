@@ -1,4 +1,5 @@
-// GET /api/ca/linkedin?from=YYYY-MM-DD&to=YYYY-MM-DD
+// GET /api/ca/linkedin?from=YYYY-MM-DD&to=YYYY-MM-DD&platform=linkedin
+// platform defaults to linkedin; 'all' returns every ad platform (rows carry `platform`).
 // -> { perf:[daily rows with day in range], demo:[{ upload, rows }] for
 //      demographics uploads whose window overlaps the range, uploads:[all linkedin uploads] }
 
@@ -27,15 +28,17 @@ export const onRequestGet = handle(async ({ request, env }) => {
   if (from && !isoDay(from)) return json({ error: 'from must be YYYY-MM-DD' }, 400)
   if (to && !isoDay(to)) return json({ error: 'to must be YYYY-MM-DD' }, 400)
 
+  const platform = (url.searchParams.get('platform') || 'linkedin').toLowerCase()
+  const platParam = platform === 'all' ? {} : { platform: `eq.${platform}` }
   const d = db(env)
   const dayFilter = []
   if (from) dayFilter.push(`gte.${from}`)
   if (to) dayFilter.push(`lte.${to}`)
   const [perf, uploads] = await Promise.all([
-    d.selectAll('ca_li_perf', { params: dayFilter.length ? { day: dayFilter } : {}, order: 'day.asc,campaign_id.asc,ad_id.asc' }),
+    d.selectAll('ca_li_perf', { params: { ...platParam, ...(dayFilter.length ? { day: dayFilter } : {}) }, order: 'day.asc,campaign_id.asc,ad_id.asc' }),
     d.select('ca_uploads', {
-      params: { channel: 'eq.linkedin' },
-      select: 'id,channel,kind,file_name,uploaded_by,uploaded_at,period_start,period_end,row_count,notes',
+      params: { channel: 'eq.linkedin', ...platParam },
+      select: 'id,channel,kind,platform,file_name,uploaded_by,uploaded_at,period_start,period_end,row_count,notes',
       order: 'uploaded_at.desc',
       limit: 500,
     }),
@@ -54,5 +57,5 @@ export const onRequestGet = handle(async ({ request, env }) => {
     }
     for (const u of demoUploads) demo.push({ upload: u, rows: rowsByUpload.get(u.id) || [] })
   }
-  return json({ from: from || null, to: to || null, perf, demo, uploads })
+  return json({ from: from || null, to: to || null, platform, perf, demo, uploads })
 })

@@ -24,7 +24,8 @@ Folder: `Campaign_Analytics/` (static, no build step, served by the root Cloudfl
 | `HUBSPOT_ACCESS_TOKEN` | HubSpot private app token | already set |
 | `ANTHROPIC_API_KEY` | Claude | to set (also unblocks the tracker assistant) |
 | `INSTANTLY_API_KEY` | Instantly V2 API, read-only daily pull | already set (GSI Tracker weekly report) |
-| `CA_CRON_SECRET` | shared secret for the scheduled sync (`X-CA-Cron` header), same value as the GitHub Actions secret | to set |
+| `CA_CRON_SECRET` | shared secret for the scheduled sync (`X-CA-Cron` header), same value as the GitHub Actions secret | set |
+| `PHANTOMBUSTER_API_KEY` | PhantomBuster org API key, read-only daily pull of the LinkedIn outreach phantoms (`X-Phantombuster-Key`) | to set |
 
 ## Frontend module contract
 `js/app.mjs` owns the shell: gate, nav, global date range, toast, and calls
@@ -46,13 +47,17 @@ data derived from the September 2026 reports so the UI can be exercised with no 
 ## API (all under `/api/ca/`, JSON, bearer = Microsoft access token)
 | Method + path | Body / query | Returns |
 |---|---|---|
-| `GET health` | | `{ ok, db:boolean, hubspot:boolean, claude:boolean, user }` |
+| `GET health` | | `{ ok, db, hubspot, claude, instantly, phantom, cron, user }` (booleans = env var present) |
 | `GET settings` | | `{ bands, icp_pool, accounts, regions, targets, editors, updated_at }` (defaults from `seed/` when a key is unset) |
 | `PUT settings` | `{ key, value }` (editors only) | `{ ok }` |
-| `GET uploads` | `?channel=linkedin` | `{ uploads:[{id, channel, kind, file_name, uploaded_by, uploaded_at, period_start, period_end, row_count}] }` |
+| `GET uploads` | `?channel=linkedin&platform=google` | `{ uploads:[{id, channel, kind, file_name, uploaded_by, uploaded_at, period_start, period_end, row_count}] }` |
 | `POST uploads` | `{ channel, kind, file_name, period_start, period_end, columns, rows:[...] }` rows already normalised by `js/csv.mjs` (perf rows keyed `day,campaign_id,ad_id,...`; demo rows `segment,value,campaign,...`). Max 2,000 rows per call; client chunks and sends `upload_id` on continuation | `{ upload_id, inserted }` |
 | `DELETE uploads?id=` | | `{ ok }` (cascades rows) |
-| `GET linkedin` | `?from&to` | `{ perf:[daily rows in range], demo:[{upload:{...}, rows:[...]}] for uploads overlapping the range], uploads:[...] }` |
+| `GET linkedin` | `?from&to&platform=` | `{ platform, perf:[daily rows in range], demo:[{upload:{...}, rows:[...]}] for uploads overlapping the range], uploads:[...] }`. `platform` = `linkedin` (default), `google`, `meta`, `taboola`, `chatgpt`, `x`, `bing` or `all`; rows carry `platform` (`007_ad_platforms.sql`) |
+| `GET hubspot/deals` | `?from&to` | GSI/SI pipeline: deals with bucket/substage/amount/owner, weekly snapshots and what changed since last week (`004_deals.sql`) |
+| `POST hubspot/deals-sync` | `{ cursor? }` editors or `X-CA-Cron` | resumable, read-only: deals with the `gsi` property or a company on the GSI list |
+| `GET phantom` | `?from&to` | `{ agents, runs (launched in range), daily (all), last_sync, configured }` (`006_phantom.sql`) |
+| `POST phantom/sync` | `{ cursor? }` editors or `X-CA-Cron` | resumable, read-only, 20 PhantomBuster calls per call; outreach phantoms only are counted |
 | `GET hubspot` | `?from&to` | `{ contacts:[...], notes_by_contact:{id:[...]}, last_sync:{...} }` |
 | `POST hubspot/refresh` | `{ cursor? }` | `{ done:boolean, cursor?, contacts, notes, warnings:[] }` resumable, same pattern as hubspot-leads.js |
 | `POST insights` | `{ scope, kind:'messaging'|'ads'|'leads'|'overview', input:{...}, force?:boolean }` | `{ scope, content, cached:boolean, created_at, model }` |
@@ -61,7 +66,7 @@ data derived from the September 2026 reports so the UI can be exercised with no 
 | `GET email` | `?offset=` | `{ events:[[ci, contact, step, event, ts, si, link, lag_s]], campaigns:[], senders:[], next }`; first page adds `uploads` and `api:{campaigns, daily, last_sync, configured}`. Paged 15,000 rows per call; the view loads every page (whole history) and filters by range itself |
 | `POST uploads` (email) | `channel:'email', kind:'events'`, rows from `js/email-csv.mjs` `{campaign, contact, step, event, ts, sender, link, lag_s, raw_event}` | upsert on `(campaign, contact, step, event, ts, link)` so cumulative exports never double count |
 | `POST instantly/sync` | `{ cursor?, full? }` editors or `X-CA-Cron` | resumable: GSI-tagged campaigns (tag id, then tag label, then name), all-time totals, daily rows for 20 campaigns per call. Read-only against Instantly |
-| `GET/POST/PUT/DELETE actions` | `?channel` / `{channel, title, detail, owner, source, scope}` / `{id, status, note, owner}` / `?id` | tracked suggestions; anyone signed in can add and tick off, editors delete |
+| `GET/POST/PUT/DELETE actions` | `?channel` / `{channel, title, detail, owner, source, scope}` / `{id, status:open|in_progress|blocked|done|dropped, note, owner}` / `?id` | tracked suggestions; anyone signed in can add and tick off, editors delete |
 
 Error shape: `{ error: string }` with 401 (no/invalid token), 403 (not an editor), 503 (env var missing).
 
@@ -95,8 +100,12 @@ Implementation notes (backend, `functions/api/ca/`), where the built code adds t
 ## Layout and pages (Oct 2026 rebuild)
 - Lyzr brand build reference: light only, General Sans (closest free match to Aeonik) + JetBrains Mono uppercase
   labels, 210px sidebar, hairline cards radius 8, black buttons, one orange button per view, navy chart data.
-- Routes: `#/overview`, `#/ads/linkedin` (+ `ads/google|meta|taboola|chatgpt|x|bing`, not connected yet:
-  `views/ads-soon.mjs`), `#/email/instantly`, `#/hubspot/leads`, `#/hubspot/messaging`, `#/admin`. Old routes redirect.
+- Routes: `#/overview`, `#/ads/linkedin`, `#/ads/google|meta|taboola|chatgpt|x|bing` (one shared view
+  `views/ads-platform.mjs`: uploads of daily exports parsed by `js/ads-csv.mjs`, stored in `ca_li_perf` with
+  `platform`), `#/linkedin/phantom` (PhantomBuster outreach), `#/email/instantly`, `#/hubspot/leads`,
+  `#/hubspot/messaging`, `#/hubspot/pipeline` (deals), `#/admin`. Old routes redirect.
+- Overview: channels at a glance (one row per ad platform with data), target vs today, alerts, the programme
+  board (every tracked action by status: open, in progress, blocked, done in 30 days), sections, AI read-out.
 - Uploads live on the channel pages (`js/uploader.mjs`); Admin holds lists and "pull now" buttons.
 
 ## GSI leads and messages

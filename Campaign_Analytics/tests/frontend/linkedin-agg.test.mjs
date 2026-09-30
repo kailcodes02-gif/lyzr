@@ -150,7 +150,197 @@ test('mock data matches the report month totals and stays small', () => {
   assert.equal(by(sep, 'leads'), 97); assert.equal(Math.round(by(sep, 'spend')), 4470); assert.ok(Math.abs(by(sep, 'impressions') - 312312) < 200);
   assert.equal(by(linkedinMock.perf, 'leads'), 128);
   const bytes = JSON.stringify(linkedinMock.perf).length + JSON.stringify(linkedinMock.demo).length;
-  assert.ok(bytes < 400 * 1024, `generated data is ${Math.round(bytes / 1024)} KB, limit 400 KB`);
+  assert.ok(bytes < 480 * 1024, `generated data is ${Math.round(bytes / 1024)} KB, limit 480 KB (the September windows are split by ad set)`);
   assert.ok(linkedinMock.demo.length >= 8);
   assert.ok(linkedinMock.uploads.every(u => u.period_start && u.period_end && u.kind));
+});
+
+test('mock demographics: September windows carry a campaign for several ad sets, other windows do not', () => {
+  const sep = linkedinMock.demo.filter(d => d.upload.period_start.startsWith('2026-09'));
+  assert.ok(sep.length >= 2);
+  for (const w of sep) {
+    const camps = new Set(w.rows.map(r => r.campaign).filter(Boolean));
+    assert.ok(camps.size >= 4, 'at least four ad sets in the split');
+    const approaches = new Set([...camps].map(A.approachOf));
+    for (const a of ['Custom list', 'Native', 'Combined']) assert.ok(approaches.has(a), a + ' present');
+    assert.ok(w.rows.some(r => r.campaign && r.segment === 'Company' && r.sends > 0), 'sends sit on the conversation ad set');
+    assert.ok(w.rows.filter(r => r.segment === 'Job Function').every(r => !r.campaign), 'segments outside the split stay unsplit');
+  }
+  const aug = linkedinMock.demo.find(d => d.upload.period_start.startsWith('2026-08'));
+  assert.ok(aug.rows.every(r => !r.campaign));
+  // Ad names carry sender personas for the message ads.
+  const msgAds = new Set(linkedinMock.perf.filter(r => r.sends > 0).map(r => r.ad_name));
+  assert.ok([...msgAds].some(n => /^Ani:/.test(n)) && [...msgAds].some(n => /^Jessica:/.test(n)));
+});
+
+// ---- White Path sections ----
+test('approachOf reads the targeting approach from the ad set name', () => {
+  assert.equal(A.approachOf('Custom Aud|GSI&SI|Playbooks|Lead Gen'), 'Custom list');
+  assert.equal(A.approachOf('ABM upload - matched list'), 'Custom list');
+  assert.equal(A.approachOf("Native Targeting(Heatmap)|GSI|Playbooks-2 Sept'26"), 'Native');
+  assert.equal(A.approachOf('Playbooks|GSI&SI|Seniorities|Lead Gen'), 'Native');
+  assert.equal(A.approachOf('Combined Native + Custom|SI|Playbooks'), 'Combined', 'combined wins over the custom and native words');
+  assert.equal(A.approachOf('Custom + Native'), 'Combined');
+  assert.equal(A.approachOf('Retargeting Aud|GSI&SI|Playbooks'), 'Retargeting');
+  assert.equal(A.approachOf('Assessment|Survey|Target Accounts|Website visits'), 'Retargeting');
+  assert.equal(A.approachOf('WP|Accenture|Anju|India|Lead Gen'), 'Other');
+  assert.equal(A.approachOf(''), 'Other');
+});
+
+test('adSets: one row per ad set with status from the last 7 days, approach and comparison figures', () => {
+  const rows = [
+    row('2026-09-02', 'G', 'Native Targeting|Playbooks', { spend: 100, impressions: 10000, clicks: 50, reach: 9000, leads: 4 }),
+    row('2026-09-20', 'G', 'Native Targeting|Playbooks', { spend: 100, impressions: 10000, clicks: 50, reach: 9000, leads: 6 }),
+    row('2026-09-02', 'G', 'Custom Aud|Playbooks', { spend: 300, impressions: 5000, clicks: 10, leads: 1 }),
+    row('2026-09-10', 'G', 'ANI|Conversation', { ad_name: 'Ani: quick question', spend: 50, sends: 100, opens: 40, clicks: 2 }),
+  ];
+  const prevRows = [row('2026-08-10', 'G', 'Native Targeting|Playbooks', { spend: 50, impressions: 4000, leads: 5 })];
+  const sets = A.adSets(rows, { to: '2026-09-24', prevRows });
+  assert.deepEqual(sets.map(s => s.name), ['Custom Aud|Playbooks', 'Native Targeting|Playbooks', 'ANI|Conversation'], 'largest spend first');
+  const nat = sets[1];
+  assert.equal(nat.status, 'Active'); assert.equal(nat.approach, 'Native'); assert.equal(nat.cpm, 10); assert.equal(nat.ctr, 0.5); assert.equal(nat.cpl, 20); assert.equal(nat.reach, 18000);
+  assert.deepEqual({ spend: nat.prev.spend, leads: nat.prev.leads, cpl: nat.prev.cpl }, { spend: 50, leads: 5, cpl: 10 });
+  assert.equal(sets[0].status, 'Paused'); assert.equal(sets[0].prev, null);
+  const msg = sets[2]; assert.equal(msg.open_rate, 40); assert.equal(msg.cpm, null); assert.equal(msg.ctr, null);
+  assert.equal(A.adSets(rows).find(s => s.name === 'Native Targeting|Playbooks').status, 'Active', 'without a range the last day with rows is the end');
+});
+
+test('scorecard: approaches graded against the medians, message-only approaches get no grade', () => {
+  const mk = (name, spend, impressions, clicks, leads = 0, sends = 0) => ({ name, approach: A.approachOf(name), spend, impressions, clicks, leads, sends, opens: sends / 2 });
+  const sets = [mk('Native A', 100, 10000, 100), mk('Native B', 100, 10000, 100), mk('Custom list A', 300, 5000, 50, 1), mk('Retargeting A', 50, 10000, 20), mk('Combined A', 200, 4000, 8), mk('ANI|Conversation', 50, 0, 0, 0, 100)];
+  const S = A.scorecard(sets);
+  const by = Object.fromEntries(S.rows.map(r => [r.approach, r]));
+  assert.deepEqual(S.rows.map(r => r.approach), ['Custom list', 'Native', 'Combined', 'Retargeting', 'Other']);
+  assert.equal(by.Native.sets, 2); assert.equal(by.Native.impressions, 20000); assert.equal(by.Native.ctr, 1); assert.equal(by.Native.cpm, 10);
+  assert.equal(by['Custom list'].cpm, 60); assert.equal(by['Custom list'].cpl, 300);
+  assert.equal(S.median_ctr, 0.6, 'CTRs 0.2, 0.2, 1, 1'); assert.equal(S.median_cpm, 30, 'CPMs 5, 10, 50, 60');
+  assert.equal(by.Native.grade, 'A'); assert.equal(by['Custom list'].grade, 'B'); assert.equal(by.Retargeting.grade, 'B'); assert.equal(by.Combined.grade, 'C');
+  assert.equal(by.Other.grade, null); assert.match(by.Other.verdict, /Message ads only/);
+  assert.match(by.Native.verdict, /more budget/); assert.match(by['Custom list'].verdict, /Widen the audience/); assert.match(by.Retargeting.verdict, /Refresh the creative/); assert.match(by.Combined.verdict, /Pause or rebuild/);
+  assert.ok(!/—/.test(S.rows.map(r => r.verdict).join(' ')), 'no em dashes in copy');
+  assert.equal(A.scorecard([mk('Only one', 10, 1000, 5)]).rows[0].grade, 'A', 'a single approach equals its own medians');
+});
+
+test('senderOf: "Name:" prefix, known first word, else Unknown sender; first matching name wins', () => {
+  assert.equal(A.senderOf('Ani: quick question about your practice'), 'Ani');
+  assert.equal(A.senderOf('JESSICA: a note from Lyzr'), 'Jessica');
+  assert.equal(A.senderOf('Jessica Chen: a note'), 'Jessica Chen');
+  assert.equal(A.senderOf('Agentic AI Roadmap: the 90-day plan'), 'Unknown sender', 'three-word prefixes are titles, not senders');
+  assert.equal(A.senderOf("ANI|Priority Acc|GSI/SI- 3 July'26"), 'Ani');
+  assert.equal(A.senderOf('Siva video', ''), 'Siva');
+  assert.equal(A.senderOf('Book a demo', "Jessica|Priority Acc|GSI/SI- 9 July'26"), 'Jessica', 'falls through to the ad set name');
+  assert.equal(A.senderOf('Book a demo', 'GSI&SI|Book a demo'), 'Unknown sender');
+  assert.equal(A.senderOf(null, undefined), 'Unknown sender');
+});
+
+test('messagingBySender: rows with sends grouped by sender then ad set', () => {
+  const rows = [
+    row('2026-09-01', 'Conv', "GSI&SI|ANI|Conversation Ads|Lead Gen- 26 Aug'26", { ad_name: 'Ani: quick question', spend: 100, sends: 200, opens: 100, clicks: 10, leads: 2 }),
+    row('2026-09-02', 'Conv', "GSI&SI|ANI|Conversation Ads|Lead Gen- 4 Sept'26", { ad_name: 'Ani: quick question', spend: 50, sends: 100, opens: 60, clicks: 3 }),
+    row('2026-09-02', 'Conv', "Jessica|Priority Acc|GSI/SI- 9 July'26", { ad_name: 'A note from Lyzr', spend: 40, sends: 80, opens: 20, clicks: 1 }),
+    row('2026-09-02', 'Awareness', 'Brand|Video', { ad_name: 'Siva video', spend: 500, impressions: 10000 }),
+  ];
+  const S = A.messagingBySender(rows);
+  assert.deepEqual(S.map(s => [s.sender, s.sends, s.sets.length]), [['Ani', 300, 2], ['Jessica', 80, 1]], 'no sends means not a messaging ad');
+  const ani = S[0];
+  assert.equal(ani.opens, 160); assert.equal(Math.round(ani.open_rate * 100) / 100, 53.33); assert.equal(ani.clicks, 13); assert.equal(ani.leads, 2); assert.equal(ani.cpl, 75); assert.equal(Math.round(ani.click_to_open * 10) / 10, 8.1);
+  assert.equal(ani.sets[0].name, "GSI&SI|ANI|Conversation Ads|Lead Gen- 26 Aug'26"); assert.equal(ani.sets[0].open_rate, 50); assert.equal(ani.sets[1].leads, 0);
+  assert.equal(S[1].sets[0].ad_name, 'A note from Lyzr');
+  assert.deepEqual(A.messagingBySender([]), []);
+});
+
+test('creativeAudience: top creatives by impressions with titles and countries of their ad set', () => {
+  const perf = [
+    row('2026-09-01', 'G', 'Native|Playbooks', { ad_id: '1', ad_name: 'Roadmap', impressions: 9000, clicks: 90, spend: 90, leads: 3 }),
+    row('2026-09-01', 'G', 'Custom Aud|Playbooks', { ad_id: '2', ad_name: 'Enterprise', impressions: 4000, clicks: 20, spend: 80 }),
+    row('2026-09-01', 'G', 'Conv', { ad_id: '3', ad_name: 'Ani: hi', sends: 100, opens: 50, spend: 10 }),
+  ];
+  const demo = [
+    { segment: 'Job Title', value: 'Partner', campaign: 'Native|Playbooks', impressions: 300 }, { segment: 'Job Title', value: 'Director', campaign: 'Native|Playbooks', impressions: 700 },
+    { segment: 'Country', value: 'India', campaign: 'Native|Playbooks', impressions: 800 }, { segment: 'Country', value: 'United States', campaign: 'Native|Playbooks', impressions: 200 },
+    { segment: 'Job Title', value: 'Manager', campaign: '', impressions: 5000 },
+  ];
+  const R = A.creativeAudience(perf, demo, { top: 2 });
+  assert.equal(R.has_split, true);
+  assert.deepEqual(R.creatives.map(c => c.ad_name), ['Roadmap', 'Enterprise']);
+  const r = R.creatives[0];
+  assert.equal(r.has_rows, true); assert.equal(r.ctr, 1); assert.equal(r.leads, 3);
+  assert.deepEqual(r.titles.map(t => [t.value, t.impressions, t.share]), [['Director', 700, 70], ['Partner', 300, 30]]);
+  assert.deepEqual(r.countries.map(t => t.value), ['India', 'United States']);
+  assert.equal(R.creatives[1].has_rows, false, 'no demographics rows for that ad set');
+  const none = A.creativeAudience(perf, demo.filter(d => !d.campaign));
+  assert.equal(none.has_split, false); assert.ok(none.creatives.every(c => !c.has_rows && c.titles.length === 0));
+  assert.equal(A.creativeAudience(perf, demo, { top: 5 }).creatives.length, 3, 'message ads are included by sends when impressions are zero');
+});
+
+test('assetCompanySplit: account x approach from company rows that carry a campaign', () => {
+  const accounts = [{ name: 'Accenture', aliases: ['Accenture in India'] }, { name: 'KPMG', aliases: ['KPMG US'] }];
+  const demo = [
+    { segment: 'Company', value: 'Accenture', campaign: 'Native|Playbooks', impressions: 1000, clicks: 10 },
+    { segment: 'Company', value: 'Accenture in India', campaign: 'Native Heatmap|Awareness', impressions: 1000, clicks: 30 },
+    { segment: 'Company', value: 'Accenture', campaign: 'Custom Aud|Playbooks', impressions: 200, clicks: 1 },
+    { segment: 'Company', value: 'KPMG US', campaign: 'Custom Aud|Playbooks', impressions: 500, clicks: 5 },
+    { segment: 'Company', value: 'IBM', campaign: 'Native|Playbooks', impressions: 300, clicks: 3 },
+    { segment: 'Company', value: 'Microsoft', campaign: 'Native|Playbooks', impressions: 100, clicks: 0 },
+    { segment: 'Company', value: 'Deloitte', campaign: '', impressions: 9999, clicks: 99 },
+    { segment: 'Job Title', value: 'Partner', campaign: 'Native|Playbooks', impressions: 50 },
+  ];
+  const R = A.assetCompanySplit(demo, accounts);
+  assert.equal(R.has_split, true);
+  assert.deepEqual(R.companies, ['Accenture', 'KPMG', 'Other'], 'by impressions, Other last; rows without a campaign are ignored');
+  assert.deepEqual(R.approaches, ['Custom list', 'Native']);
+  const a = R.at('Accenture', 'Native'); assert.equal(a.impressions, 2000); assert.equal(a.clicks, 40); assert.equal(a.ctr, 2); assert.deepEqual(a.sets.sort(), ['Native Heatmap|Awareness', 'Native|Playbooks']);
+  assert.equal(R.at('Accenture', 'Custom list').impressions, 200);
+  assert.equal(R.at('Other', 'Native').impressions, 400); assert.equal(R.at('Other', 'Custom list'), null);
+  assert.equal(R.at('KPMG', 'Native'), null);
+  const none = A.assetCompanySplit(demo.filter(d => !d.campaign), accounts);
+  assert.equal(none.has_split, false); assert.deepEqual(none.companies, []); assert.deepEqual(none.cells, []);
+  const withMsg = A.assetCompanySplit([...demo, { segment: 'Company', value: 'KPMG', campaign: 'ANI|Conversation', impressions: 0, sends: 40 }], accounts);
+  assert.deepEqual(withMsg.approaches, ['Custom list', 'Native'], 'a message-only approach makes no column');
+});
+
+test('reachVsContacts: est. reach = impressions / frequency, contacts matched to accounts, hint when no lists', () => {
+  const accounts = [{ name: 'Accenture', aliases: ['Accenture in India'] }, { name: 'KPMG', aliases: ['KPMG US'] }, { name: 'Fujitsu', aliases: [] }];
+  const demo = [
+    { segment: 'Company', value: 'Accenture', campaign: 'Native', impressions: 3000, clicks: 30 }, { segment: 'Company', value: 'Accenture in India', impressions: 3000, clicks: 30 },
+    { segment: 'Company', value: 'KPMG US', impressions: 900, clicks: 9 }, { segment: 'Company', value: 'IBM', impressions: 600, clicks: 6 }, { segment: 'Company', value: 'Freelance', impressions: 300, clicks: 1 },
+    { segment: 'Country', value: 'India', impressions: 9999 },
+  ];
+  const R = A.reachVsContacts(demo, accounts, { contact_lists: { Accenture: 1000, 'KPMG US': 600, Fujitsu: 400 }, frequency: 3 });
+  assert.equal(R.has_contacts, true);
+  assert.deepEqual(R.rows.map(r => r.company), ['Accenture', 'KPMG', 'Fujitsu', 'Other pages'], 'named accounts first, accounts with a list but no impressions still listed, unmatched pages grouped last');
+  const acc = R.rows[0]; assert.equal(acc.impressions, 6000); assert.equal(acc.est_reach, 2000); assert.equal(acc.contacts, 1000); assert.equal(acc.ratio, 2); assert.equal(acc.clicks, 60);
+  const k = R.rows[1]; assert.equal(k.contacts, 600, 'contact list keys are matched like page names'); assert.equal(k.est_reach, 300); assert.equal(k.ratio, 0.5);
+  const fj = R.rows[2]; assert.equal(fj.impressions, 0); assert.equal(fj.ratio, 0, 'a list with no impressions reached nobody');
+  const other = R.rows[3]; assert.equal(other.impressions, 900); assert.equal(other.contacts, null); assert.equal(other.matched, false);
+  assert.equal(R.total.impressions, 7800); assert.equal(R.total.contacts, 2000); assert.equal(R.total.est_reach, 2600); assert.equal(R.total.ratio, 1.3);
+  const noLists = A.reachVsContacts(demo, accounts, { frequency: 3 });
+  assert.equal(noLists.has_contacts, false); assert.ok(noLists.rows.every(r => r.contacts === null && r.ratio === null)); assert.equal(noLists.total.contacts, null);
+  assert.deepEqual(noLists.rows.map(r => r.company), ['Accenture', 'KPMG', 'Other pages']);
+  assert.equal(A.reachVsContacts(demo, accounts, { contact_lists: {}, frequency: 0 }).frequency, 3, 'empty object counts as no lists, frequency falls back to 3');
+});
+
+test('geoSeniority: region x seniority per audience, estimated from the two one-dimensional lists', () => {
+  const regions = { India: ['India'], 'North America': ['United States', 'Canada'] };
+  const aud = (campaign, k) => [
+    { segment: 'Country', value: 'India', campaign, impressions: 800 * k, clicks: 8 * k }, { segment: 'Country', value: 'United States', campaign, impressions: 200 * k, clicks: 4 * k },
+    { segment: 'Job Seniority', value: 'Director', campaign, impressions: 600 * k, clicks: 6 * k }, { segment: 'Job Seniority', value: 'CXO', campaign, impressions: 100 * k, clicks: 3 * k }, { segment: 'Job Seniority', value: 'Senior', campaign, impressions: 300 * k, clicks: 3 * k },
+  ];
+  const G = A.geoSeniority([...aud('Native|Playbooks', 1), ...aud('Custom Aud|Playbooks', 2)], { regions });
+  assert.equal(G.split, true); assert.equal(G.estimated, true);
+  assert.deepEqual(G.audiences.map(a => [a.name, a.approach, a.total]), [['Custom Aud|Playbooks', 'Custom list', 2000], ['Native|Playbooks', 'Native', 1000]], 'largest audience first');
+  const nat = G.audiences[1];
+  assert.deepEqual(nat.regions, ['India', 'North America']);
+  assert.deepEqual(nat.seniorities, ['Senior', 'Director', 'CXO'], 'seniority in career order');
+  assert.equal(nat.cells.India.Director, 480, '800 x 600 / 1000'); assert.equal(nat.cells['North America'].CXO, 20);
+  assert.equal(nat.regionTotal.India, 800); assert.equal(nat.senTotal.Director, 600);
+  const clicks = A.geoSeniority(aud('Native|Playbooks', 1), { regions, metric: 'clicks' }).audiences[0];
+  assert.equal(clicks.total, 12); assert.equal(clicks.cells.India.CXO, 2, '8 x 3 / 12');
+  const all = A.geoSeniority(aud('', 1), { regions });
+  assert.equal(all.split, false); assert.equal(all.audiences.length, 1); assert.equal(all.audiences[0].name, A.ALL_AUDIENCES); assert.equal(all.audiences[0].approach, null); assert.equal(all.audiences[0].cells.India.Director, 480);
+  const noSen = A.geoSeniority([{ segment: 'Country', value: 'India', impressions: 100 }], { regions }).audiences[0];
+  assert.equal(noSen.total, 0, 'needs both lists');
+  assert.equal(A.geoSeniority([], { regions }).audiences[0].total, 0);
+  const withMsg = A.geoSeniority([...aud('Native|Playbooks', 1), { segment: 'Company', value: 'KPMG', campaign: 'ANI|Conversation', sends: 40 }], { regions });
+  assert.deepEqual(withMsg.audiences.map(a => a.name), ['Native|Playbooks'], 'message-only ad sets are not audiences');
 });

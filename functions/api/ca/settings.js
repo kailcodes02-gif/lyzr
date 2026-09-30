@@ -58,6 +58,10 @@ function validate(key, value) {
       const clean = [...new Set(list.map((s) => String(s).trim()).filter(Boolean))]
       return clean
     }
+    case 'contact_lists': {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw Object.assign(new Error('contact_lists must be an object of account name to number'), { status: 400 })
+      return Object.fromEntries(Object.entries(value).map(([k, v]) => [String(k).trim(), Number(v)]).filter(([k, v]) => k && Number.isFinite(v) && v >= 0))
+    }
     case 'accounts':
     case 'icp_pool': {
       if (!Array.isArray(value)) throw Object.assign(new Error(`${key} must be an array`), { status: 400 })

@@ -242,3 +242,16 @@ tr.sel td{background:rgba(254,75,30,.05)}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .heat{display:block;overflow-x:auto;max-width:100%}
+
+/* Programme board (Overview): one column per action status */
+.board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.bcol{border-radius:8px;box-shadow:inset 0 0 0 1px var(--hair);background:var(--surface);padding:12px 14px;min-height:80px}
+.bcol .bh{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.bcol.blocked .bh .ui-label{color:var(--bad)}
+.bcard{display:block;text-decoration:none;color:inherit;border-top:1px solid var(--hair2);padding:8px 0}
+.bcard:first-of-type{border-top:none}
+.bcard .at{font-size:13px;line-height:1.35}
+.bcard .am{font-size:11.5px;color:var(--ink2);margin-top:2px}
+.act-row.blocked .at{color:var(--bad)}
+.act-row.in_progress .at::before{content:'▸ ';color:var(--accent)}
+@media (max-width:900px){.board{grid-template-columns:1fr 1fr}}
