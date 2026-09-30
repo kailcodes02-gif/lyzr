@@ -1,0 +1,13 @@
+{
+ "note": "Country -> region band used by heat maps and Leads Analytics. Edit in Settings; this file is the default seed.",
+ "regions": {
+  "India": ["India"],
+  "United States": ["United States", "USA", "US", "Canada"],
+  "United Kingdom": ["United Kingdom", "UK", "Ireland"],
+  "Middle East": ["Saudi Arabia", "United Arab Emirates", "UAE", "Qatar", "Oman", "Kuwait", "Bahrain", "Egypt", "Jordan", "Israel", "Lebanon", "Iraq", "Türkiye", "Turkey", "Cyprus", "Palestinian Authority"],
+  "Europe": ["Germany", "France", "Netherlands", "Spain", "Italy", "Portugal", "Poland", "Belgium", "Switzerland", "Denmark", "Sweden", "Norway", "Finland", "Austria", "Greece", "Luxembourg", "Czechia", "Czech Republic", "Romania", "Hungary"],
+  "APAC": ["Australia", "New Zealand", "Singapore", "Japan", "Malaysia", "Philippines", "Indonesia", "Vietnam", "Thailand", "Hong Kong", "South Korea", "Taiwan", "China", "Sri Lanka"],
+  "LATAM": ["Brazil", "Mexico", "Argentina", "Colombia", "Chile", "Peru"],
+  "Africa": ["South Africa", "Nigeria", "Kenya"]
+ }
+}

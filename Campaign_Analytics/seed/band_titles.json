@@ -1,0 +1,31 @@
+{
+ "global": {
+  "MD": [
+   "Board Member",
+   "Founder",
+   "Managing Director",
+   "Managing Partner",
+   "Partner",
+   "Senior Vice President"
+  ],
+  "MD1": [
+   "Assistant Vice President",
+   "Associate Director",
+   "Associate Partner",
+   "Principal",
+   "Senior Director",
+   "Vice President"
+  ],
+  "MD2": [
+   "Delivery Head",
+   "Delivery Manager",
+   "Engagement Manager",
+   "General Manager",
+   "Manager Management Consulting",
+   "Senior Manager",
+   "Technical Manager"
+  ],
+  "split": "Director split 50/50 MD-1 and MD-2"
+ },
+ "note": "MD/MD-1/MD-2 designation bands. global = LinkedIn job-title buckets from the Reach report; per-account title conventions live in accounts.json"
+}

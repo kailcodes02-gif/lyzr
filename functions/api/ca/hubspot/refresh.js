@@ -1,0 +1,371 @@
+// POST /api/ca/hubspot/refresh { cursor?, from?, to? }   editors only
+// -> { done, cursor?, contacts, notes, warnings:[], progress:{ phase, done, total } }
+//
+// READ-ONLY against HubSpot. Nothing is ever written to HubSpot. The pull
+// rules are the GSI rules from functions/api/hubspot-leads.js:
+//   1. company matches the GSI/SI target list (CONTAINS_TOKEN, 5 filterGroups per search)
+//   2. HubSpot owner is one of the GSI owner emails
+//   3. "GSI" appears in the searchable text or a source-detail property
+// A Pages Function gets 50 subrequests per invocation, so the work is cut into
+// resumable steps: the browser calls back with the returned cursor until
+// done:true. Phase "search" pulls contacts (upserted into ca_hs_contacts with
+// account, band and region from classify.js); phase "notes" fetches the notes
+// and counts calls, meetings and emails for the contacts touched by this sync.
+
+import { DEFAULT_COMPANIES } from '../../_lib/target-companies.js'
+import { json, handle, readJson, isoDay, HttpError } from '../_lib/http.js'
+import { requireUser } from '../_lib/auth.js'
+import { db, inChunks } from '../_lib/db.js'
+import { loadSettings } from '../_lib/settings.js'
+import { toAccount, toBand, toRegion } from '../_lib/classify.js'
+
+export { corsPreflight as onRequestOptions } from '../_lib/http.js'
+
+// Same list as hubspot-leads.js (not exported there).
+export const OWNER_EMAILS = [
+  'anju@lyzr.ai',
+  'praveen.sukumar@lyzr.ai',
+  'praveen.s@lyzr.ai',
+  'bharath@lyzr.ai',
+  'kaushik.venkatesan@lyzr.ai',
+  'pooja@lyzr.ai',
+]
+
+export const PROPS = [...new Set([
+  // hubspot-leads.js PROPS
+  'firstname', 'lastname', 'email', 'company', 'createdate',
+  'hs_analytics_source', 'hs_analytics_source_data_1', 'hs_analytics_source_data_2',
+  'hs_latest_source', 'hs_latest_source_data_1', 'hs_latest_source_data_2',
+  'hs_lead_status', 'lifecyclestage', 'notes_last_updated', 'lastmodifieddate',
+  'hubspot_owner_id',
+  'lsa_lead_score', 'lsa_lead_score_category', 'lsa_lead_source',
+  'lyzr_lead_score', 'lyzr_lead_score_category', 'hubspotscore',
+  'lead_source', 'lead_source_category',
+  // Campaign Analytics extras
+  'jobtitle', 'country', 'hs_country_region_code', 'lsa_country', 'lsa_job_title', 'lsa_company',
+  'lsa_message', 'lsa_lead_type', 'lsa_book_demo_count',
+  'hs_last_sales_activity_timestamp', 'hs_last_sales_activity_type', 'hs_notes_last_activity',
+  'linkedin_profile_link', 'hs_linkedin_url', 'industry', 'hs_latest_source',
+  // recent activity (what happened last, shown on the Leads view)
+  'hs_email_last_email_name', 'hs_email_last_send_date', 'hs_email_last_open_date', 'hs_email_last_click_date',
+  'hs_sales_email_last_replied', 'hs_last_booked_meeting_date', 'notes_last_contacted', 'hs_latest_meeting_activity',
+  'num_contacted_notes', 'hs_lifecyclestage_marketingqualifiedlead_date', 'recent_conversion_event_name', 'recent_conversion_date',
+  'first_conversion_event_name', 'hs_analytics_source_data_1',
+])]
+
+export const GSI_TEXT_PROPS = [
+  'hs_analytics_source_data_1', 'hs_analytics_source_data_2',
+  'hs_latest_source_data_1', 'hs_latest_source_data_2',
+  'lsa_lead_source', 'lead_source',
+]
+
+// Subrequest plan per invocation (limit is 50): auth 2, sync row 1, settings
+// up to 4, owners 1, searches SEARCH_BUDGET, via-merge up to 4, upserts up to 5.
+export const SEARCH_BUDGET = 20
+export const NOTES_CHUNK = 200
+export const HS_BATCH = 100
+export const NOTE_READ_CAP = 10 // batch reads of notes per invocation (1000 notes)
+const ENGAGEMENT_TYPES = ['notes', 'calls', 'meetings', 'emails']
+
+const HS = 'https://api.hubapi.com'
+
+export function dateFilters(from, to, tzOffsetMinutes = 330) {
+  const f = []
+  if (from) f.push({ propertyName: 'createdate', operator: 'GTE', value: Date.parse(from + 'T00:00:00Z') - tzOffsetMinutes * 60000 })
+  if (to) f.push({ propertyName: 'createdate', operator: 'LTE', value: Date.parse(to + 'T23:59:59.999Z') - tzOffsetMinutes * 60000 })
+  return f
+}
+
+async function hsPost(token, path, body) {
+  const res = await fetch(HS + path, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new HttpError(502, `HubSpot ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`)
+  return res.json()
+}
+
+async function hsSearch(token, body) {
+  return hsPost(token, '/crm/v3/objects/contacts/search', {
+    properties: PROPS,
+    limit: 100,
+    sorts: [{ propertyName: 'createdate', direction: 'DESCENDING' }],
+    ...body,
+  })
+}
+
+async function fetchOwners(token) {
+  const byId = {}
+  const idByEmail = {}
+  let error = null
+  try {
+    const res = await fetch(`${HS}/crm/v3/owners?limit=500`, { headers: { Authorization: `Bearer ${token}` } })
+    if (res.ok) {
+      const data = await res.json()
+      for (const o of data.results || []) {
+        byId[o.id] = [o.firstName, o.lastName].filter(Boolean).join(' ') || o.email || o.id
+        if (o.email) idByEmail[o.email.toLowerCase()] = o.id
+      }
+    } else error = `owners lookup failed (HTTP ${res.status})`
+  } catch {
+    error = 'owners lookup failed (network)'
+  }
+  return { byId, idByEmail, error }
+}
+
+// The flat, resumable list of searches (same shape as hubspot-leads.js).
+export function buildTasks(companies, ownerIds, dates) {
+  const tasks = []
+  for (let i = 0; i < companies.length; i += 5) {
+    const batch = companies.slice(i, i + 5)
+    tasks.push({ tag: 'company', body: {
+      filterGroups: batch.map((name) => ({ filters: [{ propertyName: 'company', operator: 'CONTAINS_TOKEN', value: name }, ...dates] })),
+    } })
+  }
+  if (ownerIds.length) {
+    tasks.push({ tag: 'owner', body: { filterGroups: [{ filters: [{ propertyName: 'hubspot_owner_id', operator: 'IN', values: ownerIds }, ...dates] }] } })
+  }
+  tasks.push({ tag: 'gsi_text', body: { query: 'GSI', filterGroups: dates.length ? [{ filters: dates }] : undefined } })
+  for (const prop of GSI_TEXT_PROPS) {
+    tasks.push({ tag: 'gsi_text', body: { filterGroups: [{ filters: [{ propertyName: prop, operator: 'CONTAINS_TOKEN', value: 'GSI' }, ...dates] }] } })
+  }
+  return tasks
+}
+
+export function stripHtml(html) {
+  return String(html || '')
+    .replace(/<\s*br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|h[1-6]|tr)\s*>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+const numOrNull = (v) => { const n = Number(v); return v === null || v === undefined || v === '' || !Number.isFinite(n) ? null : n }
+const tsOrNull = (v) => {
+  if (!v) return null
+  const n = Number(v)
+  const d = Number.isFinite(n) && String(v).trim() === String(n) ? new Date(n) : new Date(v)
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+}
+
+// HubSpot contact -> ca_hs_contacts row (without notes_count, which the notes phase sets).
+export function mapContact(raw, via, { ownerNames = {}, settings = {}, syncedAt }) {
+  const p = raw.properties || {}
+  const companyRaw = p.company || p.lsa_company || ''
+  const account = toAccount(companyRaw, settings.accounts || [])
+  const jobtitle = p.jobtitle || p.lsa_job_title || ''
+  const country = p.country || p.lsa_country || p.hs_country_region_code || ''
+  const props = {}
+  for (const k of PROPS) if (p[k] !== undefined && p[k] !== null && p[k] !== '') props[k] = p[k]
+  return {
+    hs_id: String(raw.id),
+    email: p.email || null,
+    first_name: p.firstname || null,
+    last_name: p.lastname || null,
+    company_raw: companyRaw || null,
+    account,
+    jobtitle: jobtitle || null,
+    band: toBand(jobtitle, account, settings.bands || {}),
+    country: country || null,
+    region: toRegion(country, settings.regions || {}),
+    source: p.hs_analytics_source || null,
+    source_detail: [p.hs_analytics_source_data_1, p.hs_analytics_source_data_2].filter(Boolean).join(' / ') || null,
+    lead_source: p.lead_source || p.lsa_lead_source || null,
+    lsa_message: p.lsa_message || null,
+    lsa_score: numOrNull(p.lsa_lead_score ?? p.lyzr_lead_score ?? p.hubspotscore),
+    lsa_category: p.lsa_lead_score_category || p.lyzr_lead_score_category || null,
+    lifecycle: p.lifecyclestage || null,
+    lead_status: p.hs_lead_status || null,
+    owner_id: p.hubspot_owner_id || null,
+    owner_name: (p.hubspot_owner_id && ownerNames[p.hubspot_owner_id]) || null,
+    created_at: tsOrNull(p.createdate || raw.createdAt),
+    last_modified: tsOrNull(p.lastmodifieddate || raw.updatedAt),
+    last_activity_at: tsOrNull(p.hs_last_sales_activity_timestamp || p.notes_last_updated),
+    last_activity_type: p.hs_last_sales_activity_type || null,
+    via,
+    props,
+    synced_at: syncedAt,
+  }
+}
+
+async function markSync(d, syncId, patch) {
+  if (!syncId) return
+  try { await d.update('ca_hs_sync', { id: `eq.${syncId}` }, patch) } catch { /* best effort */ }
+}
+
+export const onRequestPost = handle(async ({ request, env }) => {
+  const user = await requireUser(request, env)
+  if (!user) return json({ error: 'Sign in required' }, 401)
+  if (!user.isEditor) return json({ error: 'Only editors can refresh HubSpot' }, 403)
+  const token = env.HUBSPOT_ACCESS_TOKEN
+  if (!token) return json({ error: 'HubSpot not configured (HUBSPOT_ACCESS_TOKEN)' }, 503)
+  const d = db(env)
+  const body = await readJson(request)
+  const warnings = []
+
+  let cursor = body.cursor && typeof body.cursor === 'object' ? { ...body.cursor } : null
+  if (!cursor) {
+    const from = isoDay(body.from) ? body.from : null
+    const to = isoDay(body.to) ? body.to : null
+    const started_at = new Date().toISOString()
+    const rows = await d.insert('ca_hs_sync', { started_by: user.email, started_at, status: 'running', contacts: 0, notes: 0 }, { returning: true })
+    cursor = { sync_id: rows[0] && rows[0].id, started_at, phase: 'search', taskIndex: 0, after: null, offset: 0, contacts: 0, notes: 0, from, to }
+  }
+  cursor.contacts = Number(cursor.contacts) || 0
+  cursor.notes = Number(cursor.notes) || 0
+
+  try {
+    if (cursor.phase === 'search') return json(await searchPhase({ d, token, env, request, cursor, warnings }))
+    return json(await notesPhase({ d, token, cursor, warnings }))
+  } catch (e) {
+    await markSync(d, cursor.sync_id, { status: 'error', finished_at: new Date().toISOString(), error: String(e.message || e).slice(0, 500) })
+    throw e
+  }
+})
+
+async function searchPhase({ d, token, env, request, cursor, warnings }) {
+  const settings = await loadSettings(env, request, { keys: ['accounts', 'bands', 'regions', 'gsi_companies'] })
+  const { byId: ownerNames, idByEmail, error: ownerError } = await fetchOwners(token)
+  const ownerIds = OWNER_EMAILS.map((e) => idByEmail[e]).filter(Boolean)
+  if (ownerError) warnings.push(`Rule 2 (leads owned by the GSI owners) was skipped: ${ownerError}.`)
+  else if (!ownerIds.length) warnings.push('None of the GSI owner emails matched a HubSpot owner, so rule 2 matched nothing.')
+
+  const dates = dateFilters(cursor.from, cursor.to)
+  // The GSI company list is editable in Settings; the seed list is the default.
+  const companies = Array.isArray(settings.gsi_companies) && settings.gsi_companies.length ? settings.gsi_companies : DEFAULT_COMPANIES
+  const tasks = buildTasks(companies, ownerIds, dates)
+  const found = new Map()
+  let used = 0
+  let taskIndex = Number.isInteger(cursor.taskIndex) ? cursor.taskIndex : 0
+  let after = cursor.after || undefined
+  while (taskIndex < tasks.length && used < SEARCH_BUDGET) {
+    const task = tasks[taskIndex]
+    const data = await hsSearch(token, after ? { ...task.body, after } : task.body)
+    used++
+    for (const r of data.results || []) {
+      const ex = found.get(r.id)
+      if (ex) { if (!ex.via.includes(task.tag)) ex.via.push(task.tag) } else found.set(r.id, { raw: r, via: [task.tag] })
+    }
+    after = data.paging?.next?.after
+    if (!after) { taskIndex++; after = undefined }
+  }
+
+  // Keep `via` tags found by earlier invocations of this same sync.
+  const ids = [...found.keys()]
+  if (ids.length && ids.length <= 600) {
+    for (const filter of inChunks(ids)) {
+      const rows = await d.select('ca_hs_contacts', { params: { hs_id: filter, synced_at: `gte.${cursor.started_at}` }, select: 'hs_id,via' })
+      for (const r of rows) {
+        const f = found.get(r.hs_id)
+        if (f) for (const t of r.via || []) if (!f.via.includes(t)) f.via.push(t)
+      }
+    }
+  }
+
+  const syncedAt = new Date().toISOString()
+  const rows = [...found.values()].map(({ raw, via }) => mapContact(raw, via, { ownerNames, settings, syncedAt }))
+  for (let i = 0; i < rows.length; i += 500) await d.upsert('ca_hs_contacts', rows.slice(i, i + 500), 'hs_id')
+  cursor.contacts += rows.length
+
+  const finished = taskIndex >= tasks.length
+  if (finished) { cursor.phase = 'notes'; cursor.offset = 0; cursor.taskIndex = tasks.length; cursor.after = null }
+  else { cursor.taskIndex = taskIndex; cursor.after = after ?? null }
+  await markSync(d, cursor.sync_id, { contacts: cursor.contacts })
+  return {
+    done: false,
+    cursor,
+    contacts: cursor.contacts,
+    notes: cursor.notes,
+    warnings,
+    progress: { phase: finished ? 'notes' : 'search', done: Math.min(taskIndex, tasks.length), total: tasks.length },
+  }
+}
+
+async function hsAssociations(token, type, ids) {
+  // v4 batch read: { results:[{ from:{id}, to:[{ toObjectId, associationTypes }] }] }
+  const map = new Map()
+  for (let i = 0; i < ids.length; i += HS_BATCH) {
+    const data = await hsPost(token, `/crm/v4/associations/contacts/${type}/batch/read`, { inputs: ids.slice(i, i + HS_BATCH).map((id) => ({ id })) })
+    for (const r of data.results || []) map.set(String(r.from?.id), (r.to || []).map((t) => String(t.toObjectId)))
+  }
+  return map
+}
+
+async function notesPhase({ d, token, cursor, warnings }) {
+  const offset = Number(cursor.offset) || 0
+  const contacts = await d.select('ca_hs_contacts', {
+    params: { synced_at: `gte.${cursor.started_at}` },
+    select: 'hs_id,last_activity_at,last_activity_type',
+    order: 'hs_id.asc',
+    limit: NOTES_CHUNK,
+    offset,
+  })
+  if (!contacts.length) return finish({ d, cursor, warnings })
+  const ids = contacts.map((c) => c.hs_id)
+
+  const assoc = {}
+  for (const type of ENGAGEMENT_TYPES) assoc[type] = await hsAssociations(token, type, ids)
+
+  // Notes bodies: cap the reads per invocation, the rest is reported.
+  const noteIds = [...new Set([...assoc.notes.values()].flat())]
+  const noteRows = []
+  let reads = 0
+  for (let i = 0; i < noteIds.length && reads < NOTE_READ_CAP; i += HS_BATCH, reads++) {
+    const data = await hsPost(token, '/crm/v3/objects/notes/batch/read', {
+      properties: ['hs_note_body', 'hs_timestamp', 'hubspot_owner_id'],
+      inputs: noteIds.slice(i, i + HS_BATCH).map((id) => ({ id })),
+    })
+    for (const n of data.results || []) {
+      const p = n.properties || {}
+      noteRows.push({ id: String(n.id), body: stripHtml(p.hs_note_body).slice(0, 8000), owner_id: p.hubspot_owner_id || null, created_at: tsOrNull(p.hs_timestamp || n.createdAt) })
+    }
+  }
+  if (noteIds.length > reads * HS_BATCH) warnings.push(`${noteIds.length - reads * HS_BATCH} notes in this chunk were not read (per-call cap); run refresh again to pick them up.`)
+  const noteById = new Map(noteRows.map((n) => [n.id, n]))
+
+  const syncedAt = new Date().toISOString()
+  const notesOut = []
+  const patches = []
+  for (const c of contacts) {
+    const nids = assoc.notes.get(c.hs_id) || []
+    let latest = c.last_activity_at || null
+    let latestType = c.last_activity_type || null
+    for (const nid of nids) {
+      const n = noteById.get(nid)
+      if (!n) continue
+      notesOut.push({ id: n.id, contact_id: c.hs_id, kind: 'note', body: n.body, owner_id: n.owner_id, created_at: n.created_at, synced_at: syncedAt })
+      if (n.created_at && (!latest || n.created_at > latest)) { latest = n.created_at; latestType = latestType || 'note' }
+    }
+    const count = ENGAGEMENT_TYPES.reduce((s, t) => s + ((assoc[t].get(c.hs_id) || []).length), 0)
+    patches.push({ hs_id: c.hs_id, notes_count: count, last_activity_at: latest, last_activity_type: latestType })
+  }
+  for (let i = 0; i < notesOut.length; i += 500) await d.upsert('ca_hs_notes', notesOut.slice(i, i + 500), 'id')
+  if (patches.length) await d.upsert('ca_hs_contacts', patches, 'hs_id')
+  cursor.notes += notesOut.length
+  cursor.offset = offset + contacts.length
+  await markSync(d, cursor.sync_id, { notes: cursor.notes })
+
+  if (contacts.length < NOTES_CHUNK) return finish({ d, cursor, warnings })
+  return {
+    done: false,
+    cursor,
+    contacts: cursor.contacts,
+    notes: cursor.notes,
+    warnings,
+    progress: { phase: 'notes', done: cursor.offset, total: cursor.contacts },
+  }
+}
+
+async function finish({ d, cursor, warnings }) {
+  await markSync(d, cursor.sync_id, { status: 'done', finished_at: new Date().toISOString(), contacts: cursor.contacts, notes: cursor.notes })
+  return { done: true, contacts: cursor.contacts, notes: cursor.notes, warnings, progress: { phase: 'done', done: cursor.contacts, total: cursor.contacts } }
+}

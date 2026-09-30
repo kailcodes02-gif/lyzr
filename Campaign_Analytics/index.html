@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lyzr Campaign Analytics</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M6 26 18 4v22z' fill='%23FE4B1E'/%3E%3Cpath d='M20 12l6 14h-6z' fill='%23043E77'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/app.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@5/lib/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@5/lib/redirect-bridge/msal-redirect-bridge.min.js"></script>
+</head>
+<body>
+<!-- Sign-in gate -->
+<div id="gate" class="gate">
+  <div class="gatecard">
+    <div class="brand"><span class="sail"></span><span>Lyzr</span></div>
+    <h1>Campaign Analytics</h1>
+    <p class="muted">Paid ads, email, HubSpot messaging and lead analytics for the GSI and SI programme. Sign in with your Lyzr Microsoft account.</p>
+    <button id="msBtn" class="btn primary">Sign in with Microsoft</button>
+    <button id="demoBtn" class="btn ghost">Explore in demo mode</button>
+    <p id="gerr" class="err"></p>
+  </div>
+</div>
+
+<!-- App shell -->
+<div id="app" class="app hidden">
+  <header class="topbar">
+    <div class="brand"><span class="sail"></span><span>Campaign Analytics</span><span id="demoTag" class="tag hidden">demo data</span></div>
+    <nav id="nav" class="nav" aria-label="Sections"></nav>
+    <div class="range" id="rangeBox">
+      <select id="rangePreset" aria-label="Date range preset"></select>
+      <input type="date" id="rangeFrom" aria-label="From">
+      <span class="muted">to</span>
+      <input type="date" id="rangeTo" aria-label="To">
+    </div>
+    <div class="user">
+      <span id="uav" class="avatar"></span>
+      <span id="uname"></span>
+      <button id="signout" class="btn tiny ghost">Sign out</button>
+    </div>
+  </header>
+  <main id="main" class="main"></main>
+  <footer class="foot" id="foot"></footer>
+</div>
+<div id="toasts" class="toasts" aria-live="polite"></div>
+<script type="module" src="./js/app.mjs"></script>
+</body>
+</html>

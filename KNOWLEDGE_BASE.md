@@ -458,6 +458,30 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01, Campaign Analytics: first push (ads, email, leads, trends, tracked actions)
+- New app `Campaign_Analytics/` (static ES modules, `https://lyzr.kailash-gm.com/Campaign_Analytics/`, MSAL
+  sign-in on the "Lyzr MS UI" Entra app) + Pages Functions `functions/api/ca/*`. Contract in
+  `Campaign_Analytics/ARCHITECTURE.md`, runbook in `Campaign_Analytics/README.md`, demo mode `?demo=1`.
+- Own Supabase project `gfzimvqfmninrcyapike` ("Campaign analytics", kailcodes02-gif's Org, Free),
+  separate from the GSI Tracker DB on purpose. Schema `supabase/001_campaign_analytics.sql` +
+  `002_email_actions.sql` (ca_* only, RLS on, no policies; server uses the secret key). `db.js` sends
+  `sb_secret_…` keys in `apikey` only (not as Bearer).
+- Views: Overview, Ads · LinkedIn (+ reach quality over time by region/seniority/band/accounts), Email
+  (Instantly: results, funnel, Book a Demo leaderboard and account × week heat map, campaign drill-down,
+  accounts, link types, mailboxes, people lists; every email clickable + copyable), HubSpot messaging,
+  Leads (lead status, recent activity, source channel, GSI flag), Settings (bulk upload 20+ CSV/XLSX,
+  auto-routed; Email rules; GSI companies). Shared week/month trend explorer on Ads, Email and Leads.
+- Email rules: human click = more than 180 s after the Sent of the same step (faster = scanner, kept but
+  excluded); Book a Demo = direct calendar + GSI/SI page ("via"), always split.
+- Instantly daily pull of GSI-tagged campaigns: `functions/api/ca/instantly/sync.js` (read-only, resumable)
+  run by `.github/workflows/ca-instantly-sync.yml` at 07:00 IST with `X-CA-Cron: CA_CRON_SECRET`.
+- Claude read-outs (claude-sonnet-5, forced report tool) now take `action_log` and return `progress`;
+  findings can be tracked in `ca_actions` (Track button, open/done/dropped, notes).
+- Pages secrets set: CA_SUPABASE_URL, CA_SUPABASE_KEY, ANTHROPIC_API_KEY, CA_CRON_SECRET (also a GitHub
+  Actions secret). Tests: 32 backend + 45 frontend (`node --test 'Campaign_Analytics/tests/**/*.test.mjs'`).
+- Not in this push on purpose: `scripts/` (one file hard-codes an Instantly key) and the lead CSVs in the
+  repo root (public repo).
+
 ### 2026-10-01, GSI Tracker: API safety rails (migration 030)
 - `030_api_hardening.sql` (user pastes live; in RESET_ALL): `api_keys.expires_at` + `can_delete` (write keys
   only, CHECK), `api_request_log` (admin-read RLS, written only by SECURITY DEFINER fns, 90-day retention),

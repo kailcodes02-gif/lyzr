@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>View harness (tests)</title>
+<!-- Mounts one view with the demo mock API, outside the shell, so a view can be checked in headless Chrome.
+     Open: /Campaign_Analytics/tests/frontend/harness.html?view=linkedin&from=2026-09-01&to=2026-09-30 -->
+<base href="/Campaign_Analytics/">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+<div class="app"><header class="topbar"><div class="brand"><span class="sail"></span><span>Campaign Analytics</span><span class="tag">harness</span></div></header><main id="main" class="main"></main></div>
+<div id="toasts" class="toasts" aria-live="polite"></div>
+<script type="module">
+window.addEventListener('error', e => console.error('HARNESS ERROR', e.message, e.filename, e.lineno));
+window.addEventListener('unhandledrejection', e => console.error('HARNESS REJECTION', e.reason && (e.reason.stack || e.reason.message || e.reason)));
+import * as fmt from './js/fmt.mjs';
+import * as heat from './js/heatmap.mjs';
+import * as ui from './js/ui.mjs';
+import { mountInsights } from './js/insights.mjs';
+import { createMockApi } from './js/mock.mjs';
+const q = new URLSearchParams(location.search);
+const view = q.get('view') || 'linkedin';
+const state = { from: q.get('from') || '2026-09-01', to: q.get('to') || '2026-09-30', tz: 'Asia/Kolkata', preset: 'custom' };
+const toast = (msg, kind = '') => { const t = document.createElement('div'); t.className = 'toast ' + kind; t.textContent = msg; document.getElementById('toasts').appendChild(t); console.log('TOAST', kind, msg); };
+const api = createMockApi();
+const ctx = { api, state, user: { name: 'Harness', email: 'demo@lyzr.com' }, demo: true, fmt, heat, ui, toast, mountInsights, nav: r => { location.hash = '#/' + r; } };
+ctx.settings = await api.get('settings');
+const mod = await import(`./js/views/${view}.mjs`);
+await mod.render(document.getElementById('main'), ctx);
+console.log('HARNESS RENDERED', view, state.from, state.to, 'sections', document.querySelectorAll('section.section').length, 'canvases', document.querySelectorAll('canvas').length, 'heat tables', document.querySelectorAll('table.heat').length);
+window.__ctx = ctx; window.__mod = mod;
+if (q.get('click') === 'pen') { const td = document.querySelector('#penHeat td.c'); if (td) { td.click(); console.log('HARNESS CLICKED', td.dataset.r, td.dataset.c, 'detail chars', document.getElementById('penDetail').innerHTML.length); } else console.error('HARNESS no penetration cell to click'); }
+if (q.get('clickText')) { const b = [...document.querySelectorAll('button')].find(x => x.textContent.trim() === q.get('clickText')); if (b) { b.click(); await new Promise(r => setTimeout(r, 800)); console.log('HARNESS CLICKED TEXT', q.get('clickText')); } else console.error('HARNESS no button', q.get('clickText')); }
+if (q.get('scrollTo')) { const t = document.querySelector(q.get('scrollTo')); if (t) { document.body.style.marginTop = (-t.getBoundingClientRect().top - window.scrollY + 20) + 'px'; } }
+</script>
+</body>
+</html>

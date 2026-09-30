@@ -1,0 +1,1346 @@
+[
+ {
+  "company": "EY",
+  "country": "India",
+  "md": 952,
+  "md1": 3121,
+  "md2": 3162,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "EY",
+  "country": "United States",
+  "md": 3899,
+  "md1": 3697,
+  "md2": 5482,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "EY",
+  "country": "United Kingdom",
+  "md": 1175,
+  "md1": 1540,
+  "md2": 1685,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "EY",
+  "country": "Saudi Arabia",
+  "md": 150,
+  "md1": 180,
+  "md2": 195,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "EY",
+  "country": "United Arab Emirates",
+  "md": 220,
+  "md1": 264,
+  "md2": 286,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "EY",
+  "country": "Australia",
+  "md": 300,
+  "md1": 360,
+  "md2": 390,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "EY",
+  "country": "Japan",
+  "md": 300,
+  "md1": 360,
+  "md2": 390,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "EY",
+  "country": "Singapore",
+  "md": 180,
+  "md1": 216,
+  "md2": 234,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Accenture",
+  "country": "India",
+  "md": 766,
+  "md1": 754,
+  "md2": 2513,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Accenture",
+  "country": "United States",
+  "md": 2169,
+  "md1": 1247,
+  "md2": 4187,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Accenture",
+  "country": "United Kingdom",
+  "md": 559,
+  "md1": 196,
+  "md2": 599,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Accenture",
+  "country": "Saudi Arabia",
+  "md": 27,
+  "md1": 22,
+  "md2": 54,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Accenture",
+  "country": "United Arab Emirates",
+  "md": 52,
+  "md1": 42,
+  "md2": 104,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Accenture",
+  "country": "Australia",
+  "md": 150,
+  "md1": 120,
+  "md2": 300,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Accenture",
+  "country": "Japan",
+  "md": 214,
+  "md1": 171,
+  "md2": 428,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Accenture",
+  "country": "Singapore",
+  "md": 121,
+  "md1": 97,
+  "md2": 242,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Deloitte",
+  "country": "India",
+  "md": 757,
+  "md1": 3033,
+  "md2": 3053,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Deloitte",
+  "country": "United States",
+  "md": 5238,
+  "md1": 3302,
+  "md2": 6650,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Deloitte",
+  "country": "United Kingdom",
+  "md": 1013,
+  "md1": 3450,
+  "md2": 3657,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Deloitte",
+  "country": "Saudi Arabia",
+  "md": 120,
+  "md1": 144,
+  "md2": 156,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Deloitte",
+  "country": "United Arab Emirates",
+  "md": 141,
+  "md1": 169,
+  "md2": 183,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Deloitte",
+  "country": "Australia",
+  "md": 275,
+  "md1": 330,
+  "md2": 358,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Deloitte",
+  "country": "Japan",
+  "md": 739,
+  "md1": 887,
+  "md2": 961,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Deloitte",
+  "country": "Singapore",
+  "md": 141,
+  "md1": 169,
+  "md2": 183,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "PwC",
+  "country": "India",
+  "md": 230,
+  "md1": 908,
+  "md2": 920,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "PwC",
+  "country": "United States",
+  "md": 4142,
+  "md1": 6055,
+  "md2": 4848,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "PwC",
+  "country": "United Kingdom",
+  "md": 666,
+  "md1": 1030,
+  "md2": 1421,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "PwC",
+  "country": "Saudi Arabia",
+  "md": 120,
+  "md1": 144,
+  "md2": 156,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "PwC",
+  "country": "United Arab Emirates",
+  "md": 180,
+  "md1": 216,
+  "md2": 234,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "PwC",
+  "country": "Australia",
+  "md": 280,
+  "md1": 336,
+  "md2": 364,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "PwC",
+  "country": "Japan",
+  "md": 250,
+  "md1": 300,
+  "md2": 325,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "PwC",
+  "country": "Singapore",
+  "md": 150,
+  "md1": 180,
+  "md2": 195,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "HCLTech",
+  "country": "India",
+  "md": 310,
+  "md1": 79,
+  "md2": 2577,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "HCLTech",
+  "country": "United States",
+  "md": 120,
+  "md1": 60,
+  "md2": 240,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "HCLTech",
+  "country": "United Kingdom",
+  "md": 120,
+  "md1": 60,
+  "md2": 240,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "HCLTech",
+  "country": "Saudi Arabia",
+  "md": 20,
+  "md1": 10,
+  "md2": 40,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "HCLTech",
+  "country": "United Arab Emirates",
+  "md": 35,
+  "md1": 18,
+  "md2": 70,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "HCLTech",
+  "country": "Australia",
+  "md": 40,
+  "md1": 20,
+  "md2": 80,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "HCLTech",
+  "country": "Japan",
+  "md": 20,
+  "md1": 10,
+  "md2": 40,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "HCLTech",
+  "country": "Singapore",
+  "md": 35,
+  "md1": 18,
+  "md2": 70,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Genpact",
+  "country": "India",
+  "md": 2115,
+  "md1": 1548,
+  "md2": 2612,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Genpact",
+  "country": "United States",
+  "md": 300,
+  "md1": 150,
+  "md2": 600,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Genpact",
+  "country": "United Kingdom",
+  "md": 150,
+  "md1": 75,
+  "md2": 300,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Genpact",
+  "country": "Saudi Arabia",
+  "md": 15,
+  "md1": 8,
+  "md2": 30,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Genpact",
+  "country": "United Arab Emirates",
+  "md": 25,
+  "md1": 12,
+  "md2": 50,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Genpact",
+  "country": "Australia",
+  "md": 30,
+  "md1": 15,
+  "md2": 60,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Genpact",
+  "country": "Japan",
+  "md": 15,
+  "md1": 8,
+  "md2": 30,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Genpact",
+  "country": "Singapore",
+  "md": 25,
+  "md1": 12,
+  "md2": 50,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "McKinsey & Company",
+  "country": "India",
+  "md": 194,
+  "md1": 154,
+  "md2": 535,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "McKinsey & Company",
+  "country": "United States",
+  "md": 1537,
+  "md1": 1680,
+  "md2": 2571,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "McKinsey & Company",
+  "country": "United Kingdom",
+  "md": 236,
+  "md1": 236,
+  "md2": 472,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "McKinsey & Company",
+  "country": "Saudi Arabia",
+  "md": 32,
+  "md1": 32,
+  "md2": 64,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "McKinsey & Company",
+  "country": "United Arab Emirates",
+  "md": 120,
+  "md1": 120,
+  "md2": 240,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "McKinsey & Company",
+  "country": "Australia",
+  "md": 130,
+  "md1": 130,
+  "md2": 260,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "McKinsey & Company",
+  "country": "Japan",
+  "md": 67,
+  "md1": 67,
+  "md2": 134,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "McKinsey & Company",
+  "country": "Singapore",
+  "md": 90,
+  "md1": 90,
+  "md2": 180,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Wipro",
+  "country": "India",
+  "md": 230,
+  "md1": 64,
+  "md2": 992,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Wipro",
+  "country": "United States",
+  "md": 120,
+  "md1": 60,
+  "md2": 240,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Wipro",
+  "country": "United Kingdom",
+  "md": 110,
+  "md1": 55,
+  "md2": 220,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Wipro",
+  "country": "Saudi Arabia",
+  "md": 30,
+  "md1": 15,
+  "md2": 60,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Wipro",
+  "country": "United Arab Emirates",
+  "md": 40,
+  "md1": 20,
+  "md2": 80,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Wipro",
+  "country": "Australia",
+  "md": 45,
+  "md1": 22,
+  "md2": 90,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Wipro",
+  "country": "Japan",
+  "md": 15,
+  "md1": 8,
+  "md2": 30,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Wipro",
+  "country": "Singapore",
+  "md": 35,
+  "md1": 18,
+  "md2": 70,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Boston Consulting Group (BCG)",
+  "country": "India",
+  "md": 198,
+  "md1": 254,
+  "md2": 560,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Boston Consulting Group (BCG)",
+  "country": "United States",
+  "md": 900,
+  "md1": 900,
+  "md2": 1800,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Boston Consulting Group (BCG)",
+  "country": "United Kingdom",
+  "md": 350,
+  "md1": 350,
+  "md2": 700,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Boston Consulting Group (BCG)",
+  "country": "Saudi Arabia",
+  "md": 40,
+  "md1": 40,
+  "md2": 80,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Boston Consulting Group (BCG)",
+  "country": "United Arab Emirates",
+  "md": 110,
+  "md1": 110,
+  "md2": 220,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Boston Consulting Group (BCG)",
+  "country": "Australia",
+  "md": 150,
+  "md1": 150,
+  "md2": 300,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Boston Consulting Group (BCG)",
+  "country": "Japan",
+  "md": 120,
+  "md1": 120,
+  "md2": 240,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Boston Consulting Group (BCG)",
+  "country": "Singapore",
+  "md": 120,
+  "md1": 120,
+  "md2": 240,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Tata Consultancy Services",
+  "country": "India",
+  "md": 377,
+  "md1": 158,
+  "md2": 1602,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Tata Consultancy Services",
+  "country": "United States",
+  "md": 82,
+  "md1": 344,
+  "md2": 542,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Tata Consultancy Services",
+  "country": "United Kingdom",
+  "md": 165,
+  "md1": 82,
+  "md2": 330,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Tata Consultancy Services",
+  "country": "Saudi Arabia",
+  "md": 25,
+  "md1": 12,
+  "md2": 50,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Tata Consultancy Services",
+  "country": "United Arab Emirates",
+  "md": 40,
+  "md1": 20,
+  "md2": 80,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Tata Consultancy Services",
+  "country": "Australia",
+  "md": 33,
+  "md1": 16,
+  "md2": 66,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Tata Consultancy Services",
+  "country": "Japan",
+  "md": 20,
+  "md1": 10,
+  "md2": 40,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Tata Consultancy Services",
+  "country": "Singapore",
+  "md": 12,
+  "md1": 6,
+  "md2": 24,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "KPMG",
+  "country": "India",
+  "md": 105,
+  "md1": 684,
+  "md2": 552,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "KPMG",
+  "country": "United States",
+  "md": 800,
+  "md1": 1391,
+  "md2": 739,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "KPMG",
+  "country": "United Kingdom",
+  "md": 164,
+  "md1": 287,
+  "md2": 311,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "KPMG",
+  "country": "Saudi Arabia",
+  "md": 90,
+  "md1": 108,
+  "md2": 117,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "KPMG",
+  "country": "United Arab Emirates",
+  "md": 120,
+  "md1": 144,
+  "md2": 156,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "KPMG",
+  "country": "Australia",
+  "md": 180,
+  "md1": 216,
+  "md2": 234,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "KPMG",
+  "country": "Japan",
+  "md": 150,
+  "md1": 180,
+  "md2": 195,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "KPMG",
+  "country": "Singapore",
+  "md": 90,
+  "md1": 108,
+  "md2": 117,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Infosys",
+  "country": "India",
+  "md": 299,
+  "md1": 133,
+  "md2": 299,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Infosys",
+  "country": "United States",
+  "md": 193,
+  "md1": 345,
+  "md2": 338,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Infosys",
+  "country": "United Kingdom",
+  "md": 140,
+  "md1": 70,
+  "md2": 280,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Infosys",
+  "country": "Saudi Arabia",
+  "md": 25,
+  "md1": 12,
+  "md2": 50,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Infosys",
+  "country": "United Arab Emirates",
+  "md": 35,
+  "md1": 18,
+  "md2": 70,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Infosys",
+  "country": "Australia",
+  "md": 60,
+  "md1": 30,
+  "md2": 120,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Infosys",
+  "country": "Japan",
+  "md": 20,
+  "md1": 10,
+  "md2": 40,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Infosys",
+  "country": "Singapore",
+  "md": 40,
+  "md1": 20,
+  "md2": 80,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Bain & Company",
+  "country": "India",
+  "md": 99,
+  "md1": 40,
+  "md2": 435,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Bain & Company",
+  "country": "United States",
+  "md": 700,
+  "md1": 700,
+  "md2": 1400,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Bain & Company",
+  "country": "United Kingdom",
+  "md": 250,
+  "md1": 250,
+  "md2": 500,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Bain & Company",
+  "country": "Saudi Arabia",
+  "md": 40,
+  "md1": 40,
+  "md2": 80,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Bain & Company",
+  "country": "United Arab Emirates",
+  "md": 90,
+  "md1": 90,
+  "md2": 180,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Bain & Company",
+  "country": "Australia",
+  "md": 110,
+  "md1": 110,
+  "md2": 220,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Bain & Company",
+  "country": "Japan",
+  "md": 80,
+  "md1": 80,
+  "md2": 160,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Bain & Company",
+  "country": "Singapore",
+  "md": 90,
+  "md1": 90,
+  "md2": 180,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "LTIMindtree",
+  "country": "India",
+  "md": 53,
+  "md1": 208,
+  "md2": 1447,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "LTIMindtree",
+  "country": "United States",
+  "md": 80,
+  "md1": 40,
+  "md2": 160,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "LTIMindtree",
+  "country": "United Kingdom",
+  "md": 60,
+  "md1": 30,
+  "md2": 120,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "LTIMindtree",
+  "country": "Saudi Arabia",
+  "md": 10,
+  "md1": 5,
+  "md2": 20,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "LTIMindtree",
+  "country": "United Arab Emirates",
+  "md": 15,
+  "md1": 8,
+  "md2": 30,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "LTIMindtree",
+  "country": "Australia",
+  "md": 20,
+  "md1": 10,
+  "md2": 40,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "LTIMindtree",
+  "country": "Japan",
+  "md": 5,
+  "md1": 2,
+  "md2": 10,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "LTIMindtree",
+  "country": "Singapore",
+  "md": 20,
+  "md1": 10,
+  "md2": 40,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Tech Mahindra",
+  "country": "India",
+  "md": 222,
+  "md1": 92,
+  "md2": 392,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Tech Mahindra",
+  "country": "United States",
+  "md": 90,
+  "md1": 45,
+  "md2": 180,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Tech Mahindra",
+  "country": "United Kingdom",
+  "md": 90,
+  "md1": 45,
+  "md2": 180,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Tech Mahindra",
+  "country": "Saudi Arabia",
+  "md": 15,
+  "md1": 8,
+  "md2": 30,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Tech Mahindra",
+  "country": "United Arab Emirates",
+  "md": 25,
+  "md1": 12,
+  "md2": 50,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Tech Mahindra",
+  "country": "Australia",
+  "md": 30,
+  "md1": 15,
+  "md2": 60,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Tech Mahindra",
+  "country": "Japan",
+  "md": 10,
+  "md1": 5,
+  "md2": 20,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Tech Mahindra",
+  "country": "Singapore",
+  "md": 25,
+  "md1": 12,
+  "md2": 50,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Thoughtworks",
+  "country": "India",
+  "md": 693,
+  "md1": 80,
+  "md2": 141,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Thoughtworks",
+  "country": "United States",
+  "md": 150,
+  "md1": 120,
+  "md2": 300,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Thoughtworks",
+  "country": "United Kingdom",
+  "md": 100,
+  "md1": 80,
+  "md2": 200,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Thoughtworks",
+  "country": "Saudi Arabia",
+  "md": 10,
+  "md1": 8,
+  "md2": 20,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Thoughtworks",
+  "country": "United Arab Emirates",
+  "md": 15,
+  "md1": 12,
+  "md2": 30,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Thoughtworks",
+  "country": "Australia",
+  "md": 120,
+  "md1": 96,
+  "md2": 240,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Thoughtworks",
+  "country": "Japan",
+  "md": 10,
+  "md1": 8,
+  "md2": 20,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Thoughtworks",
+  "country": "Singapore",
+  "md": 60,
+  "md1": 48,
+  "md2": 120,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Protiviti",
+  "country": "India",
+  "md": 21,
+  "md1": 61,
+  "md2": 223,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Protiviti",
+  "country": "United States",
+  "md": 300,
+  "md1": 450,
+  "md2": 900,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Protiviti",
+  "country": "United Kingdom",
+  "md": 60,
+  "md1": 90,
+  "md2": 180,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Protiviti",
+  "country": "Saudi Arabia",
+  "md": 20,
+  "md1": 30,
+  "md2": 60,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Protiviti",
+  "country": "United Arab Emirates",
+  "md": 40,
+  "md1": 60,
+  "md2": 120,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Protiviti",
+  "country": "Australia",
+  "md": 40,
+  "md1": 60,
+  "md2": 120,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Protiviti",
+  "country": "Japan",
+  "md": 20,
+  "md1": 30,
+  "md2": 60,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Protiviti",
+  "country": "Singapore",
+  "md": 30,
+  "md1": 45,
+  "md2": 90,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "EPAM Systems",
+  "country": "India",
+  "md": 4,
+  "md1": 25,
+  "md2": 103,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "EPAM Systems",
+  "country": "United States",
+  "md": 250,
+  "md1": 200,
+  "md2": 500,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "EPAM Systems",
+  "country": "United Kingdom",
+  "md": 120,
+  "md1": 96,
+  "md2": 240,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "EPAM Systems",
+  "country": "Saudi Arabia",
+  "md": 10,
+  "md1": 8,
+  "md2": 20,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "EPAM Systems",
+  "country": "United Arab Emirates",
+  "md": 15,
+  "md1": 12,
+  "md2": 30,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "EPAM Systems",
+  "country": "Australia",
+  "md": 15,
+  "md1": 12,
+  "md2": 30,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "EPAM Systems",
+  "country": "Japan",
+  "md": 5,
+  "md1": 4,
+  "md2": 10,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "EPAM Systems",
+  "country": "Singapore",
+  "md": 15,
+  "md1": 12,
+  "md2": 30,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Fujitsu",
+  "country": "India",
+  "md": 2,
+  "md1": 22,
+  "md2": 40,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Fujitsu",
+  "country": "United States",
+  "md": 80,
+  "md1": 64,
+  "md2": 160,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Fujitsu",
+  "country": "United Kingdom",
+  "md": 200,
+  "md1": 160,
+  "md2": 400,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Fujitsu",
+  "country": "Saudi Arabia",
+  "md": 15,
+  "md1": 12,
+  "md2": 30,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Fujitsu",
+  "country": "United Arab Emirates",
+  "md": 20,
+  "md1": 16,
+  "md2": 40,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Fujitsu",
+  "country": "Australia",
+  "md": 120,
+  "md1": 96,
+  "md2": 240,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Fujitsu",
+  "country": "Japan",
+  "md": 400,
+  "md1": 320,
+  "md2": 800,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Fujitsu",
+  "country": "Singapore",
+  "md": 40,
+  "md1": 32,
+  "md2": 80,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Oliver Wyman",
+  "country": "India",
+  "md": 8,
+  "md1": 8,
+  "md2": 36,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Oliver Wyman",
+  "country": "United States",
+  "md": 400,
+  "md1": 400,
+  "md2": 800,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Oliver Wyman",
+  "country": "United Kingdom",
+  "md": 250,
+  "md1": 250,
+  "md2": 500,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Oliver Wyman",
+  "country": "Saudi Arabia",
+  "md": 60,
+  "md1": 60,
+  "md2": 120,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Oliver Wyman",
+  "country": "United Arab Emirates",
+  "md": 120,
+  "md1": 120,
+  "md2": 240,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Oliver Wyman",
+  "country": "Australia",
+  "md": 40,
+  "md1": 40,
+  "md2": 80,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Oliver Wyman",
+  "country": "Japan",
+  "md": 30,
+  "md1": 30,
+  "md2": 60,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Oliver Wyman",
+  "country": "Singapore",
+  "md": 50,
+  "md1": 50,
+  "md2": 100,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Cognizant",
+  "country": "India",
+  "md": 53,
+  "md1": 824,
+  "md2": 4915,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Cognizant",
+  "country": "United States",
+  "md": 235,
+  "md1": 373,
+  "md2": 2703,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Cognizant",
+  "country": "United Kingdom",
+  "md": 120,
+  "md1": 96,
+  "md2": 240,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Cognizant",
+  "country": "Saudi Arabia",
+  "md": 20,
+  "md1": 16,
+  "md2": 40,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Cognizant",
+  "country": "United Arab Emirates",
+  "md": 30,
+  "md1": 24,
+  "md2": 60,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Cognizant",
+  "country": "Australia",
+  "md": 40,
+  "md1": 32,
+  "md2": 80,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Cognizant",
+  "country": "Japan",
+  "md": 20,
+  "md1": 16,
+  "md2": 40,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ },
+ {
+  "company": "Cognizant",
+  "country": "Singapore",
+  "md": 35,
+  "md1": 28,
+  "md2": 70,
+  "source": "Apollo Aug 2026 / web estimate (from Reach report)"
+ }
+]

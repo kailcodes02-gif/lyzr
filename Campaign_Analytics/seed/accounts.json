@@ -1,0 +1,279 @@
+[
+ {
+  "name": "EY",
+  "category": "Big Four",
+  "owner": "Pooja",
+  "aliases": [
+   "EY"
+  ],
+  "bands": {
+   "md": "Partner / Principal / MD",
+   "md1": "Senior Manager / Director",
+   "md2": "Manager"
+  }
+ },
+ {
+  "name": "Accenture",
+  "category": "Global SI",
+  "owner": "Praveen/ Bharath",
+  "aliases": [
+   "Accenture",
+   "Accenture in India",
+   "Accenture Strategy & Consulting"
+  ],
+  "bands": {
+   "md": "Senior MD / Managing Director",
+   "md1": "Associate Director / Principal Director",
+   "md2": "Senior Manager / Senior Principal"
+  }
+ },
+ {
+  "name": "Deloitte",
+  "category": "Big Four",
+  "owner": "Pooja",
+  "aliases": [
+   "Deloitte"
+  ],
+  "bands": {
+   "md": "Partner / Managing Director",
+   "md1": "Senior Manager / Specialist Leader",
+   "md2": "Manager / Specialist Master"
+  }
+ },
+ {
+  "name": "PwC",
+  "category": "Big Four",
+  "owner": "Pooja",
+  "aliases": [
+   "PwC"
+  ],
+  "bands": {
+   "md": "Partner / Principal / MD",
+   "md1": "Director",
+   "md2": "Senior Manager"
+  }
+ },
+ {
+  "name": "HCLTech",
+  "category": "Indian IT / BPM",
+  "owner": "Kaushik",
+  "aliases": [
+   "HCLTech"
+  ],
+  "bands": {
+   "md": "VP / SVP (E8/E9 Band)",
+   "md1": "AVP / Senior Director / GM (E6/E7)",
+   "md2": "Director / DGM (E4/E5)"
+  }
+ },
+ {
+  "name": "Genpact",
+  "category": "Indian IT / BPM",
+  "owner": "Bharath",
+  "aliases": [
+   "Genpact"
+  ],
+  "bands": {
+   "md": "Senior Vice President (SVP)",
+   "md1": "Vice President (VP)",
+   "md2": "Assistant VP (AVP)"
+  }
+ },
+ {
+  "name": "McKinsey & Company",
+  "category": "MBB / Strategy",
+  "owner": "Pooja",
+  "aliases": [
+   "McKinsey & Company"
+  ],
+  "bands": {
+   "md": "Partner / Senior Partner",
+   "md1": "Associate Partner",
+   "md2": "Engagement Manager"
+  }
+ },
+ {
+  "name": "Wipro",
+  "category": "Indian IT / BPM",
+  "owner": "Kaushik",
+  "aliases": [
+   "Wipro"
+  ],
+  "bands": {
+   "md": "SVP / Global Head",
+   "md1": "VP / General Manager (GM)",
+   "md2": "Director / Senior Delivery Manager"
+  }
+ },
+ {
+  "name": "Boston Consulting Group (BCG)",
+  "category": "MBB / Strategy",
+  "owner": "Pooja",
+  "aliases": [
+   "Boston Consulting Group (BCG)"
+  ],
+  "bands": {
+   "md": "Managing Director & Partner (MDP)",
+   "md1": "Principal",
+   "md2": "Project Leader"
+  }
+ },
+ {
+  "name": "Tata Consultancy Services",
+  "category": "Indian IT / BPM",
+  "owner": "Kaushik",
+  "aliases": [
+   "Tata Consultancy Services"
+  ],
+  "bands": {
+   "md": "SVP / Global Head",
+   "md1": "VP / Senior Director",
+   "md2": "Director / Senior Delivery Manager"
+  }
+ },
+ {
+  "name": "KPMG",
+  "category": "Big Four",
+  "owner": "Pooja",
+  "aliases": [
+   "KPMG US",
+   "KPMG",
+   "KPMG India"
+  ],
+  "bands": {
+   "md": "Partner / Managing Director",
+   "md1": "Director",
+   "md2": "Senior Manager / Manager"
+  }
+ },
+ {
+  "name": "Infosys",
+  "category": "Indian IT / BPM",
+  "owner": "Kaushik",
+  "aliases": [
+   "Infosys"
+  ],
+  "bands": {
+   "md": "SVP / Managing Partner",
+   "md1": "VP / Assistant VP (AVP)",
+   "md2": "Senior Delivery Manager"
+  }
+ },
+ {
+  "name": "Bain & Company",
+  "category": "MBB / Strategy",
+  "owner": "Pooja",
+  "aliases": [
+   "Bain & Company"
+  ],
+  "bands": {
+   "md": "Partner / Senior Partner",
+   "md1": "Associate Partner",
+   "md2": "Senior Manager / Manager"
+  }
+ },
+ {
+  "name": "LTIMindtree",
+  "category": "Indian IT / BPM",
+  "owner": "Kaushik",
+  "aliases": [
+   "LTIMindtree"
+  ],
+  "bands": {
+   "md": "Senior Vice President (SVP)",
+   "md1": "Vice President (VP)",
+   "md2": "Assistant VP (AVP) / Senior Director"
+  }
+ },
+ {
+  "name": "Tech Mahindra",
+  "category": "Indian IT / BPM",
+  "owner": "Kaushik",
+  "aliases": [
+   "Tech Mahindra"
+  ],
+  "bands": {
+   "md": "Senior Vice President (SVP)",
+   "md1": "Vice President (VP)",
+   "md2": "General Manager (GM)"
+  }
+ },
+ {
+  "name": "Thoughtworks",
+  "category": "Global SI",
+  "owner": "Pooja",
+  "aliases": [
+   "Thoughtworks"
+  ],
+  "bands": {
+   "md": "Director / Principal Consultant",
+   "md1": "Lead Consultant / Senior Manager",
+   "md2": ""
+  }
+ },
+ {
+  "name": "Protiviti",
+  "category": "Advisory",
+  "owner": "Pooja",
+  "aliases": [
+   "Protiviti"
+  ],
+  "bands": {
+   "md": "Director",
+   "md1": "Senior Manager",
+   "md2": ""
+  }
+ },
+ {
+  "name": "EPAM Systems",
+  "category": "Global SI",
+  "owner": "Kaushik",
+  "aliases": [
+   "EPAM Systems"
+  ],
+  "bands": {
+   "md": "Vice President (VP)",
+   "md1": "Senior Director",
+   "md2": "Director / Head of Practice"
+  }
+ },
+ {
+  "name": "Fujitsu",
+  "category": "Global SI",
+  "owner": "Bharath",
+  "aliases": [
+   "Fujitsu"
+  ],
+  "bands": {
+   "md": "SVP / Corporate VP",
+   "md1": "Senior Director / General Manager",
+   "md2": "Director / Senior Manager"
+  }
+ },
+ {
+  "name": "Oliver Wyman",
+  "category": "MBB / Strategy",
+  "owner": "Pooja",
+  "aliases": [
+   "Oliver Wyman"
+  ],
+  "bands": {
+   "md": "Principal (Associate Partner)",
+   "md1": "Engagement Manager",
+   "md2": ""
+  }
+ },
+ {
+  "name": "Cognizant",
+  "category": "Global SI",
+  "owner": "Kaushik",
+  "aliases": [
+   "Cognizant"
+  ],
+  "bands": {
+   "md": "Senior Vice President (SVP)",
+   "md1": "Vice President (VP)",
+   "md2": "Assistant VP (AVP) / Senior Director"
+  }
+ }
+]
