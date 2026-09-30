@@ -458,6 +458,14 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01, Campaign Analytics: first real HubSpot pull (575 GSI leads) and three fixes on the way
+- Error 1102 (CPU) with 1,441 accounts: `toAccount` was called with a fresh `[]` target list, so the phrase index
+  was rebuilt per contact. Now `NO_TARGETS`, first-token buckets, index reused across requests, Map domain lookup.
+- Cloudflare replaces a 502 from a Function with its own "error code: 502" page: upstream errors now return 500.
+- HubSpot "secondly limit" (429): searches are spaced 280 ms apart and retried. Pull = 164 searches, 575 leads.
+- Claude message reading fails with "reached your specified API usage limits ... regain access 2026-10-01 00:00
+  UTC": the Anthropic account spend cap, resets 05:30 IST before the 07:00 daily run. Raise it in the Console.
+
 ### 2026-10-01, Campaign Analytics: GSI list = full ABM master (1,441 accounts)
 - `seed/accounts.json` now merges "GSI_SI Accounts – Over All" (owners, MD/MD-1/MD-2), the Clay ABM export and
   `GSI_ABM_All_Accounts_Master_List.csv` (1,455 rows): 233 matched, 60 sub-brands folded into parents (KPMG UK,
