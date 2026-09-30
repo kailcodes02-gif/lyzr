@@ -5,6 +5,7 @@ import { TaxonomyManager } from '@/components/admin/taxonomy-manager'
 import { VerticalsTab } from '@/components/admin/verticals-tab'
 import { FunctionsTab } from '@/components/admin/functions-tab'
 import { TaskFieldsTab } from '@/components/admin/task-fields-tab'
+import { ApiKeysCard } from '@/components/admin/api-keys-card'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { updateUserRole, createBudgetPeriod, disconnectHubSpot, inviteUser, cancelInvite } from '@/lib/actions'
@@ -571,6 +572,7 @@ function AdminContent() {
 
         {/* HubSpot Tab */}
         <TabsContent value="hubspot" className="mt-0 space-y-6">
+          <ApiKeysCard />
           <Card className="bg-white border-zinc-200 backdrop-blur-xl">
             <CardHeader>
               <CardTitle className="text-base font-semibold text-zinc-900 flex items-center gap-2">
@@ -674,8 +676,8 @@ const SECTIONS = [
     why: 'Every task has a title, owner, due date and priority. Task fields add the extra details one channel needs — Events tasks might ask “Venue” and “Expected attendees”, Paid Ads tasks “Daily budget”. Build one in four steps; drag to reorder.' },
   { value: 'budgets', label: 'Budgets', icon: Landmark, short: 'Money limits per period',
     why: 'Set how much can be spent in a period — for the whole company, one vertical, one group or one channel. Budgets entered on tasks count against the matching limit, so you can see what is left.' },
-  { value: 'hubspot', label: 'Integrations', icon: RefreshCw, short: 'HubSpot and other connections',
-    why: 'Connections to outside tools. HubSpot lead data is read-only and never written back.' },
+  { value: 'hubspot', label: 'Integrations', icon: RefreshCw, short: 'API keys, HubSpot and other connections',
+    why: 'Connections to outside tools. API keys let Lyzr agents, bots and scripts read and update the tracker through its API; HubSpot lead data is read-only and never written back.' },
 ] as const
 
 function SectionHeader({ value }: { value: string }) {

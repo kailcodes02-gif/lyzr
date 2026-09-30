@@ -458,6 +458,19 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-09-30, GSI Tracker: REST API for the whole dashboard (/api/v1)
+- New Cloudflare Pages Function `functions/api/v1/[[path]].js` (+ `_openapi.js`, OpenAPI 3.1 at
+  `/api/v1/openapi.json`). Endpoints: summary, weekly, history, me, verticals, channels, domains, people,
+  campaigns, tasks CRUD + subtasks/comments/checklist/owners/dependencies. Docs: `GSI Tracker/tracker/API.md`.
+- Auth: `Authorization: Bearer lzt_…` → SHA-256 → SECURITY DEFINER RPC `api_resolve_key` (anon) → the
+  Function signs a 120s HS256 JWT for the key's admin owner with `SUPABASE_JWT_SECRET` → PostgREST as that
+  user, so RLS, triggers and History attribution are identical to the dashboard. Read keys GET-only.
+- Migration `029_api_keys.sql` (user pastes live; added to RESET_ALL). Keys are created/revoked in
+  Workspace settings › Integrations (`components/admin/api-keys-card.tsx`); key shown once, hash stored.
+- deploy.yml copies GitHub secret `SUPABASE_JWT_SECRET` to Pages (skipped if unset → API returns 503).
+- Limits: key = its admin creator; recurring tasks don't auto-spawn next occurrence via API; no rate limit.
+  66 API tests against a PostgREST mock green; tracker tests/build green.
+
 ### 2026-09-28, MS UI: drag-reschedule feedback (MS UI)
 - Drag/resize was already a real Graph PATCH (Exchange auto-emails attendees when the organizer
   moves a meeting — no "send update?" prompt exists in Graph). Now the UI says so: organizer moves

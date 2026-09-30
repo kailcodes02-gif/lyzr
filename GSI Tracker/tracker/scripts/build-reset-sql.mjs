@@ -39,6 +39,7 @@ const ORDER = [
   '026_clear_dummy_tasks_protect_lyzr.sql',
   '027_lyzr_primary_no_channel.sql',
   '028_history_keeps_deleted_tasks.sql',
+  '029_api_keys.sql',
 ]
 
 let m001 = mig('001_initial_schema.sql')
