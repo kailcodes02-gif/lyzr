@@ -71,6 +71,7 @@ export function createMockApi() {
     }
     if (p === 'actions') { const a = { id: 'a' + Math.random().toString(36).slice(2, 8), channel: body.channel || 'overview', title: body.title, detail: body.detail || null, owner: body.owner || null, source: body.source || 'manual', scope: body.scope || null, status: 'open', created_at: new Date().toISOString(), created_by: 'demo@lyzr.com' }; actions.unshift(a); return { action: a }; }
     if (p === 'instantly/sync') { await sleep(500); if (!body.cursor) return { done: false, cursor: { step: 1 }, campaigns: em().api.campaigns.length, days: 0, warnings: [], progress: { phase: 'daily', done: 0, total: em().api.campaigns.length } }; em().api.last_sync = { status: 'done', started_at: new Date(Date.now() - 4000).toISOString(), finished_at: new Date().toISOString() }; return { done: true, campaigns: em().api.campaigns.length, days: em().api.daily.length, warnings: [], progress: { phase: 'done', done: em().api.campaigns.length, total: em().api.campaigns.length } }; }
+    if (p === 'hubspot/classify') { await sleep(300); return { done: true, classified: 0, remaining: 0, model: 'demo (no Claude call)' }; }
     if (p === 'hubspot/refresh') {
       const steps = { '': ['p2', 96, 41, []], p2: ['p3', 182, 98, ['3 contacts had no email and were skipped']], p3: [null, hubspotMock.contacts.length, Object.values(hubspotMock.notes_by_contact).flat().length, []] };
       const cur = body.cursor || '';

@@ -458,6 +458,22 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01, Campaign Analytics: rebuild (brand UI, channel structure, GSI leads, Claude messages)
+- UI rebuilt on the Lyzr brand build reference (light only, General Sans + JetBrains Mono, 210px sidebar).
+  Sidebar: Overview · Ads (LinkedIn live; Google, Meta, Taboola, ChatGPT, X, Bing placeholders) · Email
+  (Instantly) · HubSpot (Leads, Messaging) · Admin. Uploads moved onto the LinkedIn and Instantly pages
+  (`js/uploader.mjs`); Admin explains every list and has "pull now" buttons. Overview explains itself.
+- Email page leads with Instantly API numbers (no upload needed); CSV exports add person-level detail below.
+  Instantly sync now always pulls every campaign's full history (the 30-day option was confusing and is gone).
+- GSI list rebuilt from "GSI_SI Accounts – Over All" (99 rows, designations; shifted-column rows fixed) and the
+  ABM export (200 rows, stops at "Canon EMEA": ask for the rest). 279 accounts after merging and folding
+  sub-brands (Accenture country units, BCG X, Atos Syntel). LTI is its own account, not a synonym of LTI Mindtree.
+- HubSpot: GSI lead = form submitter at a GSI account (name or website domain). Owner and "GSI"-text rules
+  removed (user decision). Pulled daily; `hubspot/refresh` accepts the cron secret.
+- New `hubspot/classify`: Claude Sonnet 5 reads each lead message once (category, use case, intent, summary,
+  spam). Needs `supabase/003_message_ai.sql` (user pastes). Read-outs no longer use Haiku.
+- `.github/workflows/ca-instantly-sync.yml` replaced by `ca-daily-pull.yml` (Instantly → HubSpot → messages).
+
 ### 2026-10-01, Campaign Analytics: sign-in popup showed the landing page
 - After choosing an account the popup loaded the dashboard gate instead of relaying the response: Microsoft's
   login pages set COOP, so `window.opener` is null in the popup and `isBridging()` (which required an opener)

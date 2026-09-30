@@ -16,6 +16,7 @@ import * as refresh from '../../../functions/api/ca/hubspot/refresh.js'
 import * as email from '../../../functions/api/ca/email.js'
 import * as actions from '../../../functions/api/ca/actions.js'
 import * as isync from '../../../functions/api/ca/instantly/sync.js'
+import * as classifyApi from '../../../functions/api/ca/hubspot/classify.js'
 import { requireUser, DEFAULT_EDITORS } from '../../../functions/api/ca/_lib/auth.js'
 import { db } from '../../../functions/api/ca/_lib/db.js'
 
@@ -379,8 +380,10 @@ test('refresh: search phase pulls with GSI rules, classifies, upserts, returns a
   assert.equal(r.body.cursor.sync_id, 'id-ca_hs_sync-1')
   assert.equal(r.body.progress.phase, 'search')
   assert.equal(searches.length, refresh.SEARCH_BUDGET)
-  // the first task is five company filterGroups with CONTAINS_TOKEN
-  assert.equal(searches[0].filterGroups.length, 5)
+  // the first task is four company filterGroups with CONTAINS_TOKEN, each limited to form submitters
+  assert.equal(searches[0].filterGroups.length, refresh.NAMES_PER_SEARCH)
+  assert.deepEqual(searches[0].filterGroups[0].filters[1], { propertyName: 'first_conversion_date', operator: 'HAS_PROPERTY' })
+  for (const s of searches) for (const g of s.filterGroups || []) assert.ok(!g.filters.some((f) => f.propertyName === 'hubspot_owner_id'), 'no owner rule any more')
   assert.equal(searches[0].filterGroups[0].filters[0].operator, 'CONTAINS_TOKEN')
   assert.equal(searches[0].filterGroups[0].filters[0].propertyName, 'company')
   assert.ok(searches[0].properties.includes('lsa_message') && searches[0].properties.includes('jobtitle') && searches[0].properties.includes('hs_analytics_source'))
@@ -453,14 +456,14 @@ test('refresh: 503 without the HubSpot token, error marks the sync row', async (
 
 test('stripHtml and buildTasks', () => {
   assert.equal(refresh.stripHtml('<div>a&nbsp;b</div><div>c &lt;d&gt;</div>'), 'a b\nc <d>')
-  const tasks = refresh.buildTasks(['A', 'B', 'C', 'D', 'E', 'F'], ['77'], [])
-  assert.equal(tasks[0].tag, 'company')
-  assert.equal(tasks[0].body.filterGroups.length, 5)
-  assert.equal(tasks[1].body.filterGroups.length, 1)
-  assert.equal(tasks[2].tag, 'owner')
-  assert.deepEqual(tasks[2].body.filterGroups[0].filters[0], { propertyName: 'hubspot_owner_id', operator: 'IN', values: ['77'] })
-  assert.equal(tasks[3].body.query, 'GSI')
-  assert.equal(tasks.length, 3 + 1 + refresh.GSI_TEXT_PROPS.length)
+  const tasks = refresh.buildTasks(['A', 'B', 'C', 'D', 'E'], ['a.com', 'b.com'], [])
+  assert.equal(tasks.length, 3)
+  assert.deepEqual(tasks.map((t) => t.tag), ['company', 'company', 'domain'])
+  assert.equal(tasks[0].body.filterGroups.length, 4)
+  assert.deepEqual(tasks[2].body.filterGroups[0].filters[0], { propertyName: 'hs_email_domain', operator: 'IN', values: ['a.com', 'b.com'] })
+  const terms = refresh.searchTerms([{ name: 'Acme', domain: 'acme.com', source: ['abm'] }, { name: 'Big SI', aliases: ['BSI'], bands: { md: 'Partner' } }, { name: 'Sub', domains: ['sub.io', 'sub.de'] }], ['Extra Co'])
+  assert.deepEqual(terms, { names: ['BSI', 'Big SI', 'Extra Co'], domains: ['acme.com', 'sub.de', 'sub.io'] })
+  assert.equal(refresh.domainAccount('x@eu.sub.de', [{ name: 'Sub', domains: ['sub.io', 'sub.de'] }]), 'Sub')
 })
 
 // ---- insights --------------------------------------------------------------
@@ -470,7 +473,7 @@ test('insights POST: calls Claude with a forced report tool and cached system pr
   let r = await run(insights.onRequestPost, req('POST', 'insights', { token: 'tok-viewer', body: { scope: 'ads:all', kind: 'ads', input } }), w)
   assert.equal(r.status, 200, JSON.stringify(r.body))
   assert.equal(r.body.cached, false)
-  assert.equal(r.body.model, 'claude-haiku-4-5-20251001', 'small input uses haiku')
+  assert.equal(r.body.model, 'claude-sonnet-5', 'every read-out uses Sonnet 5')
   assert.equal(r.body.content.findings.length, 3)
   assert.equal(r.body.content.findings[1].severity, 'info', 'unknown severity is normalised')
   assert.equal(r.body.content.headline, 'H')
@@ -488,7 +491,7 @@ test('insights POST: calls Claude with a forced report tool and cached system pr
   const stored = w.calls.find((c) => c.method === 'POST' && c.url.includes('ca_insights'))
   assert.ok(stored.url.includes('on_conflict=scope'))
   assert.equal(stored.body[0].created_by, 'viewer@lyzr.ai')
-  assert.equal(stored.body[0].model, 'claude-haiku-4-5-20251001')
+  assert.equal(stored.body[0].model, 'claude-sonnet-5')
   assert.match(stored.body[0].input_hash, /^[0-9a-f]{64}$/)
 
   // same input: served from cache, no model call
@@ -648,4 +651,42 @@ test('instantly sync: GSI tag, totals joined by id, daily rows in batches, cron 
   assert.deepEqual(Object.keys(d[0]).sort(), ['campaign_id', 'clicks', 'contacted', 'day', 'new_leads_contacted', 'opened', 'opportunities', 'replies', 'replies_automatic', 'sent', 'synced_at', 'unique_clicks', 'unique_opened', 'unique_replies'])
   // viewers cannot trigger it
   assert.equal((await run(isync.onRequestPost, req('POST', 'instantly/sync', { token: 'tok-viewer', body: {} }), w)).status, 403)
+})
+
+test('hubspot classify: Sonnet 5 files unread messages once, marks skipped ones read, cron allowed', async () => {
+  const leads = [
+    { hs_id: '1', account: 'Accenture', company_raw: 'Accenture', jobtitle: 'Managing Director', country: 'India', lsa_message: 'We want AI SDRs for our clients, pilot in Q4' },
+    { hs_id: '2', account: 'KPMG', jobtitle: 'Manager', country: 'UK', lsa_message: 'asdfgh' },
+    { hs_id: '3', account: 'EY', jobtitle: 'Partner', country: 'US', lsa_message: 'Show me the product' },
+  ]
+  let sentBody = null
+  const patches = []
+  const w = world({ tables: { ca_settings: [] },
+    postgrest: ({ table, method, u, body }) => {
+      const j = (b) => new Response(JSON.stringify(b), { headers: { 'content-type': 'application/json' } })
+      if (table !== 'ca_hs_contacts') return
+      if (method === 'GET') { assert.equal(u.searchParams.get('ai_at'), 'is.null'); return j(patches.length ? [] : leads) }
+      if (method === 'PATCH') { patches.push({ id: u.searchParams.get('hs_id').replace('eq.', ''), body }); return new Response(null, { status: 204 }) }
+    },
+    anthropic: ({ body }) => {
+      sentBody = body
+      return new Response(JSON.stringify({ model: body.model, stop_reason: 'tool_use', content: [{ type: 'tool_use', name: 'file_leads', input: { results: [
+        { id: '1', cluster: 'sales', use_case: 'AI SDRs for clients', intent: 'high', summary: 'Wants AI SDRs for clients with a Q4 pilot.', spam: false },
+        { id: '2', cluster: 'nonsense', use_case: '', intent: 'low', summary: 'Gibberish.', spam: true },
+      ] } }] }), { headers: { 'content-type': 'application/json' } })
+    } })
+  w.env.CA_CRON_SECRET = 'cron-secret-123'
+  const r = await run(classifyApi.onRequestPost, new Request('https://lyzr.kailash-gm.com/api/ca/hubspot/classify', { method: 'POST', headers: { 'X-CA-Cron': 'cron-secret-123' }, body: '{}' }), w)
+  assert.equal(r.status, 200, JSON.stringify(r.body))
+  assert.equal(sentBody.model, 'claude-sonnet-5')
+  assert.equal(sentBody.tool_choice.name, 'file_leads')
+  assert.equal(JSON.parse(sentBody.messages[0].content.split('<leads>\n')[1].split('\n</leads>')[0]).length, 3)
+  assert.equal(r.body.classified, 1)
+  assert.equal(r.body.done, true)
+  const p = Object.fromEntries(patches.map((x) => [x.id, x.body]))
+  assert.deepEqual([p['1'].ai_cluster, p['1'].ai_intent, p['1'].ai_spam], ['sales', 'high', false])
+  assert.equal(p['2'].ai_cluster, null, 'unknown category is dropped')
+  assert.equal(p['2'].ai_spam, true)
+  assert.ok(p['3'].ai_at && !('ai_cluster' in p['3']), 'skipped lead is marked read so the loop ends')
+  assert.equal((await run(classifyApi.onRequestPost, req('POST', 'hubspot/classify', { token: 'tok-viewer', body: {} }), w)).status, 403)
 })

@@ -1,0 +1,71 @@
+name: Campaign Analytics · daily pull
+
+# Every morning: Instantly (all GSI-tagged campaigns, full history), then HubSpot
+# (GSI leads: form submitters at companies on the GSI account list), then Claude
+# reads any lead message it has not read yet. All read-only against Instantly and
+# HubSpot. Each step is a resumable Pages Function: keep calling with the returned
+# cursor until it answers done:true.
+#
+# Needs the same secret in two places:
+#   GitHub Actions secret  CA_CRON_SECRET
+#   Pages secret           CA_CRON_SECRET
+on:
+  schedule:
+    # 07:00 IST every day (= 01:30 UTC)
+    - cron: "30 1 * * *"
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "all | instantly | hubspot | messages"
+        default: "all"
+        required: false
+
+concurrency:
+  group: ca-daily-pull
+  cancel-in-progress: false
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      BASE: https://lyzr.kailash-gm.com/api/ca
+      CA_CRON_SECRET: ${{ secrets.CA_CRON_SECRET }}
+      ONLY: ${{ inputs.only || 'all' }}
+    steps:
+      - name: Check secret
+        run: test -n "$CA_CRON_SECRET" || { echo "CA_CRON_SECRET is not set"; exit 1; }
+      - name: Instantly
+        if: ${{ contains(fromJSON('["all","instantly"]'), env.ONLY) }}
+        run: |
+          set -euo pipefail
+          body='{}'
+          for i in $(seq 1 60); do
+            res=$(curl -sS --fail-with-body -X POST "$BASE/instantly/sync" -H "Content-Type: application/json" -H "X-CA-Cron: $CA_CRON_SECRET" --data "$body")
+            echo "$res" | jq -c '{done, campaigns, days, progress, warnings}'
+            [ "$(echo "$res" | jq -r '.done')" = "true" ] && exit 0
+            body=$(echo "$res" | jq -c '{cursor: .cursor}')
+          done
+          echo "Instantly sync did not finish"; exit 1
+      - name: HubSpot
+        if: ${{ always() && contains(fromJSON('["all","hubspot"]'), env.ONLY) }}
+        run: |
+          set -euo pipefail
+          body='{}'
+          for i in $(seq 1 400); do
+            res=$(curl -sS --fail-with-body -X POST "$BASE/hubspot/refresh" -H "Content-Type: application/json" -H "X-CA-Cron: $CA_CRON_SECRET" --data "$body")
+            echo "$res" | jq -c '{done, contacts, notes, progress, warnings}'
+            [ "$(echo "$res" | jq -r '.done')" = "true" ] && exit 0
+            body=$(echo "$res" | jq -c '{cursor: .cursor}')
+          done
+          echo "HubSpot pull did not finish"; exit 1
+      - name: Read lead messages (Claude)
+        if: ${{ always() && contains(fromJSON('["all","hubspot","messages"]'), env.ONLY) }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 200); do
+            res=$(curl -sS --fail-with-body -X POST "$BASE/hubspot/classify" -H "Content-Type: application/json" -H "X-CA-Cron: $CA_CRON_SECRET" --data '{}')
+            echo "$res" | jq -c '{done, classified, model}'
+            [ "$(echo "$res" | jq -r '.done')" = "true" ] && exit 0
+          done
+          echo "Message reading did not finish"; exit 1

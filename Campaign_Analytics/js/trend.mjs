@@ -14,7 +14,8 @@
 // }) -> { destroy }
 import { esc, fmt, usd, pct, addDays, today, monthLabel, dayLabel } from './fmt.mjs';
 
-const COLORS = ['#FE4B1E', '#4F86C6', '#2FA36B', '#D9A23A', '#9B7BC8', '#A8A298', '#E07A5F', '#3FB6B2'];
+// Brand palette only: navy carries data, orange leads, then black and the warm greys.
+const COLORS = ['#043E77', '#FE4B1E', '#1F2022', '#A8A298', '#6B675F', '#CFCCC7', '#8A857C', '#B8B4AD'];
 const STATE = new Map();
 const f = (m, v) => v == null || !isFinite(v) ? '–' : m.fmt === 'pct' ? pct(v, 1) : m.fmt === 'usd' ? usd(v) : fmt(v, v % 1 && Math.abs(v) < 100 ? 1 : 0);
 const g = (cur, base) => (base == null || !base || cur == null) ? null : (cur - base) / base * 100;

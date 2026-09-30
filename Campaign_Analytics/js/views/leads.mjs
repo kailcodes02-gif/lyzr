@@ -22,16 +22,17 @@ export async function render(el, ctx) {
   const { from, to } = ctx.state;
   const accounts = (ctx.settings && ctx.settings.accounts) || [];
   const now = Date.now();
-  const head = `<div class="seghead">Channel · HubSpot</div><h1>Leads analytics</h1><p class="sub">Every HubSpot lead pulled by the GSI rules, counted by create date (IST), ${esc(rangeLabel(from, to))}. Bands follow the Settings conventions: MD, MD-1, MD-2, everyone else is Other.</p>`;
+  const head = `<div class="seghead">HubSpot · Leads</div><h1>GSI leads</h1><div class="intro"><b>GSI leads</b> are HubSpot contacts who submitted a form and work at a company on the GSI account list (Admin › GSI accounts). They are pulled from HubSpot every morning at 07:00 IST and counted by the date HubSpot created them, ${esc(rangeLabel(from, to))}. For each lead: company, designation band (MD, MD-1, MD-2 using that firm's own titles, everyone else Other), region, source, owner, lead status and the most recent activity.</div>`;
   el.innerHTML = head + spinner('Loading HubSpot leads');
   let data;
   try { data = await ctx.api.get('hubspot', { from, to }); } catch (e) { el.innerHTML = head + `<div class="empty">HubSpot data could not be loaded: ${esc(e.message || e)}</div>`; return; }
   const gsiOf = gsiMatcher((ctx.settings && ctx.settings.gsi_companies) || []);
-  const decorate = list => list.map(r => ({ ...r, gsi: gsiOf(r), channel: sourceChannel(r), detail: sourceDetail(r), recent: recentActivity(r) }));
+  // Every pulled lead is at a GSI account (hubspot/refresh.js rules); extra names from Admin add to it.
+  const decorate = list => list.map(r => ({ ...r, gsi: r.account || gsiOf(r), channel: sourceChannel(r), detail: sourceDetail(r), recent: recentActivity(r) }));
   const all = decorate(enrich(data.contacts || [], data.notes_by_contact || {}, accounts));
   // whole history for week-on-week / month-on-month (cached 10 minutes)
   if (!HIST.rows || Date.now() - HIST.at > 10 * 60e3) { try { const d = await ctx.api.get('hubspot', {}); HIST.rows = decorate(enrich(d.contacts || [], {}, accounts)); HIST.at = Date.now(); } catch { HIST.rows = all; } }
-  if (!all.length) { el.innerHTML = head + empty(`No HubSpot leads for ${rangeLabel(from, to)}. Widen the range, or refresh HubSpot from the`, `<a href="#/messaging">messaging view</a>.`); return; }
+  if (!all.length) { el.innerHTML = head + empty(`No HubSpot leads for ${rangeLabel(from, to)}. Widen the range, or refresh HubSpot from the`, `<a href="#/hubspot/messaging">messaging view</a>.`); return; }
   const bandPill = b => pill(b || 'Unknown', b === 'MD' ? 'p-high' : b === 'MD-1' ? 'p-med' : b === 'MD-2' ? 'p-low' : 'p-na');
   const spamN = all.filter(r => r.spam).length;
 

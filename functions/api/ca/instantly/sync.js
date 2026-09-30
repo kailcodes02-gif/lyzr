@@ -1,12 +1,12 @@
-// POST /api/ca/instantly/sync { cursor?, full? }   editors, or the daily job (X-CA-Cron)
+// POST /api/ca/instantly/sync { cursor? }   editors, or the daily job (X-CA-Cron)
 // -> { done, cursor?, campaigns, days, warnings:[], progress:{ phase, done, total } }
 //
 // READ-ONLY against Instantly: nothing is ever written there. Pulls every
 // campaign tagged GSI in Instantly (tag id verified 2026-08-11, same as
 // functions/api/instantly-report.js; falls back to the tag labelled "GSI", then
 // to campaign names containing "GSI"), their all-time totals, and the daily
-// breakdown per campaign. `full:true` pulls each campaign's whole life; the
-// daily job pulls the last LOOKBACK_DAYS so late opens and replies are caught.
+// breakdown per campaign over each campaign's whole life, every time (57
+// campaigns is a handful of calls, and a full pull also picks up late opens).
 // Resumable like hubspot/refresh.js: keep calling with `cursor` until done.
 
 import { json, handle, readJson, HttpError } from '../_lib/http.js'
@@ -18,7 +18,6 @@ export { corsPreflight as onRequestOptions } from '../_lib/http.js'
 const API = 'https://api.instantly.ai/api/v2'
 export const GSI_TAG_ID = '95da42d3-db60-4b3e-a1a9-6e85cda4e35d'
 export const DAILY_BUDGET = 20
-export const LOOKBACK_DAYS = 30
 export const FIRST_DAY = '2026-01-01'
 
 async function ig(token, path) {
@@ -135,11 +134,10 @@ export const onRequestPost = handle(async ({ request, env }) => {
       const mapped = list.map((c) => mapCampaign(c, byId.get(String(c.id)), syncedAt))
       for (let i = 0; i < mapped.length; i += 200) await d.upsert('ca_em_campaigns', mapped.slice(i, i + 200), 'id')
       const today = iso(Date.now())
-      const since = iso(Date.now() - LOOKBACK_DAYS * 864e5)
       cursor = {
         sync_id: syncId,
         today,
-        queue: mapped.map((c) => ({ id: c.id, from: body.full ? ((c.created_at || FIRST_DAY).slice(0, 10) < FIRST_DAY ? FIRST_DAY : (c.created_at || FIRST_DAY).slice(0, 10)) : since })),
+        queue: mapped.map((c) => { const start = (c.created_at || FIRST_DAY).slice(0, 10); return { id: c.id, from: start < FIRST_DAY ? FIRST_DAY : start } }),
         index: 0,
         campaigns: mapped.length,
         days: 0,

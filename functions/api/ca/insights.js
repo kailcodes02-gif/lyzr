@@ -7,7 +7,7 @@
 //
 // Claude: Messages API (raw HTTP like functions/api/assistant.js), one forced
 // `report` tool call, prompt caching on the system blocks. claude-sonnet-5 for
-// messaging / ads / overview; claude-haiku-4-5-20251001 when the input is small.
+// every read-out (Sonnet 5 only, by request).
 
 import { json, handle, readJson, sha256, HttpError } from './_lib/http.js'
 import { requireUser } from './_lib/auth.js'
@@ -18,14 +18,10 @@ export { corsPreflight as onRequestOptions } from './_lib/http.js'
 
 export const KINDS = ['messaging', 'ads', 'leads', 'overview', 'email']
 export const MODEL_MAIN = 'claude-sonnet-5'
-export const MODEL_SMALL = 'claude-haiku-4-5-20251001'
-export const SMALL_INPUT_BYTES = 4 * 1024
 export const MAX_INPUT_BYTES = 60 * 1024
 const SEVERITIES = ['win', 'watch', 'risk', 'info']
 
-export function pickModel(kind, inputJson) {
-  const bytes = new TextEncoder().encode(inputJson).length
-  if (bytes < SMALL_INPUT_BYTES) return MODEL_SMALL
+export function pickModel() {
   return MODEL_MAIN
 }
 

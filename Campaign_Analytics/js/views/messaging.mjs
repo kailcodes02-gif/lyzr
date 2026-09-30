@@ -26,8 +26,8 @@ export async function render(el, ctx) {
   const editors = (ctx.settings && ctx.settings.editors) || [];
   const isEditor = !!ctx.demo || !editors.length || editors.map(e => String(e).toLowerCase()).includes(String((ctx.user || {}).email || '').toLowerCase());
 
-  const head = (syncHtml) => `<div class="seghead">Channel · HubSpot</div><h1>HubSpot messaging</h1>
-    <p class="sub">What form-fill leads are asking, grouped by intent, and how that changes by account, region and company type. Leads are counted by HubSpot create date, ${esc(rangeLabel(from, to))}.</p>
+  const head = (syncHtml) => `<div class="seghead">HubSpot · Messaging</div><h1>What GSI leads are asking</h1>
+    <div class="intro">Every GSI lead's form message, read by Claude (Sonnet 5) once and filed into a category, with the use case, how strong the intent is and a one-line summary. Broken down by account, region, designation and company type. Leads are counted by HubSpot create date, ${esc(rangeLabel(from, to))}. Pulled every morning at 07:00 IST.</div>
     <div class="card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:18px">${syncHtml}</div>`;
 
   el.innerHTML = head(spinner('Loading HubSpot contacts'));
@@ -38,12 +38,12 @@ export async function render(el, ctx) {
   const ls = data.last_sync || null;
   const syncHtml = `<div><b>Last sync</b> <span class="muted">${ls && ls.finished_at ? `${esc(istDateTime(ls.finished_at))} (${esc(timeAgo(ls.finished_at))}) · ${fmt(ls.contacts)} contacts, ${fmt(ls.notes)} notes${ls.status && ls.status !== 'done' ? ' · ' + esc(ls.status) : ''}${ls.error ? ' · ' + esc(ls.error) : ''}` : 'never'}</span></div>
     <span style="margin-left:auto"></span>
-    ${isEditor ? `<button class="btn tiny primary" id="hsRefresh">Refresh from HubSpot</button>` : `<span class="muted" style="font-size:12.5px">Only editors can refresh</span>`}
+    ${isEditor ? `<button class="btn tiny primary" id="hsRefresh">Pull from HubSpot now</button>` : `<span class="muted" style="font-size:12.5px">Pulled automatically every morning at 07:00 IST</span>`}
     <span id="hsProg" class="muted" style="font-size:12.5px;flex-basis:100%"></span>`;
 
   const all = enrich(data.contacts || [], data.notes_by_contact || {}, accounts);
   if (!all.length) {
-    el.innerHTML = head(syncHtml) + empty(`No HubSpot contacts for ${rangeLabel(from, to)}. ` + (ls && ls.finished_at ? 'Try a wider date range, or refresh to pull the latest contacts.' : 'Nothing has been pulled yet. Click Refresh from HubSpot to run the GSI pull. The Pages site needs the HUBSPOT_ACCESS_TOKEN secret set;'), `<a href="#/settings">check Settings</a>.`);
+    el.innerHTML = head(syncHtml) + empty(`No HubSpot contacts for ${rangeLabel(from, to)}. ` + (ls && ls.finished_at ? 'Try a wider date range, or refresh to pull the latest contacts.' : 'Nothing has been pulled yet. Click Refresh from HubSpot to run the GSI pull. The Pages site needs the HUBSPOT_ACCESS_TOKEN secret set;'), `<a href="#/admin">check Settings</a>.`);
     wireRefresh();
     return;
   }
@@ -108,7 +108,7 @@ export async function render(el, ctx) {
       { k: 'Tests / spam in range', v: fmt(all.filter(r => r.spam).length), d: f.excludeSpam ? 'excluded from the counts' : 'included in the counts' },
     ]), 'm-tiles')}
 
-    ${section('What leads are asking', `Each form message is put into one of ten intent clusters by keyword, the same clusters as the Lead Message Intelligence report. Three sample quotes and the companies behind them are shown; <span class="pill p-high">green</span> tags are named target accounts, <span class="pill" style="background:rgba(4,62,119,.1);color:var(--navy)">navy</span> tags are on the wider GSI/SI list. Click a cluster to filter the whole page.`, `<div class="grid g2">` + clusterCards.map(({ c, list, n }, i) => {
+    ${section('What leads are asking', `Claude (Sonnet 5) reads every GSI lead's form message once and files it into one of ten categories, with the use case, how strong the intent is and a one-line summary. Messages it has not read yet are filed by keyword until the next pull. Three sample messages and the companies behind them are shown per category.`, `<div class="grid g2">` + clusterCards.map(({ c, list, n }, i) => {
       const samples = list.filter(r => hasMessage(r)).slice(0, 3);
       const cos = sortedEntries(countBy(list, r => r.account || r.company_raw || null)).slice(0, 8);
       const rep = k => list.find(r => (r.account || r.company_raw) === k);
@@ -124,6 +124,7 @@ export async function render(el, ctx) {
     ${section('Target-account leads', 'Leads at named target accounts or on the wider GSI/SI list who wrote a message. These are the people the programme exists to find, so each one is listed by name.', gsiLeads.length ? `<div class="grid g2">${gsiLeads.slice(0, 24).map(r => `<div class="card" style="border-left:4px solid ${r.account ? 'var(--good)' : 'var(--navy)'}">
         <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>${esc(r.account || r.company_raw)}</b><span class="muted">${esc(r.name)}${r.jobtitle ? ' · ' + esc(r.jobtitle) : ''}${r.country ? ' · ' + esc(r.country) : ''}</span><span style="margin-left:auto">${bandPill(r.band, pill)}</span></div>
         <p style="margin-top:6px">“${esc(r.lsa_message)}”</p>
+        ${r.ai_summary ? `<p style="margin-top:6px;font-size:13px"><span class="ui-label">Claude</span> ${esc(r.ai_summary)}${r.ai_use_case ? ` <span class="muted">· use case: ${esc(r.ai_use_case)}</span>` : ''}${r.ai_intent ? ` ${pill(r.ai_intent + ' intent', r.ai_intent === 'high' ? 'p-high' : r.ai_intent === 'medium' ? 'p-med' : 'p-na')}` : ''}</p>` : ''}
         <p class="muted" style="font-size:12.5px;margin-top:6px">${esc(clusterShort(r.cluster))} · ${esc(istDateTime(r.created_at))} · ${r.owner_name ? 'owner ' + esc(r.owner_name) : '<span class="down">no owner</span>'} · ${r.notes_count ? fmt(r.notes_count) + ' notes' : 'no notes'}${r.last_activity_at ? ' · last activity ' + esc(timeAgo(r.last_activity_at)) : ''}</p></div>`).join('')}</div>${gsiLeads.length > 24 ? `<p class="muted" style="margin-top:8px">Showing 24 of ${fmt(gsiLeads.length)}. Use the account filter to narrow down.</p>` : ''}` : empty('No target-account leads with a message for the current filters.'), 'm-gsi')}
 
     ${section('By account, region and cluster', 'Pick a dimension, then a row (or use the select) to read the actual messages and get a Claude read-out for that slice.', `<div id="dimSeg"></div>
@@ -188,6 +189,8 @@ export async function render(el, ctx) {
           if (r.done || !r.cursor || step > 500) break;
           cursor = r.cursor;
         }
+        prog.textContent = 'Claude is reading new messages';
+        for (let k = 0; k < 200; k++) { const c = await ctx.api.post('hubspot/classify', {}); prog.textContent = `Claude is reading new messages (${k + 1})`; if (c.done) break; }
         ctx.toast(`HubSpot refreshed in ${step} step${step > 1 ? 's' : ''}${warnings.length ? ` with ${warnings.length} warning${warnings.length > 1 ? 's' : ''}` : ''}`);
         if (root === el) await render(el, ctx);
       } catch (e) {

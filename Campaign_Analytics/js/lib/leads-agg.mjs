@@ -104,12 +104,14 @@ export const ownerKey = c => c.owner_name || c.owner_id || '';
 export const isoDayIST = ts => { if (!ts) return ''; const d = new Date(ts); if (isNaN(d)) return ''; return new Date(d.getTime() + 330 * 60000).toISOString().slice(0, 10); };
 export const daysSince = (ts, now = Date.now()) => { if (!ts) return null; const d = new Date(ts); if (isNaN(d)) return null; return Math.max(0, Math.floor((now - d.getTime()) / 864e5)); };
 
-/** Adds derived fields used by the views: cluster, company_type, spam, name, day. Does not mutate input rows. */
+/** Adds derived fields used by the views: cluster (+ clusterBy), company_type, spam, name, day. Does not mutate input rows. */
 export function enrich(contacts, notesByContact = {}, accounts = []) {
   return (contacts || []).map(c => {
     const notes = notesByContact[c.hs_id] || [];
     const notes_count = Math.max(Number(c.notes_count) || 0, notes.length);
-    const x = { ...c, notes_count, notes, cluster: clusterOf(c.lsa_message), company_type: companyType(c, accounts), spam: spamReason(c), name: fullName(c), day: isoDayIST(c.created_at) };
+    // Claude's reading (hubspot/classify.js, ai_* columns) wins; keyword rules cover messages not read yet.
+    const aiCluster = c.ai_cluster && CLUSTER_BY_ID[c.ai_cluster] ? c.ai_cluster : null;
+    const x = { ...c, notes_count, notes, cluster: hasMessage(c) ? (aiCluster || clusterOf(c.lsa_message)) : null, clusterBy: aiCluster ? 'claude' : (hasMessage(c) ? 'keywords' : null), company_type: companyType(c, accounts), spam: c.ai_spam ? 'spam or test (Claude)' : spamReason(c), name: fullName(c), day: isoDayIST(c.created_at) };
     x.active = hasActivity(x);
     return x;
   });

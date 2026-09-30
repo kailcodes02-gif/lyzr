@@ -18,7 +18,8 @@ const SYNONYM_GROUPS = [
   ['EY', 'Ernst & Young', 'Ernst & Young (EY)', 'Ernst and Young'],
   ['PwC', 'PricewaterhouseCoopers', 'PricewaterhouseCoopers (PwC)', 'Pricewaterhouse Coopers'],
   ['HCLTech', 'HCL', 'HCL Technologies', 'HCL Tech'],
-  ['LTIMindtree', 'LTI Mindtree', 'LTI', 'Mindtree', 'L&T Infotech'],
+  // LTI is its own account in the GSI list (owner Anju), so it is not a synonym here.
+  ['LTIMindtree', 'LTI Mindtree', 'Mindtree'],
   ['Cognizant', 'CTS', 'Cognizant Technology Solutions'],
   ['McKinsey & Company', 'McKinsey', 'McKinsey and Company'],
   ['Bain & Company', 'Bain', 'Bain Digital'],

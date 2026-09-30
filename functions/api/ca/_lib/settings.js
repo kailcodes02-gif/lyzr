@@ -5,7 +5,6 @@
 import { db, dbConfigured } from './db.js'
 import { bandsFromSeeds } from './classify.js'
 import { DEFAULT_EDITORS, parseEmails } from './auth.js'
-import { DEFAULT_COMPANIES } from '../../_lib/target-companies.js'
 
 export const SETTING_KEYS = ['bands', 'icp_pool', 'accounts', 'regions', 'targets', 'editors', 'email_rules', 'gsi_companies']
 
@@ -77,7 +76,8 @@ export async function loadSettings(env, request, { keys = SETTING_KEYS } = {}) {
   if (keys.includes('regions')) pick('regions', (seeds.regions && seeds.regions.regions) || {})
   if (keys.includes('targets')) pick('targets', DEFAULT_TARGETS)
   if (keys.includes('email_rules')) { pick('email_rules', DEFAULT_EMAIL_RULES); out.email_rules = { ...DEFAULT_EMAIL_RULES, ...(out.email_rules || {}) } }
-  if (keys.includes('gsi_companies')) pick('gsi_companies', DEFAULT_COMPANIES)
+  // Extra company names on top of the account list (seed/accounts.json), which is the GSI list.
+  if (keys.includes('gsi_companies')) pick('gsi_companies', [])
   if (keys.includes('editors')) {
     pick('editors', parseEmails(env && env.CA_EDITORS).length ? parseEmails(env.CA_EDITORS) : DEFAULT_EDITORS)
     if (byKey.editors) out.editors = parseEmails(byKey.editors.value)

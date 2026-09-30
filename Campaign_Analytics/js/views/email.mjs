@@ -8,6 +8,7 @@
 import * as E from '../lib/email-agg.mjs';
 import { campaignLabel } from '../email-csv.mjs';
 import { mountTrend } from '../trend.mjs';
+import { mountUploader } from '../uploader.mjs';
 
 export const route = 'email';
 export const title = 'Email';
@@ -17,7 +18,7 @@ const CACHE = { pages: null, at: 0, hs: null };
 let charts = [], trend = null, ACTIVE = null;
 export function destroy() { ACTIVE = null; for (const c of charts) { try { c.destroy(); } catch { /* ignore */ } } charts = []; if (trend) { trend.destroy(); trend = null; } closeDrawer(); }
 const chart = (canvas, cfg) => { if (typeof Chart === 'undefined' || !canvas) return null; const c = new Chart(canvas, cfg); charts.push(c); return c; };
-const C = { orange: '#FE4B1E', navy: '#4F86C6', forest: '#063B28', oxblood: '#593D3D', stone: '#A8A298', sky: '#7A9CC6' };
+const C = { orange: '#FE4B1E', navy: '#043E77', forest: '#1F2022', oxblood: '#6B675F', stone: '#A8A298', sky: '#CFCCC7' };
 
 async function loadAll(ctx, force) {
   if (CACHE.pages && !force && Date.now() - CACHE.at < 10 * 60e3) return CACHE.pages;
@@ -49,7 +50,7 @@ export async function render(el, ctx) {
   destroy();
   const F = ctx.fmt, { esc, fmt, pct } = F;
   const { from, to } = ctx.state;
-  const head = sub => `<div class="seghead">Channel · Email</div><h1>Email campaigns</h1><p class="sub">${sub}</p>`;
+  const head = sub => `<div class="seghead">Email · Instantly</div><h1>Instantly email campaigns</h1><p class="sub">${sub}</p>`;
   el.innerHTML = head(esc(F.rangeLabel(from, to))) + ctx.ui.spinner('Loading Instantly data');
   let pages;
   try { pages = await loadAll(ctx); } catch (e) { el.innerHTML = head('') + ctx.ui.empty('Email data could not be loaded: ' + (e.message || e)); return; }
@@ -69,8 +70,9 @@ export async function render(el, ctx) {
   if (S.campaign && !campaignNames.includes(S.campaign)) S.campaign = '';
 
   if (!all.length && !(api.campaigns || []).length) {
-    el.innerHTML = head(esc(F.rangeLabel(from, to))) + ctx.ui.empty('No email data yet. Upload Instantly campaign exports (any number at once) or run the Instantly sync.', '<a href="#/settings">Go to Settings and uploads</a>') + (isEditor && api.configured ? `<p style="text-align:center;margin-top:12px"><button class="btn" id="syncBtn">Pull GSI campaigns from Instantly now</button></p>` : '');
-    wireSync(el, ctx, () => render(el, ctx));
+    el.innerHTML = head(esc(F.rangeLabel(from, to))) + `<div class="intro"><b>No email data yet.</b> Instantly is pulled automatically every morning at 07:00 IST (every GSI-tagged campaign, full history).${isEditor && api.configured !== false ? ' Pull it now with the button, or' : ''} upload campaign exports below for the person-level detail: who clicked what, Book a Demo lists, timelines.</div>${isEditor && api.configured !== false ? '<p style="margin-top:12px"><button class="btn primary" id="syncBtn">Pull Instantly now</button></p>' : ''}` + ctx.ui.section('Upload Instantly exports', '', '<div id="uploader"></div>');
+    wireSync(el, ctx, () => { CACHE.pages = null; render(el, ctx); });
+    mountUploader(el.querySelector('#uploader'), ctx, { channel: 'email', isEditor, onDone: () => { CACHE.pages = null; render(el, ctx); } });
     return;
   }
 
@@ -102,19 +104,33 @@ export async function render(el, ctx) {
   h += `<div class="card" style="font-size:13px;margin-bottom:6px;display:flex;gap:14px;flex-wrap:wrap;align-items:center">
     <span><b>CSV exports:</b> ${fmt(uploads.length)} upload${uploads.length === 1 ? '' : 's'}, ${fmt(new Set(all.map(e => e.campaign)).size)} campaigns, events ${eventDays.length ? `${esc(F.dayLabel(eventDays[0]))} to ${esc(F.dayLabel(eventDays[eventDays.length - 1]))}` : 'none'}${lastUpload ? `, last upload ${esc(F.timeAgo(lastUpload))}` : ''}.</span>
     <span><b>Instantly API:</b> ${api.configured === false ? 'not configured' : `${fmt((api.campaigns || []).length)} GSI-tagged campaigns${sync ? `, synced ${esc(F.timeAgo(sync.finished_at || sync.started_at))}${sync.status === 'error' ? ' <span class="down">(last run failed)</span>' : ''}` : ', never synced'}`}.</span>
-    <span style="margin-left:auto;display:flex;gap:6px">${isEditor && api.configured !== false ? '<button class="btn tiny" id="syncBtn">Sync Instantly now</button>' : ''}<button class="btn tiny ghost" id="reloadBtn">Reload</button></span></div>
+    <span style="margin-left:auto;display:flex;gap:6px">${isEditor && api.configured !== false ? '<button class="btn tiny" id="syncBtn">Pull Instantly now</button>' : ''}<button class="btn tiny ghost" id="reloadBtn">Reload</button></span></div>
   <div class="row" style="margin:10px 0 4px;align-items:center">
     <label class="field" style="flex-direction:row;align-items:center;gap:6px">Campaign <select id="fCamp"><option value="">All campaigns (${campaignNames.length})</option>${campaignNames.map(c => `<option value="${esc(c)}" ${S.campaign === c ? 'selected' : ''}>${esc(campaignLabel(c))}</option>`).join('')}</select></label>
     <label class="field" style="flex-direction:row;align-items:center;gap:6px">Account <select id="fComp"><option value="">All accounts (${companies.length})</option>${companies.map(c => `<option value="${esc(c)}" ${S.company === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
   </div>
   <div class="toc"><span class="tl">On this page</span><a href="#e-results">Results</a><a href="#e-trend">Week / month</a><a href="#e-demo">Book a Demo</a><a href="#e-camps">Campaigns</a><a href="#e-acc">Accounts</a><a href="#e-links">Link types</a><a href="#e-mail">Mailboxes</a><a href="#e-people">People and lists</a><a href="#e-ai">AI read-out</a></div>`;
 
+  // 0. Instantly API: every GSI-tagged campaign, straight from Instantly (no upload needed)
+  const apiCampsInRange = new Set(apiCur.filter(r => Number(r.sent) > 0).map(r => r.campaign)).size;
+  h += ctx.ui.section('Instantly: all GSI campaigns', `Straight from the Instantly API for ${esc(F.rangeLabel(from, to))}, every campaign tagged GSI in Instantly. Pulled every morning at 07:00 IST${sync ? `, last pulled ${esc(F.timeAgo(sync.finished_at || sync.started_at))}` : ''}. Clicks here include link scanners; the exports below separate human clicks.`, apiCur.length || (api.campaigns || []).length ? ctx.ui.tiles([
+    { k: 'Emails sent', v: fmt(apiSum(apiCur, 'sent')), d: dl(apiSum(apiCur, 'sent'), apiSum(apiPrev, 'sent')) },
+    { k: 'New people contacted', v: fmt(apiSum(apiCur, 'new_leads_contacted')), d: dl(apiSum(apiCur, 'new_leads_contacted'), apiSum(apiPrev, 'new_leads_contacted')) },
+    { k: 'Unique opens', v: fmt(apiSum(apiCur, 'unique_opened')), d: 'weak: some mailboxes have open tracking off' },
+    { k: 'Unique clicks', v: fmt(apiSum(apiCur, 'unique_clicks')), d: dl(apiSum(apiCur, 'unique_clicks'), apiSum(apiPrev, 'unique_clicks')) },
+    { k: 'Replies', v: fmt(apiSum(apiCur, 'unique_replies')), d: dl(apiSum(apiCur, 'unique_replies'), apiSum(apiPrev, 'unique_replies')) },
+    { k: 'Opportunities', v: fmt(apiSum(apiCur, 'opportunities')), d: 'marked in Instantly' },
+    { k: 'Campaigns sending', v: fmt(apiCampsInRange), d: `of ${fmt((api.campaigns || []).length)} GSI-tagged` },
+    { k: 'Auto replies', v: fmt(apiSum(apiCur, 'replies_automatic')), d: 'out of office and similar' },
+  ]) : ctx.ui.empty('Nothing pulled from Instantly yet. Use "Pull Instantly now" above.'), 'e-api');
+  h += `<details class="card" style="margin-top:14px" ${uploads.length ? '' : 'open'}><summary style="cursor:pointer"><span class="ui-label">Upload Instantly exports</span> <span class="muted" style="font-size:13px">· for person-level detail below · ${uploads.length} file${uploads.length === 1 ? '' : 's'} so far</span></summary><div id="uploader" style="margin-top:12px"></div></details>`;
+
   // 1. results
   const apiReplies = apiSum(apiCur, 'unique_replies'), apiRepliesP = apiSum(apiPrev, 'unique_replies');
   const apiSent = apiSum(apiCur, 'sent');
   const funnelRows = [['Emails sent', T.sent, 'every step'], ['Contacts reached', T.reached, 'unique people sent to'], ['Opened', T.opened, 'weak signal: pixel blocked or pre-loaded'], ['Clicked (human)', T.clickers, 'at least one human click'], ['Book a Demo', T.demo, `${fmt(T.demoDirect)} direct calendar · ${fmt(T.demoVia)} via GSI/SI page`]];
   const fmax = Math.max(1, ...funnelRows.map(r => r[1]));
-  h += ctx.ui.section('Results', 'Headline numbers for the range from the uploaded exports, with the Instantly API figures that the exports do not carry (replies).', `${ctx.ui.tiles([
+  h += ctx.ui.section('From the uploaded exports: who did what', all.length ? 'Person-level numbers from the Instantly exports uploaded above, for the campaigns and dates they cover. Human clicks leave out link scanners.' : 'Upload Instantly campaign exports above to see who opened, who clicked what and who clicked Book a Demo.', !all.length ? '' : `${ctx.ui.tiles([
     { k: 'Emails sent', v: fmt(T.sent), d: dl(T.sent, TP.sent) + (apiSent ? ` · API ${fmt(apiSent)}` : '') },
     { k: 'Contacts reached', v: fmt(T.reached), d: dl(T.reached, TP.reached) },
     { k: 'Opened (weak)', v: fmt(T.opened), d: `${pct(T.openRate, 0)} of reached` },
@@ -194,6 +210,7 @@ export async function render(el, ctx) {
   el.querySelector('#fComp').onchange = e => { S.company = e.target.value; render(el, ctx); };
   el.querySelector('#reloadBtn').onclick = async () => { CACHE.pages = null; CACHE.hs = null; render(el, ctx); };
   wireSync(el, ctx, () => { CACHE.pages = null; render(el, ctx); });
+  mountUploader(el.querySelector('#uploader'), ctx, { channel: 'email', isEditor, onDone: () => { CACHE.pages = null; render(el, ctx); } });
   wirePeople(el);
 
   // trend
@@ -345,16 +362,16 @@ function closeDrawer() { const d = document.getElementById('personDrawer'); if (
 function wireSync(el, ctx, done) {
   const b = el.querySelector('#syncBtn'); if (!b) return;
   b.onclick = async () => {
-    b.disabled = true; let cursor, res, full = !confirm('Pull only the last 30 days? (Cancel pulls the whole history of every campaign, which takes longer.)');
+    b.disabled = true; let cursor, res;
     try {
       for (let guard = 0; guard < 60; guard++) {
-        res = await ctx.api.post('instantly/sync', cursor ? { cursor } : { full });
+        res = await ctx.api.post('instantly/sync', cursor ? { cursor } : {});
         b.innerHTML = `<span class="spin"></span> ${res.progress ? `${res.progress.done} of ${res.progress.total} campaigns` : 'Syncing'}`;
         for (const w of res.warnings || []) ctx.toast(w);
         if (res.done) break; cursor = res.cursor;
       }
       ctx.toast(`Instantly synced: ${res.campaigns} GSI campaigns, ${res.days} daily rows.`);
       done();
-    } catch (e) { ctx.toast('Instantly sync failed: ' + (e.message || e), 'err'); b.disabled = false; b.textContent = 'Sync Instantly now'; }
+    } catch (e) { ctx.toast('Instantly sync failed: ' + (e.message || e), 'err'); b.disabled = false; b.textContent = 'Pull Instantly now'; }
   };
 }

@@ -56,7 +56,6 @@ function validate(key, value) {
     case 'gsi_companies': {
       const list = Array.isArray(value) ? value : String(value || '').split(/\n/)
       const clean = [...new Set(list.map((s) => String(s).trim()).filter(Boolean))]
-      if (!clean.length) throw Object.assign(new Error('gsi_companies must list at least one company'), { status: 400 })
       return clean
     }
     case 'accounts':

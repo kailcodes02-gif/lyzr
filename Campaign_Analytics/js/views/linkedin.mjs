@@ -1,6 +1,7 @@
 // Ads channel: LinkedIn Campaign Manager exports (performance per ad per day, demographics per window).
 import * as A from '../lib/linkedin-agg.mjs';
 import { mountTrend } from '../trend.mjs';
+import { mountUploader } from '../uploader.mjs';
 export const route = 'linkedin';
 export const title = 'Ads · LinkedIn';
 
@@ -15,13 +16,13 @@ export async function render(el, ctx) {
   destroy();
   const F = ctx.fmt, { esc, fmt, usd, pct } = F;
   const { from, to } = ctx.state;
-  el.innerHTML = `<div class="seghead">Channel · Paid ads</div><h1>LinkedIn ads</h1><p class="sub">${esc(F.rangeLabel(from, to))}</p>${ctx.ui.spinner('Loading LinkedIn data')}`;
-  if (window.Chart) { Chart.defaults.font.family = "'DM Sans',system-ui,sans-serif"; Chart.defaults.color = css('--ink2') || '#6B675F'; Chart.defaults.borderColor = css('--line') || '#E3E1DE'; }
+  el.innerHTML = `<div class="seghead">Ads · LinkedIn</div><h1>LinkedIn ads</h1><p class="sub">${esc(F.rangeLabel(from, to))}</p>${ctx.ui.spinner('Loading LinkedIn data')}`;
+  if (window.Chart) { Chart.defaults.font.family = "'General Sans','Inter',system-ui,sans-serif"; Chart.defaults.color = css('--ink2') || '#6B675F'; Chart.defaults.borderColor = css('--line') || '#E3E1DE'; }
 
   const prev = A.previousRange(from, to);
   let data, prevData, histData;
   try { [data, prevData, histData] = await Promise.all([ctx.api.get('linkedin', { from, to }), ctx.api.get('linkedin', prev).catch(() => null), ctx.api.get('linkedin', { from: '2025-01-01', to: F.today() }).catch(() => null)]); }
-  catch (e) { el.innerHTML = `<div class="seghead">Channel · Paid ads</div><h1>LinkedIn ads</h1>${ctx.ui.empty('LinkedIn data could not be loaded: ' + (e.message || e))}`; return; }
+  catch (e) { el.innerHTML = `<div class="seghead">Ads · LinkedIn</div><h1>LinkedIn ads</h1>${ctx.ui.empty('LinkedIn data could not be loaded: ' + (e.message || e))}`; return; }
   const S = ctx.settings || {};
   const accounts = Array.isArray(S.accounts) ? S.accounts : [], bands = S.bands || {}, icp_pool = Array.isArray(S.icp_pool) ? S.icp_pool : [], regions = S.regions || {}, stages = S.stages || undefined;
   const frequency = Number((S.targets || {}).frequency) || 3.5;
@@ -33,8 +34,10 @@ export async function render(el, ctx) {
   const uploads = data.uploads || [];
 
   if (!perf.length && !windows.length) {
-    el.innerHTML = `<div class="seghead">Channel · Paid ads</div><h1>LinkedIn ads</h1><p class="sub">${esc(F.rangeLabel(from, to))}</p>` +
-      ctx.ui.empty(uploads.length ? 'No LinkedIn data in this range. Widen the date range or upload the exports that cover it.' : 'No LinkedIn exports uploaded yet.', '<a href="#/settings">Go to Settings and uploads</a>');
+    el.innerHTML = `<div class="seghead">Ads · LinkedIn</div><h1>LinkedIn ads</h1><p class="sub">${esc(F.rangeLabel(from, to))}</p>` +
+      `<div class="intro">${uploads.length ? 'No LinkedIn data in this date range. Widen the dates, or upload the exports that cover it below.' : '<b>No LinkedIn exports yet.</b> LinkedIn has no API connection here: numbers come from Campaign Manager exports. Drop them below (many files at once is fine) and this page fills in.'}</div>` +
+      ctx.ui.section('Upload LinkedIn exports', '', '<div id="uploader"></div>');
+    mountUploader(el.querySelector('#uploader'), ctx, { channel: 'linkedin', isEditor: isEditorOf(ctx), onDone: () => render(el, ctx) });
     return;
   }
 
@@ -55,10 +58,12 @@ export async function render(el, ctx) {
   const topSet = P.programs.flatMap(p => p.campaigns).filter(c => c.leads > 0).sort((a, b) => b.leads - a.leads)[0];
 
   // ---- page ----
-  let h = `<div class="seghead">Channel · Paid ads</div><h1>LinkedIn ads</h1>
+  let h = `<div class="seghead">Ads · LinkedIn</div><h1>LinkedIn ads</h1>
   <p class="sub">${esc(F.rangeLabel(from, to))}. Leads are LinkedIn lead form submissions. Money is USD. Compared with the ${days} days before (${esc(F.rangeLabel(prev.from, prev.to))}).</p>
   <div class="card" style="font-size:13px;margin-bottom:6px"><b>Included data.</b> Performance: ${perfDays.length ? `${perfDays.length} of ${days} days have rows (${esc(F.dayLabel(perfDays[0]))} to ${esc(F.dayLabel(perfDays[perfDays.length - 1]))})` : 'no daily rows in this range'}.
   Demographics: ${windows.length ? `${windows.length} window${windows.length === 1 ? '' : 's'} overlap this range: ${windows.map(w => esc(winLabel(w))).join('; ')}. Demographics are totals per export window, so a person seen in two windows is counted twice.` : 'no export window overlaps this range.'}</div>`;
+
+  h += `<details class="card" style="margin:10px 0 0" ${uploads.length ? '' : 'open'}><summary style="cursor:pointer"><span class="ui-label">Upload LinkedIn exports</span> <span class="muted" style="font-size:13px">· ${uploads.length} file${uploads.length === 1 ? '' : 's'} so far, last ${uploads[0] ? esc(F.timeAgo(uploads[0].uploaded_at)) : 'never'}</span></summary><div id="uploader" style="margin-top:12px"></div></details>`;
 
   // 1. hero + tiles
   h += ctx.ui.section('Results', 'The headline numbers for the range, each compared with the same number of days before it.', `
@@ -115,7 +120,7 @@ export async function render(el, ctx) {
 
   // 7. heat maps
   if (!windows.length) {
-    h += ctx.ui.section('Heat maps', 'Who saw the ads by account, seniority, geography, designation band and job function, and how much of each ICP pool was reached.', ctx.ui.empty('No demographics export covers this range.', '<a href="#/settings">Upload one in Settings and uploads</a>'));
+    h += ctx.ui.section('Heat maps', 'Who saw the ads by account, seniority, geography, designation band and job function, and how much of each ICP pool was reached.', ctx.ui.empty('No demographics export covers this range. Upload one in the box at the top of this page.'));
   } else {
     const segBox = id => `<div id="${id}"></div>`;
     h += ctx.ui.section('Heat maps', 'Who saw the ads, from the demographics exports. Columns are export windows; a person can appear in more than one window.', `
@@ -135,6 +140,7 @@ export async function render(el, ctx) {
   }
   h += `<div class="section" id="aiPanel"></div>`;
   el.innerHTML = h;
+  mountUploader(el.querySelector('#uploader'), ctx, { channel: 'linkedin', isEditor: isEditorOf(ctx), onDone: () => render(el, ctx) });
 
   // ---- trend explorer (whole history) ----
   const hist = ((histData && histData.perf) || perf);
@@ -171,7 +177,7 @@ export async function render(el, ctx) {
     let keys = [...seriesMap.keys()].sort((a, b) => seriesMap.get(b).reduce((x, y) => x + y, 0) - seriesMap.get(a).reduce((x, y) => x + y, 0));
     if (qMode === 'seniority') keys = ['Director and above', ...keys.filter(k => k !== 'Director and above')].slice(0, 7);
     else keys = keys.slice(0, 8);
-    const palette = ['#FE4B1E', '#4F86C6', '#2FA36B', '#D9A23A', '#9B7BC8', '#A8A298', '#E07A5F', '#3FB6B2'];
+    const palette = ['#043E77', '#FE4B1E', '#1F2022', '#A8A298', '#6B675F', '#CFCCC7', '#8A857C', '#B8B4AD'];
     const cv = el.querySelector('#qualChart'); const old = charts.find(c => c.canvas === cv); if (old) { old.destroy(); charts = charts.filter(c => c !== old); }
     if (!allWin.length) { el.querySelector('#qualTable').innerHTML = ctx.ui.empty('No demographics export uploaded yet.'); return; }
     chart(cv, { type: 'line', data: { labels, datasets: keys.map((k, i) => ({ label: k, data: seriesMap.get(k), borderColor: palette[i % palette.length], backgroundColor: palette[i % palette.length], borderWidth: k === 'Director and above' || i === 0 ? 3 : 2, pointRadius: 3, tension: .25 })) },
@@ -296,3 +302,10 @@ export async function render(el, ctx) {
 function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 function shortName(s, max = 44) { s = String(s || '').replace(/\|/g, ' | '); return s.length > max ? s.slice(0, max - 1) + '…' : s; }
 function round(t) { const o = {}; for (const [k, v] of Object.entries(t)) o[k] = v == null ? null : Math.round(v * 100) / 100; return o; }
+
+// Editors can upload. The shell loads settings.editors; demo mode is always an editor.
+export function isEditorOf(ctx) {
+  if (ctx.demo) return true;
+  const list = (ctx.settings && ctx.settings.editors) || [];
+  return list.includes(String((ctx.user && ctx.user.email) || '').toLowerCase());
+}

@@ -17,8 +17,8 @@ into the next read-out.
 
 ## Runbook
 1. Database. Either create a dedicated Supabase project (recommended, full isolation) or reuse an
-   existing one. Paste `supabase/001_campaign_analytics.sql`, then `supabase/002_email_actions.sql`, into its
-   SQL Editor.
+   existing one. Paste `supabase/001_campaign_analytics.sql`, `002_email_actions.sql`, then `003_message_ai.sql`,
+   into its SQL Editor (project `gfzimvqfmninrcyapike`).
 2. Secrets on Pages (run from the repo root, wrangler is already logged in):
    ```
    npx wrangler pages secret put CA_SUPABASE_URL --project-name lyzr-work-os      # https://<ref>.supabase.co
@@ -27,8 +27,8 @@ into the next read-out.
    npx wrangler pages secret put CA_CRON_SECRET --project-name lyzr-work-os      # any long random string
    ```
    `HUBSPOT_ACCESS_TOKEN` and `INSTANTLY_API_KEY` are already set. Add the same `CA_CRON_SECRET` value as a
-   GitHub Actions secret: `.github/workflows/ca-instantly-sync.yml` pulls Instantly every day at 07:00 IST.
-   Run that workflow once by hand with `full: true` to load each campaign's whole history.
+   GitHub Actions secret: `.github/workflows/ca-daily-pull.yml` runs every day at 07:00 IST: Instantly (all
+   GSI-tagged campaigns, full history), HubSpot (GSI leads), then Claude Sonnet 5 reads new lead messages.
 3. Entra redirect URI (step above). Then push to `main`; Pages deploys in about a minute.
 4. Open the dashboard, Settings › Connection shows which of the three pieces are live.
 5. Whenever you have them: Settings › Uploads takes any number of files at once (CSV or Excel) and routes

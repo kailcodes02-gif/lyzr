@@ -1,235 +1,2250 @@
 [
  {
-  "name": "EY",
-  "category": "Big Four",
-  "owner": "Pooja",
-  "aliases": [
-   "EY"
+  "name": "1840 & Company",
+  "source": [
+   "abm"
+  ],
+  "domain": "1840andco.com",
+  "country": "United States",
+  "industry": "outsourcing/offshoring",
+  "employees": 1800
+ },
+ {
+  "name": "2P Perfect Presentation",
+  "source": [
+   "abm"
+  ],
+  "domain": "2p.com.sa",
+  "country": "Saudi Arabia",
+  "industry": "information technology & services",
+  "employees": 4300
+ },
+ {
+  "name": "3i Infotech Ltd.",
+  "source": [
+   "abm"
+  ],
+  "domain": "3i-infotech.com",
+  "country": "India",
+  "industry": "information technology & services",
+  "employees": 5600
+ },
+ {
+  "name": "411 Locals",
+  "source": [
+   "abm"
+  ],
+  "domain": "411locals.com",
+  "country": "United States",
+  "industry": "management consulting",
+  "employees": 1000
+ },
+ {
+  "name": "8x8",
+  "source": [
+   "abm"
+  ],
+  "domain": "8x8.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 1900
+ },
+ {
+  "name": "A1 Telekom IT",
+  "source": [
+   "abm"
+  ],
+  "domain": "a1.group",
+  "country": "Austria",
+  "industry": "telecommunications",
+  "employees": 18000
+ },
+ {
+  "name": "Abacus",
+  "source": [
+   "abm"
+  ],
+  "domain": "abacus-global.com",
+  "country": "United Kingdom",
+  "industry": "information technology & services",
+  "employees": 3800
+ },
+ {
+  "name": "ABB IT Services",
+  "source": [
+   "abm"
+  ],
+  "domain": "abb.com",
+  "country": "Switzerland",
+  "industry": "machinery",
+  "employees": 106000
+ },
+ {
+  "name": "ABeam Consulting",
+  "owner": "Bharath",
+  "country": "Japan",
+  "source": [
+   "accounts",
+   "abm"
   ],
   "bands": {
-   "md": "Partner / Principal / MD",
-   "md1": "Senior Manager / Director",
+   "md": "Principal / Executive Officer",
+   "md1": "Director / General Manager",
    "md2": "Manager"
-  }
+  },
+  "domain": "abeam.com",
+  "industry": "management consulting",
+  "employees": 220
+ },
+ {
+  "name": "Abnormal AI",
+  "source": [
+   "abm"
+  ],
+  "domain": "abnormal.ai",
+  "country": "United States",
+  "industry": "computer & network security",
+  "employees": 1600
+ },
+ {
+  "name": "AC3",
+  "source": [
+   "abm"
+  ],
+  "domain": "ac3.com.au",
+  "country": "Australia",
+  "industry": "information technology & services",
+  "employees": 450
+ },
+ {
+  "name": "Accelya",
+  "source": [
+   "abm"
+  ],
+  "domain": "accelya.com",
+  "country": "United Kingdom",
+  "industry": "information technology & services",
+  "employees": 2500
  },
  {
   "name": "Accenture",
-  "category": "Global SI",
   "owner": "Praveen/ Bharath",
-  "aliases": [
-   "Accenture",
-   "Accenture in India",
-   "Accenture Strategy & Consulting"
+  "country": "Ireland",
+  "source": [
+   "accounts",
+   "abm"
   ],
   "bands": {
    "md": "Senior MD / Managing Director",
    "md1": "Associate Director / Principal Director",
    "md2": "Senior Manager / Senior Principal"
+  },
+  "domain": "accenture.com",
+  "industry": "management consulting",
+  "employees": 799000,
+  "category": "Global SI",
+  "aliases": [
+   "Accenture Brasil",
+   "Accenture España",
+   "Accenture Federal Services",
+   "Accenture Italia",
+   "Accenture México",
+   "Accenture Strategy & Consulting",
+   "Accenture in India"
+  ],
+  "domains": [
+   "accenture.com",
+   "accenture.com.br",
+   "accenture.it",
+   "accenturefederal.com"
+  ]
+ },
+ {
+  "name": "Accion Labs",
+  "owner": "Bharath",
+  "country": "United States",
+  "source": [
+   "accounts",
+   "abm"
+  ],
+  "bands": {
+   "md": "Vice President (VP)",
+   "md1": "Senior Director",
+   "md2": "Director / Practice Head"
+  },
+  "domain": "accionlabs.com",
+  "industry": "information technology & services",
+  "employees": 4200
+ },
+ {
+  "name": "Accolite Digital",
+  "source": [
+   "abm"
+  ],
+  "domain": "bounteous.com",
+  "country": "India",
+  "industry": "information technology & services",
+  "employees": 3000
+ },
+ {
+  "name": "ACL Digital",
+  "source": [
+   "abm"
+  ],
+  "domain": "acldigital.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 3800
+ },
+ {
+  "name": "Acme Services",
+  "source": [
+   "abm"
+  ],
+  "domain": "acme-services.in",
+  "country": "India",
+  "industry": "human resources",
+  "employees": 700
+ },
+ {
+  "name": "ACS Solutions",
+  "source": [
+   "abm"
+  ],
+  "domain": "acsicorp.com",
+  "country": "United States",
+  "employees": 0
+ },
+ {
+  "name": "Act digital",
+  "source": [
+   "abm"
+  ],
+  "domain": "actdigital.com",
+  "country": "Brazil",
+  "industry": "information technology & services",
+  "employees": 5600
+ },
+ {
+  "name": "Actalent",
+  "source": [
+   "abm"
+  ],
+  "domain": "actalentservices.com",
+  "country": "United States",
+  "industry": "management consulting",
+  "employees": 6700
+ },
+ {
+  "name": "ActionCOACH Iberoamerica",
+  "source": [
+   "abm"
+  ],
+  "domain": "franquiciaactioncoach.com",
+  "country": "Mexico",
+  "industry": "management consulting",
+  "employees": 930
+ },
+ {
+  "name": "Acurus",
+  "source": [
+   "abm"
+  ],
+  "domain": "acurus.in",
+  "country": "India",
+  "industry": "hospital & health care",
+  "employees": 290
+ },
+ {
+  "name": "Aditi Consulting",
+  "source": [
+   "abm"
+  ],
+  "domain": "aditiconsulting.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 1500
+ },
+ {
+  "name": "Advanced Computer Software",
+  "source": [
+   "abm"
+  ],
+  "domain": "oneadvanced.com",
+  "industry": "information technology & services",
+  "employees": 2500
+ },
+ {
+  "name": "Advent One",
+  "source": [
+   "abm"
+  ],
+  "domain": "adventone.co.za",
+  "country": "South Africa",
+  "industry": "construction",
+  "employees": 800
+ },
+ {
+  "name": "AeC",
+  "source": [
+   "abm"
+  ],
+  "domain": "aec.com.br",
+  "country": "Brazil",
+  "industry": "information technology & services",
+  "employees": 55000
+ },
+ {
+  "name": "Aegea Saneamento",
+  "source": [
+   "abm"
+  ],
+  "domain": "aegea.com.br",
+  "country": "Brazil",
+  "industry": "environmental services",
+  "employees": 24000
+ },
+ {
+  "name": "Affine",
+  "source": [
+   "abm"
+  ],
+  "domain": "affine.ai",
+  "country": "United States",
+  "industry": "management consulting",
+  "employees": 750
+ },
+ {
+  "name": "Agero, Inc.",
+  "source": [
+   "abm"
+  ],
+  "domain": "agero.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 2600
+ },
+ {
+  "name": "Agilisys",
+  "source": [
+   "abm"
+  ],
+  "domain": "agilisys.co.uk",
+  "country": "United Kingdom",
+  "industry": "information technology & services",
+  "employees": 2000
+ },
+ {
+  "name": "AGS Transact Technologies",
+  "source": [
+   "abm"
+  ],
+  "domain": "agsindia.com",
+  "country": "India",
+  "industry": "financial services",
+  "employees": 1200
+ },
+ {
+  "name": "AHEAD",
+  "source": [
+   "abm"
+  ],
+  "domain": "ahead.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 4300
+ },
+ {
+  "name": "Airbus Cybersecurity",
+  "source": [
+   "abm"
+  ],
+  "domain": "cyber.airbus.com",
+  "country": "France",
+  "industry": "information technology & services",
+  "employees": 320
+ },
+ {
+  "name": "AIS (Applied Information Sciences)",
+  "source": [
+   "abm"
+  ],
+  "domain": "ais.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 780
+ },
+ {
+  "name": "Akka Technologies",
+  "source": [
+   "abm"
+  ],
+  "domain": "akka-technologies.com",
+  "country": "Belgium",
+  "industry": "information technology & services",
+  "employees": 3400
+ },
+ {
+  "name": "Akkodis",
+  "source": [
+   "abm"
+  ],
+  "domain": "akkodis.com",
+  "country": "United Kingdom",
+  "industry": "information technology & services",
+  "employees": 50000
+ },
+ {
+  "name": "Al-Khaleej Computers",
+  "source": [
+   "abm"
+  ],
+  "domain": "itqan.ae",
+  "country": "United Arab Emirates",
+  "industry": "information technology & services",
+  "employees": 230
+ },
+ {
+  "name": "Alchemy Technology Group",
+  "source": [
+   "abm"
+  ],
+  "domain": "alchemytech.tw",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 0
+ },
+ {
+  "name": "Alfalak Electronic Equipment & Supplies Co.",
+  "source": [
+   "abm"
+  ],
+  "domain": "alfalak.com",
+  "country": "Saudi Arabia",
+  "industry": "information technology & services",
+  "employees": 900
+ },
+ {
+  "name": "AlFuttaim Technologies",
+  "source": [
+   "abm"
+  ],
+  "domain": "alfuttaimtechnologies.com",
+  "country": "United Arab Emirates",
+  "industry": "telecommunications",
+  "employees": 88
+ },
+ {
+  "name": "Algar Tech",
+  "source": [
+   "abm"
+  ],
+  "domain": "algartech.com",
+  "country": "Brazil",
+  "industry": "information technology & services",
+  "employees": 10000
+ },
+ {
+  "name": "Alibaba Cloud",
+  "source": [
+   "abm"
+  ],
+  "domain": "alibabacloud.com",
+  "country": "China",
+  "industry": "information technology & services",
+  "employees": 124000
+ },
+ {
+  "name": "Alight Solutions",
+  "source": [
+   "abm"
+  ],
+  "domain": "alight.com",
+  "country": "United States",
+  "industry": "human resources",
+  "employees": 9500
+ },
+ {
+  "name": "Align",
+  "source": [
+   "abm"
+  ],
+  "domain": "aligntech.com",
+  "country": "United States",
+  "industry": "medical devices",
+  "employees": 21000
+ },
+ {
+  "name": "AlixPartners",
+  "owner": "Pooja",
+  "country": "United States",
+  "source": [
+   "accounts",
+   "abm"
+  ],
+  "bands": {
+   "md": "Managing Director",
+   "md1": "Director / Senior Director",
+   "md2": "Vice President"
+  },
+  "domain": "alixpartners.com",
+  "industry": "management consulting",
+  "employees": 4000
+ },
+ {
+  "name": "AlJammaz Technologies الجماز للتكنولوجيا",
+  "source": [
+   "abm"
+  ],
+  "domain": "al-jammaz.com",
+  "country": "Saudi Arabia",
+  "industry": "information technology & services",
+  "employees": 350
+ },
+ {
+  "name": "Alliantgroup",
+  "source": [
+   "abm"
+  ],
+  "domain": "alliantglobal.com",
+  "country": "United States",
+  "industry": "management consulting",
+  "employees": 2000
+ },
+ {
+  "name": "Allianz SE",
+  "source": [
+   "abm"
+  ],
+  "domain": "allianz.com",
+  "country": "Germany",
+  "industry": "financial services",
+  "employees": 157000
+ },
+ {
+  "name": "Allied Digital Services",
+  "source": [
+   "abm"
+  ],
+  "domain": "allieddigital.net",
+  "industry": "information technology & services",
+  "employees": 3000
+ },
+ {
+  "name": "Allscripts (Veradigm)",
+  "source": [
+   "abm"
+  ],
+  "domain": "veradigm.com",
+  "country": "United States",
+  "industry": "hospital & health care",
+  "employees": 2300
+ },
+ {
+  "name": "Almaviva",
+  "source": [
+   "abm"
+  ],
+  "domain": "almaviva.it",
+  "country": "Italy",
+  "industry": "information technology & services",
+  "employees": 42000
+ },
+ {
+  "name": "ALOIS Solutions",
+  "source": [
+   "abm"
+  ],
+  "domain": "aloissolutions.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 520
+ },
+ {
+  "name": "Alorica",
+  "source": [
+   "abm"
+  ],
+  "domain": "alorica.com",
+  "country": "United States",
+  "industry": "outsourcing/offshoring",
+  "employees": 80000
+ },
+ {
+  "name": "Alpha Data",
+  "source": [
+   "abm"
+  ],
+  "domain": "alpha.ae",
+  "country": "United Arab Emirates",
+  "industry": "information technology & services",
+  "employees": 1700
+ },
+ {
+  "name": "Alphawest",
+  "source": [
+   "abm"
+  ],
+  "domain": "alphawest.com.au",
+  "country": "Australia",
+  "industry": "information technology & services",
+  "employees": 170
+ },
+ {
+  "name": "ALTEN Delivery Centre Spain",
+  "source": [
+   "abm"
+  ],
+  "domain": "alten.com",
+  "country": "Spain",
+  "industry": "information technology & services",
+  "employees": 58000
+ },
+ {
+  "name": "ALTEN Italia",
+  "source": [
+   "abm"
+  ],
+  "domain": "alten.it",
+  "country": "Italy",
+  "industry": "information technology & services",
+  "employees": 4600
+ },
+ {
+  "name": "ALTEN Spain",
+  "source": [
+   "abm"
+  ],
+  "domain": "alten.es",
+  "country": "Spain",
+  "industry": "information technology & services",
+  "employees": 5500
+ },
+ {
+  "name": "Altium Services",
+  "source": [
+   "abm"
+  ],
+  "domain": "altium.com",
+  "industry": "information technology & services",
+  "employees": 1300
+ },
+ {
+  "name": "Altran",
+  "source": [
+   "abm"
+  ],
+  "domain": "altran.com",
+  "country": "France",
+  "industry": "information technology & services",
+  "employees": 47000
+ },
+ {
+  "name": "Altudo",
+  "source": [
+   "abm"
+  ],
+  "domain": "altudo.co",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 560
+ },
+ {
+  "name": "Alvarez & Marsal",
+  "source": [
+   "abm"
+  ],
+  "domain": "alvarezandmarsal.com",
+  "country": "United States",
+  "industry": "management consulting",
+  "employees": 15000
+ },
+ {
+  "name": "Amadeus",
+  "source": [
+   "abm"
+  ],
+  "domain": "amadeus.com",
+  "country": "Spain",
+  "industry": "information technology & services",
+  "employees": 21000
+ },
+ {
+  "name": "Aman Group",
+  "source": [
+   "abm"
+  ],
+  "domain": "aman-global.com",
+  "country": "Israel",
+  "industry": "information technology & services",
+  "employees": 950
+ },
+ {
+  "name": "Amaris Consulting",
+  "source": [
+   "abm"
+  ],
+  "domain": "amaris.com",
+  "country": "Switzerland",
+  "industry": "information technology & services",
+  "employees": 11000
+ },
+ {
+  "name": "Ambev Tech",
+  "source": [
+   "abm"
+  ],
+  "domain": "ambevtech.com.br",
+  "country": "Brazil",
+  "industry": "information technology & services",
+  "employees": 1500
+ },
+ {
+  "name": "Amcom",
+  "source": [
+   "abm"
+  ],
+  "domain": "amcom.com.br",
+  "country": "Brazil",
+  "industry": "information technology & services",
+  "employees": 350
+ },
+ {
+  "name": "Amdocs",
+  "source": [
+   "abm"
+  ],
+  "domain": "amdocs.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 27000
+ },
+ {
+  "name": "American Unit, Inc",
+  "source": [
+   "abm"
+  ],
+  "domain": "americanunit.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 550
+ },
+ {
+  "name": "Amorepacific Systems",
+  "source": [
+   "abm"
+  ],
+  "domain": "apgroup.com",
+  "industry": "cosmetics",
+  "employees": 67
+ },
+ {
+  "name": "Ampstek",
+  "source": [
+   "abm"
+  ],
+  "domain": "ampstek.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 300
+ },
+ {
+  "name": "AMS",
+  "source": [
+   "abm"
+  ],
+  "domain": "weareams.com",
+  "country": "United Kingdom",
+  "industry": "human resources",
+  "employees": 8700
+ },
+ {
+  "name": "Amtex Systems Inc",
+  "source": [
+   "abm"
+  ],
+  "domain": "amtexsystems.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 1800
+ },
+ {
+  "name": "Anblicks",
+  "source": [
+   "abm"
+  ],
+  "domain": "anblicks.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 840
+ },
+ {
+  "name": "Ankura",
+  "source": [
+   "abm"
+  ],
+  "domain": "ankura.com",
+  "country": "United States",
+  "industry": "management consulting",
+  "employees": 2200
+ },
+ {
+  "name": "ANSR",
+  "source": [
+   "abm"
+  ],
+  "domain": "ansr.com",
+  "country": "India",
+  "industry": "management consulting",
+  "employees": 1200
+ },
+ {
+  "name": "Anywr",
+  "source": [
+   "abm"
+  ],
+  "domain": "anywr-group.com",
+  "country": "France",
+  "industry": "human resources",
+  "employees": 5100
+ },
+ {
+  "name": "APC by Schneider Electric",
+  "source": [
+   "abm"
+  ],
+  "domain": "apc.com",
+  "country": "France",
+  "industry": "information technology & services",
+  "employees": 4300
+ },
+ {
+  "name": "APCO",
+  "source": [
+   "abm"
+  ],
+  "domain": "apcoworldwide.com",
+  "country": "United States",
+  "industry": "management consulting",
+  "employees": 1900
+ },
+ {
+  "name": "Apex Systems",
+  "source": [
+   "abm"
+  ],
+  "domain": "apexsystems.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 14000
+ },
+ {
+  "name": "Apidel Technologies",
+  "source": [
+   "abm"
+  ],
+  "domain": "apideltech.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 6500
+ },
+ {
+  "name": "Apolis",
+  "source": [
+   "abm"
+  ],
+  "domain": "apolisrises.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 530
+ },
+ {
+  "name": "AppDirect",
+  "source": [
+   "abm"
+  ],
+  "domain": "appdirect.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 1200
+ },
+ {
+  "name": "Appen",
+  "source": [
+   "abm"
+  ],
+  "domain": "appen.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 1200
+ },
+ {
+  "name": "Appinventiv",
+  "source": [
+   "abm"
+  ],
+  "domain": "appinventiv.com",
+  "country": "India",
+  "industry": "information technology & services",
+  "employees": 1600
+ },
+ {
+  "name": "Applied Innovation",
+  "source": [
+   "abm"
+  ],
+  "domain": "appliedinnovation.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 530
+ },
+ {
+  "name": "Applus+",
+  "source": [
+   "abm"
+  ],
+  "domain": "applus.com",
+  "country": "Spain",
+  "industry": "management consulting",
+  "employees": 29000
+ },
+ {
+  "name": "Apps Associates",
+  "source": [
+   "abm"
+  ],
+  "domain": "appsassociates.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 1400
+ },
+ {
+  "name": "Apptad",
+  "source": [
+   "abm"
+  ],
+  "domain": "apptad.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 500
+ },
+ {
+  "name": "Archetype",
+  "source": [
+   "abm"
+  ],
+  "domain": "archetype.co",
+  "country": "United States",
+  "industry": "marketing & advertising",
+  "employees": 1100
+ },
+ {
+  "name": "Arcserve",
+  "source": [
+   "abm"
+  ],
+  "domain": "arcserve.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 660
+ },
+ {
+  "name": "Arctic Wolf",
+  "source": [
+   "abm"
+  ],
+  "domain": "arcticwolf.com",
+  "country": "United States",
+  "industry": "computer & network security",
+  "employees": 3300
+ },
+ {
+  "name": "Arctiq",
+  "source": [
+   "abm"
+  ],
+  "domain": "dyntek.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 660
+ },
+ {
+  "name": "Aretum",
+  "source": [
+   "abm"
+  ],
+  "domain": "aretum.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 270
+ },
+ {
+  "name": "Argo Graphics",
+  "source": [
+   "abm"
+  ],
+  "domain": "argographics.com.au",
+  "country": "Australia",
+  "industry": "design",
+  "employees": 3
+ },
+ {
+  "name": "ARQ Group",
+  "source": [
+   "abm"
+  ],
+  "domain": "arq.group",
+  "country": "Australia",
+  "industry": "information technology & services",
+  "employees": 160
+ },
+ {
+  "name": "Artefact",
+  "source": [
+   "abm"
+  ],
+  "domain": "artefact.com",
+  "country": "France",
+  "industry": "management consulting",
+  "employees": 2700
+ },
+ {
+  "name": "Arthur D. Little",
+  "owner": "Pooja",
+  "country": "Belgium",
+  "source": [
+   "accounts",
+   "abm"
+  ],
+  "bands": {
+   "md": "Partner",
+   "md1": "Principal",
+   "md2": "Manager"
+  },
+  "domain": "adlittle.com",
+  "industry": "management consulting",
+  "employees": 2400
+ },
+ {
+  "name": "Arthur Lawrence",
+  "source": [
+   "abm"
+  ],
+  "domain": "arthurlawrence.net",
+  "country": "United States",
+  "industry": "management consulting",
+  "employees": 540
+ },
+ {
+  "name": "ASBIS",
+  "source": [
+   "abm"
+  ],
+  "domain": "asbis.com",
+  "country": "Cyprus",
+  "industry": "information technology & services",
+  "employees": 2800
+ },
+ {
+  "name": "Ascendum Solutions",
+  "source": [
+   "abm"
+  ],
+  "domain": "ascendum.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 2700
+ },
+ {
+  "name": "ASG Group",
+  "source": [
+   "abm"
+  ],
+  "domain": "nri-anz.com",
+  "country": "Australia",
+  "industry": "information technology & services",
+  "employees": 1700
+ },
+ {
+  "name": "Asiana IDT",
+  "source": [
+   "abm"
+  ],
+  "domain": "asianaidt.com",
+  "country": "South Korea",
+  "industry": "information technology & services",
+  "employees": 440
+ },
+ {
+  "name": "ASMACS Jobs",
+  "source": [
+   "abm"
+  ],
+  "domain": "asmacsgroup.net",
+  "country": "India",
+  "industry": "human resources",
+  "employees": 4000
+ },
+ {
+  "name": "ASMPT Integration",
+  "source": [
+   "abm"
+  ],
+  "domain": "asmpt.com",
+  "industry": "semiconductors",
+  "employees": 12000
+ },
+ {
+  "name": "Asseco",
+  "source": [
+   "abm"
+  ],
+  "domain": "asseco.com",
+  "country": "Poland",
+  "industry": "information technology & services",
+  "employees": 34000
+ },
+ {
+  "name": "Assystem",
+  "source": [
+   "abm"
+  ],
+  "domain": "assystem.com",
+  "country": "France",
+  "industry": "management consulting",
+  "employees": 7600
+ },
+ {
+  "name": "Asta Crs Inc",
+  "source": [
+   "abm"
+  ],
+  "domain": "astacrs.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 230
+ },
+ {
+  "name": "Astek",
+  "source": [
+   "abm"
+  ],
+  "domain": "astek.com",
+  "country": "France",
+  "industry": "information technology & services",
+  "employees": 10000
+ },
+ {
+  "name": "Astreya",
+  "source": [
+   "abm"
+  ],
+  "domain": "astreya.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 2600
+ },
+ {
+  "name": "Astrix",
+  "source": [
+   "abm"
+  ],
+  "domain": "astrixinc.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 750
+ },
+ {
+  "name": "AT&T Enterprise Services",
+  "source": [
+   "abm"
+  ],
+  "domain": "att.com",
+  "country": "United States",
+  "industry": "telecommunications",
+  "employees": 140000
+ },
+ {
+  "name": "Atea",
+  "source": [
+   "abm"
+  ],
+  "domain": "atea.se",
+  "country": "Sweden",
+  "industry": "information technology & services",
+  "employees": 2700
+ },
+ {
+  "name": "Atento",
+  "source": [
+   "abm"
+  ],
+  "domain": "atento.com",
+  "country": "Spain",
+  "industry": "outsourcing/offshoring",
+  "employees": 80000
+ },
+ {
+  "name": "Athena",
+  "source": [
+   "abm"
+  ],
+  "domain": "athena.com",
+  "country": "Puerto Rico",
+  "industry": "management consulting",
+  "employees": 5500
+ },
+ {
+  "name": "Athenahealth",
+  "source": [
+   "abm"
+  ],
+  "domain": "athenahealth.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 8700
+ },
+ {
+  "name": "Atidiv",
+  "source": [
+   "abm"
+  ],
+  "domain": "atidiv.com",
+  "country": "United States",
+  "industry": "outsourcing/offshoring",
+  "employees": 900
+ },
+ {
+  "name": "Atos",
+  "owner": "Kaushik",
+  "country": "France",
+  "source": [
+   "accounts",
+   "abm"
+  ],
+  "bands": {
+   "md": "VP / Managing Director",
+   "md1": "Client Partner / Practice Head",
+   "md2": "Director / Delivery Executive"
+  },
+  "domain": "atos.ai",
+  "aliases": [
+   "Atos Syntel"
+  ],
+  "domains": [
+   "atos-syntel.net",
+   "atos.ai"
+  ]
+ },
+ {
+  "name": "ATS Automation",
+  "source": [
+   "abm"
+  ],
+  "domain": "atsindustrialautomation.com",
+  "country": "Canada",
+  "industry": "machinery",
+  "employees": 1500
+ },
+ {
+  "name": "Attura",
+  "owner": "Bharath",
+  "country": "Australia",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "General Manager (GM)",
+   "md1": "Practice Director / Head of Delivery",
+   "md2": "Senior Manager / Managing Consultant"
   }
  },
  {
-  "name": "Deloitte",
-  "category": "Big Four",
-  "owner": "Pooja",
-  "aliases": [
-   "Deloitte"
+  "name": "Atyeti Inc",
+  "source": [
+   "abm"
   ],
-  "bands": {
-   "md": "Partner / Managing Director",
-   "md1": "Senior Manager / Specialist Leader",
-   "md2": "Manager / Specialist Master"
-  }
+  "domain": "atyeti.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 600
  },
  {
-  "name": "PwC",
-  "category": "Big Four",
-  "owner": "Pooja",
-  "aliases": [
-   "PwC"
+  "name": "Auth0",
+  "source": [
+   "abm"
+  ],
+  "domain": "auth0.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 650
+ },
+ {
+  "name": "Auxis",
+  "source": [
+   "abm"
+  ],
+  "domain": "auxis.com",
+  "country": "United States",
+  "industry": "outsourcing/offshoring",
+  "employees": 1400
+ },
+ {
+  "name": "Avaloq",
+  "source": [
+   "abm"
+  ],
+  "domain": "avaloq.com",
+  "country": "Switzerland",
+  "industry": "information technology & services",
+  "employees": 2700
+ },
+ {
+  "name": "Avanade",
+  "owner": "Anju",
+  "source": [
+   "accounts"
   ],
   "bands": {
-   "md": "Partner / Principal / MD",
-   "md1": "Director",
+   "md": "Executive",
+   "md1": "Group Manager / Regional Lead",
    "md2": "Senior Manager"
   }
  },
  {
-  "name": "HCLTech",
-  "category": "Indian IT / BPM",
-  "owner": "Kaushik",
-  "aliases": [
-   "HCLTech"
+  "name": "Avensys Consulting",
+  "source": [
+   "abm"
   ],
-  "bands": {
-   "md": "VP / SVP (E8/E9 Band)",
-   "md1": "AVP / Senior Director / GM (E6/E7)",
-   "md2": "Director / DGM (E4/E5)"
-  }
+  "domain": "aven-sys.com",
+  "country": "Singapore",
+  "industry": "information technology & services",
+  "employees": 520
  },
  {
-  "name": "Genpact",
-  "category": "Indian IT / BPM",
+  "name": "Avenue Code",
+  "source": [
+   "abm"
+  ],
+  "domain": "avenuecode.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 1000
+ },
+ {
+  "name": "Averda",
+  "source": [
+   "abm"
+  ],
+  "domain": "averda.com",
+  "country": "United Arab Emirates",
+  "industry": "environmental services",
+  "employees": 15000
+ },
+ {
+  "name": "AVI-SPL",
+  "source": [
+   "abm"
+  ],
+  "domain": "avispl.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 240
+ },
+ {
+  "name": "Avtex Solutions",
+  "source": [
+   "abm"
+  ],
+  "domain": "ttecdigital.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 1500
+ },
+ {
+  "name": "Axcient",
+  "source": [
+   "abm"
+  ],
+  "domain": "teamconnext.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 71
+ },
+ {
+  "name": "Ayesa",
+  "source": [
+   "abm"
+  ],
+  "domain": "ayesa.com",
+  "country": "Spain",
+  "industry": "management consulting",
+  "employees": 12000
+ },
+ {
+  "name": "Azentio Software",
   "owner": "Bharath",
-  "aliases": [
-   "Genpact"
+  "source": [
+   "accounts"
   ],
   "bands": {
-   "md": "Senior Vice President (SVP)",
-   "md1": "Vice President (VP)",
-   "md2": "Assistant VP (AVP)"
+   "md": "Vice President (VP)",
+   "md1": "Senior Director",
+   "md2": "Director / Senior Manager"
   }
  },
  {
-  "name": "McKinsey & Company",
-  "category": "MBB / Strategy",
-  "owner": "Pooja",
-  "aliases": [
-   "McKinsey & Company"
+  "name": "Aztech Global Tech",
+  "source": [
+   "abm"
   ],
-  "bands": {
-   "md": "Partner / Senior Partner",
-   "md1": "Associate Partner",
-   "md2": "Engagement Manager"
-  }
+  "domain": "aztechglobal.com",
+  "industry": "computer networking",
+  "employees": 2000
  },
  {
-  "name": "Wipro",
-  "category": "Indian IT / BPM",
-  "owner": "Kaushik",
-  "aliases": [
-   "Wipro"
+  "name": "BAE Systems Intel & Sec",
+  "source": [
+   "abm"
   ],
-  "bands": {
-   "md": "SVP / Global Head",
-   "md1": "VP / General Manager (GM)",
-   "md2": "Director / Senior Delivery Manager"
-  }
- },
- {
-  "name": "Boston Consulting Group (BCG)",
-  "category": "MBB / Strategy",
-  "owner": "Pooja",
-  "aliases": [
-   "Boston Consulting Group (BCG)"
-  ],
-  "bands": {
-   "md": "Managing Director & Partner (MDP)",
-   "md1": "Principal",
-   "md2": "Project Leader"
-  }
- },
- {
-  "name": "Tata Consultancy Services",
-  "category": "Indian IT / BPM",
-  "owner": "Kaushik",
-  "aliases": [
-   "Tata Consultancy Services"
-  ],
-  "bands": {
-   "md": "SVP / Global Head",
-   "md1": "VP / Senior Director",
-   "md2": "Director / Senior Delivery Manager"
-  }
- },
- {
-  "name": "KPMG",
-  "category": "Big Four",
-  "owner": "Pooja",
-  "aliases": [
-   "KPMG US",
-   "KPMG",
-   "KPMG India"
-  ],
-  "bands": {
-   "md": "Partner / Managing Director",
-   "md1": "Director",
-   "md2": "Senior Manager / Manager"
-  }
- },
- {
-  "name": "Infosys",
-  "category": "Indian IT / BPM",
-  "owner": "Kaushik",
-  "aliases": [
-   "Infosys"
-  ],
-  "bands": {
-   "md": "SVP / Managing Partner",
-   "md1": "VP / Assistant VP (AVP)",
-   "md2": "Senior Delivery Manager"
-  }
+  "domain": "baesystems.com",
+  "country": "United Kingdom",
+  "industry": "defense & space",
+  "employees": 111000
  },
  {
   "name": "Bain & Company",
-  "category": "MBB / Strategy",
   "owner": "Pooja",
-  "aliases": [
-   "Bain & Company"
+  "source": [
+   "accounts"
   ],
   "bands": {
    "md": "Partner / Senior Partner",
    "md1": "Associate Partner",
    "md2": "Senior Manager / Manager"
-  }
+  },
+  "aliases": [
+   "Bain"
+  ],
+  "category": "MBB / Strategy"
  },
  {
-  "name": "LTIMindtree",
-  "category": "Indian IT / BPM",
-  "owner": "Kaushik",
-  "aliases": [
-   "LTIMindtree"
+  "name": "BairesDev",
+  "source": [
+   "abm"
+  ],
+  "domain": "bairesdev.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 4000
+ },
+ {
+  "name": "Baker Tilly Digital",
+  "source": [
+   "abm"
+  ],
+  "domain": "bakertilly.com",
+  "country": "United States",
+  "industry": "accounting",
+  "employees": 11000
+ },
+ {
+  "name": "BambooHR",
+  "source": [
+   "abm"
+  ],
+  "domain": "bamboohr.com",
+  "country": "United States",
+  "industry": "human resources",
+  "employees": 2000
+ },
+ {
+  "name": "Barracuda",
+  "source": [
+   "abm"
+  ],
+  "domain": "barracuda.com",
+  "country": "United States",
+  "industry": "computer & network security",
+  "employees": 2200
+ },
+ {
+  "name": "Baufest",
+  "source": [
+   "abm"
+  ],
+  "domain": "baufest.com",
+  "country": "Argentina",
+  "industry": "information technology & services",
+  "employees": 950
+ },
+ {
+  "name": "BCforward",
+  "source": [
+   "abm"
+  ],
+  "domain": "bcforward.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 8000
+ },
+ {
+  "name": "BCX",
+  "source": [
+   "abm"
+  ],
+  "domain": "bcx.co.za",
+  "country": "South Africa",
+  "industry": "information technology & services",
+  "employees": 6300
+ },
+ {
+  "name": "BDO Digital",
+  "source": [
+   "abm"
+  ],
+  "domain": "bdo.com",
+  "country": "United States",
+  "industry": "accounting",
+  "employees": 12000
+ },
+ {
+  "name": "Beacon Hill",
+  "source": [
+   "abm"
+  ],
+  "domain": "bhsg.com",
+  "country": "United States",
+  "industry": "management consulting",
+  "employees": 3200
+ },
+ {
+  "name": "BearingPoint",
+  "owner": "Pooja",
+  "country": "Netherlands",
+  "source": [
+   "accounts",
+   "abm"
+  ],
+  "bands": {
+   "md": "Partner",
+   "md1": "Director",
+   "md2": "Senior Manager"
+  },
+  "domain": "bearingpoint.com",
+  "industry": "management consulting",
+  "employees": 11000
+ },
+ {
+  "name": "Bechtle Switzerland",
+  "source": [
+   "abm"
+  ],
+  "domain": "bechtle.com",
+  "country": "Germany",
+  "industry": "information technology & services",
+  "employees": 17000
+ },
+ {
+  "name": "BEEAH Group",
+  "source": [
+   "abm"
+  ],
+  "domain": "beeahgroup.com",
+  "country": "United Arab Emirates",
+  "industry": "environmental services",
+  "employees": 1600
+ },
+ {
+  "name": "Belcan",
+  "source": [
+   "abm"
+  ],
+  "domain": "belcan.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 10000
+ },
+ {
+  "name": "BETSOL",
+  "source": [
+   "abm"
+  ],
+  "domain": "betsol.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 750
+ },
+ {
+  "name": "Beyondsoft",
+  "source": [
+   "abm"
+  ],
+  "domain": "beyondsoft.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 30000
+ },
+ {
+  "name": "Bharti Airtel (Enterprise)",
+  "source": [
+   "abm"
+  ],
+  "domain": "airtel.in",
+  "country": "India",
+  "industry": "telecommunications",
+  "employees": 87000
+ },
+ {
+  "name": "BigID",
+  "source": [
+   "abm"
+  ],
+  "domain": "bigid.com",
+  "country": "United States",
+  "industry": "computer & network security",
+  "employees": 690
+ },
+ {
+  "name": "Binated",
+  "source": [
+   "abm"
+  ],
+  "domain": "binated.com",
+  "country": "United States",
+  "industry": "management consulting",
+  "employees": 1800
+ },
+ {
+  "name": "BIP",
+  "source": [
+   "abm"
+  ],
+  "domain": "bip-group.co.uk",
+  "country": "Spain",
+  "industry": "management consulting",
+  "employees": 170
+ },
+ {
+  "name": "BIP Brasil",
+  "source": [
+   "abm"
+  ],
+  "domain": "bipbrasil.com.br",
+  "country": "Brazil",
+  "industry": "management consulting",
+  "employees": 740
+ },
+ {
+  "name": "Birlasoft",
+  "owner": "Bharath",
+  "country": "India",
+  "source": [
+   "accounts",
+   "abm"
   ],
   "bands": {
    "md": "Senior Vice President (SVP)",
    "md1": "Vice President (VP)",
    "md2": "Assistant VP (AVP) / Senior Director"
+  },
+  "domain": "birlasoft.com",
+  "industry": "information technology & services",
+  "employees": 12000
+ },
+ {
+  "name": "Bitel Enterprise",
+  "source": [
+   "abm"
+  ],
+  "domain": "bitel.com.pe",
+  "country": "Peru",
+  "industry": "telecommunications",
+  "employees": 2700
+ },
+ {
+  "name": "Bitwise",
+  "source": [
+   "abm"
+  ],
+  "domain": "bitwiseglobal.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 1600
+ },
+ {
+  "name": "BJSS",
+  "source": [
+   "abm"
+  ],
+  "domain": "bjss.com",
+  "country": "United Kingdom",
+  "industry": "information technology & services",
+  "employees": 2400
+ },
+ {
+  "name": "Black Box",
+  "source": [
+   "abm"
+  ],
+  "domain": "blackbox.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 3900
+ },
+ {
+  "name": "Black Knight (IT Services)",
+  "source": [
+   "abm"
+  ],
+  "domain": "bkfs.com",
+  "country": "United States",
+  "industry": "real estate",
+  "employees": 320
+ },
+ {
+  "name": "Blue Apache",
+  "source": [
+   "abm"
+  ],
+  "domain": "blueapachela.com",
+  "country": "United States",
+  "employees": 1
+ },
+ {
+  "name": "Blue Mantis",
+  "source": [
+   "abm"
+  ],
+  "domain": "bluemantis.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 570
+ },
+ {
+  "name": "Blue Tech",
+  "source": [
+   "abm"
+  ],
+  "domain": "bluetech.com",
+  "industry": "information technology & services",
+  "employees": 76
+ },
+ {
+  "name": "BlueVoyant",
+  "source": [
+   "abm"
+  ],
+  "domain": "bluevoyant.com",
+  "country": "United States",
+  "industry": "computer & network security",
+  "employees": 630
+ },
+ {
+  "name": "Bluum",
+  "source": [
+   "abm"
+  ],
+  "domain": "bluum.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 900
+ },
+ {
+  "name": "BNI Global",
+  "source": [
+   "abm"
+  ],
+  "domain": "bni.com",
+  "country": "United States",
+  "industry": "management consulting",
+  "employees": 4500
+ },
+ {
+  "name": "Boldr",
+  "source": [
+   "abm"
+  ],
+  "domain": "boldrimpact.com",
+  "country": "United States",
+  "industry": "outsourcing/offshoring",
+  "employees": 900
+ },
+ {
+  "name": "Booz Allen Hamilton",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President / SVP",
+   "md1": "Principal",
+   "md2": "Senior Associate"
   }
  },
  {
-  "name": "Tech Mahindra",
-  "category": "Indian IT / BPM",
-  "owner": "Kaushik",
+  "name": "BORN",
+  "source": [
+   "abm"
+  ],
+  "domain": "borngroup.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 1200
+ },
+ {
+  "name": "Bosch Digital",
+  "source": [
+   "abm"
+  ],
+  "domain": "bosch-digital.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 1900
+ },
+ {
+  "name": "Boston Consulting Group (BCG)",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Managing Director & Partner (MDP)",
+   "md1": "Principal",
+   "md2": "Project Leader"
+  },
   "aliases": [
-   "Tech Mahindra"
+   "BCG",
+   "BCG X"
+  ],
+  "category": "MBB / Strategy",
+  "domains": [
+   "bcg.com"
+  ],
+  "domain": "bcg.com"
+ },
+ {
+  "name": "Bounteous",
+  "source": [
+   "abm"
+  ],
+  "domain": "bounteous.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 3100
+ },
+ {
+  "name": "Bouygues Telecom Ent.",
+  "source": [
+   "abm"
+  ],
+  "domain": "bouyguestelecom.fr",
+  "country": "France",
+  "industry": "telecommunications",
+  "employees": 11000
+ },
+ {
+  "name": "BrandMuscle",
+  "source": [
+   "abm"
+  ],
+  "domain": "brandmuscle.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 700
+ },
+ {
+  "name": "Bravura Solutions",
+  "source": [
+   "abm"
+  ],
+  "domain": "bravurasolutions.com",
+  "country": "Australia",
+  "industry": "information technology & services",
+  "employees": 1100
+ },
+ {
+  "name": "Brennan IT",
+  "owner": "Bharath",
+  "country": "Australia",
+  "source": [
+   "accounts",
+   "abm"
+  ],
+  "bands": {
+   "md": "Head of (Division/Practice)",
+   "md1": "Practice Manager",
+   "md2": "Senior Manager"
+  },
+  "domain": "bitsltd.ie",
+  "industry": "information technology & services",
+  "employees": 9
+ },
+ {
+  "name": "BRG",
+  "source": [
+   "abm"
+  ],
+  "domain": "thinkbrg.com",
+  "country": "United States",
+  "industry": "management consulting",
+  "employees": 2500
+ },
+ {
+  "name": "BrickRed Systems",
+  "source": [
+   "abm"
+  ],
+  "domain": "brickredsys.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 750
+ },
+ {
+  "name": "Brillio",
+  "source": [
+   "abm"
+  ],
+  "domain": "brillio.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 6000
+ },
+ {
+  "name": "Bristlecone",
+  "source": [
+   "abm"
+  ],
+  "domain": "bristlecone.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 3800
+ },
+ {
+  "name": "BRK Ambiental",
+  "source": [
+   "abm"
+  ],
+  "domain": "brkambiental.com.br",
+  "country": "Brazil",
+  "industry": "environmental services",
+  "employees": 5400
+ },
+ {
+  "name": "Broadridge IT Services",
+  "source": [
+   "abm"
+  ],
+  "domain": "broadridge.com",
+  "country": "United States",
+  "industry": "financial services",
+  "employees": 41
+ },
+ {
+  "name": "Brooksource",
+  "source": [
+   "abm"
+  ],
+  "domain": "brooksource.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 2000
+ },
+ {
+  "name": "BRQ Digital Solutions",
+  "source": [
+   "abm"
+  ],
+  "domain": "brq.com",
+  "country": "Brazil",
+  "industry": "information technology & services",
+  "employees": 2800
+ },
+ {
+  "name": "BT Business Direct",
+  "source": [
+   "abm"
+  ],
+  "domain": "bt.com",
+  "country": "United Kingdom",
+  "industry": "telecommunications",
+  "employees": 88000
+ },
+ {
+  "name": "BTC Networks",
+  "source": [
+   "abm"
+  ],
+  "domain": "btc.com.sa",
+  "country": "Saudi Arabia",
+  "industry": "telecommunications",
+  "employees": 3400
+ },
+ {
+  "name": "Buk",
+  "source": [
+   "abm"
+  ],
+  "domain": "hubs.la"
+ },
+ {
+  "name": "Bukalapak",
+  "source": [
+   "abm"
+  ],
+  "domain": "bukalapak.com",
+  "country": "Indonesia",
+  "industry": "information technology & services",
+  "employees": 420
+ },
+ {
+  "name": "Bureau Veritas",
+  "source": [
+   "abm"
+  ],
+  "domain": "bureauveritas.com",
+  "country": "France",
+  "industry": "environmental services",
+  "employees": 83000
+ },
+ {
+  "name": "BuzzClan",
+  "source": [
+   "abm"
+  ],
+  "domain": "buzzclan.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 650
+ },
+ {
+  "name": "Bynet Data Communications",
+  "source": [
+   "abm"
+  ],
+  "domain": "bynet.co.il",
+  "country": "Israel",
+  "industry": "information technology & services",
+  "employees": 1100
+ },
+ {
+  "name": "C5i",
+  "source": [
+   "abm"
+  ],
+  "domain": "c5i.ai",
+  "country": "United States",
+  "industry": "management consulting",
+  "employees": 1600
+ },
+ {
+  "name": "CAC Holdings",
+  "source": [
+   "abm"
+  ],
+  "domain": "cac-holdings.com",
+  "country": "Japan",
+  "industry": "information technology & services",
+  "employees": 4800
+ },
+ {
+  "name": "Calance",
+  "source": [
+   "abm"
+  ],
+  "domain": "calanceus.com",
+  "country": "United States",
+  "industry": "information technology & services",
+  "employees": 410
+ },
+ {
+  "name": "Cancom",
+  "source": [
+   "abm"
+  ],
+  "domain": "cancom.de",
+  "country": "Germany",
+  "industry": "information technology & services",
+  "employees": 5300
+ },
+ {
+  "name": "Canon EMEA",
+  "source": [
+   "abm"
+  ],
+  "domain": "canon-europe.com",
+  "country": "United Kingdom",
+  "industry": "information technology & services",
+  "employees": 14000
+ },
+ {
+  "name": "Capco",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Partner",
+   "md1": "Executive Director / Principal",
+   "md2": "Managing Consultant"
+  }
+ },
+ {
+  "name": "Capgemini",
+  "owner": "Anju",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "VP / Managing Director",
+   "md1": "Senior Director / Principal",
+   "md2": "Director / Senior Manager"
+  }
+ },
+ {
+  "name": "CGI",
+  "owner": "Kaushik",
+  "source": [
+   "accounts"
   ],
   "bands": {
    "md": "Senior Vice President (SVP)",
    "md1": "Vice President (VP)",
-   "md2": "General Manager (GM)"
+   "md2": "Director / Sector Manager"
   }
  },
  {
-  "name": "Thoughtworks",
-  "category": "Global SI",
-  "owner": "Pooja",
-  "aliases": [
-   "Thoughtworks"
+  "name": "CMC Technology & Solution",
+  "owner": "Bharath",
+  "country": "Vietnam",
+  "source": [
+   "accounts"
   ],
   "bands": {
-   "md": "Director / Principal Consultant",
-   "md1": "Lead Consultant / Senior Manager",
-   "md2": ""
+   "md": "Vice President (VP)",
+   "md1": "Delivery Head / BU Head",
+   "md2": "Project Director / Senior Manager"
   }
  },
  {
-  "name": "Protiviti",
-  "category": "Advisory",
-  "owner": "Pooja",
-  "aliases": [
-   "Protiviti"
-  ],
-  "bands": {
-   "md": "Director",
-   "md1": "Senior Manager",
-   "md2": ""
-  }
- },
- {
-  "name": "EPAM Systems",
-  "category": "Global SI",
+  "name": "Cognizant",
   "owner": "Kaushik",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Senior Vice President (SVP)",
+   "md1": "Vice President (VP)",
+   "md2": "Assistant VP (AVP) / Senior Director"
+  },
   "aliases": [
-   "EPAM Systems"
+   "CTS"
+  ],
+  "category": "Global SI"
+ },
+ {
+  "name": "Credera",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Partner / Managing Director",
+   "md1": "Principal / Senior Director",
+   "md2": "Senior Manager / Director"
+  }
+ },
+ {
+  "name": "Crimson Logic",
+  "owner": "Bharath",
+  "country": "Singapore",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President (VP)",
+   "md1": "Senior Director",
+   "md2": "Director / Senior Manager"
+  }
+ },
+ {
+  "name": "Cyient",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Senior Vice President (SVP)",
+   "md1": "Vice President (VP)",
+   "md2": "Assistant VP (AVP) / General Manager"
+  }
+ },
+ {
+  "name": "Data#3",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "General Manager / National Practice Mgr",
+   "md1": "Practice Manager / State Manager",
+   "md2": "Senior Manager / Lead Consultant"
+  }
+ },
+ {
+  "name": "Datacom",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Managing Director / Director",
+   "md1": "Associate Director / Head of",
+   "md2": "Senior Manager / Practice Lead"
+  }
+ },
+ {
+  "name": "Deloitte",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Partner / Managing Director",
+   "md1": "Senior Manager / Specialist Leader",
+   "md2": "Manager / Specialist Master"
+  },
+  "category": "Big Four"
+ },
+ {
+  "name": "Denave",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President (VP)",
+   "md1": "Assistant VP (AVP)",
+   "md2": "Director / General Manager"
+  }
+ },
+ {
+  "name": "DXC",
+  "owner": "Kaushik",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "VP / Managing Partner (L8/L9)",
+   "md1": "Partner / Senior Manager (L7)",
+   "md2": "Manager / Associate Partner (L6)"
+  }
+ },
+ {
+  "name": "EPAM",
+  "owner": "Kaushik",
+  "source": [
+   "accounts"
   ],
   "bands": {
    "md": "Vice President (VP)",
@@ -238,42 +2253,855 @@
   }
  },
  {
-  "name": "Fujitsu",
-  "category": "Global SI",
+  "name": "EPAM Systems",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President / SVP",
+   "md1": "Senior Director",
+   "md2": "Director / Head of Practice"
+  },
+  "category": "Global SI"
+ },
+ {
+  "name": "EXL",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Senior Vice President (SVP)",
+   "md1": "Vice President (VP)",
+   "md2": "Assistant VP (AVP)"
+  }
+ },
+ {
+  "name": "EY",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Partner / Principal / MD",
+   "md1": "Senior Manager / Director",
+   "md2": "Manager"
+  },
+  "category": "Big Four"
+ },
+ {
+  "name": "FPT Software",
   "owner": "Bharath",
-  "aliases": [
-   "Fujitsu"
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President (VP) / SVP",
+   "md1": "Business Unit (BU) Head",
+   "md2": "Delivery Head / Director"
+  }
+ },
+ {
+  "name": "Fujitsu",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
   ],
   "bands": {
    "md": "SVP / Corporate VP",
    "md1": "Senior Director / General Manager",
    "md2": "Director / Senior Manager"
-  }
+  },
+  "category": "Global SI"
  },
  {
-  "name": "Oliver Wyman",
-  "category": "MBB / Strategy",
-  "owner": "Pooja",
-  "aliases": [
-   "Oliver Wyman"
+  "name": "Fusion5",
+  "owner": "Bharath",
+  "country": "New Zealand",
+  "source": [
+   "accounts"
   ],
   "bands": {
-   "md": "Principal (Associate Partner)",
-   "md1": "Engagement Manager",
-   "md2": ""
+   "md": "General Manager (GM)",
+   "md1": "Country Manager / Practice Lead",
+   "md2": "Practice Manager / Senior Manager"
   }
  },
  {
-  "name": "Cognizant",
-  "category": "Global SI",
+  "name": "Genpact",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Senior Vice President (SVP)",
+   "md1": "Vice President (VP)",
+   "md2": "Assistant VP (AVP)"
+  },
+  "category": "Indian IT / BPM"
+ },
+ {
+  "name": "Grid Dynamics",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "VP / Managing Director",
+   "md1": "Senior Director / Principal",
+   "md2": "Director / Senior Manager"
+  }
+ },
+ {
+  "name": "Happiest Minds",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Senior Vice President (SVP)",
+   "md1": "Vice President (VP)",
+   "md2": "General Manager (GM)"
+  }
+ },
+ {
+  "name": "HCLTech",
   "owner": "Kaushik",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "VP / SVP (E8/E9 Band)",
+   "md1": "AVP / Senior Director / GM (E6/E7)",
+   "md2": "Director / DGM (E4/E5)"
+  },
   "aliases": [
-   "Cognizant"
+   "HCL"
+  ],
+  "category": "Indian IT / BPM"
+ },
+ {
+  "name": "Hitachi",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "VP / General Manager",
+   "md1": "Senior Director / Deputy GM",
+   "md2": "Director / Department Head"
+  }
+ },
+ {
+  "name": "Impetus",
+  "owner": "Anju",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President (VP)",
+   "md1": "Senior Director",
+   "md2": "Director / Practice Head"
+  }
+ },
+ {
+  "name": "Infosys",
+  "owner": "Kaushik",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "SVP / Managing Partner",
+   "md1": "VP / Assistant VP (AVP)",
+   "md2": "Senior Delivery Manager"
+  },
+  "category": "Indian IT / BPM"
+ },
+ {
+  "name": "IT Can Pte",
+  "owner": "Bharath",
+  "country": "Singapore",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President (VP)",
+   "md1": "Director",
+   "md2": "Senior Manager / Delivery Head"
+  }
+ },
+ {
+  "name": "ITOCHU Techno-Solutions (CTC)",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Executive Officer",
+   "md1": "General Manager (GM)",
+   "md2": "Department Manager"
+  }
+ },
+ {
+  "name": "Kearney",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Partner",
+   "md1": "Associate Partner / Principal",
+   "md2": "Manager / Senior Manager"
+  }
+ },
+ {
+  "name": "Kinetic IT",
+  "owner": "Bharath",
+  "country": "Australia",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Executive / General Manager",
+   "md1": "Service Delivery Director",
+   "md2": "Senior Manager / Operations Manager"
+  }
+ },
+ {
+  "name": "KMS Technology",
+  "owner": "Bharath",
+  "country": "Vietnam",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President (VP)",
+   "md1": "Senior Director",
+   "md2": "Director / Senior Delivery Manager"
+  }
+ },
+ {
+  "name": "KPMG",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Partner / Managing Director",
+   "md1": "Director",
+   "md2": "Senior Manager / Manager"
+  },
+  "category": "Big Four",
+  "aliases": [
+   "KPMG India",
+   "KPMG US"
+  ]
+ },
+ {
+  "name": "L.E.K. Consulting",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Partner",
+   "md1": "Principal",
+   "md2": "Manager"
+  }
+ },
+ {
+  "name": "Lintasarta",
+  "owner": "Bharath",
+  "country": "Indonesia",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President (VP)",
+   "md1": "General Manager (GM)",
+   "md2": "Senior Manager"
+  }
+ },
+ {
+  "name": "LTI",
+  "owner": "Anju",
+  "source": [
+   "accounts"
   ],
   "bands": {
    "md": "Senior Vice President (SVP)",
    "md1": "Vice President (VP)",
    "md2": "Assistant VP (AVP) / Senior Director"
   }
+ },
+ {
+  "name": "LTI Mindtree",
+  "owner": "Kaushik",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Senior Vice President (SVP)",
+   "md1": "Vice President (VP)",
+   "md2": "Assistant VP (AVP) / Senior Director"
+  },
+  "category": "Indian IT / BPM",
+  "aliases": [
+   "LTIMindtree"
+  ]
+ },
+ {
+  "name": "Mantel Group",
+  "owner": "Bharath",
+  "country": "Australia",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Partner / Head of Practice",
+   "md1": "Principal",
+   "md2": "Managing Consultant / Senior Manager"
+  }
+ },
+ {
+  "name": "McKinsey & Company",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Partner / Senior Partner",
+   "md1": "Associate Partner",
+   "md2": "Engagement Manager"
+  },
+  "aliases": [
+   "McKinsey"
+  ],
+  "category": "MBB / Strategy"
+ },
+ {
+  "name": "Metrodata Electronics",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Director / VP",
+   "md1": "Division Head / General Manager",
+   "md2": "Department Head / Senior Manager"
+  }
+ },
+ {
+  "name": "Mitra Integrasi Informatika",
+  "owner": "Bharath",
+  "country": "Indonesia",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Division Head",
+   "md1": "Department Head",
+   "md2": "Manager / Practice Lead"
+  }
+ },
+ {
+  "name": "Multipolar Technology",
+  "owner": "Bharath",
+  "country": "Indonesia",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Division Head",
+   "md1": "Department Head",
+   "md2": "Section Head / Senior Manager"
+  }
+ },
+ {
+  "name": "NashTech (VN-founded ops)",
+  "owner": "Bharath",
+  "country": "Vietnam",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President (VP)",
+   "md1": "Delivery Director / Practice Head",
+   "md2": "Senior Delivery Manager"
+  }
+ },
+ {
+  "name": "NCS Group (Singtel)",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President / Managing Partner",
+   "md1": "Senior Director / Practice Lead",
+   "md2": "Director / Senior Manager"
+  }
+ },
+ {
+  "name": "NEC Corporation",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President (VP)",
+   "md1": "General Manager (GM)",
+   "md2": "Senior Manager / Department Manager"
+  }
+ },
+ {
+  "name": "NRI (Nomura Research Institute)",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Executive Officer",
+   "md1": "General Manager (GM)",
+   "md2": "Deputy GM / Chief Researcher"
+  }
+ },
+ {
+  "name": "NS Solutions (Nippon Steel)",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Executive Officer",
+   "md1": "General Manager (GM)",
+   "md2": "Department Manager"
+  }
+ },
+ {
+  "name": "NTT Data",
+  "owner": "Kaushik",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Senior Vice President (SVP)",
+   "md1": "Vice President (VP)",
+   "md2": "Senior Director / Director"
+  }
+ },
+ {
+  "name": "OC&C Strategy Consultants",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Partner",
+   "md1": "Associate Partner / Principal",
+   "md2": "Manager"
+  }
+ },
+ {
+  "name": "Oliver Wyman",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Partner",
+   "md1": "Principal (Associate Partner)",
+   "md2": "Engagement Manager"
+  },
+  "category": "MBB / Strategy"
+ },
+ {
+  "name": "Optimum Solutions Pte",
+  "owner": "Bharath",
+  "country": "Singapore",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President (VP)",
+   "md1": "Director / Practice Head",
+   "md2": "Delivery Manager / Senior Manager"
+  }
+ },
+ {
+  "name": "PA Consulting",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Partner",
+   "md1": "Managing Consultant / Operational Director",
+   "md2": "Principal Consultant"
+  }
+ },
+ {
+  "name": "Percept Solutions",
+  "owner": "Bharath",
+  "country": "Singapore",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President (VP)",
+   "md1": "Director",
+   "md2": "Senior Manager"
+  }
+ },
+ {
+  "name": "Perficient",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "VP / Managing Director",
+   "md1": "Director / Principal",
+   "md2": "Senior Manager / Business Unit Manager"
+  }
+ },
+ {
+  "name": "Protiviti",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Managing Director",
+   "md1": "Director",
+   "md2": "Senior Manager"
+  },
+  "category": "Advisory"
+ },
+ {
+  "name": "PSL",
+  "owner": "Kaushik",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Senior Vice President (SVP)",
+   "md1": "Vice President (VP)",
+   "md2": "General Manager (GM) / Director"
+  }
+ },
+ {
+  "name": "Publicis Sapient",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Group VP / SVP",
+   "md1": "Vice President (VP)",
+   "md2": "Group Director"
+  }
+ },
+ {
+  "name": "PwC",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Partner / Principal / MD",
+   "md1": "Director",
+   "md2": "Senior Manager"
+  },
+  "category": "Big Four"
+ },
+ {
+  "name": "Rikkeisoft",
+  "owner": "Bharath",
+  "country": "Vietnam",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President (VP)",
+   "md1": "Division Director / BU Head",
+   "md2": "Department Manager / Delivery Manager"
+  }
+ },
+ {
+  "name": "Roland Berger",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Partner",
+   "md1": "Principal",
+   "md2": "Senior Project Manager"
+  }
+ },
+ {
+  "name": "SCSK Corporation",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Executive Officer / VP",
+   "md1": "General Manager (GM)",
+   "md2": "Deputy GM / Division Manager"
+  }
+ },
+ {
+  "name": "Sigma Cipta Caraka",
+  "owner": "Bharath",
+  "country": "Indonesia",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President (VP) / GM",
+   "md1": "General Manager (GM)",
+   "md2": "Manager / Senior Project Manager"
+  }
+ },
+ {
+  "name": "Simon-Kucher",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Partner",
+   "md1": "Senior Director / Director",
+   "md2": "Senior Manager"
+  }
+ },
+ {
+  "name": "Sonata Software",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President (VP)",
+   "md1": "Assistant VP (AVP)",
+   "md2": "Director / Head of Delivery"
+  }
+ },
+ {
+  "name": "Sotatek",
+  "owner": "Bharath",
+  "country": "Vietnam",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President (VP)",
+   "md1": "Head of Delivery / BU Head",
+   "md2": "Project Manager / Delivery Manager"
+  }
+ },
+ {
+  "name": "Spark New Zealand",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Tribe Lead / Head of",
+   "md1": "Chapter Lead / Practice Manager",
+   "md2": "Senior Manager"
+  }
+ },
+ {
+  "name": "ST Engineering (Info-Software)",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President (VP)",
+   "md1": "Senior Director / General Manager",
+   "md2": "Director / Senior Manager"
+  }
+ },
+ {
+  "name": "Synapxe",
+  "owner": "Bharath",
+  "country": "Singapore",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Chief Exec (CE) / Assistant CE",
+   "md1": "Director",
+   "md2": "Deputy Director / Senior Manager"
+  }
+ },
+ {
+  "name": "Tata Consultancy Services",
+  "owner": "Kaushik",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "SVP / Global Head",
+   "md1": "VP / Senior Director",
+   "md2": "Director / Senior Delivery Manager"
+  },
+  "aliases": [
+   "TCS"
+  ],
+  "category": "Indian IT / BPM"
+ },
+ {
+  "name": "Tech Mahindra",
+  "owner": "Kaushik",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Senior Vice President (SVP)",
+   "md1": "Vice President (VP)",
+   "md2": "General Manager (GM)"
+  },
+  "category": "Indian IT / BPM"
+ },
+ {
+  "name": "Telstra Purple",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Head of (Practice/Region)",
+   "md1": "Principal / Practice Lead",
+   "md2": "Managing Consultant / Senior Manager"
+  }
+ },
+ {
+  "name": "Thoughtworks",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Managing Director",
+   "md1": "Director / Principal Consultant",
+   "md2": "Lead Consultant / Senior Manager"
+  },
+  "category": "Global SI"
+ },
+ {
+  "name": "TIS Inc.",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Executive Officer",
+   "md1": "General Manager (GM)",
+   "md2": "Department Manager"
+  }
+ },
+ {
+  "name": "TMA Solutions",
+  "owner": "Bharath",
+  "country": "Vietnam",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Vice President (VP)",
+   "md1": "Senior Director",
+   "md2": "Director / Program Manager"
+  }
+ },
+ {
+  "name": "Trace3",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "VP / Managing Director",
+   "md1": "Senior Director / Regional Director",
+   "md2": "Director / Practice Manager"
+  }
+ },
+ {
+  "name": "UST",
+  "owner": "Kaushik",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Senior Vice President (SVP)",
+   "md1": "Vice President (VP)",
+   "md2": "Senior Director / Director"
+  }
+ },
+ {
+  "name": "Valtech",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "VP / Managing Director",
+   "md1": "Director",
+   "md2": "Senior Manager"
+  }
+ },
+ {
+  "name": "Viettel Solutions",
+  "owner": "Bharath",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Director / General Director",
+   "md1": "Deputy Director",
+   "md2": "Head of Department"
+  }
+ },
+ {
+  "name": "Virtusa",
+  "owner": "Kaushik",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Senior Vice President (SVP)",
+   "md1": "Vice President (VP)",
+   "md2": "Senior Director / Director"
+  }
+ },
+ {
+  "name": "West Monroe",
+  "owner": "Pooja",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "Managing Director",
+   "md1": "Director",
+   "md2": "Senior Manager"
+  }
+ },
+ {
+  "name": "Wipro",
+  "owner": "Kaushik",
+  "source": [
+   "accounts"
+  ],
+  "bands": {
+   "md": "SVP / Global Head",
+   "md1": "VP / General Manager (GM)",
+   "md2": "Director / Senior Delivery Manager"
+  },
+  "category": "Indian IT / BPM"
  }
 ]

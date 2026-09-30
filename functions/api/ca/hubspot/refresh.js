@@ -1,35 +1,25 @@
 // POST /api/ca/hubspot/refresh { cursor?, from?, to? }   editors only
 // -> { done, cursor?, contacts, notes, warnings:[], progress:{ phase, done, total } }
 //
-// READ-ONLY against HubSpot. Nothing is ever written to HubSpot. The pull
-// rules are the GSI rules from functions/api/hubspot-leads.js:
-//   1. company matches the GSI/SI target list (CONTAINS_TOKEN, 5 filterGroups per search)
-//   2. HubSpot owner is one of the GSI owner emails
-//   3. "GSI" appears in the searchable text or a source-detail property
+// READ-ONLY against HubSpot. Nothing is ever written to HubSpot. A GSI lead is
+// a contact who submitted a form (first_conversion_date is set) AND whose company
+// is on the GSI account list (Settings › accounts, seed/accounts.json):
+//   1. company name matches an account name or alias (CONTAINS_TOKEN, 4 per search)
+//   2. email domain is an account's website domain (hs_email_domain IN, 50 per search)
+// Callable by editors or by the daily job (X-CA-Cron).
 // A Pages Function gets 50 subrequests per invocation, so the work is cut into
 // resumable steps: the browser calls back with the returned cursor until
 // done:true. Phase "search" pulls contacts (upserted into ca_hs_contacts with
 // account, band and region from classify.js); phase "notes" fetches the notes
 // and counts calls, meetings and emails for the contacts touched by this sync.
 
-import { DEFAULT_COMPANIES } from '../../_lib/target-companies.js'
 import { json, handle, readJson, isoDay, HttpError } from '../_lib/http.js'
-import { requireUser } from '../_lib/auth.js'
+import { requireUser, cronUser } from '../_lib/auth.js'
 import { db, inChunks } from '../_lib/db.js'
 import { loadSettings } from '../_lib/settings.js'
 import { toAccount, toBand, toRegion } from '../_lib/classify.js'
 
 export { corsPreflight as onRequestOptions } from '../_lib/http.js'
-
-// Same list as hubspot-leads.js (not exported there).
-export const OWNER_EMAILS = [
-  'anju@lyzr.ai',
-  'praveen.sukumar@lyzr.ai',
-  'praveen.s@lyzr.ai',
-  'bharath@lyzr.ai',
-  'kaushik.venkatesan@lyzr.ai',
-  'pooja@lyzr.ai',
-]
 
 export const PROPS = [...new Set([
   // hubspot-leads.js PROPS
@@ -51,13 +41,9 @@ export const PROPS = [...new Set([
   'hs_sales_email_last_replied', 'hs_last_booked_meeting_date', 'notes_last_contacted', 'hs_latest_meeting_activity',
   'num_contacted_notes', 'hs_lifecyclestage_marketingqualifiedlead_date', 'recent_conversion_event_name', 'recent_conversion_date',
   'first_conversion_event_name', 'hs_analytics_source_data_1',
+  'first_conversion_date', 'num_conversion_events', 'hs_email_domain',
 ])]
 
-export const GSI_TEXT_PROPS = [
-  'hs_analytics_source_data_1', 'hs_analytics_source_data_2',
-  'hs_latest_source_data_1', 'hs_latest_source_data_2',
-  'lsa_lead_source', 'lead_source',
-]
 
 // Subrequest plan per invocation (limit is 50): auth 2, sync row 1, settings
 // up to 4, owners 1, searches SEARCH_BUDGET, via-merge up to 4, upserts up to 5.
@@ -115,22 +101,49 @@ async function fetchOwners(token) {
 }
 
 // The flat, resumable list of searches (same shape as hubspot-leads.js).
-export function buildTasks(companies, ownerIds, dates) {
+export const NAMES_PER_SEARCH = 4   // 4 groups x (name + form + 2 dates) = 16 filters, HubSpot allows 18
+export const DOMAINS_PER_SEARCH = 50
+const FORM_FILTER = { propertyName: 'first_conversion_date', operator: 'HAS_PROPERTY' }
+
+// The flat, resumable list of searches.
+export function buildTasks(names, domains, dates) {
   const tasks = []
-  for (let i = 0; i < companies.length; i += 5) {
-    const batch = companies.slice(i, i + 5)
+  for (let i = 0; i < names.length; i += NAMES_PER_SEARCH) {
     tasks.push({ tag: 'company', body: {
-      filterGroups: batch.map((name) => ({ filters: [{ propertyName: 'company', operator: 'CONTAINS_TOKEN', value: name }, ...dates] })),
+      filterGroups: names.slice(i, i + NAMES_PER_SEARCH).map((name) => ({ filters: [{ propertyName: 'company', operator: 'CONTAINS_TOKEN', value: name }, FORM_FILTER, ...dates] })),
     } })
   }
-  if (ownerIds.length) {
-    tasks.push({ tag: 'owner', body: { filterGroups: [{ filters: [{ propertyName: 'hubspot_owner_id', operator: 'IN', values: ownerIds }, ...dates] }] } })
-  }
-  tasks.push({ tag: 'gsi_text', body: { query: 'GSI', filterGroups: dates.length ? [{ filters: dates }] : undefined } })
-  for (const prop of GSI_TEXT_PROPS) {
-    tasks.push({ tag: 'gsi_text', body: { filterGroups: [{ filters: [{ propertyName: prop, operator: 'CONTAINS_TOKEN', value: 'GSI' }, ...dates] }] } })
+  for (let i = 0; i < domains.length; i += DOMAINS_PER_SEARCH) {
+    tasks.push({ tag: 'domain', body: { filterGroups: [{ filters: [{ propertyName: 'hs_email_domain', operator: 'IN', values: domains.slice(i, i + DOMAINS_PER_SEARCH) }, FORM_FILTER, ...dates] }] } })
   }
   return tasks
+}
+
+// Search terms from the account list: names and aliases for the named accounts
+// (the ones with designations or no website), website domains for every account
+// that has one. Extra names from the gsi_companies setting are added as names.
+export function searchTerms(accounts = [], extraNames = []) {
+  const names = new Set(), domains = new Set()
+  for (const a of accounts) {
+    if (!a || !a.name) continue
+    const ds = [...(a.domains || []), ...(a.domain ? [a.domain] : [])]
+    for (const d of ds) domains.add(String(d).toLowerCase())
+    if (!ds.length || a.bands || (a.source || []).includes('accounts')) {
+      names.add(a.name)
+      for (const al of a.aliases || []) names.add(al)
+    }
+  }
+  for (const n of extraNames) if (n) names.add(String(n))
+  return { names: [...names].sort(), domains: [...domains].sort() }
+}
+
+export function domainAccount(email, accounts = []) {
+  const d = String(email || '').toLowerCase().split('@')[1] || ''
+  if (!d) return null
+  for (const a of accounts) {
+    for (const x of [...((a && a.domains) || []), ...(a && a.domain ? [a.domain] : [])]) if (d === x || d.endsWith('.' + x)) return a.name
+  }
+  return null
 }
 
 export function stripHtml(html) {
@@ -161,7 +174,7 @@ const tsOrNull = (v) => {
 export function mapContact(raw, via, { ownerNames = {}, settings = {}, syncedAt }) {
   const p = raw.properties || {}
   const companyRaw = p.company || p.lsa_company || ''
-  const account = toAccount(companyRaw, settings.accounts || [])
+  const account = toAccount(companyRaw, settings.accounts || [], []) || domainAccount(p.email, settings.accounts || [])
   const jobtitle = p.jobtitle || p.lsa_job_title || ''
   const country = p.country || p.lsa_country || p.hs_country_region_code || ''
   const props = {}
@@ -203,7 +216,7 @@ async function markSync(d, syncId, patch) {
 }
 
 export const onRequestPost = handle(async ({ request, env }) => {
-  const user = await requireUser(request, env)
+  const user = cronUser(request, env) || (await requireUser(request, env))
   if (!user) return json({ error: 'Sign in required' }, 401)
   if (!user.isEditor) return json({ error: 'Only editors can refresh HubSpot' }, 403)
   const token = env.HUBSPOT_ACCESS_TOKEN
@@ -234,15 +247,14 @@ export const onRequestPost = handle(async ({ request, env }) => {
 
 async function searchPhase({ d, token, env, request, cursor, warnings }) {
   const settings = await loadSettings(env, request, { keys: ['accounts', 'bands', 'regions', 'gsi_companies'] })
-  const { byId: ownerNames, idByEmail, error: ownerError } = await fetchOwners(token)
-  const ownerIds = OWNER_EMAILS.map((e) => idByEmail[e]).filter(Boolean)
-  if (ownerError) warnings.push(`Rule 2 (leads owned by the GSI owners) was skipped: ${ownerError}.`)
-  else if (!ownerIds.length) warnings.push('None of the GSI owner emails matched a HubSpot owner, so rule 2 matched nothing.')
+  const { byId: ownerNames, error: ownerError } = await fetchOwners(token)
+  if (ownerError) warnings.push(`Owner names could not be read: ${ownerError}.`)
 
   const dates = dateFilters(cursor.from, cursor.to)
-  // The GSI company list is editable in Settings; the seed list is the default.
-  const companies = Array.isArray(settings.gsi_companies) && settings.gsi_companies.length ? settings.gsi_companies : DEFAULT_COMPANIES
-  const tasks = buildTasks(companies, ownerIds, dates)
+  // The GSI list is the account list; gsi_companies (Settings) adds extra names.
+  const extra = Array.isArray(settings.gsi_companies) && settings.source && settings.source.gsi_companies === 'db' ? settings.gsi_companies : []
+  const { names, domains } = searchTerms(settings.accounts || [], extra)
+  const tasks = buildTasks(names, domains, dates)
   const found = new Map()
   let used = 0
   let taskIndex = Number.isInteger(cursor.taskIndex) ? cursor.taskIndex : 0

@@ -92,6 +92,23 @@ Implementation notes (backend, `functions/api/ca/`), where the built code adds t
   is `functions/api/_lib/target-companies.js`.
 - Timezone IST for display, dates stored as calendar days.
 
+## Layout and pages (Oct 2026 rebuild)
+- Lyzr brand build reference: light only, General Sans (closest free match to Aeonik) + JetBrains Mono uppercase
+  labels, 210px sidebar, hairline cards radius 8, black buttons, one orange button per view, navy chart data.
+- Routes: `#/overview`, `#/ads/linkedin` (+ `ads/google|meta|taboola|chatgpt|x|bing`, not connected yet:
+  `views/ads-soon.mjs`), `#/email/instantly`, `#/hubspot/leads`, `#/hubspot/messaging`, `#/admin`. Old routes redirect.
+- Uploads live on the channel pages (`js/uploader.mjs`); Admin holds lists and "pull now" buttons.
+
+## GSI leads and messages
+- GSI account list = `seed/accounts.json` (279 accounts: "GSI_SI Accounts – Over All" with owners and
+  MD/MD-1/MD-2 titles, merged with the ABM list export's websites; sub-brands folded into parents).
+- HubSpot pull (`hubspot/refresh.js`): contacts with `first_conversion_date` (submitted a form) whose company
+  matches an account name/alias (CONTAINS_TOKEN) or whose `hs_email_domain` is an account website. No owner or
+  "GSI"-text rules. Settings `gsi_companies` adds extra names.
+- `POST hubspot/classify` (editors or cron): Claude `claude-sonnet-5` files each unread `lsa_message` once into
+  one of the ten Message Intelligence categories with use case, intent, summary and a spam flag (`ai_*` columns,
+  `supabase/003_message_ai.sql`). All Claude calls in the app use Sonnet 5.
+
 ## Email conventions
 - Campaign name = the export file name minus `_analytics_DD_MM_YYYY, HH_MM_SS.csv`, Instantly spelling kept, so it
   matches the API campaign name. Company = email domain (Settings › Email rules › domains, then a built-in list,

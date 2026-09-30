@@ -7,20 +7,35 @@ import * as ui from './ui.mjs';
 import { mountInsights } from './insights.mjs';
 
 
+// Sidebar: channels grouped by type. `file` is the view module; ad platforms that are
+// not wired yet share views/ads-soon.mjs and read their name from ctx.routeDef.
 const ROUTES = [
-  { route: 'overview', title: 'Overview' },
-  { route: 'linkedin', title: 'Ads · LinkedIn' },
-  { route: 'email', title: 'Email' },
-  { route: 'messaging', title: 'HubSpot messaging' },
-  { route: 'leads', title: 'Leads analytics' },
-  { route: 'settings', title: 'Settings & uploads' },
-];
+  { route: 'overview', title: 'Overview', file: 'overview' },
+  { grp: 'Ads' },
+  { route: 'ads/linkedin', title: 'LinkedIn', group: 'Ads', file: 'linkedin' },
+  { route: 'ads/google', title: 'Google Ads', group: 'Ads', file: 'ads-soon', soon: true },
+  { route: 'ads/meta', title: 'Meta', group: 'Ads', file: 'ads-soon', soon: true },
+  { route: 'ads/taboola', title: 'Taboola', group: 'Ads', file: 'ads-soon', soon: true },
+  { route: 'ads/chatgpt', title: 'ChatGPT', group: 'Ads', file: 'ads-soon', soon: true },
+  { route: 'ads/x', title: 'X (Twitter)', group: 'Ads', file: 'ads-soon', soon: true },
+  { route: 'ads/bing', title: 'Microsoft Bing', group: 'Ads', file: 'ads-soon', soon: true },
+  { grp: 'Email' },
+  { route: 'email/instantly', title: 'Instantly', group: 'Email', file: 'email' },
+  { grp: 'HubSpot' },
+  { route: 'hubspot/leads', title: 'Leads', group: 'HubSpot', file: 'leads' },
+  { route: 'hubspot/messaging', title: 'Messaging', group: 'HubSpot', file: 'messaging' },
+  { grp: 'Admin' },
+  { route: 'admin', title: 'Lists and connections', group: 'Admin', file: 'settings' },
+].map(r => r.grp ? r : { ...r, sub: !!r.group });
+const PAGES = ROUTES.filter(r => r.route);
+// Addresses from the first version keep working.
+const LEGACY = { linkedin: 'ads/linkedin', email: 'email/instantly', leads: 'hubspot/leads', messaging: 'hubspot/messaging', settings: 'admin' };
 const PRESETS = [
   ['last14', 'Last 14 days'], ['last30', 'Last 30 days'], ['thisMonth', 'This month'], ['lastMonth', 'Last month'],
   ['last90', 'Last 90 days'], ['ytd', 'This year'], ['all', 'All time'], ['custom', 'Custom'],
 ];
 const $ = id => document.getElementById(id);
-const ctx = { api: null, state: null, user: null, fmt, heat, ui, toast, mountInsights, nav: go, ROUTES };
+const ctx = { api: null, state: null, user: null, fmt, heat, ui, toast, mountInsights, nav: go, ROUTES: PAGES };
 let current = null, currentMod = null;
 
 function toast(msg, kind = '') {
@@ -66,13 +81,14 @@ async function enter(user, demo) {
   $('gate').classList.add('hidden'); $('app').classList.remove('hidden');
   $('uname').textContent = user.name || user.email; $('uav').textContent = (user.name || user.email || '?')[0].toUpperCase();
   $('signout').onclick = () => { localStorage.removeItem('ca.demo'); if (demo) location.reload(); else signOut(); };
-  $('nav').innerHTML = ROUTES.map(r => `<a href="#/${r.route}" data-r="${r.route}">${r.title}</a>`).join('');
+  $('nav').innerHTML = ROUTES.map(r => r.grp ? `<div class="grp">${fmt.esc(r.grp)}</div>` : `<a href="#/${r.route}" data-r="${r.route}" class="${r.sub ? 'sub' : ''}">${fmt.esc(r.title)}${r.soon ? '<span class="soon">soon</span>' : ''}</a>`).join('');
   $('rangePreset').innerHTML = PRESETS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+  if (window.Chart) { Chart.defaults.font.family = "'General Sans','Inter',system-ui,sans-serif"; Chart.defaults.color = '#6B675F'; Chart.defaults.borderColor = '#EFEFED'; }
   ctx.state = loadRange(); setRange(ctx.state, true);
   $('rangePreset').onchange = e => { const p = e.target.value; const r = presetRange(p); if (r) setRange({ preset: p, from: r[0], to: r[1] }); else setRange({ preset: 'custom' }); };
   const custom = () => { const from = $('rangeFrom').value, to = $('rangeTo').value; if (from && to && from <= to) setRange({ preset: 'custom', from, to }); };
   $('rangeFrom').onchange = custom; $('rangeTo').onchange = custom;
-  $('foot').innerHTML = `Lyzr Campaign Analytics · data: LinkedIn Campaign Manager and Instantly exports (uploaded any time), Instantly API (daily, read-only), HubSpot (read-only, refreshed on demand) · all money USD · IST${demo ? ' · <b>demo mode</b>: figures are from the September 2026 reports, not live' : ''}`;
+  $('foot').innerHTML = `Lyzr Campaign Analytics · Instantly and HubSpot are pulled automatically every morning at 07:00 IST (read-only) · LinkedIn and Instantly exports can be uploaded on their pages any time · money in USD, times in IST${demo ? ' · <b>sample data</b>: made-up numbers, nothing is saved' : ''}`;
   window.addEventListener('hashchange', route);
   window.addEventListener('ca:range', () => { if (currentMod && currentMod.render) route(true); });
   // Preload settings once so views can read bands, regions, accounts, icp pools.
@@ -82,14 +98,17 @@ async function enter(user, demo) {
 
 // Views can hide the range picker (e.g. Settings) by exporting `noRange = true`.
 async function route(rerender) {
-  const r = (location.hash.replace(/^#\/?/, '').split(/[/?]/)[0]) || 'overview';
-  const def = ROUTES.find(x => x.route === r) || ROUTES[0];
+  let r = location.hash.replace(/^#\/?/, '').split('?')[0].replace(/\/+$/, '') || 'overview';
+  if (LEGACY[r]) { location.replace('#/' + LEGACY[r]); return; }
+  const def = PAGES.find(x => x.route === r) || PAGES[0];
+  ctx.routeDef = def;
   document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('on', a.dataset.r === def.route));
+  $('crumb').textContent = def.group ? `${def.group} › ${def.title}` : def.title;
   const main = $('main');
   if (!rerender && currentMod && currentMod.destroy) { try { currentMod.destroy(); } catch {} }
   main.innerHTML = ui.spinner('Loading ' + def.title);
   try {
-    const mod = await import(`./views/${def.route}.mjs`);
+    const mod = await import(`./views/${def.file}.mjs`);
     currentMod = mod; current = def.route;
     $('rangeBox').classList.toggle('hidden', !!mod.noRange);
     await mod.render(main, ctx);
