@@ -47,7 +47,10 @@ export function handle(fn) {
     try {
       return await fn(ctx)
     } catch (e) {
-      const status = Number.isInteger(e && e.status) ? e.status : 500
+      let status = Number.isInteger(e && e.status) ? e.status : 500
+      // Cloudflare swaps a 502/504 from a Function for its own "error code: 502"
+      // page, which hides the message. Upstream failures are reported as 500.
+      if (status === 502 || status === 504) status = 500
       const message = String((e && e.message) || e || 'Unexpected error').slice(0, 400)
       // Server-side errors go to the Pages Function log (wrangler pages deployment tail).
       if (status >= 500) console.error(`[ca] ${status} ${message}`)
