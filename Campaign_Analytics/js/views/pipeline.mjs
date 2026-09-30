@@ -11,7 +11,7 @@ let charts = [];
 export function destroy() { for (const c of charts) { try { c.destroy(); } catch {} } charts = []; }
 
 // Brand palette (bucket colours live in pipeline-agg.mjs): navy for data, black for closed money, greys for axes.
-const NAVY = '#043E77', BLACK = '#1F2022', INK2 = '#6B675F';
+const NAVY = '#043E77', BLACK = '#1F2022', INK2 = '#4A4744';
 const TABS = [{ value: 'timeline', label: 'Timeline' }, { value: 'companies', label: 'Companies' }, { value: 'motion', label: 'Motion' }, { value: 'stages', label: 'Stage mix' }, { value: 'substages', label: 'Sub-stage' }, { value: 'acv', label: 'ACV' }];
 const truncate = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; };
 const money = (usd, v) => v ? usd(v) : '<span class="muted">no amount</span>';

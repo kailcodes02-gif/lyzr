@@ -458,6 +458,17 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01, Campaign Analytics: cumulative penetration map and darker text
+- New LinkedIn section "Penetration by company, region and designation": one cumulative map over every
+  demographics window in range. Company rows (sum of regions) open into region rows; columns MD, MD-1, MD-2,
+  All bands; toggles for Penetration % / People reached / ICP pool and a region filter. Built on
+  `penetrationCube()` in `js/lib/linkedin-agg.mjs` (penetration() cells rolled up by Admin › Regions).
+  Cells over 100% mean the same people were reached in more than one window; "·" = reached but no Apollo pool.
+- Text darkened: `--ink2` #6B675F → #4A4744, `--muted` #8A857C → #5E5A54, chart label colour, zero heat cells.
+- `renderHeat` rows accept `cls` ('grp' group row, 'child' indented row). Heat map ink stays dark on the orange ramp
+  (white only on navy). `penetration()` now seeds pool-only cells for reached accounts, so an unreached region shows 0%
+  and the company denominator is its whole pool; the cube also counts reach in countries with no pool row.
+
 ### 2026-10-01, Campaign Analytics: every gap from the report audit (pipeline, ad platforms, White Path, Instantly extras, PhantomBuster, programme board)
 - **HubSpot deals pipeline** (`#/hubspot/pipeline`, `functions/api/ca/hubspot/deals.js` + `deals-sync.js`,
   `supabase/004_deals.sql`): GSI/SI conversations by stage bucket with amounts, owners, weekly snapshots and

@@ -6,14 +6,15 @@ export function cellColor(v, max, { scale = 'sqrt', color = 'orange' } = {}) {
   const t = scale === 'sqrt' ? Math.sqrt(v / max) : v / max;
   return `rgba(${RAMP[color] || RAMP.orange},${(0.05 + 0.92 * Math.min(1, t)).toFixed(3)})`;
 }
-export function cellInk(v, max, { scale = 'sqrt' } = {}) {
+// Ink: dark text stays on the orange ramp (white on orange is under 3:1); navy and the other dark ramps switch to white.
+export function cellInk(v, max, { scale = 'sqrt', color = 'orange' } = {}) {
   if (!v || !max) return '';
   const t = scale === 'sqrt' ? Math.sqrt(v / max) : v / max;
-  return t > 0.62 ? '#fff' : '';
+  return t > 0.62 && color !== 'orange' ? '#fff' : '';
 }
 /**
  * renderHeat(el, opts)
- * opts.rows: [{key,label,sub?}]   opts.cols: [{key,label}]
+ * opts.rows: [{key,label,sub?,cls?}]   opts.cols: [{key,label}]   (row cls = extra class on the <tr>, e.g. 'grp' for a group row, 'child' for an indented one)
  * opts.cell(rowKey,colKey) -> { v:number|null, text?:string, sub?:string, title?:string } (v null = no data)
  * opts.rowTotal(rowKey)? -> string   opts.colTotal(colKey)? -> string
  * opts.scale 'sqrt'|'linear', opts.color, opts.max (default max cell), opts.onClick(rowKey,colKey)
@@ -27,7 +28,7 @@ export function renderHeat(el, o) {
   function rowSum(r) { return o.cols.reduce((s, c) => s + (Number(cells[r.key + '\u0000' + c.key]?.v) || 0), 0); }
   let h = `<table class="heat"><thead><tr><th class="l">${esc(o.corner || '')}</th>${o.cols.map(c => `<th style="text-align:center">${esc(c.label)}</th>`).join('')}${o.rowTotal ? '<th>Total</th>' : ''}</tr></thead><tbody>`;
   for (const r of rows) {
-    h += `<tr><td class="l"><b>${esc(r.label)}</b>${r.sub ? `<br><span class="muted" style="font-size:11.5px">${esc(r.sub)}</span>` : ''}</td>`;
+    h += `<tr${r.cls ? ` class="${esc(r.cls)}"` : ''}><td class="l">${r.cls === 'child' ? `<span class="muted">${esc(r.label)}</span>` : `<b>${esc(r.label)}</b>`}${r.sub ? `<br><span class="muted" style="font-size:11.5px">${esc(r.sub)}</span>` : ''}</td>`;
     for (const c of o.cols) {
       const x = cells[r.key + '\u0000' + c.key];
       const v = x.v;

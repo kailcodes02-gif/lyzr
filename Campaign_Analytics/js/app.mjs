@@ -109,7 +109,7 @@ async function enter(user, demo) {
   $('cmpMode').innerHTML = COMPARE.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
   $('cmpMode').onchange = e => setRange({ cmp: e.target.value });
   $('cmpN').onchange = e => setRange({ cmpN: Math.min(52, Math.max(1, parseInt(e.target.value, 10) || 1)) });
-  if (window.Chart) { Chart.defaults.font.family = "'General Sans','Inter',system-ui,sans-serif"; Chart.defaults.color = '#6B675F'; Chart.defaults.borderColor = '#EFEFED'; }
+  if (window.Chart) { Chart.defaults.font.family = "'General Sans','Inter',system-ui,sans-serif"; Chart.defaults.color = '#4A4744'; Chart.defaults.borderColor = '#EFEFED'; }
   ctx.state = loadRange(); setRange(ctx.state, true);
   $('rangePreset').onchange = e => { const p = e.target.value; const r = presetRange(p); if (r) setRange({ preset: p, from: r[0], to: r[1] }); else setRange({ preset: 'custom' }); };
   const custom = () => { const from = $('rangeFrom').value, to = $('rangeTo').value; if (from && to && from <= to) setRange({ preset: 'custom', from, to }); };

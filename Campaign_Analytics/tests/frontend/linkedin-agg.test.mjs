@@ -344,3 +344,33 @@ test('geoSeniority: region x seniority per audience, estimated from the two one-
   const withMsg = A.geoSeniority([...aud('Native|Playbooks', 1), { segment: 'Company', value: 'KPMG', campaign: 'ANI|Conversation', sends: 40 }], { regions });
   assert.deepEqual(withMsg.audiences.map(a => a.name), ['Native|Playbooks'], 'message-only ad sets are not audiences');
 });
+
+test('penetrationCube: company x region x band, cumulative over windows', () => {
+  const accounts = [{ name: 'EY', aliases: ['EY'] }];
+  const icp_pool = [{ company: 'EY', country: 'India', md: 1000, md1: 2000, md2: 3000 }, { company: 'EY', country: 'United States', md: 500, md1: 500, md2: 500 }, { company: 'EY', country: 'Saudi Arabia', md: 100, md1: 100, md2: 100 }];
+  const bands = { global: { MD: ['Partner'], MD1: ['Vice President'], MD2: ['Senior Manager'] } };
+  const regions = { India: ['India'], 'United States': ['United States'], 'Middle East': ['Saudi Arabia', 'United Arab Emirates'] };
+  const rows = [
+    { segment: 'Company', value: 'EY', impressions: 7000 },
+    { segment: 'Country', value: 'India', impressions: 800 }, { segment: 'Country', value: 'United States', impressions: 200 },
+    { segment: 'Job Title', value: 'Partner', impressions: 50 }, { segment: 'Job Title', value: 'Vice President', impressions: 25 }, { segment: 'Job Title', value: 'Senior Manager', impressions: 25 },
+  ];
+  // two identical windows: cumulative = double
+  const C = A.penetrationCube({ windows: [{ rows }, { rows }], accounts, icp_pool, bands, frequency: 3.5, regions });
+  assert.equal(C.accounts.length, 1);
+  const ey = C.accounts[0];
+  assert.equal(Math.round(ey.regions.India.MD.reached), 1600);         // 2 x (7000 x .8 x .5 / 3.5)
+  assert.equal(ey.regions.India.MD.pool, 1000);
+  assert.equal(Math.round(ey.regions.India.MD.pct), 160);              // more people reached than the pool: frequency-based estimate, shown as is
+  assert.equal(Math.round(ey.regions['United States'].All.reached), 800); // 2 x (7000 x .2 / 3.5)
+  assert.equal(ey.regions['United States'].All.pool, 1500);
+  assert.equal(Math.round(ey.total.All.reached), 4000);
+  assert.equal(ey.total.All.pool, 7800);                                 // whole-company pool, Middle East included although nobody was reached there
+  assert.equal(ey.regions['Middle East'].All.pct, 0); assert.equal(ey.regions['Middle East'].All.pool, 300);
+  assert.deepEqual(C.regions, ['India', 'United States', 'Middle East']);
+  // reach in a country with no pool row still counts as people reached (no pct)
+  const C2 = A.penetrationCube({ windows: [{ rows: [...rows.filter(r => r.segment !== 'Country'), { segment: 'Country', value: 'India', impressions: 500 }, { segment: 'Country', value: 'Germany', impressions: 500 }] }], accounts, icp_pool, bands, frequency: 3.5, regions: { ...regions, Europe: ['Germany'] } });
+  assert.equal(Math.round(C2.accounts[0].total.All.reached), 2000);
+  assert.equal(Math.round(C2.accounts[0].regions.Europe.All.reached), 1000); assert.equal(C2.accounts[0].regions.Europe.All.pct, null);
+  assert.deepEqual(C.bands, ['MD', 'MD-1', 'MD-2']);
+});

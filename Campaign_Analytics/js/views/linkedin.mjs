@@ -18,7 +18,7 @@ export async function render(el, ctx) {
   const F = ctx.fmt, { esc, fmt, usd, pct } = F;
   const { from, to } = ctx.state;
   el.innerHTML = `<div class="seghead">Ads · LinkedIn</div><h1>LinkedIn ads</h1><p class="sub">${esc(F.rangeLabel(from, to))}</p>${ctx.ui.spinner('Loading LinkedIn data')}`;
-  if (window.Chart) { Chart.defaults.font.family = "'General Sans','Inter',system-ui,sans-serif"; Chart.defaults.color = css('--ink2') || '#6B675F'; Chart.defaults.borderColor = css('--line') || '#E3E1DE'; }
+  if (window.Chart) { Chart.defaults.font.family = "'General Sans','Inter',system-ui,sans-serif"; Chart.defaults.color = css('--ink2') || '#4A4744'; Chart.defaults.borderColor = css('--line') || '#E3E1DE'; }
 
   // Comparison range from the global "Compare with" control (null = no comparison).
   const prev = ctx.state.prev || null;
@@ -114,6 +114,9 @@ export async function render(el, ctx) {
 
   // 3a. reach heat maps: impressions ÷ reach_frequency (default 3) = people
   h += ctx.ui.section('Reach: people by account, designation and region', `Estimated people reached, counting ${fmt(rf, 1)} impressions as one person (Admin › Targets). Columns are the demographics export windows in the selected dates; the last columns total them and compare with ${prev ? esc(prev.label) : 'nothing (pick a comparison at the top)'}. A person seen in two windows counts twice.`, `<div id="reachSeg"></div><div class="card"><div class="tblwrap" style="border:none" id="reachHeat"></div>${ctx.heat.legend('orange', 'square-root scale on the current windows')}</div>`);
+
+  // 3a. cumulative penetration cube: company x region x designation
+  h += ctx.ui.section('Penetration by company, region and designation', `Cumulative over every demographics window in the selected dates: for each company, how much of its MD, MD-1 and MD-2 pool in each region the ads reached. People reached = impressions ÷ ${fmt(frequency, 1)}, spread by the window's country share and job-title mix (LinkedIn exports no cross-tab); pool = Apollo headcount per company, country and band (Admin › Reach pools), countries rolled up with Admin › Regions. Company rows are the sum of their regions; click a company row to open or close its regions.`, `<div class="row" style="gap:16px;flex-wrap:wrap;align-items:center"><div id="cubeMetric"></div><div id="cubeRegion"></div><span id="cubeCount" class="muted" style="font-size:12.5px"></span></div><div class="card"><div class="tblwrap" style="border:none" id="cubeHeat"></div><div class="legend" id="cubeLegend"></div></div>`, 'li-cube');
 
   // 3b. reach quality over time
   h += ctx.ui.section('Where the ads land and how that changes', 'Every demographics window uploaded so far, oldest to newest: the share of impressions by region, seniority, designation band and named target accounts. A falling line is where reach quality is dropping.', `<div id="qualSeg"></div><div class="card"><div class="chartbox"><canvas id="qualChart"></canvas></div></div><div class="tblwrap" style="margin-top:10px" id="qualTable"></div>`);
@@ -273,6 +276,44 @@ export async function render(el, ctx) {
   ctx.ui.seg(el.querySelector('#reachSeg'), [{ value: 'account', label: 'Accounts' }, { value: 'band', label: 'Designation bands' }, { value: 'region', label: 'Regions' }], v => { reachDim = v; drawReach(); }, reachDim);
   drawReach();
 
+  // ---- penetration cube (company x region x band, cumulative) ----
+  const cube = A.penetrationCube({ windows, accounts, icp_pool, bands, frequency, regions });
+  let cubeMetric = 'pct', cubeRegion = 'all', cubeLimit = 25; const cubeOpen = new Set();
+  const cubeVal = (t, b) => cubeMetric === 'pct' ? t[b].pct : cubeMetric === 'reached' ? t[b].reached : t[b].pool;
+  const cubeCell = (t, b, who) => {
+    if (!t) return { v: null, text: '·' };
+    const x = t[b];
+    if (cubeMetric === 'pct') { if (x.pct == null || !x.reached) return { v: null, text: x.reached ? '·' : '–', sub: x.reached ? `${fmt(x.reached)} reached, no pool` : '', title: `${who} · ${b}: ${x.reached ? 'no Apollo headcount for this pool' : 'nobody reached'}` }; return { v: A.penLevel(x.pct), text: fmt(x.pct, x.pct < 10 ? 1 : 0) + '%', sub: `${fmt(x.reached)} / ${fmt(x.pool)}`, title: `${who} · ${b}\nPeople reached (est.): ${fmt(x.reached)}\nICP pool: ${fmt(x.pool)}\nPenetration: ${fmt(x.pct, 1)}%` }; }
+    const v = cubeVal(t, b); return { v: v || 0, text: v ? fmt(v) : '–', title: `${who} · ${b}: ${fmt(v)} ${cubeMetric === 'reached' ? 'people reached (est.)' : 'people in the ICP pool'}` };
+  };
+  const drawCube = () => {
+    const box = el.querySelector('#cubeHeat'); if (!box) return;
+    const list = cube.accounts.filter(a => cubeRegion === 'all' || a.regions[cubeRegion]);
+    if (cubeRegion !== 'all') list.sort((x, y) => (y.regions[cubeRegion].All.reached || 0) - (x.regions[cubeRegion].All.reached || 0));
+    const shown = list.slice(0, cubeLimit);
+    const rows = [], src = new Map();
+    for (const a of shown) {
+      if (cubeRegion === 'all') {
+        rows.push({ key: a.account, label: a.account, sub: `${a.category ? a.category + ' · ' : ''}${Object.keys(a.regions).length} region${Object.keys(a.regions).length === 1 ? '' : 's'}${cubeOpen.has(a.account) ? '' : ' · click to open'}`, cls: 'grp' }); src.set(a.account, [a.total, a.account]);
+        if (cubeOpen.has(a.account)) for (const r of cube.regions.filter(r => a.regions[r])) { const k = a.account + '\u0001' + r; rows.push({ key: k, label: r, cls: 'child' }); src.set(k, [a.regions[r], `${a.account} · ${r}`]); }
+      } else { rows.push({ key: a.account, label: a.account, sub: a.category || '' }); src.set(a.account, [a.regions[cubeRegion], `${a.account} · ${cubeRegion}`]); }
+    }
+    if (!rows.length) { box.innerHTML = ctx.ui.empty('No company page in these windows matches a target account with a reach pool.'); el.querySelector('#cubeCount').textContent = ''; return; }
+    const cols = [...cube.bands, 'All'].map(b => ({ key: b, label: b === 'All' ? 'All bands' : b }));
+    ctx.heat.renderHeat(box, { corner: cubeRegion === 'all' ? 'Company / region' : `Company · ${cubeRegion}`, rows, cols, sortRows: false, scale: cubeMetric === 'pct' ? 'linear' : 'sqrt', max: cubeMetric === 'pct' ? 5 : undefined,
+      cell: (r, c) => { const [t, who] = src.get(r) || []; return cubeCell(t, c, who); },
+      onClick: cubeRegion === 'all' ? (r) => { if (r.includes('\u0001')) return; if (cubeOpen.has(r)) cubeOpen.delete(r); else cubeOpen.add(r); drawCube(); } : undefined });
+    box.querySelectorAll('tr.child td.c').forEach(td => td.classList.remove('click'));
+    box.querySelectorAll('tr.grp td.l').forEach(td => { td.style.cursor = 'pointer'; td.onclick = () => { const k = td.parentElement.querySelector('td.c')?.dataset.r; if (!k) return; if (cubeOpen.has(k)) cubeOpen.delete(k); else cubeOpen.add(k); drawCube(); }; });
+    el.querySelector('#cubeCount').innerHTML = `${fmt(shown.length)} of ${fmt(list.length)} companies${list.length > cubeLimit ? ` · <a href="#" data-more>show all</a>` : cubeLimit > 25 && list.length > 25 ? ` · <a href="#" data-less>show top 25</a>` : ''}`;
+    const more = el.querySelector('#cubeCount [data-more]'); if (more) more.onclick = e => { e.preventDefault(); cubeLimit = 10000; drawCube(); };
+    const less = el.querySelector('#cubeCount [data-less]'); if (less) less.onclick = e => { e.preventDefault(); cubeLimit = 25; drawCube(); };
+    el.querySelector('#cubeLegend').innerHTML = cubeMetric === 'pct' ? [['under 5%', 1], ['5 to 15%', 2], ['15 to 35%', 3], ['35 to 70%', 4], ['over 70%', 5]].map(([l, k]) => `<span><i style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px;background:${ctx.heat.cellColor(k, 5, { scale: 'linear' })}"></i>${l}</span>`).join('') + '<span>· = reached but no Apollo pool</span><span>Over 100% = the same people were reached more than once across windows</span>' : ctx.heat.legend('orange');
+  };
+  ctx.ui.seg(el.querySelector('#cubeMetric'), [{ value: 'pct', label: 'Penetration %' }, { value: 'reached', label: 'People reached' }, { value: 'pool', label: 'ICP pool' }], v => { cubeMetric = v; drawCube(); }, cubeMetric);
+  ctx.ui.seg(el.querySelector('#cubeRegion'), [{ value: 'all', label: 'All regions' }, ...cube.regions.map(r => ({ value: r, label: r }))], v => { cubeRegion = v; drawCube(); }, cubeRegion);
+  drawCube();
+
   // ---- funnel charts ----
   const stackChart = (id, key, money) => chart(el.querySelector('#' + id), { type: 'bar', data: { labels: SS.buckets.map(k => F.bucketLabel(k, stageGran)), datasets: A.STAGE_ORDER.filter(st => st !== 'Other' || SS.totals.Other[key]).map(st => ({ label: st, data: SS.buckets.map(k => Math.round((SS.byStage[st][key][k] || 0) * 100) / 100), backgroundColor: STAGE_COLOR[st], borderRadius: 4 })) },
     options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: c => c.dataset.label + ': ' + (money ? usd(c.raw) : fmt(c.raw)) } } }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true } } } });
@@ -373,8 +414,7 @@ export async function render(el, ctx) {
 
     // (f) penetration
     const countries = [...new Set(icp_pool.map(p => p.country))];
-    const levelAlpha = [0, .08, .25, .45, .7, 1];
-    el.querySelector('#penLegend').innerHTML = [['under 5%', 1], ['5 to 15%', 2], ['15 to 35%', 3], ['35 to 70%', 4], ['over 70%', 5]].map(([l, k]) => `<span><i style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px;background:rgba(254,75,30,${levelAlpha[k]})"></i>${l}</span>`).join('') + '<span><i style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px;border:1px dashed var(--g300)"></i>no headcount</span>';
+    el.querySelector('#penLegend').innerHTML = [['under 5%', 1], ['5 to 15%', 2], ['15 to 35%', 3], ['35 to 70%', 4], ['over 70%', 5]].map(([l, k]) => `<span><i style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px;background:${ctx.heat.cellColor(k, 5, { scale: 'linear' })}"></i>${l}</span>`).join('') + '<span><i style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px;border:1px dashed var(--g300)"></i>no headcount</span>';
     el.querySelector('#penMethod').innerHTML = `Method. Estimated people reached = impressions ÷ ${fmt(frequency, 1)} (frequency, editable in Settings › Targets). Penetration = estimated people reached ÷ Apollo headcount for the company, country and band. Company × country allocation uses the global country share because LinkedIn exports no cross-tab; the band split uses the Job Title mix of the same windows. Windows included: ${windows.map(w => esc(winLabel(w))).join('; ')}.`;
     const detail = el.querySelector('#penDetail');
     let penBand = 'All';
@@ -423,6 +463,7 @@ export async function render(el, ctx) {
       seniority_share: share('Job Seniority'), geography_share: share('Country'), function_share: share('Job Function', 6),
       band_share: Object.fromEntries(A.BANDS.map(b => [b, Math.round(bs.share[b] * 1000) / 10])),
       accounts_reached: { count: matched.size, of: accounts.length, top: [...matched.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => ({ account: k, impressions: v })) },
+      penetration_cube: cube.accounts.slice(0, 10).map(a => ({ account: a.account, reached: Math.round(a.total.All.reached), pct_all: a.total.All.pct == null ? null : Math.round(a.total.All.pct * 10) / 10, by_band: Object.fromEntries(A.PEN_BANDS.map(b => [b, a.total[b].pct == null ? null : Math.round(a.total[b].pct * 10) / 10])), by_region: Object.fromEntries(Object.entries(a.regions).map(([r, t]) => [r, { reached: Math.round(t.All.reached), pct: t.All.pct == null ? null : Math.round(t.All.pct * 10) / 10 }])) })),
       penetration: penSummary ? { frequency, top: penSummary.slice(0, 6).map(c => ({ account: c.account, country: c.country, pct: Math.round(c.pct * 10) / 10, reached: Math.round(c.reached_band), pool: c.pool_band })), bottom: penSummary.slice(-6).map(c => ({ account: c.account, country: c.country, pct: Math.round(c.pct * 10) / 10, reached: Math.round(c.reached_band), pool: c.pool_band })) } : null,
       targets: S.targets || null,
     };

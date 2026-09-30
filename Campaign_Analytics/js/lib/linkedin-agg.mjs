@@ -185,6 +185,9 @@ export function penetration({ windows, accounts, icp_pool, bands, frequency = 3.
       }
     }
   }
+  // Pool-only cells: a reached account's countries that have a headcount but got no impressions,
+  // so unreached regions show as 0% and the company's denominator is its whole pool.
+  for (const acc of accImp.keys()) for (const ct of ctys) { const k = acc + '||' + ct, p = pool.get(poolKey(acc, ct)); if (p && !cell.has(k)) cell.set(k, { account: acc, country: ct, imp: 0, reached: { MD: 0, 'MD-1': 0, 'MD-2': 0 }, pool: p }); }
   const cells = [...cell.values()].map(c => {
     const reached = band === 'All' ? c.reached.MD + c.reached['MD-1'] + c.reached['MD-2'] : c.reached[band] || 0;
     const p = c.pool ? (band === 'All' ? c.pool.MD + c.pool['MD-1'] + c.pool['MD-2'] : c.pool[band]) : null;
@@ -192,6 +195,36 @@ export function penetration({ windows, accounts, icp_pool, bands, frequency = 3.
   });
   const accountsSorted = [...accImp.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]);
   return { cells, accounts: accountsSorted, countries: ctys, frequency, band };
+}
+/**
+ * Cumulative penetration cube: company x region x designation band, every window in range summed.
+ * Built on penetration() (company x country cells); countries roll up to regions with regionOf.
+ * Returns { accounts:[{ account, category, total:{reached,pool,pct per band + All}, regions:{ [region]: same } }],
+ *           regions:[ordered region names], bands:['MD','MD-1','MD-2'] }.
+ * Accounts are ordered by estimated people reached (all bands); regions by total reached.
+ */
+export const PEN_BANDS = ['MD', 'MD-1', 'MD-2'];
+export function penetrationCube({ windows, accounts, icp_pool, bands, frequency = 3.5, regions }) {
+  // Every country with a pool row plus every country seen in the windows, so reach outside the pool geographies still counts.
+  const countries = [...new Set([...(icp_pool || []).map(p => p.country), ...(windows || []).flatMap(w => segRows(w.rows || [], 'Country').map(r => r.value))])].filter(Boolean);
+  const P = penetration({ windows, accounts, icp_pool, bands, frequency, band: 'All', countries });
+  const blank = () => { const o = {}; for (const b of [...PEN_BANDS, 'All']) o[b] = { reached: 0, pool: 0, pct: null, has_pool: false }; return o; };
+  const add = (t, c) => {
+    for (const b of PEN_BANDS) { t[b].reached += c.reached[b] || 0; t.All.reached += c.reached[b] || 0; if (c.pool) { t[b].pool += c.pool[b] || 0; t.All.pool += c.pool[b] || 0; t[b].has_pool = true; t.All.has_pool = true; } }
+  };
+  const finish = t => { for (const b of [...PEN_BANDS, 'All']) t[b].pct = t[b].has_pool && t[b].pool ? t[b].reached / t[b].pool * 100 : null; return t; };
+  const byAcc = new Map(), regionReach = new Map();
+  for (const c of P.cells) {
+    const region = regionOf(c.country, regions);
+    if (!byAcc.has(c.account)) byAcc.set(c.account, { account: c.account, category: (accounts || []).find(a => a.name === c.account)?.category || '', total: blank(), regions: {} });
+    const a = byAcc.get(c.account);
+    if (!a.regions[region]) a.regions[region] = blank();
+    add(a.total, c); add(a.regions[region], c);
+    regionReach.set(region, (regionReach.get(region) || 0) + PEN_BANDS.reduce((x, b) => x + (c.reached[b] || 0), 0));
+  }
+  const list = [...byAcc.values()].map(a => { finish(a.total); for (const r of Object.keys(a.regions)) finish(a.regions[r]); return a; }).sort((x, y) => y.total.All.reached - x.total.All.reached);
+  const regionList = [...regionReach.entries()].sort((x, y) => y[1] - x[1]).map(e => e[0]);
+  return { accounts: list, regions: regionList, bands: PEN_BANDS, frequency };
 }
 export const PEN_BREAKS = [5, 15, 35, 70];
 export const penLevel = pct => pct == null ? 0 : pct < 5 ? 1 : pct < 15 ? 2 : pct < 35 ? 3 : pct < 70 ? 4 : 5;
