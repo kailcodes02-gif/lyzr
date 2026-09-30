@@ -26,18 +26,19 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // ---------------------------------------------------------------- plumbing
 class ApiError extends Error {
-  constructor(status, code, message) { super(message); this.status = status; this.code = code }
+  constructor(status, code, message, headers) { super(message); this.status = status; this.code = code; this.headers = headers }
 }
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+  'Access-Control-Expose-Headers': 'Retry-After',
   'Access-Control-Max-Age': '86400',
 }
-const json = (status, body) => new Response(body === null ? null : JSON.stringify(body, null, 2), {
-  status, headers: { ...CORS, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+const json = (status, body, headers) => new Response(body === null ? null : JSON.stringify(body, null, 2), {
+  status, headers: { ...CORS, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers },
 })
-const fail = (status, code, message) => json(status, { error: { code, message } })
+const fail = (status, code, message, headers) => json(status, { error: { code, message } }, headers)
 
 const b64url = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 const b64urlStr = s => b64url(new TextEncoder().encode(s))
@@ -73,23 +74,30 @@ function makeDb(token) {
   }
 }
 
-async function authenticate(request, env) {
+const rpc = (fn, args) => fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+  method: 'POST',
+  headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
+  body: JSON.stringify(args),
+})
+
+// Resolves the key (expiry, revocation, owner still an admin), enforces the
+// per-key rate limit and logs the request — all inside api_resolve_key (030).
+async function authenticate(request, env, url) {
   const auth = request.headers.get('Authorization') || ''
   const key = auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
   if (!key) throw new ApiError(401, 'unauthorized', 'Send your API key as `Authorization: Bearer lzt_…`. Admins create keys in Workspace settings › Integrations.')
   if (!key.startsWith('lzt_')) throw new ApiError(401, 'unauthorized', 'That is not a tracker API key (they start with lzt_).')
   if (!env.SUPABASE_JWT_SECRET) throw new ApiError(503, 'not_configured', 'The API is not switched on yet: the SUPABASE_JWT_SECRET secret is missing on the server.')
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/api_resolve_key`, {
-    method: 'POST',
-    headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ p_hash: await sha256Hex(key) }),
-  })
+  const hash = await sha256Hex(key)
+  const res = await rpc('api_resolve_key', { p_hash: hash, p_method: request.method.toUpperCase(), p_path: url.pathname + url.search })
+  if (res.status === 404) throw new ApiError(503, 'not_configured', 'The API is not switched on yet: database update 030 is missing.')
   const rows = res.ok ? await res.json() : []
   const who = Array.isArray(rows) ? rows[0] : null
-  if (!who) throw new ApiError(401, 'unauthorized', 'This API key is not valid, or it has been revoked.')
+  if (!who) throw new ApiError(401, 'unauthorized', 'This API key is not valid, or it has expired or been revoked.')
+  if (who.retry_after > 0) throw new ApiError(429, 'rate_limited', `Too many requests: a key can make 60 a minute. Try again in ${who.retry_after}s.`, { 'Retry-After': String(who.retry_after) })
   const now = Math.floor(Date.now() / 1000)
   const token = await signJwt({ aud: 'authenticated', role: 'authenticated', sub: who.user_id, email: who.email, iat: now, exp: now + 120 }, env.SUPABASE_JWT_SECRET)
-  return { userId: who.user_id, email: who.email, scope: who.scope, db: makeDb(token) }
+  return { userId: who.user_id, email: who.email, scope: who.scope, canDelete: !!who.can_delete, expiresAt: who.expires_at || null, hash, logId: who.log_id, db: makeDb(token) }
 }
 
 async function readBody(request) {
@@ -301,7 +309,7 @@ async function route(ctx, method, parts, url, request) {
 
   if (res === 'me' && method === 'GET') {
     const me = cat.users.find(u => u.id === ctx.userId)
-    return json(200, { data: { email: ctx.email, name: me?.display_name || null, role: me?.role, key_scope: ctx.scope } })
+    return json(200, { data: { email: ctx.email, name: me?.display_name || null, role: me?.role, key_scope: ctx.scope, can_delete_tasks: ctx.canDelete, key_expires_at: ctx.expiresAt } })
   }
 
   if (res === 'verticals' && method === 'GET') {
@@ -452,6 +460,7 @@ async function route(ctx, method, parts, url, request) {
     if (id && !sub && method === 'GET') return json(200, { data: await fullTask(db, cat, id) })
     if (id && !sub && method === 'PATCH') return json(200, { data: await updateTask(ctx, cat, id, await readBody(request), q.force === 'true') })
     if (id && !sub && method === 'DELETE') {
+      if (!ctx.canDelete) throw new ApiError(403, 'delete_not_allowed', 'This key cannot delete tasks. An admin can create a key with “Can delete tasks” switched on.')
       await getTaskRow(db, id)
       await db(`tasks?id=eq.${id}`, { method: 'DELETE' })
       return json(204, null)
@@ -518,11 +527,13 @@ async function route(ctx, method, parts, url, request) {
   throw new ApiError(404, 'not_found', `No route ${method} /api/v1/${parts.join('/')}. See /api/v1/openapi.json.`)
 }
 
-export async function onRequest({ request, env }) {
+export async function onRequest({ request, env, waitUntil }) {
   const url = new URL(request.url)
   const method = request.method.toUpperCase()
   if (method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
   const parts = url.pathname.replace(/^\/api\/v1\/?/, '').split('/').filter(Boolean)
+  let ctx = null
+  let response
   try {
     // Public: the index and the OpenAPI description.
     if (!parts.length && method === 'GET') {
@@ -530,12 +541,20 @@ export async function onRequest({ request, env }) {
     }
     if (parts[0] === 'openapi.json' && method === 'GET') return json(200, { ...OPENAPI, servers: [{ url: `${url.origin}/api/v1` }] })
 
-    const ctx = await authenticate(request, env)
+    ctx = await authenticate(request, env, url)
     if (ctx.scope !== 'write' && method !== 'GET') throw new ApiError(403, 'read_only_key', 'This key is read-only. Ask an admin for a write key to create, change or delete.')
-    return await route(ctx, method, parts, url, request)
+    response = await route(ctx, method, parts, url, request)
   } catch (e) {
-    if (e instanceof ApiError) return fail(e.status, e.code, e.message)
-    console.error('api v1 error', e)
-    return fail(500, 'internal', 'Something went wrong on our side.')
+    if (e instanceof ApiError) response = fail(e.status, e.code, e.message, e.headers)
+    else {
+      console.error('api v1 error', e)
+      response = fail(500, 'internal', 'Something went wrong on our side.')
+    }
   }
+  // Record the outcome in the key's activity log without delaying the reply.
+  if (ctx?.logId) {
+    const done = rpc('api_log_status', { p_hash: ctx.hash, p_log_id: ctx.logId, p_status: response.status }).catch(() => {})
+    if (waitUntil) waitUntil(done); else await done
+  }
+  return response
 }

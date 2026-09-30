@@ -458,6 +458,42 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01, GSI Tracker: API safety rails (migration 030)
+- `030_api_hardening.sql` (user pastes live; in RESET_ALL): `api_keys.expires_at` + `can_delete` (write keys
+  only, CHECK), `api_request_log` (admin-read RLS, written only by SECURITY DEFINER fns, 90-day retention),
+  `api_resolve_key(hash, method, path)` now enforces expiry + 60 req/min per key (advisory lock, returns
+  retry_after) and logs; `api_log_status` records the reply status. Old 1-arg function dropped.
+- API: 429 + Retry-After (exposed via CORS), `DELETE /tasks/{id}` needs can_delete (403 delete_not_allowed),
+  /me shows can_delete_tasks + key_expires_at, 503 if 030 missing; status logged via waitUntil.
+- Integrations › API keys: expiry picker (30/90/365/never, default 90), "Can delete tasks" switch, expired
+  badge, recent-activity table (last 50 requests).
+- Tests: 83 API (mock) + 26 SQL checks of 029+030 on PGlite (real Postgres). Nightly encrypted backup was
+  proposed but not built (needs the user's go-ahead: exports personal data; repo is public).
+
+### 2026-09-30, Campaign Analytics: new dashboard at /Campaign_Analytics/ (built, not yet pushed)
+
+New internal dashboard `Campaign_Analytics/` (static ES modules, no build) served by the root Pages
+site at `https://lyzr.kailash-gm.com/Campaign_Analytics/`, with Pages Functions in `functions/api/ca/`
+(health, settings, uploads, linkedin, hubspot, hubspot/refresh, insights). Sections: Overview, Ads ›
+LinkedIn (biweekly Performance + Demographics CSV uploads, date range, trend, funnel by stage, campaign
+verdicts, heat maps by account/seniority/geography/designation band/job function, penetration by
+account × country × MD band using Apollo pools), Email (placeholder), HubSpot messaging (read-only pull
+with the GSI rules plus notes, intent clusters, per-account/region read-outs), Leads analytics (MD /
+MD-1 / MD-2 by day/week/month, region × band, owner and activity health), Settings. Every section ends
+with a Claude panel (findings, evidence, action, owner; cached in `ca_insights`).
+- Sign-in: MSAL.js v5 popup, same Entra app as MS UI/GSIEvents; needs SPA redirect URI
+  `https://lyzr.kailash-gm.com/Campaign_Analytics/` added by the user. Server verifies via Graph /me,
+  domains lyzr.com/lyzr.ai; editors list in `functions/api/ca/_lib/auth.js` (or `CA_EDITORS`).
+- Database: Supabase tables `ca_*` (`Campaign_Analytics/supabase/001_campaign_analytics.sql`, RLS on,
+  no policies, service key only). Applied to the scratch project `qhlvgjeqndlteuudusdh` for testing;
+  production project not chosen yet (dedicated project recommended; the migration never touches
+  tracker tables).
+- Pages secrets still to set by the user: `CA_SUPABASE_URL`, `CA_SUPABASE_KEY`, `ANTHROPIC_API_KEY`
+  (`HUBSPOT_ACCESS_TOKEN` already set). Runbook in `Campaign_Analytics/README.md`; contract in
+  `Campaign_Analytics/ARCHITECTURE.md`.
+- Demo mode `?demo=1` runs the full UI on generated data shaped like the September 2026 reports.
+- Tests: `node --test 'Campaign_Analytics/tests/backend/*.test.mjs' 'Campaign_Analytics/tests/frontend/*.test.mjs'`.
+
 ### 2026-09-30, GSI Tracker: REST API for the whole dashboard (/api/v1)
 - New Cloudflare Pages Function `functions/api/v1/[[path]].js` (+ `_openapi.js`, OpenAPI 3.1 at
   `/api/v1/openapi.json`). Endpoints: summary, weekly, history, me, verticals, channels, domains, people,

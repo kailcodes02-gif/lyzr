@@ -22,7 +22,21 @@ the dashboard, and every change is logged under their name. A key stops working 
 when its owner stops being an admin.
 
 - **Read** keys: `GET` only.
-- **Read & write** keys: also `POST`, `PATCH`, `DELETE`.
+- **Read & write** keys: also `POST`, `PATCH`, `DELETE` — except **deleting a task**, which needs a key created with
+  **Can delete tasks** switched on. Without it, set `status: "cancelled"` instead.
+- Keys **expire** after the period chosen when they're made (30 days, 90 days, 1 year or never).
+
+## Safety rails (migration 030)
+
+- **Rate limit:** 60 requests a minute per key. The 61st gets `429 rate_limited` with a `Retry-After` header
+  (seconds). One busy key never slows another, and a runaway script can't swamp the database.
+- **Activity log:** every accepted request (key, method, path, result, time) is recorded, kept 90 days, and shown
+  to admins under Integrations › "Show recent API activity". Refused keys and rate-limited calls aren't logged.
+- **The JWT secret** lives only in GitHub and Cloudflare's encrypted secrets. Never paste it into code, chat or
+  docs. If it ever leaks: Supabase › JWT Keys › generate a new secret, update the GitHub secret, redeploy
+  (everyone signs in again once).
+- **Switching the API off:** revoke the key (instant), or remove `SUPABASE_JWT_SECRET` from Cloudflare Pages
+  (the whole API returns 503). The dashboard is unaffected either way.
 
 ## Conventions
 
@@ -36,11 +50,12 @@ when its owner stops being an admin.
 |---|---|---|
 | 400 | `bad_request` | Missing or invalid field — the message says which |
 | 401 | `unauthorized` | No key, unknown key, or revoked |
-| 403 | `read_only_key` / `forbidden` | Read key tried to write / the key's owner isn't allowed |
+| 403 | `read_only_key` / `delete_not_allowed` / `forbidden` | Read key tried to write / key can't delete tasks / the key's owner isn't allowed |
 | 404 | `not_found` | No such task, channel, vertical or route |
 | 409 | `blocked` | Marking done while it depends on unfinished tasks (add `?force=true`) |
 | 415 | `bad_request` | Body isn't JSON |
-| 503 | `not_configured` | The server's `SUPABASE_JWT_SECRET` isn't set |
+| 429 | `rate_limited` | More than 60 requests in a minute — wait `Retry-After` seconds |
+| 503 | `not_configured` | The server's `SUPABASE_JWT_SECRET` isn't set, or migration 030 is missing |
 
 ## Endpoints
 
@@ -68,7 +83,7 @@ when its owner stops being an admin.
 | `POST /tasks` | Create. `title` required; optional `description`, `channel_id` (omit → the vertical's "No channel"), `vertical` (default `lyzr`), `parent_task_id`, `owners` (emails, first is main owner; default: the key's owner), `due_date`, `priority`, `campaign_id`, `budget`, `plan` |
 | `GET /tasks/{id}` | One task with sub-tasks, checklist, comments, dependencies and its history |
 | `PATCH /tasks/{id}` | Update any of `title`, `description`, `status`, `priority`, `due_date`, `channel_id`, `campaign_id`, `budget`, `blocked_reason`, `plan`, `results` (plan/results are merged). `?force=true` closes despite open dependencies. |
-| `DELETE /tasks/{id}` | Delete (with its sub-tasks). History keeps a record. |
+| `DELETE /tasks/{id}` | Delete (with its sub-tasks). History keeps a record. Needs "Can delete tasks". |
 | `POST /tasks/{id}/subtasks` | Add a sub-task (same body as create; inherits the channel) |
 | `POST /tasks/{id}/comments` | `{ "text" }` |
 | `POST /tasks/{id}/checklist` · `PATCH`/`DELETE …/checklist/{itemId}` | `{ "text", "done" }` |
@@ -98,7 +113,7 @@ curl -H "Authorization: Bearer $KEY" "$API/summary"
 
 ## Setup (one time)
 
-1. Paste `supabase/migrations/029_api_keys.sql` into the Supabase SQL Editor.
+1. Paste `supabase/migrations/029_api_keys.sql`, then `030_api_hardening.sql`, into the Supabase SQL Editor.
 2. Copy the JWT secret from Supabase › Project Settings › API (**JWT Secret**, legacy HS256) and add it as the GitHub
    repo secret **`SUPABASE_JWT_SECRET`**. The deploy workflow copies it to Cloudflare Pages on the next push
    (or set it directly: Cloudflare › Pages › lyzr-work-os › Settings › Variables and Secrets).
@@ -107,4 +122,4 @@ curl -H "Authorization: Bearer $KEY" "$API/summary"
 ## Differences from the dashboard
 
 - Marking a **recurring** task done through the API does not create its next occurrence (the dashboard does).
-- No rate limiting yet; revoke a key to cut it off.
+- Supabase's free plan has no restorable backups; History keeps deleted tasks' records, but not full copies.

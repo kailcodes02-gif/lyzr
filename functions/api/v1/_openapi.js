@@ -21,7 +21,9 @@ export const OPENAPI = {
     description: [
       'Read and change everything in the Lyzr Marketing Tracker: tasks, sub-tasks, owners, comments, checklists, dependencies, channels, verticals, domains, people, campaigns, weekly and summary numbers, and History.',
       '',
-      '**Auth** — `Authorization: Bearer lzt_…`. Admins create keys in Workspace settings › Integrations. A key acts as the admin who created it, with exactly their permissions; every change is logged in History under their name. **Read** keys can only GET; **write** keys can also POST, PATCH and DELETE.',
+      '**Auth** — `Authorization: Bearer lzt_…`. Admins create keys in Workspace settings › Integrations. A key acts as the admin who created it, with exactly their permissions; every change is logged in History under their name. **Read** keys can only GET; **write** keys can also POST, PATCH and DELETE — except deleting a task, which needs a key with “Can delete tasks” (otherwise 403 `delete_not_allowed`; set status `cancelled` instead). Keys can expire.',
+      '',
+      '**Limits** — 60 requests a minute per key; beyond that you get 429 `rate_limited` with a `Retry-After` header (seconds). Every accepted request is logged for admins.',
       '',
       '**Conventions** — JSON in and out. Success is `{ "data": … }`; errors are `{ "error": { "code", "message" } }`. Dates are `YYYY-MM-DD`. Priority is `critical | high | medium | low | backlog` (P0–P4 also accepted). Status is `not_started | in_progress | live | blocked | done | cancelled`.',
     ].join('\n'),
@@ -83,7 +85,7 @@ export const OPENAPI = {
     },
   },
   paths: {
-    '/me': { get: { summary: 'Who this key acts as', tags: ['Account'], responses: { 200: ok({ type: 'object' }) } } },
+    '/me': { get: { summary: 'Who this key acts as, its scope, delete permission and expiry', tags: ['Account'], responses: { 200: ok({ type: 'object', properties: { email: { type: 'string' }, name: { type: ['string', 'null'] }, role: { type: 'string' }, key_scope: { enum: ['read', 'write'] }, can_delete_tasks: { type: 'boolean' }, key_expires_at: { type: ['string', 'null'], format: 'date-time' } } }) } } },
     '/summary': { get: { summary: 'The All Tasks tiles: total, done, not done, live, blocked, overdue, critical', tags: ['Dashboards'], parameters: scopeParams, responses: { 200: ok({ type: 'object' }) } } },
     '/weekly': { get: { summary: 'Weekly review: planned, done, not done, overdue carried in', tags: ['Dashboards'], parameters: [...scopeParams, q('from', 'Start date (default: this Monday)'), q('to', 'End date (default: this Sunday)')], responses: { 200: ok({ type: 'object' }) } } },
     '/history': { get: { summary: 'Every logged change, newest first (includes deleted tasks)', tags: ['Dashboards'], parameters: [...scopeParams, q('task', 'Only this task'), q('since', 'ISO timestamp'), q('limit', 'Max 500 (default 50)')], responses: { 200: ok(listOf({ type: 'object' })) } } },
@@ -111,7 +113,7 @@ export const OPENAPI = {
       parameters: [idParam],
       get: { summary: 'One task with sub-tasks, checklist, comments, dependencies and history', tags: ['Tasks'], responses: { 200: ok(ref('TaskDetail')), 404: { $ref: '#/components/responses/Error' } } },
       patch: { summary: 'Update a task (marking done is refused while it depends on unfinished tasks, unless ?force=true)', tags: ['Tasks'], parameters: [q('force', 'true to close despite open dependencies')], requestBody: body(ref('TaskPatch')), responses: { 200: ok(ref('TaskDetail')), 409: { $ref: '#/components/responses/Error' } } },
-      delete: { summary: 'Delete a task (and its sub-tasks); History keeps a record', tags: ['Tasks'], responses: noContent },
+      delete: { summary: 'Delete a task (and its sub-tasks); History keeps a record. Needs a key with “Can delete tasks”.', tags: ['Tasks'], responses: { ...noContent, 403: { $ref: '#/components/responses/Error' } } },
     },
     '/tasks/{id}/subtasks': { parameters: [idParam], post: { summary: 'Add a sub-task', tags: ['Tasks'], requestBody: body(ref('NewTask')), responses: { 201: ok(ref('TaskDetail'), 'Created') } } },
     '/tasks/{id}/comments': { parameters: [idParam], post: { summary: 'Comment on a task', tags: ['Tasks'], requestBody: body({ type: 'object', required: ['text'], properties: { text: { type: 'string' } } }), responses: { 201: ok({ type: 'object' }, 'Created') } } },
