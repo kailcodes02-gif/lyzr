@@ -458,6 +458,12 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01, Campaign Analytics: sign-in fix (interaction_in_progress)
+- Live sign-in failed with `interaction_in_progress`: a stale MSAL interaction lock left in browser storage by an
+  earlier popup (tried before the SPA redirect URI existed). `Campaign_Analytics/js/auth.mjs` now clears any
+  `*interaction.status` key before `loginPopup`, retries once on that error, and ignores double clicks.
+  Entra redirect `https://lyzr.kailash-gm.com/Campaign_Analytics/` (SPA) confirmed on "Lyzr MS UI".
+
 ### 2026-10-01, Campaign Analytics: first push (ads, email, leads, trends, tracked actions)
 - New app `Campaign_Analytics/` (static ES modules, `https://lyzr.kailash-gm.com/Campaign_Analytics/`, MSAL
   sign-in on the "Lyzr MS UI" Entra app) + Pages Functions `functions/api/ca/*`. Contract in

@@ -34,9 +34,36 @@ function getMsal() {
   return appPromise;
 }
 
+// MSAL keeps an "interaction in progress" lock in browser storage. A popup
+// that was closed, blocked or failed (for example before the redirect URI was
+// registered) can leave it behind, and every later click then fails with
+// interaction_in_progress. Only one sign-in can run from this tab at a time
+// (guarded below), so any lock present when the button is pressed is stale.
+function clearStaleInteraction() {
+  for (const store of [sessionStorage, localStorage]) {
+    try {
+      for (const k of Object.keys(store)) if (/interaction[._-]?status/i.test(k)) store.removeItem(k);
+    } catch { /* storage blocked */ }
+  }
+}
+
+let signingIn = null;
 export async function signIn() {
   if (!window.msal) throw new Error('Microsoft sign-in is still loading, try again.');
-  const app = await getMsal();
+  if (signingIn) return signingIn;
+  signingIn = (async () => {
+    const app = await getMsal();
+    clearStaleInteraction();
+    try { return await doSignIn(app); }
+    catch (e) {
+      if (e && e.errorCode === 'interaction_in_progress') { clearStaleInteraction(); return await doSignIn(app); }
+      throw e;
+    }
+  })();
+  try { return await signingIn; } finally { signingIn = null; }
+}
+
+async function doSignIn(app) {
   const res = await app.loginPopup({ scopes: SCOPES, prompt: 'select_account' });
   app.setActiveAccount(res.account);
   const user = await profile(res.accessToken);
