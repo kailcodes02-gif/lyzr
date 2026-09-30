@@ -120,29 +120,57 @@ function buildIndex(accounts, targetList) {
     .map(([p, canon]) => [tokens(p), canon])
     .filter(([tk]) => tk.length && (tk.length > 1 || tk[0].length >= 3 || tk[0] === 'ey'))
     .sort((a, b) => b[0].join(' ').length - a[0].join(' ').length)
-  return { exact, scored }
+  // Bucket by first token so a lookup only checks phrases that can start at one
+  // of the company's own tokens (1,400+ accounts made the flat scan too slow).
+  const byFirst = new Map()
+  scored.forEach(([tk, canon], rank) => {
+    if (!byFirst.has(tk[0])) byFirst.set(tk[0], [])
+    byFirst.get(tk[0]).push([tk, canon, rank])
+  })
+  return { exact, scored, byFirst }
 }
 
+// Settings are re-read on every request, so the accounts array is a new object
+// each time. Remember the last index by a cheap signature so a warm isolate does
+// not rebuild it (about 16 ms for 1,400+ accounts) on every call.
+let LAST = { sig: null, idx: null }
+const signature = (list, targets) => Array.isArray(list) && list.length
+  ? `${list.length}|${JSON.stringify(list[0])}|${JSON.stringify(list[list.length - 1])}|${list.length > 2 ? JSON.stringify(list[list.length >> 1]) : ''}|${targets === NO_TARGETS ? 'none' : (targets || []).length}`
+  : null
+
 function indexFor(accounts, targetList) {
+  const sig = targetList === NO_TARGETS || (Array.isArray(targetList) && !targetList.length) ? signature(accounts, targetList) : null
+  if (sig && LAST.sig === sig) return LAST.idx
   const aKey = accounts && typeof accounts === 'object' ? accounts : DEFAULT_KEY
   const tKey = targetList && typeof targetList === 'object' ? targetList : DEFAULT_COMPANIES
   let byTarget = INDEX_CACHE.get(aKey)
   if (!byTarget) { byTarget = new WeakMap(); INDEX_CACHE.set(aKey, byTarget) }
   let idx = byTarget.get(tKey)
   if (!idx) { idx = buildIndex(accounts, targetList); byTarget.set(tKey, idx) }
+  if (sig) LAST = { sig, idx }
   return idx
 }
+
+// Pass NO_TARGETS (not a fresh []) to match on the accounts list only: the index is
+// cached per (accounts, targetList) object, and a new [] each call rebuilds it every time.
+export const NO_TARGETS = Object.freeze([])
 
 export function toAccount(companyRaw, accounts = [], targetList = DEFAULT_COMPANIES) {
   const hay = tokens(companyRaw)
   if (!hay.length) return null
-  const { exact, scored } = indexFor(accounts, targetList)
+  const { exact, byFirst } = indexFor(accounts, targetList)
   // 1. exact match (whole string)
   const hit = exact.get(norm(companyRaw))
   if (hit) return hit
-  // 2. contains as whole tokens, longest phrase first
-  for (const [tk, canon] of scored) if (containsTokens(hay, tk)) return canon
-  return null
+  // 2. contains as whole tokens, longest phrase first (same order as the flat
+  //    scan: lowest rank wins among the phrases that can start at a hay token)
+  let best = null
+  for (const t of new Set(hay)) {
+    for (const [tk, canon, rank] of byFirst.get(t) || []) {
+      if ((best === null || rank < best.rank) && containsTokens(hay, tk)) best = { rank, canon }
+    }
+  }
+  return best ? best.canon : null
 }
 
 // ---- bands -----------------------------------------------------------------

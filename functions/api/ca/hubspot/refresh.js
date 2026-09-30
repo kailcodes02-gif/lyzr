@@ -17,7 +17,7 @@ import { json, handle, readJson, isoDay, HttpError } from '../_lib/http.js'
 import { requireUser, cronUser } from '../_lib/auth.js'
 import { db, inChunks } from '../_lib/db.js'
 import { loadSettings } from '../_lib/settings.js'
-import { toAccount, toBand, toRegion } from '../_lib/classify.js'
+import { toAccount, toBand, toRegion, NO_TARGETS } from '../_lib/classify.js'
 
 export { corsPreflight as onRequestOptions } from '../_lib/http.js'
 
@@ -142,12 +142,23 @@ export function searchTerms(accounts = [], extraNames = []) {
   return { names: [...names].sort(), domains: [...domains].sort() }
 }
 
+// Email domain -> account, built once per accounts list (a Map lookup per
+// contact instead of scanning every account's domains).
+const DOMAIN_INDEX = new WeakMap()
 export function domainAccount(email, accounts = []) {
   const d = String(email || '').toLowerCase().split('@')[1] || ''
   if (!d) return null
-  for (const a of accounts) {
-    for (const x of [...((a && a.domains) || []), ...(a && a.domain ? [a.domain] : [])]) if (d === x || d.endsWith('.' + x)) return a.name
+  let idx = DOMAIN_INDEX.get(accounts)
+  if (!idx) {
+    idx = new Map()
+    for (const a of accounts) {
+      for (const x of [...((a && a.domains) || []), ...(a && a.domain ? [a.domain] : [])]) if (!idx.has(x)) idx.set(x, a.name)
+    }
+    DOMAIN_INDEX.set(accounts, idx)
   }
+  // exact domain first, then parent domains (eu.sub.de -> sub.de)
+  const parts = d.split('.')
+  for (let i = 0; i < parts.length - 1; i++) { const hit = idx.get(parts.slice(i).join('.')); if (hit) return hit }
   return null
 }
 
@@ -179,7 +190,7 @@ const tsOrNull = (v) => {
 export function mapContact(raw, via, { ownerNames = {}, settings = {}, syncedAt }) {
   const p = raw.properties || {}
   const companyRaw = p.company || p.lsa_company || ''
-  const account = toAccount(companyRaw, settings.accounts || [], []) || domainAccount(p.email, settings.accounts || [])
+  const account = toAccount(companyRaw, settings.accounts || [], NO_TARGETS) || domainAccount(p.email, settings.accounts || [])
   const jobtitle = p.jobtitle || p.lsa_job_title || ''
   const country = p.country || p.lsa_country || p.hs_country_region_code || ''
   const props = {}
