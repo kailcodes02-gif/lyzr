@@ -33,6 +33,15 @@ jobs:
       CA_CRON_SECRET: ${{ secrets.CA_CRON_SECRET }}
       ONLY: ${{ inputs.only || 'all' }}
     steps:
+      - name: Helper
+        run: |
+          cat > /tmp/call.sh <<'SH'
+          # call PATH BODY -> prints the JSON reply; on an HTTP error prints status and body, exits 1
+          out=$(curl -sS -o /tmp/body -w '%{http_code}' -X POST "$BASE/$1" -H "Content-Type: application/json" -H "X-CA-Cron: $CA_CRON_SECRET" --data "$2")
+          if [ "$out" -ge 400 ]; then echo "HTTP $out from $1: $(head -c 600 /tmp/body)" >&2; exit 1; fi
+          cat /tmp/body
+          SH
+          chmod +x /tmp/call.sh
       - name: Check secret
         run: test -n "$CA_CRON_SECRET" || { echo "CA_CRON_SECRET is not set"; exit 1; }
       - name: Instantly
@@ -41,7 +50,7 @@ jobs:
           set -euo pipefail
           body='{}'
           for i in $(seq 1 60); do
-            res=$(curl -sS --fail-with-body -X POST "$BASE/instantly/sync" -H "Content-Type: application/json" -H "X-CA-Cron: $CA_CRON_SECRET" --data "$body")
+            res=$(/tmp/call.sh instantly/sync "$body")
             echo "$res" | jq -c '{done, campaigns, days, progress, warnings}'
             [ "$(echo "$res" | jq -r '.done')" = "true" ] && exit 0
             body=$(echo "$res" | jq -c '{cursor: .cursor}')
@@ -53,7 +62,7 @@ jobs:
           set -euo pipefail
           body='{}'
           for i in $(seq 1 400); do
-            res=$(curl -sS --fail-with-body -X POST "$BASE/hubspot/refresh" -H "Content-Type: application/json" -H "X-CA-Cron: $CA_CRON_SECRET" --data "$body")
+            res=$(/tmp/call.sh hubspot/refresh "$body")
             echo "$res" | jq -c '{done, contacts, notes, progress, warnings}'
             [ "$(echo "$res" | jq -r '.done')" = "true" ] && exit 0
             body=$(echo "$res" | jq -c '{cursor: .cursor}')
@@ -64,7 +73,7 @@ jobs:
         run: |
           set -euo pipefail
           for i in $(seq 1 200); do
-            res=$(curl -sS --fail-with-body -X POST "$BASE/hubspot/classify" -H "Content-Type: application/json" -H "X-CA-Cron: $CA_CRON_SECRET" --data '{}')
+            res=$(/tmp/call.sh hubspot/classify '{}')
             echo "$res" | jq -c '{done, classified, model}'
             [ "$(echo "$res" | jq -r '.done')" = "true" ] && exit 0
           done
