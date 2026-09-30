@@ -49,6 +49,8 @@ export function handle(fn) {
     } catch (e) {
       const status = Number.isInteger(e && e.status) ? e.status : 500
       const message = String((e && e.message) || e || 'Unexpected error').slice(0, 400)
+      // Server-side errors go to the Pages Function log (wrangler pages deployment tail).
+      if (status >= 500) console.error(`[ca] ${status} ${message}`)
       return json({ error: message }, status)
     }
   }
