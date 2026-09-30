@@ -5,7 +5,7 @@ export const noRange = true;
 
 const TABS = [['gsi', 'GSI accounts'], ['regions', 'Regions'], ['targets', 'Targets'], ['email', 'Email rules'], ['icp', 'Reach pools'], ['editors', 'Editors'], ['connection', 'Connections and pulls']];
 const SEED_FILE = { accounts: 'accounts.json', bands: 'band_titles.json', regions: 'regions.json', icp_pool: 'icp_pool.json' };
-const DEFAULTS = { targets: { leads_per_month: 200, demo_mqls_per_month: 30, frequency: 3.5 }, editors: [] };
+const DEFAULTS = { targets: { leads_per_month: 200, demo_mqls_per_month: 30, frequency: 3.5, reach_frequency: 3 }, editors: [] };
 const REDIRECT_URI = 'https://lyzr.kailash-gm.com/Campaign_Analytics/';
 const state = { tab: 'gsi', health: null };
 
@@ -29,7 +29,7 @@ const META = {
   accounts: { title: 'GSI accounts and designations', sub: 'This list decides who is a GSI lead. A HubSpot contact who submitted a form is pulled and counted as a GSI lead when their company name matches an account or alias below, or their email domain matches the account\'s website. Each account\'s own titles for MD (the top band, people who sign partnerships), MD-1 and MD-2 are used to band every lead\'s job title. Built from "GSI_SI Accounts – Over All" (owners and designations) and the ABM list export (websites).' },
   regions: { title: 'Regions', sub: 'Which countries roll up into which region. Used wherever a page groups by region: leads by region, where the ads land. A country that is in no list shows as Other.' },
   icp_pool: { title: 'Reach pools', sub: 'How many people work at each account, by country and band (Apollo headcounts). The LinkedIn page divides people reached by these numbers to show how much of each account the ads cover.' },
-  targets: { title: 'Targets', sub: 'Monthly goals the Overview compares the current pace against, and the frequency used to turn LinkedIn impressions into people (people reached = impressions divided by frequency).' },
+  targets: { title: 'Targets', sub: 'Monthly goals the Overview compares the current pace against, and two divisors that turn LinkedIn impressions into people: reach heat maps use impressions ÷ 3, penetration uses impressions ÷ 3.5 (people reached = impressions divided by the divisor).' },
   editors: { title: 'Editors', sub: 'People allowed to upload files, change these lists and run pulls. Everyone else at Lyzr can view.' },
 };
 function readable(key, value, ctx) {
@@ -54,7 +54,7 @@ function readable(key, value, ctx) {
   }
   if (key === 'targets') {
     const t = value || {};
-    const labels = { leads_per_month: 'Leads a month', demo_mqls_per_month: 'Book a demo MQLs a month', frequency: 'Frequency (impressions per person)', monthly_budget: 'Monthly budget (USD)' };
+    const labels = { leads_per_month: 'Leads a month', demo_mqls_per_month: 'Book a demo MQLs a month', frequency: 'Frequency for penetration (impressions per person, default 3.5)', reach_frequency: 'Impressions per reach for the reach heat maps (default 3)', monthly_budget: 'Monthly budget (USD)' };
     return T({ cols: [{ h: 'Target', k: 'k', left: true, f: r => esc(labels[r.k] || r.k) }, { h: 'Value', k: 'v', f: r => esc(String(r.v)) }], rows: Object.entries(t).map(([k, v]) => ({ k, v })) });
   }
   if (key === 'editors') { const list = Array.isArray(value) ? value : []; return list.length ? `<ul>${list.map(e => `<li>${esc(e)}</li>`).join('')}</ul>` : ctx.ui.empty('No editors set. On the server, the ADMIN list in the Pages Function applies.'); }

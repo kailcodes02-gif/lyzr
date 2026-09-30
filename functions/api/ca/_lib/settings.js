@@ -8,7 +8,7 @@ import { DEFAULT_EDITORS, parseEmails } from './auth.js'
 
 export const SETTING_KEYS = ['bands', 'icp_pool', 'accounts', 'regions', 'targets', 'editors', 'email_rules', 'gsi_companies']
 
-export const DEFAULT_TARGETS = { leads_per_month: 200, demo_mqls_per_month: 30, frequency: 3.5 }
+export const DEFAULT_TARGETS = { leads_per_month: 200, demo_mqls_per_month: 30, frequency: 3.5, reach_frequency: 3 }
 
 // Email rules. Link rules and domain map are optional overrides; the view has
 // built-in defaults (js/lib/email-agg.mjs) and applies these on top.

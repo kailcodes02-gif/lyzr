@@ -190,7 +190,7 @@ test('settings GET: seeds merged under ca_settings rows', async () => {
   assert.equal(r.status, 200)
   const b = r.body
   assert.deepEqual(Object.keys(b).sort(), ['accounts', 'bands', 'db', 'editors', 'email_rules', 'gsi_companies', 'icp_pool', 'regions', 'source', 'targets', 'updated_at'])
-  assert.deepEqual(b.targets, { leads_per_month: 250, demo_mqls_per_month: 30, frequency: 3.5 })
+  assert.deepEqual(b.targets, { leads_per_month: 250, demo_mqls_per_month: 30, frequency: 3.5, reach_frequency: 3 })
   assert.equal(b.source.targets, 'db')
   assert.equal(b.source.accounts, 'seed')
   assert.ok(b.accounts.some((a) => a.name === 'Accenture'))

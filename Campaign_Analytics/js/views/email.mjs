@@ -80,7 +80,8 @@ export async function render(el, ctx) {
   const pick = e => (!S.campaign || e.campaign === S.campaign) && (!S.company || e.company === S.company);
   const scoped = all.filter(pick);
   const days = F.daysBetween(from, to);
-  const prevTo = F.addDays(from, -1), prevFrom = F.addDays(from, -days);
+  const cmp = ctx.state.prev || null;
+  const prevFrom = cmp ? cmp.from : '9999', prevTo = cmp ? cmp.to : '0000';
   const cur = scoped.filter(e => E.inRange(e, from, to));
   const prev = scoped.filter(e => E.inRange(e, prevFrom, prevTo));
   const T = E.funnel(cur), TP = E.funnel(prev);
@@ -93,14 +94,14 @@ export async function render(el, ctx) {
   const SEND = E.senders(cur);
   const CAT = E.catStats(cur);
   const byEmail = new Map(P.map(p => [p.email, p]));
-  const dl = (a, b, invert) => { if (!b || a == null) return '<span class="muted">no prior</span>'; const g = (a - b) / b * 100; const good = invert ? g <= 0 : g >= 0; return `<span class="${good ? 'up' : 'down'}">${g > 0 ? '+' : ''}${fmt(g, 0)}%</span> vs prior ${days}d`; };
+  const dl = (a, b, invert) => { if (!cmp) return '<span class="muted">no comparison</span>'; if (!b || a == null) return '<span class="muted">nothing to compare</span>'; const g = (a - b) / b * 100; const good = invert ? g <= 0 : g >= 0; return `<span class="${good ? 'up' : 'down'}">${g > 0 ? '+' : ''}${fmt(g, 0)}%</span> vs ${esc(cmp.label)}`; };
   const emailBtn = (email, extra = '') => `<button type="button" class="em" data-person="${esc(email)}" title="Open this person">${esc(email)}</button><button type="button" class="cp" data-copy="${esc(email)}" title="Copy email">copy</button>${extra}`;
   const lastUpload = uploads.reduce((m, u) => !m || u.uploaded_at > m ? u.uploaded_at : m, null);
   const eventDays = all.map(e => e.day).sort();
   const sync = api.last_sync;
 
   // ---- page ----------------------------------------------------------------------------------
-  let h = head(`${esc(F.rangeLabel(from, to))}${S.campaign ? ` · ${esc(campaignLabel(S.campaign))}` : ''}${S.company ? ` · ${esc(S.company)}` : ''}. People are unique contacts. Human clicks leave out clicks within ${fmt(rules.fast_click_seconds)} seconds of the send (likely link scanners). Book a Demo counts the direct calendar${rules.gsi_page_counts_as_demo ? ' and the GSI/SI page (split out as "via GSI/SI page")' : ''}. Compared with the ${days} days before.`);
+  let h = head(`${esc(F.rangeLabel(from, to))}${S.campaign ? ` · ${esc(campaignLabel(S.campaign))}` : ''}${S.company ? ` · ${esc(S.company)}` : ''}. People are unique contacts. Human clicks leave out clicks within ${fmt(rules.fast_click_seconds)} seconds of the send (likely link scanners). Book a Demo counts the direct calendar${rules.gsi_page_counts_as_demo ? ' and the GSI/SI page (split out as "via GSI/SI page")' : ''}. ${cmp ? `Compared ${esc(F.vsLabel(cmp))}.` : 'No comparison selected.'}`);
   h += `<div class="card" style="font-size:13px;margin-bottom:6px;display:flex;gap:14px;flex-wrap:wrap;align-items:center">
     <span><b>CSV exports:</b> ${fmt(uploads.length)} upload${uploads.length === 1 ? '' : 's'}, ${fmt(new Set(all.map(e => e.campaign)).size)} campaigns, events ${eventDays.length ? `${esc(F.dayLabel(eventDays[0]))} to ${esc(F.dayLabel(eventDays[eventDays.length - 1]))}` : 'none'}${lastUpload ? `, last upload ${esc(F.timeAgo(lastUpload))}` : ''}.</span>
     <span><b>Instantly API:</b> ${api.configured === false ? 'not configured' : `${fmt((api.campaigns || []).length)} GSI-tagged campaigns${sync ? `, synced ${esc(F.timeAgo(sync.finished_at || sync.started_at))}${sync.status === 'error' ? ' <span class="down">(last run failed)</span>' : ''}` : ', never synced'}`}.</span>
@@ -339,7 +340,7 @@ export async function render(el, ctx) {
     const mo = new Map(); for (const e of scoped) { const k = e.day.slice(0, 7); if (!mo.has(k)) mo.set(k, []); mo.get(k).push(e); }
     const slim = f => ({ sent: f.sent, reached: f.reached, opened: f.opened, clickers: f.clickers, demo: f.demo, demo_direct: f.demoDirect, demo_via: f.demoVia, fast_clicks: f.fastClicks, click_rate: f.clickRate && Math.round(f.clickRate * 10) / 10 });
     return {
-      range: { from, to, days }, filter: { campaign: S.campaign || 'all', account: S.company || 'all' }, rules: { fast_click_seconds: rules.fast_click_seconds, gsi_page_counts_as_demo: rules.gsi_page_counts_as_demo },
+      range: { from, to, days }, comparison: cmp ? { from: cmp.from, to: cmp.to, label: cmp.label } : null, filter: { campaign: S.campaign || 'all', account: S.company || 'all' }, rules: { fast_click_seconds: rules.fast_click_seconds, gsi_page_counts_as_demo: rules.gsi_page_counts_as_demo },
       totals: slim(T), previous_totals: slim(TP), api_in_range: apiCur.length ? { sent: apiSent, replies: apiReplies, unique_clicks: apiSum(apiCur, 'unique_clicks'), opportunities: apiSum(apiCur, 'opportunities') } : null,
       by_week: [...wk.entries()].sort().slice(-12).map(([k, v]) => ({ week: k, ...slim(E.funnel(v)) })),
       by_month: [...mo.entries()].sort().slice(-6).map(([k, v]) => ({ month: k, ...slim(E.funnel(v)) })),

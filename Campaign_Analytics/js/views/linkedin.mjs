@@ -19,9 +19,10 @@ export async function render(el, ctx) {
   el.innerHTML = `<div class="seghead">Ads · LinkedIn</div><h1>LinkedIn ads</h1><p class="sub">${esc(F.rangeLabel(from, to))}</p>${ctx.ui.spinner('Loading LinkedIn data')}`;
   if (window.Chart) { Chart.defaults.font.family = "'General Sans','Inter',system-ui,sans-serif"; Chart.defaults.color = css('--ink2') || '#6B675F'; Chart.defaults.borderColor = css('--line') || '#E3E1DE'; }
 
-  const prev = A.previousRange(from, to);
+  // Comparison range from the global "Compare with" control (null = no comparison).
+  const prev = ctx.state.prev || null;
   let data, prevData, histData;
-  try { [data, prevData, histData] = await Promise.all([ctx.api.get('linkedin', { from, to }), ctx.api.get('linkedin', prev).catch(() => null), ctx.api.get('linkedin', { from: '2025-01-01', to: F.today() }).catch(() => null)]); }
+  try { [data, prevData, histData] = await Promise.all([ctx.api.get('linkedin', { from, to }), (prev ? ctx.api.get('linkedin', { from: prev.from, to: prev.to }).catch(() => null) : Promise.resolve(null)), ctx.api.get('linkedin', { from: '2025-01-01', to: F.today() }).catch(() => null)]); }
   catch (e) { el.innerHTML = `<div class="seghead">Ads · LinkedIn</div><h1>LinkedIn ads</h1>${ctx.ui.empty('LinkedIn data could not be loaded: ' + (e.message || e))}`; return; }
   const S = ctx.settings || {};
   const accounts = Array.isArray(S.accounts) ? S.accounts : [], bands = S.bands || {}, icp_pool = Array.isArray(S.icp_pool) ? S.icp_pool : [], regions = S.regions || {}, stages = S.stages || undefined;
@@ -54,12 +55,12 @@ export async function render(el, ctx) {
   for (const r of A.segRows(demoRows, 'Company')) { const a = A.matchAccount(r.value, accounts); if (a && (Number(r.impressions) || 0) > 0) matched.set(a, (matched.get(a) || 0) + Number(r.impressions)); }
   const metricsPresent = Object.keys(METRIC_LABEL).filter(m => demoRows.some(r => Number(r[m]) > 0));
   const winLabel = w => `${F.dayLabel(w.upload.period_start)} to ${F.dayLabel(w.upload.period_end)}`;
-  const dl = (cur, prevV, invert = false) => { if (prevV == null || !prevV || cur == null) return '<span class="muted">no prior</span>'; const g = (cur - prevV) / prevV * 100; const good = invert ? g <= 0 : g >= 0; return `<span class="${good ? 'up' : 'down'}">${g > 0 ? '+' : ''}${fmt(g, 0)}%</span> vs prior ${days}d`; };
+  const dl = (cur, prevV, invert = false) => { if (!prev) return '<span class="muted">no comparison</span>'; if (prevV == null || !prevV || cur == null) return '<span class="muted">nothing to compare</span>'; const g = (cur - prevV) / prevV * 100; const good = invert ? g <= 0 : g >= 0; return `<span class="${good ? 'up' : 'down'}">${g > 0 ? '+' : ''}${fmt(g, 0)}%</span> vs ${esc(prev.label)}`; };
   const topSet = P.programs.flatMap(p => p.campaigns).filter(c => c.leads > 0).sort((a, b) => b.leads - a.leads)[0];
 
   // ---- page ----
   let h = `<div class="seghead">Ads · LinkedIn</div><h1>LinkedIn ads</h1>
-  <p class="sub">${esc(F.rangeLabel(from, to))}. Leads are LinkedIn lead form submissions. Money is USD. Compared with the ${days} days before (${esc(F.rangeLabel(prev.from, prev.to))}).</p>
+  <p class="sub">${esc(F.rangeLabel(from, to))}. Leads are LinkedIn lead form submissions. Money is USD. ${prev ? `Compared ${esc(F.vsLabel(prev))}.` : 'No comparison selected.'}</p>
   <div class="card" style="font-size:13px;margin-bottom:6px"><b>Included data.</b> Performance: ${perfDays.length ? `${perfDays.length} of ${days} days have rows (${esc(F.dayLabel(perfDays[0]))} to ${esc(F.dayLabel(perfDays[perfDays.length - 1]))})` : 'no daily rows in this range'}.
   Demographics: ${windows.length ? `${windows.length} window${windows.length === 1 ? '' : 's'} overlap this range: ${windows.map(w => esc(winLabel(w))).join('; ')}. Demographics are totals per export window, so a person seen in two windows is counted twice.` : 'no export window overlaps this range.'}</div>`;
 
@@ -68,7 +69,7 @@ export async function render(el, ctx) {
   // 1. hero + tiles
   h += ctx.ui.section('Results', 'The headline numbers for the range, each compared with the same number of days before it.', `
   <div class="hero">
-    <div class="big"><div class="n">${fmt(T.leads)}</div><div class="l">LinkedIn leads in ${esc(F.rangeLabel(from, to))}${TP.leads ? `, ${fmt(TP.leads)} in the previous ${days} days` : ''}.</div>
+    <div class="big"><div class="n">${fmt(T.leads)}</div><div class="l">LinkedIn leads in ${esc(F.rangeLabel(from, to))}${prev && TP.leads ? `, ${fmt(TP.leads)} ${esc(prev.label)}` : ''}.</div>
       <div class="split">
         <div><b>${usd(T.cpl)}</b><span>blended cost per lead</span></div>
         <div><b>${usd(T.spend)}</b><span>spend</span></div>
@@ -99,6 +100,10 @@ export async function render(el, ctx) {
 
   // 3. trend (whole history)
   h += ctx.ui.section('Week on week and month on month', 'The whole history of uploaded performance data (the selected range is the darker bars). Switch metrics on and off, compare with the previous week or month or with the average of all earlier ones, and see the week or month in progress against the same days of earlier ones, with a straight-line projection.', `<div id="trendX"></div>`);
+
+  // 3a. reach heat maps: impressions ÷ reach_frequency (default 3) = people
+  const rf = Number((S.targets || {}).reach_frequency) || 3;
+  h += ctx.ui.section('Reach: people by account, designation and region', `Estimated people reached, counting ${fmt(rf, 1)} impressions as one person (Admin › Targets). Columns are the demographics export windows in the selected dates; the last columns total them and compare with ${prev ? esc(prev.label) : 'nothing (pick a comparison at the top)'}. A person seen in two windows counts twice.`, `<div id="reachSeg"></div><div class="card"><div class="tblwrap" style="border:none" id="reachHeat"></div>${ctx.heat.legend('orange', 'square-root scale on the current windows')}</div>`);
 
   // 3b. reach quality over time
   h += ctx.ui.section('Where the ads land and how that changes', 'Every demographics window uploaded so far, oldest to newest: the share of impressions by region, seniority, designation band and named target accounts. A falling line is where reach quality is dropping.', `<div id="qualSeg"></div><div class="card"><div class="chartbox"><canvas id="qualChart"></canvas></div></div><div class="tblwrap" style="margin-top:10px" id="qualTable"></div>`);
@@ -187,6 +192,44 @@ export async function render(el, ctx) {
   };
   ctx.ui.seg(el.querySelector('#qualSeg'), [{ value: 'region', label: 'Regions' }, { value: 'seniority', label: 'Seniority' }, { value: 'band', label: 'Designation bands' }, { value: 'accounts', label: 'Target accounts' }], v => { qMode = v; drawQual(); }, qMode);
   drawQual();
+
+  // ---- reach heat maps (impressions ÷ rf) ----
+  // One Map(rowKey -> people) per window, for the chosen dimension.
+  const reachMaps = (wins, dim) => wins.map(w => {
+    const m = new Map();
+    const put = (k, imp) => { if (imp) m.set(k, (m.get(k) || 0) + imp / rf); };
+    if (dim === 'account') for (const r of A.segRows(w.rows, 'Company')) put(A.matchAccount(r.value, accounts) || 'Other pages', Number(r.impressions) || 0);
+    else if (dim === 'band') { const b = A.bandShares(A.segRows(w.rows, 'Job Title'), bands, 'impressions'); for (const k of A.BANDS) put(k, b.counts[k] || 0); }
+    else { const sh = A.segmentShare(w.rows, 'Country', 'impressions', r => A.regionOf(r.value, regions)); for (const [k, v] of sh.values) put(k, v); }
+    return m;
+  });
+  const sumMaps = maps => { const t = new Map(); for (const m of maps) for (const [k, v] of m) t.set(k, (t.get(k) || 0) + v); return t; };
+  let reachDim = 'account';
+  const drawReach = () => {
+    const box = el.querySelector('#reachHeat');
+    if (!windows.length) { box.innerHTML = ctx.ui.empty('No demographics export covers this range. Upload one at the top of this page.'); return; }
+    const curMaps = reachMaps(windows, reachDim), curTot = sumMaps(curMaps);
+    const cmpTot = prev ? sumMaps(reachMaps(prevWindows, reachDim)) : null;
+    const keys = [...new Set([...curTot.keys(), ...(cmpTot ? cmpTot.keys() : [])])].filter(k => (curTot.get(k) || 0) > 0 || (cmpTot && cmpTot.get(k) > 0));
+    let rows = keys.map(k => ({ key: k, label: k, sub: reachDim === 'account' ? ((accounts.find(a => a.name === k) || {}).category || (k === 'Other pages' ? 'pages matching no account' : '')) : '' }));
+    if (reachDim === 'band') rows = A.BANDS.filter(b => keys.includes(b)).map(b => ({ key: b, label: b }));
+    else rows.sort((a, b) => (curTot.get(b.key) || 0) - (curTot.get(a.key) || 0));
+    if (reachDim === 'account') rows = rows.slice(0, 40);
+    const cols = windows.map((w, i) => ({ key: 'w' + i, label: winLabel(w) }));
+    cols.push({ key: 'cur', label: 'Selected dates' });
+    if (prev) { cols.push({ key: 'cmp', label: prev.label.replace(/^the /, '') }); cols.push({ key: 'chg', label: 'Change' }); }
+    const maxCur = Math.max(1, ...curMaps.flatMap(m => [...m.values()]));
+    ctx.heat.renderHeat(box, { corner: reachDim === 'account' ? 'Account' : reachDim === 'band' ? 'Designation' : 'Region', rows, cols, sortRows: false, scale: 'sqrt', max: maxCur, cell: (r, c) => {
+      if (c.startsWith('w')) { const v = curMaps[+c.slice(1)].get(r) || 0; return { v, text: v ? fmt(v) : '–' }; }
+      if (c === 'cur') { const v = curTot.get(r) || 0; return { v: null, text: fmt(v), title: `${r}: ${fmt(v)} people in the selected dates (${fmt(v * rf)} impressions ÷ ${rf})` }; }
+      if (c === 'cmp') { const v = cmpTot.get(r) || 0; return { v: null, text: v ? fmt(v) : '–', title: `${r}: ${fmt(v)} people ${prev.label}` }; }
+      const a = curTot.get(r) || 0, b = cmpTot.get(r) || 0; const g = A.growth(a, b);
+      return { v: null, text: g == null ? (a ? 'new' : '–') : (g > 0 ? '+' : '') + fmt(g, 0) + '%', title: `${r}: ${fmt(a)} now vs ${fmt(b)} ${prev.label}` };
+    }, colTotal: c => c.startsWith('w') ? fmt([...curMaps[+c.slice(1)].values()].reduce((x, y) => x + y, 0)) : c === 'cur' ? fmt([...curTot.values()].reduce((x, y) => x + y, 0)) : c === 'cmp' ? fmt([...cmpTot.values()].reduce((x, y) => x + y, 0)) : (() => { const a = [...curTot.values()].reduce((x, y) => x + y, 0), b = [...cmpTot.values()].reduce((x, y) => x + y, 0); const g = A.growth(a, b); return g == null ? '–' : (g > 0 ? '+' : '') + fmt(g, 0) + '%'; })() });
+    box.querySelectorAll('td.c').forEach(td => { if (/^(cur|cmp|chg)$/.test(td.dataset.c)) { td.style.background = 'var(--offwhite)'; td.style.color = ''; if (td.dataset.c === 'chg') td.classList.add(/^\+/.test(td.textContent) ? 'up' : /^-/.test(td.textContent) ? 'down' : 'muted'); } });
+  };
+  ctx.ui.seg(el.querySelector('#reachSeg'), [{ value: 'account', label: 'Accounts' }, { value: 'band', label: 'Designation bands' }, { value: 'region', label: 'Regions' }], v => { reachDim = v; drawReach(); }, reachDim);
+  drawReach();
 
   // ---- funnel charts ----
   const stackChart = (id, key, money) => chart(el.querySelector('#' + id), { type: 'bar', data: { labels: SS.buckets.map(k => F.bucketLabel(k, stageGran)), datasets: A.STAGE_ORDER.filter(st => st !== 'Other' || SS.totals.Other[key]).map(st => ({ label: st, data: SS.buckets.map(k => Math.round((SS.byStage[st][key][k] || 0) * 100) / 100), backgroundColor: STAGE_COLOR[st], borderRadius: 4 })) },
@@ -277,7 +320,7 @@ export async function render(el, ctx) {
     const share = (segment, top = 8) => { const s = A.segmentShare(demoRows, segment, 'impressions'); return [...s.values.entries()].sort((a, b) => b[1] - a[1]).slice(0, top).map(([k, v]) => ({ [segment === 'Country' ? 'country' : 'value']: k, share_pct: s.total ? Math.round(v / s.total * 1000) / 10 : null })); };
     const bs = A.bandShares(A.segRows(demoRows, 'Job Title'), bands);
     const input = {
-      range: { from, to, days }, previous_range: prev,
+      range: { from, to, days }, previous_range: prev ? { from: prev.from, to: prev.to, label: prev.label } : null,
       totals: round(T), previous_totals: prevPerf.length ? round(TP) : null,
       trend_by_week: wk.slice(-16),
       stage_split: Object.fromEntries(Object.entries(SS.totals).map(([k, v]) => [k, { spend: Math.round(v.spend), leads: v.leads, impressions: v.impressions }])),

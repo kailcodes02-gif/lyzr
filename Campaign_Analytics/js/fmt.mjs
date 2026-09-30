@@ -22,3 +22,5 @@ export const bucketKey = (iso, gran) => gran === 'month' ? monthKey(iso) : gran 
 export const bucketLabel = (k, gran) => gran === 'month' ? monthLabel(k) : gran === 'week' ? 'Wk of ' + dayLabel(k) : dayLabel(k);
 export const timeAgo = ts => { if (!ts) return '–'; const s = (Date.now() - new Date(ts)) / 1000; if (s < 90) return 'just now'; if (s < 3600) return Math.round(s / 60) + ' min ago'; if (s < 86400) return Math.round(s / 3600) + ' h ago'; return Math.round(s / 86400) + ' d ago'; };
 export const istDateTime = ts => ts ? new Date(ts).toLocaleString('en-GB', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' IST' : '–';
+// "vs the 30 days before (1 Aug to 30 Aug)" for the tiles, from ctx.state.prev.
+export const vsLabel = prev => prev ? `vs ${prev.label} (${rangeLabel(prev.from, prev.to)})` : 'no comparison';

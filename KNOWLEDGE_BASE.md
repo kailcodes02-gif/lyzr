@@ -458,6 +458,14 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01, Campaign Analytics: global "Compare with" and reach heat maps
+- Top bar gains "Compare with": the period before (default), same dates last week / last month / N weeks ago /
+  N months ago, or nothing. `ctx.state.prev = {from, to, label}` (js/app.mjs `compareRange`); Overview, LinkedIn
+  and Email tiles, "vs" text and AI inputs use it instead of a fixed prior period.
+- LinkedIn: "Reach: people by account, designation and region" heat maps = impressions ÷ `targets.reach_frequency`
+  (default 3, Admin › Targets; penetration keeps its own 3.5) per demographics window, with Selected-dates total,
+  comparison total and % change columns. Bands via title weights (Director split 50/50), regions via Admin › Regions.
+
 ### 2026-10-01, Campaign Analytics: first real HubSpot pull (575 GSI leads) and three fixes on the way
 - Error 1102 (CPU) with 1,441 accounts: `toAccount` was called with a fresh `[]` target list, so the phrase index
   was rebuilt per contact. Now `NO_TARGETS`, first-token buckets, index reused across requests, Map domain lookup.

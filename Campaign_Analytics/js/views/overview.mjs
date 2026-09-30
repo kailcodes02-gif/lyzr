@@ -30,14 +30,15 @@ export async function render(el, ctx) {
   const { table, section, spinner, pill, empty } = ctx.ui;
   const { from, to } = ctx.state;
   const days = daysBetween(from, to);
-  const prevTo = addDays(from, -1), prevFrom = addDays(from, -days);
+  const cmp = ctx.state.prev || null;
+  const prevFrom = cmp ? cmp.from : null, prevTo = cmp ? cmp.to : null;
   const targets = { leads_per_month: 200, demo_mqls_per_month: 30, ...((ctx.settings && ctx.settings.targets) || {}) };
   const accounts = (ctx.settings && ctx.settings.accounts) || [];
   const now = Date.now();
   const scale = n => n / Math.max(1, days) * 30;
 
   el.innerHTML = `<div class="seghead">GSI and SI programme</div><h1>Overview</h1><div class="intro"><b>What this page is:</b> every channel side by side for the dates at the top (${esc(rangeLabel(from, to))}). <b>Channels at a glance</b> puts ads, email and HubSpot leads in one table. <b>Target vs today</b> takes the pace of the selected dates, scales it to a 30-day month and compares it with the monthly targets (Admin › Targets). <b>Needs attention</b> lists what the numbers flag this period. The <b>AI read-out</b> is Claude reading all of it and suggesting what to do; suggestions you track are checked again next time.</div>` + spinner('Loading channels');
-  const [liR, liPrevR, hsR, emR] = await Promise.allSettled([ctx.api.get('linkedin', { from, to }), ctx.api.get('linkedin', { from: prevFrom, to: prevTo }), ctx.api.get('hubspot', { from, to }), ctx.api.get('email', { offset: 0 })]);
+  const [liR, liPrevR, hsR, emR] = await Promise.allSettled([ctx.api.get('linkedin', { from, to }), (cmp ? ctx.api.get('linkedin', { from: prevFrom, to: prevTo }) : Promise.resolve(null)), ctx.api.get('hubspot', { from, to }), ctx.api.get('email', { offset: 0 })]);
   // Email: the daily Instantly API rows (all GSI-tagged campaigns) summed over the range.
   const em = emR.status === 'fulfilled' ? emR.value : null;
   const emDaily = em && em.api ? (em.api.daily || []).filter(r => r.day >= from && r.day <= to) : [];
@@ -91,7 +92,7 @@ export async function render(el, ctx) {
 
   // ---- needs attention -----------------------------------------------------------------------
   const alerts = [];
-  if (T && TP && TP.leads && T.leads && T.cpl > TP.cpl * 1.3) alerts.push({ sev: 'risk', title: `Cost per lead is up ${fmt((T.cpl / TP.cpl - 1) * 100, 0)}% on the prior period`, evidence: `${usd(T.cpl)} now vs ${usd(TP.cpl)} for ${rangeLabel(prevFrom, prevTo)}.`, why: 'The lead-gen ad sets are cooling or spend moved to weaker audiences.', action: 'Check the ad-set table in Ads and move budget back to the sets under $40 CPL.', owner: 'Kailash', link: '#/ads/linkedin' });
+  if (T && TP && TP.leads && T.leads && T.cpl > TP.cpl * 1.3) alerts.push({ sev: 'risk', title: `Cost per lead is up ${fmt((T.cpl / TP.cpl - 1) * 100, 0)}% vs ${cmp ? cmp.label : 'the prior period'}`, evidence: `${usd(T.cpl)} now vs ${usd(TP.cpl)} for ${rangeLabel(prevFrom, prevTo)}.`, why: 'The lead-gen ad sets are cooling or spend moved to weaker audiences.', action: 'Check the ad-set table in Ads and move budget back to the sets under $40 CPL.', owner: 'Kailash', link: '#/ads/linkedin' });
   const ds = li ? directorShare(li) : null, dsPrev = liPrev ? directorShare(liPrev) : null;
   if (ds != null && dsPrev != null && dsPrev - ds >= 10) alerts.push({ sev: 'watch', title: `Director-and-above share of impressions fell ${fmt(dsPrev - ds, 0)} points`, evidence: `${pct(ds, 0)} now vs ${pct(dsPrev, 0)} in the prior windows (demographics exports overlapping each range).`, why: 'Volume is being bought below the buying bands.', action: 'Tighten seniority targeting on the lead-gen ad sets.', owner: 'Kailash', link: '#/ads/linkedin' });
   const tc = li ? topCountry(li) : null;

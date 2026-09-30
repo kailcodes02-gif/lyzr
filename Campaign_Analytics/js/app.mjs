@@ -34,6 +34,21 @@ const PRESETS = [
   ['last14', 'Last 14 days'], ['last30', 'Last 30 days'], ['thisMonth', 'This month'], ['lastMonth', 'Last month'],
   ['last90', 'Last 90 days'], ['ytd', 'This year'], ['all', 'All time'], ['custom', 'Custom'],
 ];
+// "Compare with": every page's "vs" numbers use this comparison range.
+const COMPARE = [
+  ['prev', 'the period before'], ['week', 'same dates last week'], ['month', 'same dates last month'],
+  ['weeks', 'same dates N weeks ago'], ['months', 'same dates N months ago'], ['none', 'nothing'],
+];
+export function compareRange(from, to, mode, n = 1) {
+  const days = fmt.daysBetween(from, to);
+  const shiftMonths = (iso, k) => { const d = new Date(iso + 'T00:00:00'); const day = d.getDate(); d.setDate(1); d.setMonth(d.getMonth() - k); const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); d.setDate(Math.min(day, last)); return fmt.isoDay(d); };
+  if (mode === 'none') return null;
+  if (mode === 'week') return { from: fmt.addDays(from, -7), to: fmt.addDays(to, -7), label: 'same dates last week' };
+  if (mode === 'weeks') return { from: fmt.addDays(from, -7 * n), to: fmt.addDays(to, -7 * n), label: `same dates ${n} weeks ago` };
+  if (mode === 'month') return { from: shiftMonths(from, 1), to: shiftMonths(to, 1), label: 'same dates last month' };
+  if (mode === 'months') return { from: shiftMonths(from, n), to: shiftMonths(to, n), label: `same dates ${n} months ago` };
+  return { from: fmt.addDays(from, -days), to: fmt.addDays(from, -1), label: `the ${days} days before` };
+}
 const $ = id => document.getElementById(id);
 const ctx = { api: null, state: null, user: null, fmt, heat, ui, toast, mountInsights, nav: go, ROUTES: PAGES };
 let current = null, currentMod = null;
@@ -55,13 +70,19 @@ function presetRange(p) {
   return null;
 }
 function loadRange() {
-  try { const s = JSON.parse(localStorage.getItem('ca.range') || 'null'); if (s && s.from && s.to) return s; } catch {}
-  const [from, to] = presetRange('last30'); return { preset: 'last30', from, to };
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem('ca.range') || 'null'); } catch {}
+  if (!(s && s.from && s.to)) { const [from, to] = presetRange('last30'); s = { preset: 'last30', from, to }; }
+  s.cmp = COMPARE.some(([m]) => m === s.cmp) ? s.cmp : 'prev';
+  s.cmpN = Math.min(52, Math.max(1, parseInt(s.cmpN, 10) || 4));
+  return s;
 }
 function setRange(next, silent) {
   ctx.state = { ...ctx.state, ...next, tz: 'Asia/Kolkata' };
-  localStorage.setItem('ca.range', JSON.stringify({ preset: ctx.state.preset, from: ctx.state.from, to: ctx.state.to }));
+  ctx.state.prev = compareRange(ctx.state.from, ctx.state.to, ctx.state.cmp, ctx.state.cmpN);
+  localStorage.setItem('ca.range', JSON.stringify({ preset: ctx.state.preset, from: ctx.state.from, to: ctx.state.to, cmp: ctx.state.cmp, cmpN: ctx.state.cmpN }));
   $('rangePreset').value = ctx.state.preset; $('rangeFrom').value = ctx.state.from; $('rangeTo').value = ctx.state.to;
+  $('cmpMode').value = ctx.state.cmp; $('cmpN').value = ctx.state.cmpN; $('cmpN').classList.toggle('hidden', !/^(weeks|months)$/.test(ctx.state.cmp));
   if (!silent) window.dispatchEvent(new CustomEvent('ca:range', { detail: ctx.state }));
 }
 
@@ -83,6 +104,9 @@ async function enter(user, demo) {
   $('signout').onclick = () => { localStorage.removeItem('ca.demo'); if (demo) location.reload(); else signOut(); };
   $('nav').innerHTML = ROUTES.map(r => r.grp ? `<div class="grp">${fmt.esc(r.grp)}</div>` : `<a href="#/${r.route}" data-r="${r.route}" class="${r.sub ? 'sub' : ''}">${fmt.esc(r.title)}${r.soon ? '<span class="soon">soon</span>' : ''}</a>`).join('');
   $('rangePreset').innerHTML = PRESETS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+  $('cmpMode').innerHTML = COMPARE.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+  $('cmpMode').onchange = e => setRange({ cmp: e.target.value });
+  $('cmpN').onchange = e => setRange({ cmpN: Math.min(52, Math.max(1, parseInt(e.target.value, 10) || 1)) });
   if (window.Chart) { Chart.defaults.font.family = "'General Sans','Inter',system-ui,sans-serif"; Chart.defaults.color = '#6B675F'; Chart.defaults.borderColor = '#EFEFED'; }
   ctx.state = loadRange(); setRange(ctx.state, true);
   $('rangePreset').onchange = e => { const p = e.target.value; const r = presetRange(p); if (r) setRange({ preset: p, from: r[0], to: r[1] }); else setRange({ preset: 'custom' }); };

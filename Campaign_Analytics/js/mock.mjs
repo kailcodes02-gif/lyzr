@@ -23,7 +23,7 @@ export function createMockApi() {
     { id: 'a3', channel: 'linkedin', title: 'Cap the India share of the awareness budget at 40%', owner: 'paid ads lead', status: 'open', source: 'manual', created_at: '2026-09-20T06:00:00Z', created_by: 'demo@lyzr.com' },
   ];
   const DEMO_DOMAINS = { 'tcs.example': 'TCS', 'infosys.example': 'Infosys', 'wipro.example': 'Wipro', 'accenture.example': 'Accenture', 'deloitte.example': 'Deloitte', 'kpmg.example': 'KPMG', 'capgemini.example': 'Capgemini', 'hcltech.example': 'HCLTech', 'cognizant.example': 'Cognizant', 'ey.example': 'EY', 'pwc.example': 'PwC', 'techmahindra.example': 'Tech Mahindra', 'ltimindtree.example': 'LTIMindtree', 'mphasis.example': 'Mphasis', 'coforge.example': 'Coforge', 'firstsource.example': 'Firstsource', 'kearney.example': 'Kearney', 'oliverwyman.example': 'Oliver Wyman', 'boozallen.example': 'Booz Allen', 'rolandberger.example': 'Roland Berger', 'lek.example': 'L.E.K. Consulting' };
-  const DEFAULT_TARGETS = { leads_per_month: 200, demo_mqls_per_month: 30, frequency: 3.5, monthly_budget: 5588 };
+  const DEFAULT_TARGETS = { leads_per_month: 200, demo_mqls_per_month: 30, frequency: 3.5, reach_frequency: 3, monthly_budget: 5588 };
   const EDITORS = ['demo@lyzr.com', 'kailash@lyzr.ai', 'subs@lyzr.ai', 'anju@lyzr.ai', 'siva@lyzr.ai'];
 
   async function seed(name) {
