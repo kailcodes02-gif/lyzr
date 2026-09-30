@@ -458,6 +458,15 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01, Campaign Analytics: GSI list = full ABM master (1,441 accounts)
+- `seed/accounts.json` now merges "GSI_SI Accounts – Over All" (owners, MD/MD-1/MD-2), the Clay ABM export and
+  `GSI_ABM_All_Accounts_Master_List.csv` (1,455 rows): 233 matched, 60 sub-brands folded into parents (KPMG UK,
+  PwC India, Capgemini Invent, NTT DATA regions, Ernst & Young (EY), QuantumBlack...), 1,165 new. Placeholder
+  domains ignored (linkedin.com, bit.ly, hubs.la, wikipedia.org, google.com, microsoft.com, salesforce.com...).
+  Kept separate on purpose: Nittetsu Hitachi Systems. HCL Infosystems folded into HCLTech (judgement call).
+- HubSpot pull: 572 names + 985 domains = 163 searches (9 resumable calls). Names under 4 letters are not
+  searched for accounts without designations (matched by domain instead). Migration 003 applied by the user.
+
 ### 2026-10-01, Campaign Analytics: rebuild (brand UI, channel structure, GSI leads, Claude messages)
 - UI rebuilt on the Lyzr brand build reference (light only, General Sans + JetBrains Mono, 210px sidebar).
   Sidebar: Overview · Ads (LinkedIn live; Google, Meta, Taboola, ChatGPT, X, Bing placeholders) · Email

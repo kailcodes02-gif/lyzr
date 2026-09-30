@@ -128,9 +128,14 @@ export function searchTerms(accounts = [], extraNames = []) {
     if (!a || !a.name) continue
     const ds = [...(a.domains || []), ...(a.domain ? [a.domain] : [])]
     for (const d of ds) domains.add(String(d).toLowerCase())
-    if (!ds.length || a.bands || (a.source || []).includes('accounts')) {
-      names.add(a.name)
-      for (const al of a.aliases || []) names.add(al)
+    // Named accounts (owners and designations) always search by name. Other
+    // accounts search by name only when they have no website, and only names of
+    // at least 4 letters or digits: "TP" or "Sia" would match unrelated firms.
+    const named = Boolean(a.bands || (a.source || []).includes('accounts'))
+    if (named || !ds.length) {
+      for (const n of [a.name, ...(a.aliases || [])]) {
+        if (named || String(n).replace(/[^A-Za-z0-9]/g, '').length >= 4) names.add(n)
+      }
     }
   }
   for (const n of extraNames) if (n) names.add(String(n))
