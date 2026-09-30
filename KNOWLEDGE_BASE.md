@@ -458,6 +458,13 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01, Campaign Analytics: sign-in popup showed the landing page
+- After choosing an account the popup loaded the dashboard gate instead of relaying the response: Microsoft's
+  login pages set COOP, so `window.opener` is null in the popup and `isBridging()` (which required an opener)
+  returned false. `js/auth.mjs` now bridges any URL with `code|error` + `state`; msal-redirect-bridge relays
+  over BroadcastChannel and closes the popup. Correction to the entry below: the stale lock was a symptom.
+  GSIEvents/index.html has the same opener check and may hit the same issue.
+
 ### 2026-10-01, Campaign Analytics: sign-in fix (interaction_in_progress)
 - Live sign-in failed with `interaction_in_progress`: a stale MSAL interaction lock left in browser storage by an
   earlier popup (tried before the SPA redirect URI existed). `Campaign_Analytics/js/auth.mjs` now clears any

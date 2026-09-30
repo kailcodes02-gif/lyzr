@@ -8,15 +8,21 @@ const SCOPES = ['User.Read'];
 const KEY = 'ca.user';
 
 export function isBridging() {
-  const hasResponse = /[#?&](code|error)=/.test(location.hash + location.search);
-  const inPopup = !!window.opener || window.parent !== window;
-  if (hasResponse && inPopup) {
-    if (window.msalRedirectBridge) window.msalRedirectBridge.broadcastResponseToMainFrame().catch(() => {});
-    document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Completing sign-in…</p>';
-    return true;
+  // The popup comes back to this page with the sign-in response in the URL.
+  // Microsoft's login pages set Cross-Origin-Opener-Policy, which cuts the
+  // popup's link to this window (window.opener is null), so we must not
+  // require an opener: any response carrying MSAL's `state` is handed to the
+  // bridge, which relays it over BroadcastChannel and closes the popup.
+  const url = location.hash + location.search;
+  const hasResponse = /[#?&](code|error)=/.test(url) && /[#?&]state=/.test(url);
+  if (!hasResponse) return false;
+  document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Completing sign-in… this window closes by itself. If it does not, close it and go back to the dashboard.</p>';
+  if (window.msalRedirectBridge) {
+    window.msalRedirectBridge.broadcastResponseToMainFrame().catch(() => {
+      document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Sign-in could not be passed back to the dashboard. Close this window and click Sign in again.</p>';
+    });
   }
-  if (hasResponse) history.replaceState(null, '', location.pathname);
-  return false;
+  return true;
 }
 
 let appPromise = null;
