@@ -62,12 +62,21 @@ export function dateFilters(from, to, tzOffsetMinutes = 330) {
   return f
 }
 
-async function hsPost(token, path, body) {
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+// HubSpot allows about 4 search calls a second ("secondly limit"): every call is
+// spaced out, and a 429 is retried after a pause. Waiting costs no CPU time.
+export const SEARCH_GAP_MS = 280
+async function hsPost(token, path, body, attempt = 0) {
   const res = await fetch(HS + path, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
+  if (res.status === 429 && attempt < 3) {
+    await res.text().catch(() => '')
+    await sleep(1100 * (attempt + 1))
+    return hsPost(token, path, body, attempt + 1)
+  }
   if (!res.ok) throw new HttpError(502, `HubSpot ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`)
   return res.json()
 }
@@ -277,6 +286,7 @@ async function searchPhase({ d, token, env, request, cursor, warnings }) {
   let after = cursor.after || undefined
   while (taskIndex < tasks.length && used < SEARCH_BUDGET) {
     const task = tasks[taskIndex]
+    if (used) await sleep(SEARCH_GAP_MS)
     const data = await hsSearch(token, after ? { ...task.body, after } : task.body)
     used++
     for (const r of data.results || []) {
