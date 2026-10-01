@@ -643,11 +643,13 @@ function AdminContent() {
                 // Setup / Link View
                 <div className="space-y-6">
                   <div className="p-4 rounded-xl border border-zinc-300 bg-zinc-100/50 space-y-2">
-                    <h4 className="font-semibold text-zinc-900 text-sm">HubSpot integration is not available in this deployment</h4>
+                    <h4 className="font-semibold text-zinc-900 text-sm">HubSpot sync is not built yet</h4>
                     <p className="text-xs text-zinc-600 leading-relaxed">
-                      The tracker runs as a fully static app (no backend server), and connecting a
-                      HubSpot portal requires a server to hold the OAuth secrets. If the team wants
-                      HubSpot contact sync later, the tracker can be redeployed on a small server plan.
+                      The app itself is static (your browser talks straight to the database), but the
+                      tracker now runs server code for its API — see API keys above — so a HubSpot
+                      connection is no longer blocked: its secrets would live server-side the same way.
+                      Connecting a portal, scheduled contact sync and field mapping just haven&apos;t been
+                      built. Ask for it when it&apos;s worth the effort.
                     </p>
                   </div>
                 </div>

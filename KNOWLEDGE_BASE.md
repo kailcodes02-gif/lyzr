@@ -458,6 +458,15 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-02, GSI Tracker: API live end-to-end; HubSpot card copy corrected
+- SUPABASE_JWT_SECRET set on GitHub (user supplied in chat — treat as exposed; rotate if it ever matters)
+  and bound to Pages after a second deploy (the secret-put step runs AFTER the deploy step, so the first
+  run's deployment didn't see it). Live verification with the user's read key: /me, /summary (6 tasks,
+  1 overdue), /verticals, /tasks with tags, ?vertical=gsi, write refused (read_only_key), /weekly,
+  /history, openapi 200. User advised to revoke the pasted test key.
+- Admin › HubSpot card no longer claims "fully static app / no backend": the /api/v1 Pages Function is
+  server code, so HubSpot sync is possible (not built) — copy now says exactly that.
+
 ### 2026-10-02, GSI Tracker: assignee roles trimmed to Primary + Secondary
 - Migrations 030-032 confirmed applied live (3-arg api_resolve_key answers; lyzr_vertical_id() returns the
   Lyzr id) — tag model active. API still 503 until SUPABASE_JWT_SECRET is added.
