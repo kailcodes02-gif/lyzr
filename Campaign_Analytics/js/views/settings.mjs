@@ -22,7 +22,7 @@ export async function render(el, ctx) {
   draw();
 }
 
-const TAB_RENDER = { email: emailRulesTab, gsi: async (b, c, e) => { const top = document.createElement('div'); const extra = document.createElement('div'); b.append(top, extra); await settingTab(top, c, e, 'accounts'); await gsiTab(extra, c, e); }, regions: (b, c, e) => settingTab(b, c, e, 'regions'), icp: (b, c, e) => settingTab(b, c, e, 'icp_pool'), targets: async (b, c, e) => { const top = document.createElement('div'); const extra = document.createElement('div'); b.append(top, extra); await settingTab(top, c, e, 'targets'); await settingTab(extra, c, e, 'contact_lists'); }, editors: (b, c, e) => settingTab(b, c, e, 'editors'), coverage: coverageTab, connection: connectionTab };
+const TAB_RENDER = { email: emailRulesTab, gsi: async (b, c, e) => { const top = document.createElement('div'); const extra = document.createElement('div'); b.append(top, extra); await settingTab(top, c, e, 'accounts'); await gsiTab(extra, c, e); }, regions: (b, c, e) => settingTab(b, c, e, 'regions'), icp: (b, c, e) => settingTab(b, c, e, 'icp_pool'), targets: async (b, c, e) => { const top = document.createElement('div'); const extra = document.createElement('div'); b.append(top, extra); await settingTab(top, c, e, 'targets'); const lr = document.createElement('div'); b.append(lr); await settingTab(lr, c, e, 'lead_rules'); await settingTab(extra, c, e, 'contact_lists'); }, editors: (b, c, e) => settingTab(b, c, e, 'editors'), coverage: coverageTab, connection: connectionTab };
 
 // ---------------- generic setting tabs ----------------
 const META = {
@@ -30,6 +30,7 @@ const META = {
   regions: { title: 'Regions', sub: 'Which countries roll up into which region. Used wherever a page groups by region: leads by region, where the ads land. A country that is in no list shows as Other.' },
   icp_pool: { title: 'Reach pools', sub: 'How many people work at each account, by country and band (Apollo headcounts). The LinkedIn page divides people reached by these numbers to show how much of each account the ads cover.' },
   targets: { title: 'Targets', sub: 'Monthly goals the Overview compares the current pace against, and two divisors that turn LinkedIn impressions into people: reach heat maps use impressions ÷ 3, penetration uses impressions ÷ 3.5 (people reached = impressions divided by the divisor).' },
+  lead_rules: { title: 'Lead types', sub: 'Keywords (in the ad set, program or ad name) that make a LinkedIn lead an MQL (book a demo, bottom of funnel), a conversation ad lead (bottom; sends in the ad set also count) or a playbook lead (middle). Anything else is an other form lead (NQL, top of funnel).' },
   contact_lists: { title: 'Contact list sizes', sub: 'How many contacts each account has in the LinkedIn custom lists, as { "Account name": number }. Used by Ads › LinkedIn › Reach vs contacts by company. Optional.' },
   editors: { title: 'Editors', sub: 'People allowed to upload files, change these lists and run pulls. Everyone else at Lyzr can view.' },
 };

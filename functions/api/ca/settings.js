@@ -58,6 +58,12 @@ function validate(key, value) {
       const clean = [...new Set(list.map((s) => String(s).trim()).filter(Boolean))]
       return clean
     }
+    case 'lead_rules': {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw Object.assign(new Error('lead_rules must be an object: { mql:[...], conversation:[...], playbook:[...] }'), { status: 400 })
+      const out = {}
+      for (const k of ['mql', 'conversation', 'playbook']) { const list = Array.isArray(value[k]) ? value[k] : String(value[k] || '').split(/\n|,/); out[k] = [...new Set(list.map((x) => String(x).trim().toLowerCase()).filter(Boolean))] }
+      return out
+    }
     case 'contact_lists': {
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw Object.assign(new Error('contact_lists must be an object of account name to number'), { status: 400 })
       return Object.fromEntries(Object.entries(value).map(([k, v]) => [String(k).trim(), Number(v)]).filter(([k, v]) => k && Number.isFinite(v) && v >= 0))

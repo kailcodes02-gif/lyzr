@@ -458,6 +458,16 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01, Campaign Analytics: lead types (MQL / conversation / playbook / other)
+- Kailash's rule: MQL = someone trying to book a demo (bottom of funnel); conversation ad leads (bottom);
+  playbook leads (middle); everything else, e.g. branding or "marketers both", is an other form lead = NQL (top).
+- `leadTypeOf` / `leadSplit` / `leadTrend` in `js/lib/linkedin-agg.mjs`: conversation first (ad format, sends on
+  the ad set, or name), then MQL keywords in the ad set or program name, then playbook keywords (ad name too, so
+  the asset counts), else other. Keywords editable in Admin › Targets › Lead types (`lead_rules` setting).
+- LinkedIn page: new "Leads by type" section (tiles with share, CPL, stage, vs comparison; stacked week/month
+  chart; ad sets per type) with its own Compare control; Overview hand-raisers cell shows the split; AI input
+  carries `lead_types`. `stageOf` now falls back to ToFu instead of Other ("the rest are at the top").
+
 ### 2026-10-01, Campaign Analytics: bulk delete in the upload list
 - "Files uploaded so far" has a checkbox per file, Select all / Clear, and "Delete selected (N)" with one
   confirmation listing the files; deletes run three at a time, then the range cache clears and the page redraws.

@@ -78,6 +78,7 @@ export async function render(el, ctx) {
   const cmpWorked = sectionCompare(ctx, 'linkedin:worked', p => drawWorked(p));
   const cmpReach = sectionCompare(ctx, 'linkedin:reach', p => drawReach(p));
   const cmpSets = sectionCompare(ctx, 'linkedin:adsets', p => drawAdSets(p));
+  const cmpLeads = sectionCompare(ctx, 'linkedin:leadtypes', p => drawLeadTypes(p));
 
   // ---- page ----
   let h = `<div class="seghead">Ads · LinkedIn</div><h1>LinkedIn ads</h1>
@@ -89,6 +90,11 @@ export async function render(el, ctx) {
 
   // 1. hero + tiles (filled by drawResults against the comparison chosen in the section)
   h += ctx.ui.section('Results', `The headline numbers for the range, each compared with the period chosen here. ${cmpResults.html()}`, `<div id="li-results-body">${ctx.ui.spinner('Loading comparison')}</div>`, 'li-results');
+
+  // 1b. leads by type: MQL (book a demo) / conversation ad / playbook / other (NQL)
+  const leadRules = S.lead_rules || undefined;
+  const LS = A.leadSplit(perf, leadRules);
+  h += ctx.ui.section('Leads by type', `Every lead-form submission sorted by what asked for it: <b>MQL</b> = someone trying to book a demo (bottom of the funnel), <b>conversation ad leads</b> (bottom), <b>playbook leads</b> (middle), and <b>other form leads</b> such as branding or persona posts (top, NQL). Decided from the ad set, program and ad names and the ad format; keywords in Admin › Targets › Lead types. ${cmpLeads.html()}`, `<div id="li-leadtypes-body">${ctx.ui.spinner('Loading comparison')}</div>`, 'li-leadtypes');
 
   // 2. achieved / not achieved (filled by drawWorked)
   const li = list => list.length ? `<ul>${list.map(b => `<li><b>${esc(b.b)}</b> ${esc(b.s)}</li>`).join('')}</ul>` : '<p class="muted" style="margin-top:8px">Nothing to report yet for this range.</p>';
@@ -175,12 +181,35 @@ export async function render(el, ctx) {
   }
   h += `<div class="section" id="aiPanel"></div>`;
   el.innerHTML = h;
-  cmpResults.wire(el); cmpWorked.wire(el); cmpReach.wire(el); cmpSets.wire(el);
+  cmpResults.wire(el); cmpWorked.wire(el); cmpReach.wire(el); cmpSets.wire(el); cmpLeads.wire(el);
   mountUploader(el.querySelector('#uploader'), ctx, { channel: 'linkedin', isEditor: isEditorOf(ctx), onDone: () => render(el, ctx) });
 
   // ---- sections with their own comparison: each fetches the comparison rows it needs (memoised)
   // and redraws only itself. lastPrev / TP / lastBullets feed the AI read-out below. ----
   let TP = A.totals([]), TPn = 0, lastPrev = prev, lastBullets = { achieved: [], missed: [] }, lastWorkedPrev = prev;
+  let leadChart = null, lastLeadPrev = null, LSP = null;
+  async function drawLeadTypes(p) {
+    const box = el.querySelector('#li-leadtypes-body'); if (!box) return;
+    const prevRows = p ? (await prevBundle(p)).perf : []; if (!el.isConnected) return;
+    LSP = A.leadSplit(prevRows, leadRules); lastLeadPrev = p;
+    const TYPE_COLOR = { mql: '#043E77', conversation: '#FE4B1E', playbook: '#1F2022', other: '#A8A298' };
+    const tiles = LS.types.map(t => { const q = LSP.byType[t.type]; return { k: t.label, v: `${fmt(t.leads)} <span class="muted" style="font-size:13px;font-weight:400">${t.share != null ? pct(t.share, 0) + ' of leads' : ''}</span>`, d: `${t.leads ? usd(t.cpl) + ' per lead · ' : ''}${t.campaigns.length} ad set${t.campaigns.length === 1 ? '' : 's'} · ${t.stage}<br>${deltaText(p, t.leads, q ? q.leads : null)}` }; });
+    const gran = days > 70 ? 'month' : 'week';
+    const trend = A.leadTrend(perf, gran, leadRules);
+    const rows = LS.types.flatMap(t => t.campaigns.filter(c => c.leads > 0 || c.spend > 100).slice(0, 12).map(c => ({ ...c, type: t })));
+    box.innerHTML = `${ctx.ui.tiles(tiles)}
+      <div class="grid g2" style="margin-top:12px">
+        <div class="card"><h3>Leads by type, ${gran === 'month' ? 'month by month' : 'week by week'}</h3><div class="chartbox"><canvas id="leadTypeChart"></canvas></div></div>
+        <div class="card"><h3>Which ad sets bring which leads</h3>${rows.length ? ctx.ui.table({ cols: [
+          { h: 'Type', k: 't', left: true, f: r => `<span class="pill" style="background:${TYPE_COLOR[r.type.type]};color:#fff">${esc(r.type.label.replace(/ \(.*\)$/, ''))}</span>` },
+          { h: 'Ad set', k: 'name', left: true, f: r => `<b>${esc(shortName(r.name, 60))}</b>${r.group ? `<br><span class="muted" style="font-size:11.5px">${esc(shortName(r.group, 50))}</span>` : ''}` },
+          { h: 'Leads', k: 'leads', f: r => fmt(r.leads) }, { h: 'Spend', k: 'spend', f: r => usd(r.spend) }, { h: 'CPL', k: 'cpl', f: r => usd(r.leads ? r.spend / r.leads : null) },
+          { h: p ? `Leads ${esc(p.label)}` : 'Leads (no comparison)', k: 'pl', f: r => { const q = (LSP.byType[r.type.type].campaigns || []).find(x => x.name === r.name); return q ? fmt(q.leads) : '<span class="muted">–</span>'; } },
+        ], rows }) : '<p class="muted" style="font-size:13px">No ad set with leads in this range.</p>'}</div>
+      </div>`;
+    if (leadChart) { try { leadChart.destroy(); } catch { /* ignore */ } charts = charts.filter(c => c !== leadChart); leadChart = null; }
+    leadChart = chart(el.querySelector('#leadTypeChart'), { type: 'bar', data: { labels: trend.buckets.map(k => F.bucketLabel(k, gran)), datasets: A.LEAD_TYPES.map(t => ({ label: A.LEAD_LABELS[t], data: trend.series[t], backgroundColor: TYPE_COLOR[t], stack: 'leads' })) }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Leads' } } } } });
+  }
   async function drawResults(p) {
     const box = el.querySelector('#li-results-body'); if (!box) return;
     const rows = (await prevBundle(p)).perf; if (!el.isConnected) return;
@@ -224,7 +253,7 @@ export async function render(el, ctx) {
     const setsP = A.adSets(perf, { to, prevRows: p ? rows : null });
     box.innerHTML = `<div class="tblwrap"><table><thead><tr><th class="l">Ad set</th><th>Status</th><th class="l">Approach</th><th>Spend</th><th>Reach</th><th>Impressions</th><th>CPM</th><th>CTR</th><th>Clicks</th><th>Leads</th><th>Sends</th><th>Open rate</th><th>CPL</th></tr></thead><tbody>${setsP.map(s => `<tr><td class="l" style="white-space:normal;min-width:220px">${esc(shortName(s.name, 60))}<br><span class="muted" style="font-size:12px">${esc(shortName(s.campaign_group || '', 50))}</span></td><td>${ctx.ui.pill(s.status, s.status === 'Active' ? 'p-high' : 'p-na')}</td><td class="l">${esc(s.approach)}</td><td>${usd(s.spend)}${sd(p, s.spend, s.prev && s.prev.spend)}</td><td>${s.reach ? fmt(s.reach) : '–'}</td><td>${s.impressions ? fmt(s.impressions) : '–'}</td><td>${usd(s.cpm, 2)}</td><td>${pct(s.ctr, 2)}</td><td>${fmt(s.clicks)}</td><td>${fmt(s.leads)}${sd(p, s.leads, s.prev && s.prev.leads)}</td><td>${s.sends ? fmt(s.sends) : '–'}</td><td>${pct(s.open_rate, 1)}</td><td>${usd(s.cpl)}${sd(p, s.cpl, s.prev && s.prev.cpl, true)}</td></tr>`).join('') || '<tr><td colspan="13" class="muted">No ad sets in range</td></tr>'}</tbody></table></div>`;
   }
-  drawResults(cmpResults.prev); drawWorked(cmpWorked.prev); drawAdSets(cmpSets.prev);
+  drawResults(cmpResults.prev); drawWorked(cmpWorked.prev); drawAdSets(cmpSets.prev); drawLeadTypes(cmpLeads.prev);
 
   // ---- trend explorer (whole history) ----
   const hist = ((histData && histData.perf) || perf);
@@ -493,6 +522,7 @@ export async function render(el, ctx) {
       range: { from, to, days }, previous_range: lastPrev ? { from: lastPrev.from, to: lastPrev.to, label: lastPrev.label } : null,
       totals: round(T), previous_totals: lastPrev && TPn ? round(TP) : null,
       trend_by_week: wk.slice(-16),
+      lead_types: { compared_with: lastLeadPrev ? lastLeadPrev.label : null, types: LS.types.map(t => ({ type: t.label, stage: t.stage, leads: t.leads, share_pct: t.share == null ? null : Math.round(t.share), spend: Math.round(t.spend), cpl: t.cpl == null ? null : Math.round(t.cpl), prior_leads: LSP ? LSP.byType[t.type].leads : null, top_ad_sets: t.campaigns.slice(0, 3).map(c => ({ name: c.name, leads: c.leads })) })) },
       stage_split: Object.fromEntries(Object.entries(SS.totals).map(([k, v]) => [k, { spend: Math.round(v.spend), leads: v.leads, impressions: v.impressions }])),
       programs: progs,
       top_ads: ads.slice(0, 6).map(a => ({ name: a.ad_name, spend: Math.round(a.spend), leads: a.leads, cpl: a.cpl && Math.round(a.cpl), ctr: a.ctr && Math.round(a.ctr * 100) / 100 })),

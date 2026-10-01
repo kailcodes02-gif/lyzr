@@ -32,13 +32,13 @@ test('funnel stage keywords: BoFu wins over MoFu over ToFu, program name first',
   assert.equal(A.stageOf({ campaign_group: 'LinkedIn Ads-GSI & SI|brand Awareness Campaign', campaign: 'x' }), 'ToFu');
   assert.equal(A.stageOf({ campaign_group: 'GSI & SI Lead Gen| Website visits', campaign: 'x' }), 'ToFu', 'website visits is ToFu even though the group name also says Lead Gen');
   assert.equal(A.stageOf({ campaign_group: 'LinkedIn Ads-GSI & SI|Workshop|Lead Gen', campaign: 'x' }), 'MoFu');
-  assert.equal(A.stageOf({ campaign_group: '', campaign: 'Something else' }), 'Other');
+  assert.equal(A.stageOf({ campaign_group: '', campaign: 'Something else' }), 'ToFu');
 });
 
 test('funnel stage: an explicit stages setting overrides the defaults', () => {
   const stages = { ToFu: ['reach'], MoFu: ['nurture'], BoFu: ['close'] };
   assert.equal(A.stageOf({ campaign_group: 'Close deals', campaign: '' }, stages), 'BoFu');
-  assert.equal(A.stageOf({ campaign_group: 'Playbook Lead Gen', campaign: '' }, stages), 'Other');
+  assert.equal(A.stageOf({ campaign_group: 'Playbook Lead Gen', campaign: '' }, stages), 'ToFu');
 });
 
 test('verdict rules', () => {
@@ -373,4 +373,26 @@ test('penetrationCube: company x region x band, cumulative over windows', () => 
   assert.equal(Math.round(C2.accounts[0].total.All.reached), 2000);
   assert.equal(Math.round(C2.accounts[0].regions.Europe.All.reached), 1000); assert.equal(C2.accounts[0].regions.Europe.All.pct, null);
   assert.deepEqual(C.bands, ['MD', 'MD-1', 'MD-2']);
+});
+
+test('lead types: conversation, MQL (book a demo), playbook, other (NQL)', () => {
+  assert.equal(A.leadTypeOf({ campaign: 'GSI&SI|ANI|Conversation Ads', format: 'Conversation ad' }), 'conversation');
+  assert.equal(A.leadTypeOf({ campaign: 'Jessica|GSI|Demo offer', format: 'Single image', sends: 40 }), 'conversation');   // sends = messaging ad set
+  assert.equal(A.leadTypeOf({ campaign: 'WP|Accenture|Anju|India|Book a Demo|GSI&SI' }), 'mql');
+  assert.equal(A.leadTypeOf({ campaign: 'Custom Aud|GSI&SI|Playbooks|Lead Gen- 1/09/26' }), 'playbook');
+  assert.equal(A.leadTypeOf({ campaign: 'Marketers both|GSI&SI|Lead Gen', campaign_group: 'Brand' }), 'other');
+  assert.equal(A.leadTypeOf({ campaign: 'X', ad_name: 'Agentic AI Roadmap: the 90-day plan' }), 'playbook');            // asset name counts
+  assert.equal(A.leadTypeOf({ campaign: 'Something' }, { mql: ['something'] }), 'mql');                                  // Admin rules
+  const rows = [
+    { day: '2026-09-01', campaign: 'A|Book a demo', leads: 3, spend: 90 }, { day: '2026-09-02', campaign: 'A|Book a demo', leads: 1, spend: 10 },
+    { day: '2026-09-01', campaign: 'B|Playbooks', leads: 10, spend: 200 }, { day: '2026-09-08', campaign: 'C|Conversation Ads', sends: 100, leads: 2, spend: 50 },
+    { day: '2026-09-08', campaign: 'D|Marketers both', leads: 4, spend: 40 },
+  ];
+  const S = A.leadSplit(rows);
+  assert.equal(S.total, 20);
+  assert.deepEqual(S.types.map(t => [t.type, t.leads, Math.round(t.spend)]), [['mql', 4, 100], ['conversation', 2, 50], ['playbook', 10, 200], ['other', 4, 40]]);
+  assert.equal(S.byType.mql.cpl, 25); assert.equal(S.byType.playbook.share, 50); assert.equal(S.byType.mql.stage, 'BoFu'); assert.equal(S.byType.other.stage, 'ToFu');
+  assert.equal(S.byType.mql.campaigns[0].name, 'A|Book a demo');
+  const T = A.leadTrend(rows, 'week');
+  assert.deepEqual(T.buckets, ['2026-08-31', '2026-09-07']); assert.deepEqual(T.series.mql, [4, 0]); assert.deepEqual(T.series.other, [0, 4]);
 });

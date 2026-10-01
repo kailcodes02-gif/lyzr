@@ -6,7 +6,12 @@ import { db, dbConfigured } from './db.js'
 import { bandsFromSeeds } from './classify.js'
 import { DEFAULT_EDITORS, parseEmails } from './auth.js'
 
-export const SETTING_KEYS = ['bands', 'icp_pool', 'accounts', 'regions', 'targets', 'editors', 'email_rules', 'gsi_companies', 'contact_lists']
+export const DEFAULT_LEAD_RULES = {
+  conversation: ['conversation', 'message ad', 'sponsored messaging', 'inmail', 'conversation ad'],
+  mql: ['book a demo', 'book-a-demo', 'bookademo', 'book demo', 'demo', 'meeting', 'consultation'],
+  playbook: ['playbook', 'roadmap', 'guide', 'ebook', 'e-book', 'whitepaper', 'report', 'workshop', 'webinar'],
+}
+export const SETTING_KEYS = ['bands', 'icp_pool', 'accounts', 'regions', 'targets', 'editors', 'email_rules', 'gsi_companies', 'contact_lists', 'lead_rules']
 
 export const DEFAULT_TARGETS = { leads_per_month: 200, demo_mqls_per_month: 30, frequency: 3.5, reach_frequency: 3 }
 
@@ -80,6 +85,8 @@ export async function loadSettings(env, request, { keys = SETTING_KEYS } = {}) {
   if (keys.includes('gsi_companies')) pick('gsi_companies', [])
   // Contact list sizes per account ({ 'Account name': number }) for LinkedIn "Reach vs contacts by company".
   if (keys.includes('contact_lists')) pick('contact_lists', {})
+  // Keywords that sort LinkedIn lead-form leads into MQL / conversation / playbook (else other).
+  if (keys.includes('lead_rules')) pick('lead_rules', DEFAULT_LEAD_RULES)
   if (keys.includes('editors')) {
     pick('editors', parseEmails(env && env.CA_EDITORS).length ? parseEmails(env.CA_EDITORS) : DEFAULT_EDITORS)
     if (byKey.editors) out.editors = parseEmails(byKey.editors.value)

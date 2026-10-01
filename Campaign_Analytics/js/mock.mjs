@@ -35,7 +35,7 @@ export function createMockApi() {
   }
   async function settings() {
     const [bands, icp_pool, accounts, regions] = await Promise.all([seed('band_titles'), seed('icp_pool'), seed('accounts'), seed('regions')]);
-    return { bands, icp_pool, accounts, regions: (regions && regions.regions) || regions, targets: DEFAULT_TARGETS, contact_lists: { Accenture: 1200, TCS: 800, Infosys: 650, Wipro: 500, Capgemini: 420 }, editors: EDITORS, email_rules: { fast_click_seconds: 180, gsi_page_counts_as_demo: true, link_rules: [], domains: DEMO_DOMAINS }, gsi_companies: ['Accenture', 'TCS', 'Infosys', 'Wipro', 'HCL', 'Tech Mahindra', 'LTI Mindtree', 'Cognizant', 'Capgemini', 'Deloitte', 'KPMG', 'EY', 'PwC', 'McKinsey', 'BCG', 'Bain', 'Genpact', 'Firstsource'], ...overrides, updated_at: overrides.__updated_at || '2026-09-24T10:00:00.000Z' };
+    return { bands, icp_pool, accounts, regions: (regions && regions.regions) || regions, targets: DEFAULT_TARGETS, lead_rules: { conversation: ['conversation', 'message ad', 'inmail'], mql: ['book a demo', 'demo', 'meeting'], playbook: ['playbook', 'roadmap', 'guide', 'workshop', 'webinar'] }, contact_lists: { Accenture: 1200, TCS: 800, Infosys: 650, Wipro: 500, Capgemini: 420 }, editors: EDITORS, email_rules: { fast_click_seconds: 180, gsi_page_counts_as_demo: true, link_rules: [], domains: DEMO_DOMAINS }, gsi_companies: ['Accenture', 'TCS', 'Infosys', 'Wipro', 'HCL', 'Tech Mahindra', 'LTI Mindtree', 'Cognizant', 'Capgemini', 'Deloitte', 'KPMG', 'EY', 'PwC', 'McKinsey', 'BCG', 'Bain', 'Genpact', 'Firstsource'], ...overrides, updated_at: overrides.__updated_at || '2026-09-24T10:00:00.000Z' };
   }
 
   async function get(path, params = {}) {

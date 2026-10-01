@@ -43,6 +43,49 @@ export const DEFAULT_STAGES = {
   ToFu: ['awareness', 'amplification', 'website visit', 'website visits', 'brand', 'engagement', 'video', 'traffic', 'persona', 'post'],
 };
 export const STAGE_ORDER = ['ToFu', 'MoFu', 'BoFu', 'Other'];
+
+// ---- lead types (Kailash's bifurcation, 2026-10-01) ----
+// A lead-form submission is one of: MQL (someone trying to book a demo, bottom of the funnel),
+// Conversation ad lead (bottom), Playbook lead (middle) or Other form lead / NQL (everything
+// else: branding, "marketers both", persona posts; top of the funnel). Decided from the ad set
+// name, the program name and the ad format. Keywords are editable in Admin (lead_rules).
+export const LEAD_TYPES = ['mql', 'conversation', 'playbook', 'other'];
+export const LEAD_LABELS = { mql: 'MQL (book a demo)', conversation: 'Conversation ad leads', playbook: 'Playbook leads', other: 'Other form leads (NQL)' };
+export const LEAD_STAGE = { mql: 'BoFu', conversation: 'BoFu', playbook: 'MoFu', other: 'ToFu' };
+export const DEFAULT_LEAD_RULES = {
+  conversation: ['conversation', 'message ad', 'sponsored messaging', 'inmail', 'conversation ad'],
+  mql: ['book a demo', 'book-a-demo', 'bookademo', 'book demo', 'demo', 'meeting', 'consultation'],
+  playbook: ['playbook', 'roadmap', 'guide', 'ebook', 'e-book', 'whitepaper', 'report', 'workshop', 'webinar'],
+};
+const hasKw = (text, kws) => { const t = String(text || '').toLowerCase(); return !!t && (kws || []).some(k => k && t.includes(String(k).toLowerCase())); };
+export function leadTypeOf(row, rules = DEFAULT_LEAD_RULES) {
+  const R = { ...DEFAULT_LEAD_RULES, ...(rules || {}) };
+  const names = [row.campaign, row.campaign_group, row.ad_name];
+  // Conversation ads first: the format says it, or the ad set carries sends, or the name does.
+  if (hasKw(row.format, R.conversation) || hasKw(row.objective, ['conversation']) || n(row.sends) > 0 || names.some(x => hasKw(x, R.conversation))) return 'conversation';
+  if (names.slice(0, 2).some(x => hasKw(x, R.mql))) return 'mql';
+  if (names.some(x => hasKw(x, R.playbook))) return 'playbook';
+  return 'other';
+}
+/** Leads, spend and campaigns per lead type for a set of daily rows. */
+export function leadSplit(rows, rules) {
+  const out = {}; for (const t of LEAD_TYPES) out[t] = { type: t, label: LEAD_LABELS[t], stage: LEAD_STAGE[t], leads: 0, spend: 0, impressions: 0, clicks: 0, campaigns: new Map() };
+  let total = 0;
+  for (const r of rows) {
+    const t = leadTypeOf(r, rules), o = out[t], L = n(r.leads);
+    o.leads += L; o.spend += n(r.spend); o.impressions += n(r.impressions); o.clicks += n(r.clicks); total += L;
+    const k = r.campaign || r.campaign_id || '(no ad set)'; const c = o.campaigns.get(k) || { name: k, group: r.campaign_group || '', leads: 0, spend: 0 }; c.leads += L; c.spend += n(r.spend); o.campaigns.set(k, c);
+  }
+  for (const t of LEAD_TYPES) { const o = out[t]; o.cpl = div(o.spend, o.leads); o.share = total ? o.leads / total * 100 : null; o.campaigns = [...o.campaigns.values()].sort((a, b) => b.leads - a.leads || b.spend - a.spend); }
+  return { types: LEAD_TYPES.map(t => out[t]), total, byType: out };
+}
+/** Lead type per time bucket: { buckets:[k], series:{ type:[n...] } }. */
+export function leadTrend(rows, gran = 'week', rules) {
+  const keys = new Set(), acc = {}; for (const t of LEAD_TYPES) acc[t] = {};
+  for (const r of rows) { if (!r.day || !n(r.leads)) continue; const k = bucketKey(r.day, gran), t = leadTypeOf(r, rules); keys.add(k); acc[t][k] = (acc[t][k] || 0) + n(r.leads); }
+  const buckets = [...keys].sort();
+  return { buckets, series: Object.fromEntries(LEAD_TYPES.map(t => [t, buckets.map(k => acc[t][k] || 0)])) };
+}
 export function stageOf(row, stages = DEFAULT_STAGES) {
   const s = stages || DEFAULT_STAGES;
   // Program (campaign group) name first, then the ad set name. BoFu keywords win, then ToFu
@@ -51,7 +94,8 @@ export function stageOf(row, stages = DEFAULT_STAGES) {
     const t = String(text || '').toLowerCase(); if (!t) continue;
     for (const st of ['BoFu', 'ToFu', 'MoFu']) if ((s[st] || []).some(k => t.includes(String(k).toLowerCase()))) return st;
   }
-  return 'Other';
+  // Nothing matched: "the rest are all at the top of the funnel" (branding), so ToFu, not Other.
+  return 'ToFu';
 }
 export function stageSplit(rows, gran = 'month', stages) {
   const out = {}; for (const st of STAGE_ORDER) out[st] = { spend: {}, leads: {}, impressions: {} };

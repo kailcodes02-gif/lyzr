@@ -105,6 +105,8 @@ Implementation notes (backend, `functions/api/ca/`), where the built code adds t
   `views/ads-platform.mjs`: uploads of daily exports parsed by `js/ads-csv.mjs`, stored in `ca_li_perf` with
   `platform`), `#/linkedin/phantom` (PhantomBuster outreach), `#/email/instantly`, `#/hubspot/leads`,
   `#/hubspot/messaging`, `#/hubspot/pipeline` (deals), `#/admin`. Old routes redirect.
+- Lead types: LinkedIn lead-form leads are MQL (book a demo, BoFu), conversation ad leads (BoFu), playbook leads
+  (MoFu) or other form leads / NQL (ToFu), by keyword rules in the `lead_rules` setting (`leadTypeOf`).
 - Comparison: the top bar sets `ctx.state.prev`; every comparison-bearing section also has its own selector
   (`js/compare.mjs` `sectionCompare`, memoised fetches with `memoGet`), overrides reset when the top bar changes.
 - Overview: channels at a glance (one row per ad platform with data), target vs today, alerts, the programme
