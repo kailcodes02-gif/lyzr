@@ -132,7 +132,9 @@ function VerticalSwitcher() {
           >
             <Building2 className="w-4 h-4 mr-2 text-blue-600" />
             <span className="flex-1 truncate">{v.name}</span>
-            {ownedVerticalIds.has(v.id) && <Crown className="w-3.5 h-3.5 text-amber-500" aria-label="You own this vertical" />}
+            {v.slug === 'lyzr'
+              ? <Crown className="w-3.5 h-3.5 text-amber-500" aria-label="The main board — every task lives here" />
+              : <span className="text-[10px] text-zinc-400">view</span>}
           </DropdownMenuItem>
         ))}
         {verticals.length === 0 && (
@@ -182,9 +184,9 @@ function VerticalRows({ onNavigate }: { onNavigate: () => void }) {
             className={cn('flex items-center gap-2 py-1.5 rounded-md text-[13px] text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100',
               main ? 'px-3 font-medium text-zinc-800' : 'ml-5 pl-3 pr-3 border-l border-zinc-200 rounded-l-none')}
           >
-            <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            {main ? <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-label="The main board" /> : <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
             <span className="truncate flex-1">{v.name}{main ? <span className="ml-1.5 text-[10px] font-normal text-zinc-400">main board</span> : <span className="ml-1.5 text-[10px] text-zinc-400">view</span>}</span>
-            {ownedVerticalIds.has(v.id) && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
+            {!main && ownedVerticalIds.has(v.id) && <span className="text-[9px] rounded-full bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-px shrink-0" title="You own this vertical">owner</span>}
             {c && c.open > 0 && (
               <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full', c.overdue > 0 ? 'bg-red-50 text-red-600' : 'bg-zinc-100 text-zinc-500')}
                 title={`${c.open} open, ${c.overdue} overdue`}>

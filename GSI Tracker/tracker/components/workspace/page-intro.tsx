@@ -151,12 +151,12 @@ const INTROS: Intro[] = [
   },
   {
     key: 'space_dashboard', path: '/dashboard', icon: <LayoutDashboard className="w-5 h-5 text-blue-600" />,
-    title: 'Dashboard — a vertical’s home',
-    lead: 'Inside Lyzr (the primary board) it covers every vertical. Inside GSI or another vertical, just that vertical.',
+    title: 'Dashboard — one board, many views',
+    lead: 'Lyzr is the one board where every task lives. A vertical’s dashboard is that board filtered to its tag — same tasks, just scoped.',
     features: [
       { name: 'KPIs', what: 'Your open tasks, going live this week, overdue and budget.' },
-      { name: 'Channels', what: 'This vertical’s channels are in the sidebar; each opens its board.' },
-      { name: 'New task', what: 'In Lyzr you can create a task for any vertical, with or without a channel.' },
+      { name: 'Channels', what: 'Channels are shared: this view lists its own first, then everyone’s under “Shared channels”.' },
+      { name: 'New task', what: 'Created here, a task is tagged with this vertical automatically (Lyzr = not vertical-specific).' },
       { name: 'Recent activity', what: 'The latest changes, newest first.' },
     ],
   },

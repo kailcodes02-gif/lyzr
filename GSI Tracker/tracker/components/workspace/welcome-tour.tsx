@@ -63,12 +63,12 @@ const STEPS: Step[] = [
   },
   {
     icon: <LyzrSail className="w-8 h-5" />,
-    title: 'Lyzr is the primary board',
+    title: 'One board — verticals are tags',
     body: (
-      <>This is <strong>Lyzr</strong> — the primary vertical. Inside Lyzr, every page shows
-      <strong> every vertical’s tasks</strong>: a GSI task is on the Lyzr board automatically, and
-      from here you can create tasks for any vertical. <strong>GSI</strong> and other verticals show
-      only their own work. Switch vertical at the top of the sidebar.</>
+      <>This is <strong>Lyzr</strong> — the one board where <strong>every task lives</strong>. Each
+      task carries a vertical tag; <strong>GSI</strong> and the others are just this board filtered
+      to their tag. Create a task in a vertical’s view and it’s tagged for you; it still shows here.
+      Channels are shared by everyone. Switch views at the top of the sidebar.</>
     ),
     href: '/dashboard/?v=lyzr',
     place: 'Lyzr',

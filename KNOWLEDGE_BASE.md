@@ -458,6 +458,12 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01 (night), GSI Tracker: crown = Lyzr only; one-board copy sweep
+- Crown now marks Lyzr (the main board) in the switcher and Boards list; owned verticals show a small
+  "owner" chip instead (user read the crown as "main"). Vertical dashboard subtitle says it's the Lyzr
+  board filtered to the tag; Guide §1 → "One board. Verticals are tags."; tour step, page-intro and
+  help-text (vertical, space_dashboard) rewritten to the tag model. UI-only, no DB change.
+
 ### 2026-10-01 (evening), GSI Tracker: Owner vs Created by made explicit
 - Per Kailash's question "Task Owner vs Assigned To": kept the standard model (Owner = assignee = person
   doing the task; creator recorded separately) and made it visible — drawer Owners header now "Owners

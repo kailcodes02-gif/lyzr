@@ -98,22 +98,22 @@ export default function GuidePage() {
       </div>
 
       {/* 1 */}
-      <Section n={1} title="Lyzr is the primary board">
+      <Section n={1} title="One board. Verticals are tags.">
         <Card className="bg-white border-zinc-200">
           <CardContent className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-600">
             <div className="space-y-1.5">
               <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><LyzrSail className="w-5 h-3.5" /> Lyzr sees everything</p>
-              <p>Inside Lyzr, every page — Dashboard, Projects, Calendar, Tracker, Owners, Weekly, My Tasks — shows <strong>every vertical&apos;s tasks</strong>. A GSI task is automatically on the Lyzr board too.</p>
+              <p><strong>Every task lives on the Lyzr board</strong> — it is the only board there is. Each task carries a vertical tag (Lyzr = not vertical-specific), and every page here shows all of them.</p>
               <Link href={withVertical('/dashboard/', lyzrSlug)} className="text-blue-600 hover:underline inline-flex items-center gap-1">Open the Lyzr board <ArrowRight className="w-3 h-3" /></Link>
             </div>
             <div className="space-y-1.5">
-              <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><Building2 className="w-4 h-4 text-blue-600" /> Other verticals see their own</p>
-              <p>GSI (and any vertical added later) shows only its own channels and tasks. Switch vertical with the switcher at the top of the sidebar.</p>
-              <Link href={withVertical('/dashboard/', otherSlug)} className="text-blue-600 hover:underline inline-flex items-center gap-1">Open a vertical <ArrowRight className="w-3 h-3" /></Link>
+              <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><Building2 className="w-4 h-4 text-blue-600" /> A vertical is a view</p>
+              <p>GSI&apos;s board is the Lyzr board <strong>filtered to tasks tagged GSI</strong> — nothing lives only there. Create a task in the GSI view and it&apos;s tagged GSI automatically; tag a task with two verticals and it shows in both views.</p>
+              <Link href={withVertical('/dashboard/', otherSlug)} className="text-blue-600 hover:underline inline-flex items-center gap-1">Open the GSI view <ArrowRight className="w-3 h-3" /></Link>
             </div>
             <div className="space-y-1.5">
               <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><ListTodo className="w-4 h-4 text-emerald-600" /> Create from anywhere</p>
-              <p>From Lyzr, a new task asks which vertical it&apos;s for (Lyzr by default), so every team&apos;s work can be added from one place. Stand-alone Lyzr work lives in Lyzr&apos;s own channels.</p>
+              <p>Channels are <strong>shared</strong>: any task can sit in any channel, whatever it&apos;s tagged. A channel created from a vertical&apos;s view simply lists first there. Change a task&apos;s tags any time in its drawer, under <strong>Vertical</strong>.</p>
             </div>
           </CardContent>
         </Card>

@@ -3,7 +3,7 @@
 
 export const HELP: Record<string, string> = {
   // Taxonomy
-  vertical: 'A business line with its own channels, tasks and budget. Lyzr is the primary vertical: its board shows every vertical’s tasks, and you can add tasks for any vertical from it. GSI and others show only their own.',
+  vertical: 'There is ONE board — Lyzr — and every task lives on it. A vertical (GSI, SI…) is a tag on tasks, and its board is just the Lyzr board filtered to that tag. Create a task in a vertical’s view and it is tagged for you; tag a task with several verticals and it shows in each view. Channels are shared: any task can use any channel.',
   category: 'A group is only a folder for channels (Paid, Organic, Events). Nothing is owned or assigned at this level; it organises the channel list and can carry a budget.',
   channel: 'A marketing motion with owners, targets, budget and tasks (Paid Ads, Email, Content). Channels can have sub-channels.',
   sub_channel: 'A channel nested under a parent (LinkedIn Ads under Paid Ads). It has everything a channel has and inherits the parent function.',
@@ -26,7 +26,7 @@ export const HELP: Record<string, string> = {
 
   // Views
   workspace_home: 'The company view, for admins and leadership: every vertical and domain at a glance, the campaign banner, your day and recent activity.',
-  space_dashboard: 'A vertical’s own home: tasks, what goes live this week, budget and activity. Inside Lyzr it covers every vertical.',
+  space_dashboard: 'Lyzr is the one real board — every task is on it. A vertical’s dashboard is the same board filtered to its tag: same tasks, same channels, just scoped. Anything created here gets the vertical’s tag automatically.',
   calendar: 'Tasks by due date. Use the arrows or pick any range; filter by owner, channel and status.',
   tracker: 'Results view: tasks that went live or finished, with their results (result achieved, money spent, proof link).',
   weekly: 'Planned versus delivered: everything due in the period, split into done, not done and overdue carried in from earlier.',

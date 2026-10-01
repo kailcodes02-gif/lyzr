@@ -144,7 +144,7 @@ export default function DashboardPage() {
             Welcome back, {user.display_name?.split(' ')[0]}
           </h1>
           <p className="text-sm text-zinc-600 mt-1">
-            {vertical?.slug === 'lyzr' ? <>Lyzr is the primary board: here&apos;s what&apos;s happening across every vertical today</> : <>Here&apos;s what&apos;s happening in {vertical?.name || 'marketing'} today</>} <InfoTip k="space_dashboard" />
+            {vertical?.slug === 'lyzr' ? <>The main board — every task across Lyzr, whatever its vertical tag</> : <>A view of the Lyzr board, filtered to tasks tagged <strong>{vertical?.name}</strong>. Tasks you create here are tagged {vertical?.name} automatically.</>} <InfoTip k="space_dashboard" />
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
