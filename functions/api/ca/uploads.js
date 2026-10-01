@@ -59,12 +59,14 @@ export function normalisePerfRow(r, uploadId, platform = 'linkedin') {
   return row
 }
 
-export function normaliseDemoRow(r, uploadId, platform = 'linkedin') {
+// `tag` labels a demographics export that was filtered to one person's boosted posts or one ad set
+// before export (LinkedIn puts no campaign column in the file): it lands in `campaign`.
+export function normaliseDemoRow(r, uploadId, platform = 'linkedin', tag = null) {
   if (!r || typeof r !== 'object') return null
   const segment = str(r.segment)
   const value = str(r.value)
   if (!segment || !value) return null
-  const row = { upload_id: uploadId, platform, segment, value, campaign: str(r.campaign), extra: null }
+  const row = { upload_id: uploadId, platform, segment, value, campaign: str(r.campaign) || (tag ? String(tag) : ''), extra: null }
   for (const k of DEMO_NUM) row[k] = num(r[k], 0)
   const extra = {}
   for (const [k, v] of Object.entries(r)) {
@@ -138,6 +140,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
   if (!KINDS.includes(kind)) return json({ error: `kind must be one of ${KINDS.join(', ')}` }, 400)
   if ((channel === 'email') !== (kind === 'events')) return json({ error: 'email uploads use kind "events"; LinkedIn uploads use performance or demographics' }, 400)
   const platform = channel === 'email' ? null : (str(b.platform || 'linkedin').toLowerCase() || 'linkedin')
+  const tag = kind === 'demographics' ? (str(b.tag).slice(0, 80) || null) : null
   if (platform && !PLATFORMS.includes(platform)) return json({ error: `platform must be one of ${PLATFORMS.join(', ')}` }, 400)
   const rows = Array.isArray(b.rows) ? b.rows : []
   if (rows.length > MAX_ROWS) return json({ error: `Send at most ${MAX_ROWS} rows per call` }, 413)
@@ -197,7 +200,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
     table = 'ca_em_events'
     onConflict = 'campaign,contact,step,event,ts,link'
   } else {
-    clean = dedupe(rows.map((r) => normaliseDemoRow(r, uploadId, platform)).filter(Boolean), (r) => `${r.upload_id}|${r.segment}|${r.value}|${r.campaign}`)
+    clean = dedupe(rows.map((r) => normaliseDemoRow(r, uploadId, platform, tag)).filter(Boolean), (r) => `${r.upload_id}|${r.segment}|${r.value}|${r.campaign}`)
     table = 'ca_li_demo'
     onConflict = 'upload_id,segment,value,campaign'
   }

@@ -353,6 +353,8 @@ export function scorecard(sets) {
 // Sender persona from an ad or ad set name: a short "Name:" prefix (one or two words), or a first word from the
 // known sender list. Several names can be passed; the first that yields a sender wins.
 export const SENDERS = ['ani', 'jessica', 'siva', 'kailash', 'anju', 'praveen', 'bharath', 'pooja'];
+/** A team member's first name found in free text (a file name like "Sept_Anju_Company.csv" or an ad set name), else ''. */
+export function personFromText(text) { for (const tok of String(text || '').split(/[^A-Za-z]+/)) if (SENDERS.includes(tok.toLowerCase())) return tok.charAt(0).toUpperCase() + tok.slice(1).toLowerCase(); return ''; }
 const capWords = s => s.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 export function senderOf(...names) {
   for (const raw of names) {

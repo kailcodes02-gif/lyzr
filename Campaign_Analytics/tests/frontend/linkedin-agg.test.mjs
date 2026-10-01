@@ -404,3 +404,9 @@ test('senderOf reads the sender from pipe-separated ad set names', () => {
   assert.equal(A.senderOf('Nvidia & AWS Post Amplification'), 'Unknown sender');
   assert.deepEqual(A.segmentsPresent([{ segment: 'Company' }, { segment: 'Company' }, { segment: '' }]), ['Company']);
 });
+
+test('personFromText finds the team member in a file or ad set name', () => {
+  assert.equal(A.personFromText('Sept_Anju_Company Demographics.csv'), 'Anju');
+  assert.equal(A.personFromText('ANI post amplification - Job Title.csv'), 'Ani');
+  assert.equal(A.personFromText('September_Demographics Report.csv'), '');
+});

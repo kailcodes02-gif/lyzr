@@ -6,6 +6,7 @@ import { detectFile } from './upload-detect.mjs';
 import { campaignLabel } from './email-csv.mjs';
 import { PLATFORM_LABEL } from './ads-csv.mjs';
 import { clearMemo } from './compare.mjs';
+import { personFromText } from './lib/linkedin-agg.mjs';
 
 const CHUNK = 1500;
 const STATE = {};
@@ -42,7 +43,7 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
     if (box && files.length > 3) box.insertAdjacentHTML('afterbegin', `<p class="muted" data-reading>${ctx.ui.spinner(`Reading ${files.length} files`)}</p>`);
     const failed = [];
     for (const f of files) {
-      try { state.pending.push(await detectFile(f)); }
+      try { const d = await detectFile(f); if (d.kind === 'demographics') d.tag = personFromText(f.name); state.pending.push(d); }
       catch (e) { failed.push(`${f.name}: ${e.message}`); }
     }
     if (failed.length) ctx.toast(`${failed.length} file${failed.length === 1 ? '' : 's'} not recognised. ${failed.slice(0, 2).join(' · ')}`, 'err');
@@ -66,7 +67,7 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
         return `<tr data-id="${p.id}"><td class="l mono" style="max-width:260px;word-break:break-all">${esc(p.file)}</td>
           <td class="l">${kindPill(p)}</td>
           <td class="l">${email ? `<input type="text" data-k="campaign" value="${esc(r.campaign)}" style="width:100%;min-width:200px"><div class="muted" style="font-size:11.5px">${esc(r.stats.from || '')} to ${esc(r.stats.to || '')} · ${fmt(r.stats.contacts)} contacts</div>`
-            : p.kind === 'demographics' ? `<input type="date" data-k="start" value="${esc(r.period_start || '')}"> <input type="date" data-k="end" value="${esc(r.period_end || '')}"><div class="muted" style="font-size:11.5px">${esc([...new Set(r.rows.map(x => x.segment))].filter(Boolean).join(', ') || 'no segment found')}</div>`
+            : p.kind === 'demographics' ? `<input type="date" data-k="start" value="${esc(r.period_start || '')}"> <input type="date" data-k="end" value="${esc(r.period_end || '')}"><div class="muted" style="font-size:11.5px">${esc([...new Set(r.rows.map(x => x.segment))].filter(Boolean).join(', ') || 'no segment found')}</div><input type="text" data-k="tag" value="${esc(p.tag || '')}" placeholder="Covers: all campaigns (leave empty) or a person / ad set" title="If this export was filtered to one person's boosted posts or one ad set before downloading, name it here (e.g. Anju). It then appears under Audiences by person or ad set." style="width:100%;min-width:200px;margin-top:4px;font-size:12px">`
             : `<span class="muted">per day in file${r.period_start ? `: ${esc(r.period_start)} to ${esc(r.period_end || '')}` : ''}</span>`}</td>
           <td>${fmt(r.rows.length)}${email ? `<div class="muted" style="font-size:11.5px">${fmt(r.stats.sent)} sent · ${fmt(r.stats.opened)} opens · ${fmt(r.stats.clicked)} clicks</div>` : ''}</td>
           <td class="l" style="font-size:12.5px;color:var(--warn)">${(r.warnings || []).map(esc).join('<br>')}${p.needs.includes('window') && !ready(p) ? '<span class="down">Enter the export window</span>' : ''}</td>
@@ -78,6 +79,7 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
       const c = tr.querySelector('[data-k=campaign]'); if (c) c.onchange = () => { const v = c.value.trim(); p.parsed.campaign = v; p.parsed.rows.forEach(r => { r.campaign = v; }); };
       const s = tr.querySelector('[data-k=start]'); if (s) s.onchange = () => { p.parsed.period_start = s.value; drawPending(); };
       const e = tr.querySelector('[data-k=end]'); if (e) e.onchange = () => { p.parsed.period_end = e.value; drawPending(); };
+      const tg = tr.querySelector('[data-k=tag]'); if (tg) tg.onchange = () => { p.tag = tg.value.trim().slice(0, 80); };
       tr.querySelector('[data-rm]').onclick = () => { state.pending = state.pending.filter(x => x !== p); drawPending(); };
     });
     box.querySelector('[data-clear]').onclick = () => { if (state.busy) return; state.pending = []; state.failed = []; drawPending(); };
@@ -92,7 +94,7 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
       const period_end = p.channel === 'email' ? r.stats.to : r.period_end || null;
       for (let i = 0; i < r.rows.length; i += CHUNK) {
         const chunk = r.rows.slice(i, i + CHUNK);
-        const res = await ctx.api.post('uploads', { channel: p.channel, platform: p.channel === 'email' ? undefined : (p.platform || 'linkedin'), kind: p.kind, file_name: p.file, period_start, period_end, columns: r.columns, rows: chunk, notes: p.channel === 'email' ? r.campaign : p.kind === 'demographics' ? [...new Set(r.rows.map(x => x.segment))].filter(Boolean).join(', ') || undefined : undefined, upload_id: upload_id || undefined, final: i + CHUNK >= r.rows.length });
+        const res = await ctx.api.post('uploads', { channel: p.channel, platform: p.channel === 'email' ? undefined : (p.platform || 'linkedin'), kind: p.kind, file_name: p.file, period_start, period_end, columns: r.columns, rows: chunk, notes: p.channel === 'email' ? r.campaign : p.kind === 'demographics' ? ([...new Set(r.rows.map(x => x.segment))].filter(Boolean).join(', ') + (p.tag ? ` (${p.tag})` : '')) || undefined : undefined, tag: p.kind === 'demographics' && p.tag ? p.tag : undefined, upload_id: upload_id || undefined, final: i + CHUNK >= r.rows.length });
         upload_id = upload_id || res.upload_id; sent += chunk.length;
         p.progress = `${fmt(sent)} of ${fmt(r.rows.length)} rows`; drawPending();
       }

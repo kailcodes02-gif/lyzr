@@ -115,6 +115,9 @@ export async function render(el, ctx) {
   // 3a. cumulative penetration cube: company x region x designation
   h += ctx.ui.section('Penetration by company, region and designation', `Cumulative over every demographics window in the selected dates: for each company, how much of its MD, MD-1 and MD-2 pool in each region the ads reached. People reached = impressions ÷ ${fmt(frequency, 1)}, spread by the window's country share and job-title mix (LinkedIn exports no cross-tab); pool = Apollo headcount per company, country and band (Admin › Reach pools), countries rolled up with Admin › Regions. Company rows are the sum of their regions; click a company row to open or close its regions.`, `<div class="row" style="gap:16px;flex-wrap:wrap;align-items:center"><div id="cubeMetric"></div><div id="cubeRegion"></div><span id="cubeCount" class="muted" style="font-size:12.5px"></span></div><div class="card"><div class="tblwrap" style="border:none" id="cubeHeat"></div><div class="legend" id="cubeLegend"></div></div>`, 'li-cube');
 
+  // 3a2. audiences by person or ad set: demographics exports tagged at upload (or carrying a campaign column)
+  h += ctx.ui.section('Audiences by person or ad set', 'For boosted posts of a team member (Ani, Anju, Siva…) or any single ad set: which accounts, designation bands and regions that audience actually reached. Comes from demographics exports filtered to that person\'s campaigns before download and tagged with the name in the upload box (Company, Job Title and Country exports per month). Pick a name to see its penetration map.', `<div id="personSeg"></div><div id="personBody"></div>`, 'li-persons');
+
   // 3b. reach quality over time
   h += ctx.ui.section('Where the ads land and how that changes', 'Every demographics window uploaded so far, oldest to newest: the share of impressions by region, seniority, designation band and named target accounts. A falling line is where reach quality is dropping.', `<div id="qualSeg"></div><div class="card"><div class="chartbox"><canvas id="qualChart"></canvas></div></div><div class="tblwrap" style="margin-top:10px" id="qualTable"></div>`);
 
@@ -397,6 +400,43 @@ export async function render(el, ctx) {
   ctx.ui.seg(el.querySelector('#cubeMetric'), [{ value: 'pct', label: 'Penetration %' }, { value: 'reached', label: 'People reached' }, { value: 'pool', label: 'ICP pool' }], v => { cubeMetric = v; drawCube(); }, cubeMetric);
   ctx.ui.seg(el.querySelector('#cubeRegion'), [{ value: 'all', label: 'All regions' }, ...cube.regions.map(r => ({ value: r, label: r }))], v => { cubeRegion = v; drawCube(); }, cubeRegion);
   drawCube();
+
+  // ---- audiences by person / ad set ----
+  {
+    const tags = [...new Set(demoRows.map(r => r.campaign).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    const body = el.querySelector('#personBody'), segEl = el.querySelector('#personSeg');
+    if (!tags.length) { segEl.innerHTML = ''; body.innerHTML = ctx.ui.empty('No tagged demographics in this range yet. In Campaign Manager filter the campaigns to one person\'s boosted posts (or one ad set), export Demographics by Company, Job Title and Country, and type the name in the "Covers" box when uploading. Each name then gets its own account × designation × region map here.'); }
+    else {
+      const drawPerson = tag => {
+        const wins = windows.map(w => ({ upload: w.upload, rows: w.rows.filter(r => r.campaign === tag) })).filter(w => w.rows.length);
+        const rows = wins.flatMap(w => w.rows);
+        const have = A.segmentsPresent(rows);
+        const cube = A.penetrationCube({ windows: wins, accounts, icp_pool, bands, frequency, regions });
+        const accs = cube.accounts.slice(0, 12);
+        const regionsSeen = cube.regions;
+        const totalReach = cube.accounts.reduce((a, x) => a + x.total.All.reached, 0);
+        const bandTot = {}; for (const b of A.PEN_BANDS) bandTot[b] = cube.accounts.reduce((a, x) => a + x.total[b].reached, 0);
+        const topBand = A.PEN_BANDS.sort((x, y) => bandTot[y] - bandTot[x])[0];
+        const regionTot = {}; for (const a of cube.accounts) for (const [r, t] of Object.entries(a.regions)) regionTot[r] = (regionTot[r] || 0) + t.All.reached;
+        const topRegion = Object.entries(regionTot).sort((a, b) => b[1] - a[1])[0];
+        const best = cube.accounts.filter(a => a.total.All.pct != null).sort((a, b) => b.total.All.pct - a.total.All.pct)[0];
+        let out = `<div class="card" style="font-size:13.5px"><b>${esc(tag)}</b>: ${esc(wins.map(w => winLabel(w)).join('; '))}. Breakdowns: ${esc(have.join(', ') || 'none')}${['Job Title', 'Country'].some(k => !have.includes(k)) ? ` <span class="down">(needs ${['Job Title', 'Country'].filter(k => !have.includes(k)).join(' and ')} to split by band and region)</span>` : ''}.
+          ${accs.length ? `About <b>${fmt(totalReach)}</b> people at target accounts reached (impressions ÷ ${fmt(frequency, 1)}); most were <b>${esc(accs[0].account)}</b> (${fmt(accs[0].total.All.reached)})${topBand && bandTot[topBand] ? `, the <b>${esc(topBand)}</b> band saw the most (${fmt(bandTot[topBand])})` : ''}${topRegion ? `, mainly in <b>${esc(topRegion[0])}</b> (${fmt(topRegion[1])})` : ''}${best ? `. Deepest penetration: <b>${esc(best.account)}</b> at ${pct(best.total.All.pct, 0)} of its pool` : ''}.` : 'No company page here matches a target account.'}</div>`;
+        if (accs.length) {
+          out += `<div class="grid g2" style="margin-top:12px"><div class="card"><h3>People reached by account and region</h3><div class="tblwrap" style="border:none" id="personGeo"></div></div><div class="card"><h3>People reached by account and designation</h3><div class="tblwrap" style="border:none" id="personBand"></div></div></div>`;
+        }
+        body.innerHTML = out;
+        if (!accs.length) return;
+        const rws = accs.map(a => ({ key: a.account, label: a.account, sub: a.category || '' }));
+        ctx.heat.renderHeat(el.querySelector('#personGeo'), { corner: 'Account', rows: rws, cols: [...regionsSeen.map(r => ({ key: r, label: r })), { key: '__all', label: 'All' }], sortRows: false, scale: 'sqrt',
+          cell: (r, c) => { const a = accs.find(x => x.account === r); const t = c === '__all' ? a.total : a.regions[c]; const v = t ? t.All.reached : 0; return { v: Math.round(v), text: v ? fmt(v) : '–', sub: t && t.All.pct != null ? pct(t.All.pct, 0) + ' of pool' : '', title: `${r} · ${c === '__all' ? 'all regions' : c}: ${fmt(v)} people reached${t && t.All.pct != null ? `, ${pct(t.All.pct, 1)} of the pool` : ''}` }; } });
+        ctx.heat.renderHeat(el.querySelector('#personBand'), { corner: 'Account', rows: rws, cols: [...A.PEN_BANDS.map(b => ({ key: b, label: b })), { key: 'All', label: 'All bands' }], sortRows: false, scale: 'sqrt',
+          cell: (r, c) => { const a = accs.find(x => x.account === r); const t = a.total[c]; const v = t ? t.reached : 0; return { v: Math.round(v), text: v ? fmt(v) : '–', sub: t && t.pct != null ? pct(t.pct, 0) + ' of pool' : '', title: `${r} · ${c}: ${fmt(v)} people reached${t && t.pct != null ? `, ${pct(t.pct, 1)} of the pool` : ''}` }; } });
+      };
+      ctx.ui.seg(segEl, tags.map(t => ({ value: t, label: t.length > 40 ? t.slice(0, 38) + '…' : t })), v => drawPerson(v), tags[0]);
+      drawPerson(tags[0]);
+    }
+  }
 
   // ---- funnel charts ----
   const stackChart = (id, key, money) => chart(el.querySelector('#' + id), { type: 'bar', data: { labels: SS.buckets.map(k => F.bucketLabel(k, stageGran)), datasets: A.STAGE_ORDER.filter(st => st !== 'Other' || SS.totals.Other[key]).map(st => ({ label: st, data: SS.buckets.map(k => Math.round((SS.byStage[st][key][k] || 0) * 100) / 100), backgroundColor: STAGE_COLOR[st], borderRadius: 4 })) },

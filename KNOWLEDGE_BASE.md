@@ -458,6 +458,17 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01, Campaign Analytics: smoke test on real exports, audiences by person
+- Real data findings: every Demographics export uploaded was the Company breakdown only, so band / region /
+  penetration views had nothing to split by (penetration showed the 21 ICP-pool companies at 0%). Those views now
+  say which breakdown is missing instead of showing zeros; the "Included data" card lists breakdowns uploaded.
+  Ad Performance exports cover partial months (May 1-23, Jun 8-25, Aug 3-25): Data coverage shows the gaps, which is
+  the likely reason for 135 vs 150 leads. Senders ("WP|Jessica|...", "ANI|Priority Acc|...") now resolve from
+  pipe tokens; Anju added. "Pages not matched to any account" note under the account reach map.
+- Demographics uploads take a "Covers" tag (person or ad set; prefilled from the file name), stored in
+  ca_li_demo.campaign. New LinkedIn section "Audiences by person or ad set": per tag, people reached by account x
+  region and account x designation, with a one-line summary (top account, band, region, deepest penetration).
+
 ### 2026-10-01, Campaign Analytics: lead types (MQL / conversation / playbook / other)
 - Kailash's rule: MQL = someone trying to book a demo (bottom of funnel); conversation ad leads (bottom);
   playbook leads (middle); everything else, e.g. branding or "marketers both", is an other form lead = NQL (top).
