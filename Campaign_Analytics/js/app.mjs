@@ -3,7 +3,8 @@ import { isBridging, signIn, restore, signOut, getToken } from './auth.mjs';
 import { createApi } from './api.mjs';
 import * as fmt from './fmt.mjs';
 import * as heat from './heatmap.mjs';
-import { COMPARE, compareRange } from './compare.mjs';
+import { COMPARE, compareRange, clearMemo } from './compare.mjs';
+import { withGetCache, TTL_MS, cachedSince } from './pagecache.mjs';
 import * as ui from './ui.mjs';
 import { mountInsights } from './insights.mjs';
 
@@ -87,8 +88,8 @@ async function boot() {
 
 async function enter(user, demo) {
   ctx.user = user; ctx.demo = demo;
-  if (demo) { const m = await import('./mock.mjs'); ctx.api = m.createMockApi(); $('demoTag').classList.remove('hidden'); }
-  else ctx.api = createApi(getToken);
+  if (demo) { const m = await import('./mock.mjs'); ctx.api = withGetCache(m.createMockApi()); $('demoTag').classList.remove('hidden'); }
+  else ctx.api = withGetCache(createApi(getToken));
   $('gate').classList.add('hidden'); $('app').classList.remove('hidden');
   $('uname').textContent = user.name || user.email; $('uav').textContent = (user.name || user.email || '?')[0].toUpperCase();
   $('signout').onclick = () => { localStorage.removeItem('ca.demo'); if (demo) location.reload(); else signOut(); };
@@ -103,14 +104,21 @@ async function enter(user, demo) {
   const custom = () => { const from = $('rangeFrom').value, to = $('rangeTo').value; if (from && to && from <= to) setRange({ preset: 'custom', from, to }); };
   $('rangeFrom').onchange = custom; $('rangeTo').onchange = custom;
   $('foot').innerHTML = `Lyzr Campaign Analytics · Instantly and HubSpot are pulled automatically every morning at 07:00 IST (read-only) · LinkedIn and Instantly exports can be uploaded on their pages any time · money in USD, times in IST${demo ? ' · <b>sample data</b>: made-up numbers, nothing is saved' : ''}`;
-  window.addEventListener('hashchange', route);
-  window.addEventListener('ca:range', () => { if (currentMod && currentMod.render) route(true); });
+  window.addEventListener('hashchange', () => { if (current && PAGES_KEPT.get(current)) PAGES_KEPT.get(current).scroll = window.scrollY; route(); });
+  $('hardRefresh').onclick = hardRefresh; stampLabel();
+  window.addEventListener('ca:range', () => route(true));
   // Preload settings once so views can read bands, regions, accounts, icp pools.
   try { ctx.settings = await ctx.api.get('settings'); } catch (e) { ctx.settings = null; if (!demo) toast('Settings could not be loaded: ' + e.message, 'err'); }
   route();
 }
 
 // Views can hide the range picker (e.g. Settings) by exporting `noRange = true`.
+// One rendered page is kept per route (for the dates and comparison it was drawn with) for up to
+// 8 hours: switching tabs hides and shows pages instead of rebuilding them, so nothing is refetched.
+// Each render draws into its own container, so a slow page can never land on another tab.
+const PAGES_KEPT = new Map(); // route -> { box, mod, key, at }
+const rangeKey = () => { const s = ctx.state || {}; return `${s.from}|${s.to}|${s.cmp}|${s.cmpN}`; };
+function dropPage(r) { const k = PAGES_KEPT.get(r); if (!k) return; try { if (k.mod && k.mod.destroy) k.mod.destroy(); } catch {} k.box.remove(); PAGES_KEPT.delete(r); }
 async function route(rerender) {
   let r = location.hash.replace(/^#\/?/, '').split('?')[0].replace(/\/+$/, '') || 'overview';
   if (LEGACY[r]) { location.replace('#/' + LEGACY[r]); return; }
@@ -119,18 +127,43 @@ async function route(rerender) {
   document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('on', a.dataset.r === def.route));
   $('crumb').textContent = def.group ? `${def.group} › ${def.title}` : def.title;
   const main = $('main');
-  if (!rerender && currentMod && currentMod.destroy) { try { currentMod.destroy(); } catch {} }
-  main.innerHTML = ui.spinner('Loading ' + def.title);
+  for (const [k, v] of PAGES_KEPT) v.box.hidden = k !== def.route;
+  [...main.children].forEach(ch => { if (!ch.dataset.page) ch.remove(); });
+  const kept = PAGES_KEPT.get(def.route);
+  const fresh = kept && kept.key === rangeKey() && Date.now() - kept.at < TTL_MS;
+  if (fresh && rerender !== true) {
+    kept.box.hidden = false; currentMod = kept.mod; current = def.route;
+    $('rangeBox').classList.toggle('hidden', !!kept.mod.noRange);
+    window.scrollTo(0, kept.scroll || 0);
+    return;
+  }
+  dropPage(def.route);
+  // Routes sharing one view module (the six ad platforms) share its chart state: keep only one of them.
+  for (const [k, v] of [...PAGES_KEPT]) { const d = PAGES.find(x => x.route === k); if (d && d.file === def.file && k !== def.route) dropPage(k); }
+  const box = document.createElement('div'); box.dataset.page = def.route; main.appendChild(box);
+  const entry = { box, mod: null, key: rangeKey(), at: Date.now(), scroll: 0 };
+  PAGES_KEPT.set(def.route, entry);
+  box.innerHTML = ui.spinner('Loading ' + def.title);
   try {
     const mod = await import(`./views/${def.file}.mjs`);
-    currentMod = mod; current = def.route;
-    $('rangeBox').classList.toggle('hidden', !!mod.noRange);
-    await mod.render(main, ctx);
+    entry.mod = mod;
+    if (current === def.route || location.hash.replace(/^#\/?/, '').startsWith(def.route)) { currentMod = mod; current = def.route; $('rangeBox').classList.toggle('hidden', !!mod.noRange); }
+    await mod.render(box, ctx);
     if (!rerender) window.scrollTo(0, 0);
   } catch (e) {
     console.error(e);
-    main.innerHTML = `<div class="empty">This section failed to load: ${fmt.esc(e.message || e)}</div>`;
+    box.innerHTML = `<div class="empty">This section failed to load: ${fmt.esc(e.message || e)}</div>`;
   }
+  stampLabel();
+}
+function stampLabel() { const el = $('dataAt'); if (el) el.textContent = 'Data as of ' + new Date(cachedSince()).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); }
+// "Refresh data": forget every kept page and cached answer, redraw this page from the server.
+function hardRefresh() {
+  if (ctx.api.clearCache) ctx.api.clearCache();
+  clearMemo();
+  for (const r of [...PAGES_KEPT.keys()]) dropPage(r);
+  route(true);
+  toast('Data refreshed from the server.');
 }
 export function go(route) { location.hash = '#/' + route; }
 

@@ -523,6 +523,15 @@ Access if the data ever becomes confidential.
   Lyzr board carry a vertical tag; owners/view without ?email= shows the signed-in user instead of a blank
   "Awaiting first sign-in" profile.
 
+### 2026-10-01, Campaign Analytics: pages stay put for 8 hours, manual Refresh data
+- `js/pagecache.mjs`: every GET answer is kept in memory for 8 hours per path + params; writes drop only the
+  answers they can change (actions -> actions + coverage, insights -> insights, anything else -> all).
+- Router keeps one rendered page per tab (for its dates + comparison) for 8 hours and shows it again on return
+  (scroll position kept); each render draws into its own container, which also fixes a slow page (Leads)
+  landing under another tab's URL. Routes sharing a view module (ad platforms) keep only the latest.
+- Top bar: "Data as of HH:MM" + **Refresh data** (clears both caches, redraws). Claude is never called by
+  any of this; AI read-outs only run on their Generate / Regenerate button (verified: every Claude call is a button).
+
 ### 2026-10-01, Campaign Analytics: no double counting when a file is uploaded more than once
 - Performance rows: keyed by (platform, day, campaign, ad), so a re-upload overwrites; after each file the
   server recounts the other uploads whose dates overlap and marks a fully replaced one "replaced" (never a

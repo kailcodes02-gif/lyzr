@@ -266,3 +266,7 @@ tr.sel td{background:rgba(254,75,30,.05)}
 .cmpbox select,.cmpbox input{font:inherit;font-size:12.5px;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink)}
 .cmpbox input{width:56px}
 h2 .cmpbox,.sub .cmpbox{font-family:var(--font);text-transform:none;letter-spacing:0}
+
+/* top bar: data age + manual refresh (js/pagecache.mjs) */
+.refreshbox{display:inline-flex;align-items:center;gap:8px;margin-left:12px;white-space:nowrap}
+.refreshbox #dataAt{font-size:11.5px}
