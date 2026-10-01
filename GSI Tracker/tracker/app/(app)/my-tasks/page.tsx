@@ -60,6 +60,9 @@ export default function MyTasksPage() {
     return eff.source !== 'direct' && eff.emails.has(myEmail)
   })
 
+  // Tasks I wrote up (the reporter), whoever owns them now.
+  const myCreatedTasks = applyTaskFilters((tasks || []).filter(t => t.created_by === user.id), filters, fctx)
+
   // Split by role (direct assignments only — inherited tasks have no role)
   const getTasksByRole = (role?: string) => {
     if (!role) return applyTaskFilters(myAssignedTasks, filters, fctx)
@@ -107,6 +110,9 @@ export default function MyTasksPage() {
           <TabsList className="bg-white border border-zinc-200 p-1 rounded-lg inline-flex w-auto min-w-max">
             <TabsTrigger value="assigned" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
               <CheckSquare className="w-4 h-4 mr-2" /> Assigned to Me
+            </TabsTrigger>
+            <TabsTrigger value="created" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900" title="Tasks you wrote up, whoever owns them now">
+              <Plus className="w-4 h-4 mr-2" /> Created by Me ({myCreatedTasks.length})
             </TabsTrigger>
             <TabsTrigger value="mentioned" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
               <MessageSquare className="w-4 h-4 mr-2" /> Mentioned ({myMentionedTasks.length})
@@ -163,6 +169,10 @@ export default function MyTasksPage() {
         </TabsContent>
 
         {/* Mentioned Tasks Tab */}
+        <TabsContent value="created" className="mt-6">
+          <TaskView tasks={myCreatedTasks} onTaskClick={(t) => setSelectedTaskId(t.id)} showChannelColumn />
+        </TabsContent>
+
         <TabsContent value="mentioned" className="mt-6">
           <Card className="bg-white border-zinc-200 backdrop-blur-xl">
             <CardContent className="p-0 overflow-hidden">

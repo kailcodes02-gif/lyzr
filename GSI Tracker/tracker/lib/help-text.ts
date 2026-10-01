@@ -21,6 +21,7 @@ export const HELP: Record<string, string> = {
   function_owner: 'Domain owner: default owner for every channel of that domain across verticals, unless a vertical sets its own channel owners.',
   channel_owner: 'Owns a channel and its tasks. A task without an owner inherits the channel owners.',
   member: 'Everyone who signs in. Members see everything and can create and update tasks, comments and checklists.',
+  task_owner: 'Owner = the person doing the task (what Jira calls the assignee). The first owner is the main one, answerable for finishing it; the rest help. Whoever wrote the task up is recorded separately as "Created by" and is not an owner unless they are also doing it.',
   pending_owner: 'This person has not signed in yet. Their ownership and assignments attach automatically the first time they sign in with Microsoft.',
 
   // Views

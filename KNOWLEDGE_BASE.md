@@ -458,6 +458,13 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01 (evening), GSI Tracker: Owner vs Created by made explicit
+- Per Kailash's question "Task Owner vs Assigned To": kept the standard model (Owner = assignee = person
+  doing the task; creator recorded separately) and made it visible — drawer Owners header now "Owners
+  (assigned to)" with hover help; "Created" row → "Created by" with the creator's avatar/name + date;
+  My Tasks gains a "Created by Me" tab (t.created_by); help-text key `task_owner`. Create dialog already
+  defaulted the creator as first owner (kept). No DB change.
+
 ### 2026-10-01 (later still), GSI Tracker: verticals become tags on tasks (migration 032)
 - Per Kailash: ONE board (Lyzr) holds every task; verticals are mandatory tags (Lyzr tag = not
   vertical-specific); vertical boards are filtered views; channels are shared — any task in any channel —
