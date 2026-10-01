@@ -211,12 +211,6 @@ function OwnerDetailContent() {
                 <TabsTrigger value="secondary" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
                   Secondary
                 </TabsTrigger>
-                <TabsTrigger value="tertiary" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
-                  Tertiary
-                </TabsTrigger>
-                <TabsTrigger value="other" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
-                  Other
-                </TabsTrigger>
               </TabsList>
             </div>
 
@@ -228,12 +222,6 @@ function OwnerDetailContent() {
             </TabsContent>
             <TabsContent value="secondary" className="mt-0">
               <TaskView tasks={getTasksByRole('secondary')} onTaskClick={t => setSelectedTaskId(t.id)} showChannelColumn />
-            </TabsContent>
-            <TabsContent value="tertiary" className="mt-0">
-              <TaskView tasks={getTasksByRole('tertiary')} onTaskClick={t => setSelectedTaskId(t.id)} showChannelColumn />
-            </TabsContent>
-            <TabsContent value="other" className="mt-0">
-              <TaskView tasks={getTasksByRole('other')} onTaskClick={t => setSelectedTaskId(t.id)} showChannelColumn />
             </TabsContent>
           </Tabs>
         </TabsContent>

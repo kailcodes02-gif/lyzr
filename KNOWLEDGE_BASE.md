@@ -458,6 +458,14 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-02, GSI Tracker: assignee roles trimmed to Primary + Secondary
+- Migrations 030-032 confirmed applied live (3-arg api_resolve_key answers; lyzr_vertical_id() returns the
+  Lyzr id) — tag model active. API still 503 until SUPABASE_JWT_SECRET is added.
+- Per Kailash: one assigner (creator, fixed); owners/assignees = one primary + any number of secondary, each
+  chip tagged. Already enforced (addTaskOwner demotes old primary); removed the extra Reviewer/FYI
+  (tertiary/other) options from the create dialog and the owner-profile role tabs; legacy rows keep their
+  role and still show. help-text task_owner + openapi owners enum updated.
+
 ### 2026-10-01 (night, later), GSI Tracker: role vocabulary fixed as Assigner / Owner (assignee)
 - Per Kailash: Assigner = whoever gave out the task (auto = creator, never changes); Owner = assignee =
   responsible for completing it. Drawer "Created by" → "Assigner"; owners header → "Owners (assignees)";

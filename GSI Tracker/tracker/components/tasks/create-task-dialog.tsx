@@ -403,10 +403,8 @@ export function CreateTaskDialog({
                       <Select value={a.role} onValueChange={(val) => updateAssignment(i, 'role', (val || 'other') as any)}>
                         <SelectTrigger className="w-24 bg-white border-zinc-300 h-8 px-2 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-white border border-zinc-300">
-                          <SelectItem value="primary">Main owner</SelectItem>
-                          <SelectItem value="secondary">Helper</SelectItem>
-                          <SelectItem value="tertiary">Reviewer</SelectItem>
-                          <SelectItem value="other">FYI</SelectItem>
+                          <SelectItem value="primary">Primary owner</SelectItem>
+                          <SelectItem value="secondary">Secondary</SelectItem>
                         </SelectContent>
                       </Select>
                     )}

@@ -21,7 +21,7 @@ export const HELP: Record<string, string> = {
   function_owner: 'Domain owner: default owner for every channel of that domain across verticals, unless a vertical sets its own channel owners.',
   channel_owner: 'Owns a channel and its tasks. A task without an owner inherits the channel owners.',
   member: 'Everyone who signs in. Members see everything and can create and update tasks, comments and checklists.',
-  task_owner: 'Two roles on every task. Assigner: who gave the task out — set automatically from who created it, never changes. Owner (= assignee): who is responsible for completing it; the first owner is the main one, the rest help. If you create a task for yourself you are both. Give it to someone else and you stay the assigner while they become the owner.',
+  task_owner: 'Two roles on every task. Assigner: who gave the task out — always exactly one person, set automatically from who created it, never changes. Owners (= assignees): who completes it — one PRIMARY owner (crowned, answerable for finishing) and any number of SECONDARY owners helping; each owner chip shows its tag. Making someone else primary automatically moves the old primary to secondary.',
   pending_owner: 'This person has not signed in yet. Their ownership and assignments attach automatically the first time they sign in with Microsoft.',
 
   // Views
