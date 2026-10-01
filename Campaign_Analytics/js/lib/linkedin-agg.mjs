@@ -191,6 +191,8 @@ export function bandShares(titleRows, bands, metric = 'impressions') {
   const share = {}; for (const b of BANDS) share[b] = total ? out[b] / total : 0;
   return { counts: out, share, total };
 }
+/** Which demographics segments a set of rows carries, e.g. ['Company'] when only the company export was uploaded. */
+export const segmentsPresent = rows => [...new Set((rows || []).map(r => r.segment).filter(Boolean))];
 export const segRows = (rows, segment) => rows.filter(r => normName(r.segment) === normName(segment));
 export const SEGMENTS = { company: 'Company', seniority: 'Job Seniority', title: 'Job Title', func: 'Job Function', country: 'Country', location: 'Location', size: 'Company Size' };
 
@@ -350,13 +352,16 @@ export function scorecard(sets) {
 // ---- messaging senders ----
 // Sender persona from an ad or ad set name: a short "Name:" prefix (one or two words), or a first word from the
 // known sender list. Several names can be passed; the first that yields a sender wins.
-export const SENDERS = ['ani', 'jessica', 'siva', 'kailash'];
+export const SENDERS = ['ani', 'jessica', 'siva', 'kailash', 'anju', 'praveen', 'bharath', 'pooja'];
 const capWords = s => s.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 export function senderOf(...names) {
   for (const raw of names) {
     const s = String(raw || '').trim(); if (!s) continue;
     const m = s.match(/^([A-Za-z][A-Za-z.'-]*(?:\s+[A-Za-z][A-Za-z.'-]*)?)\s*:/); if (m) return capWords(m[1].trim());
     const w = s.match(/^([A-Za-z]+)\b/); if (w && SENDERS.includes(w[1].toLowerCase())) return capWords(w[1]);
+    // Ad set names are pipe-separated ("WP|Jessica|GSI&SI|Website visits", "ANI|Priority Acc|GSI/SI"):
+    // any token that is a known sender's first name counts.
+    for (const tok of s.split(/[|\/,\-–]+/)) { const first = tok.trim().split(/\s+/)[0] || ''; if (SENDERS.includes(first.toLowerCase())) return capWords(first); }
   }
   return 'Unknown sender';
 }

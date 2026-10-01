@@ -37,6 +37,12 @@ export async function render(el, ctx) {
   const perf = (data.perf || []).filter(r => r.day >= from && r.day <= to);
   const windows = [...(data.demo || [])].sort((a, b) => a.upload.period_start < b.upload.period_start ? -1 : 1);
   const demoRows = windows.flatMap(w => w.rows);
+  // Which demographics breakdowns were uploaded for this range. LinkedIn exports one dimension per file
+  // (Company, Job Title, Job Seniority, Country/Region, Job Function); several sections need more than Company.
+  const segsPresent = A.segmentsPresent(demoRows);
+  const NEED = { 'Job Title': 'Job Title (designation bands MD / MD-1 / MD-2)', 'Country': 'Country/Region (regions)', 'Job Seniority': 'Job Seniority', 'Job Function': 'Job Function', 'Company': 'Company' };
+  const missingSegs = Object.keys(NEED).filter(k => !segsPresent.includes(k));
+  const needMsg = segs => { const miss = segs.filter(k => !segsPresent.includes(k)); return miss.length ? ctx.ui.empty(`Needs the ${miss.map(k => NEED[k]).join(' and ')} demographics export${miss.length === 1 ? '' : 's'} for these dates. Uploaded so far for this range: ${segsPresent.length ? segsPresent.join(', ') : 'none'}. In Campaign Manager: Analyze › Demographics › pick the dimension › Export, one file per dimension and month, and drop them above.`) : ''; };
   const uploads = data.uploads || [];
 
   if (!perf.length && !windows.length) {
@@ -84,7 +90,7 @@ export async function render(el, ctx) {
   let h = `<div class="seghead">Ads · LinkedIn</div><h1>LinkedIn ads</h1>
   <p class="sub">${esc(F.rangeLabel(from, to))}. Leads are LinkedIn lead form submissions. Money is USD. ${prev ? `Compared ${esc(F.vsLabel(prev))} unless a section says otherwise.` : 'No comparison at the top; each section can still pick one.'}</p>
   <div class="card" style="font-size:13px;margin-bottom:6px"><b>Included data.</b> Performance: ${perfDays.length ? `${perfDays.length} of ${days} days have rows (${esc(F.dayLabel(perfDays[0]))} to ${esc(F.dayLabel(perfDays[perfDays.length - 1]))})` : 'no daily rows in this range'}.
-  Demographics: ${windows.length ? `${windows.length} window${windows.length === 1 ? '' : 's'} overlap this range: ${windows.map(w => esc(winLabel(w))).join('; ')}. Demographics are totals per export window, so a person seen in two windows is counted twice.` : 'no export window overlaps this range.'}</div>`;
+  Demographics: ${windows.length ? `${windows.length} window${windows.length === 1 ? '' : 's'} overlap this range: ${windows.map(w => esc(winLabel(w))).join('; ')}. Breakdowns uploaded: <b>${esc(segsPresent.join(', ') || 'none')}</b>${missingSegs.length ? ` <span class="down">(missing: ${esc(missingSegs.join(', '))}; the band, region and penetration views need Job Title and Country)</span>` : ''}. Demographics are totals per export window, so a person seen in two windows is counted twice.` : 'no export window overlaps this range.'}</div>`;
 
   h += `<details class="card" style="margin:10px 0 0" ${uploads.length ? '' : 'open'}><summary style="cursor:pointer"><span class="ui-label">Upload LinkedIn exports</span> <span class="muted" style="font-size:13px">· ${uploads.length} file${uploads.length === 1 ? '' : 's'} so far, last ${uploads[0] ? esc(F.timeAgo(uploads[0].uploaded_at)) : 'never'}</span></summary><div id="uploader" style="margin-top:12px"></div></details>`;
 
@@ -293,6 +299,7 @@ export async function render(el, ctx) {
     const palette = ['#043E77', '#FE4B1E', '#1F2022', '#A8A298', '#6B675F', '#CFCCC7', '#8A857C', '#B8B4AD'];
     const cv = el.querySelector('#qualChart'); const old = charts.find(c => c.canvas === cv); if (old) { old.destroy(); charts = charts.filter(c => c !== old); }
     if (!allWin.length) { el.querySelector('#qualTable').innerHTML = ctx.ui.empty('No demographics export uploaded yet.'); return; }
+    { const need = qMode === 'region' ? ['Country'] : qMode === 'seniority' ? ['Job Seniority'] : qMode === 'band' ? ['Job Title'] : []; const allRows = allWin.flatMap(w => w.rows); const have = A.segmentsPresent(allRows); const miss = need.filter(k => !have.includes(k)); if (miss.length) { el.querySelector('#qualTable').innerHTML = ctx.ui.empty(`Needs the ${miss.map(k => NEED[k]).join(' and ')} demographics export (uploaded so far: ${have.join(', ') || 'none'}).`); { const cv = el.querySelector('#qualChart'); const old = charts.find(c => c.canvas === cv); if (old) { old.destroy(); charts = charts.filter(c => c !== old); } } return; } }
     chart(cv, { type: 'line', data: { labels, datasets: keys.map((k, i) => ({ label: k, data: seriesMap.get(k), borderColor: palette[i % palette.length], backgroundColor: palette[i % palette.length], borderWidth: k === 'Director and above' || i === 0 ? 3 : 2, pointRadius: 3, tension: .25 })) },
       options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmt(c.raw, 1)}%` } } }, scales: { y: { beginAtZero: true, ticks: { callback: v => v + '%' } }, x: { grid: { display: false } } } } });
     const lastI = allWin.length - 1;
@@ -319,6 +326,8 @@ export async function render(el, ctx) {
     const box = el.querySelector('#reachHeat'); if (!box) return;
     reachPrev = p;
     if (!windows.length) { box.innerHTML = ctx.ui.empty('No demographics export covers this range. Upload one at the top of this page.'); return; }
+    if (reachDim === 'band' && needMsg(['Job Title'])) { box.innerHTML = needMsg(['Job Title']); return; }
+    if (reachDim === 'region' && needMsg(['Country'])) { box.innerHTML = needMsg(['Country']); return; }
     const prevWindows = (await prevBundle(p)).demo; if (!el.isConnected || p !== reachPrev) return;
     const prev = p;
     const curMaps = reachMaps(windows, reachDim), curTot = sumMaps(curMaps);
@@ -339,6 +348,12 @@ export async function render(el, ctx) {
       const a = curTot.get(r) || 0, b = cmpTot.get(r) || 0; const g = A.growth(a, b);
       return { v: null, text: g == null ? (a ? 'new' : '–') : (g > 0 ? '+' : '') + fmt(g, 0) + '%', title: `${r}: ${fmt(a)} now vs ${fmt(b)} ${prev.label}` };
     }, colTotal: c => c.startsWith('w') ? fmt([...curMaps[+c.slice(1)].values()].reduce((x, y) => x + y, 0)) : c === 'cur' ? fmt([...curTot.values()].reduce((x, y) => x + y, 0)) : c === 'cmp' ? fmt([...cmpTot.values()].reduce((x, y) => x + y, 0)) : (() => { const a = [...curTot.values()].reduce((x, y) => x + y, 0), b = [...cmpTot.values()].reduce((x, y) => x + y, 0); const g = A.growth(a, b); return g == null ? '–' : (g > 0 ? '+' : '') + fmt(g, 0) + '%'; })() });
+    if (reachDim === 'account') {
+      // Company pages that matched no account, so a missing account can be spotted (e.g. a page name the list does not know).
+      const un = new Map(); for (const w of windows) for (const r of A.segRows(w.rows, 'Company')) if (!A.matchAccount(r.value, accounts)) un.set(r.value, (un.get(r.value) || 0) + (Number(r.impressions) || 0));
+      const top = [...un.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
+      if (top.length) box.insertAdjacentHTML('beforeend', `<p class="muted" style="font-size:12.5px;margin-top:8px"><b>Pages not matched to any account</b> (${fmt(un.size)}; add them as aliases in Admin › GSI accounts if they belong to one): ${top.map(([k, v]) => `${esc(k)} (${fmt(v / rf)})`).join(', ')}.</p>`);
+    }
     box.querySelectorAll('td.c').forEach(td => { if (/^(cur|cmp|chg)$/.test(td.dataset.c)) { td.style.background = 'var(--offwhite)'; td.style.color = ''; if (td.dataset.c === 'chg') td.classList.add(/^\+/.test(td.textContent) ? 'up' : /^-/.test(td.textContent) ? 'down' : 'muted'); } });
   };
   ctx.ui.seg(el.querySelector('#reachSeg'), [{ value: 'account', label: 'Accounts' }, { value: 'band', label: 'Designation bands' }, { value: 'region', label: 'Regions' }], v => { reachDim = v; drawReach(); }, reachDim);
@@ -356,6 +371,7 @@ export async function render(el, ctx) {
   };
   const drawCube = () => {
     const box = el.querySelector('#cubeHeat'); if (!box) return;
+    if (needMsg(['Job Title', 'Country'])) { box.innerHTML = needMsg(['Job Title', 'Country']); el.querySelector('#cubeCount').textContent = ''; el.querySelector('#cubeLegend').innerHTML = ''; return; }
     const list = cube.accounts.filter(a => cubeRegion === 'all' || a.regions[cubeRegion]);
     if (cubeRegion !== 'all') list.sort((x, y) => (y.regions[cubeRegion].All.reached || 0) - (x.regions[cubeRegion].All.reached || 0));
     const shown = list.slice(0, cubeLimit);
@@ -490,6 +506,7 @@ export async function render(el, ctx) {
       const R = A.penetration({ windows, accounts, icp_pool, bands, frequency, band: penBand, countries });
       const byKey = new Map(R.cells.map(c => [c.account + '||' + c.country, c]));
       const rows = R.accounts.map(a => ({ key: a, label: a, sub: (accounts.find(x => x.name === a) || {}).category || '' }));
+      if (needMsg(['Job Title', 'Country'])) { el.querySelector('#penHeat').innerHTML = needMsg(['Job Title', 'Country']); return; }
       if (!rows.length) { el.querySelector('#penHeat').innerHTML = ctx.ui.empty('No company page in these windows matches a target account.'); return; }
       ctx.heat.renderHeat(el.querySelector('#penHeat'), { corner: 'Account', rows, cols: countries.map(c => ({ key: c, label: c.replace('United ', 'U.') })), scale: 'linear', max: 5, sortRows: false,
         cell: (r, c) => { const x = byKey.get(r + '||' + c); if (!x || x.pool_band == null) return { v: null, text: '·', title: `${r} · ${c}: no headcount in the ICP pool` }; return { v: A.penLevel(x.pct), text: fmt(x.pct, x.pct < 10 ? 1 : 0) + '%', sub: `${fmt(x.reached_band)} / ${fmt(x.pool_band)}`, title: `${r} · ${c} · ${penBand}\nPeople reached (est.): ${fmt(x.reached_band)}\nICP pool: ${fmt(x.pool_band)}\nPenetration: ${fmt(x.pct, 1)}%\nClick for detail` }; },

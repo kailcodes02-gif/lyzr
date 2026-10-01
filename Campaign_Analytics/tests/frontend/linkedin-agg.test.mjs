@@ -396,3 +396,11 @@ test('lead types: conversation, MQL (book a demo), playbook, other (NQL)', () =>
   const T = A.leadTrend(rows, 'week');
   assert.deepEqual(T.buckets, ['2026-08-31', '2026-09-07']); assert.deepEqual(T.series.mql, [4, 0]); assert.deepEqual(T.series.other, [0, 4]);
 });
+
+test('senderOf reads the sender from pipe-separated ad set names', () => {
+  assert.equal(A.senderOf('WP|Jessica|GSI&SI|Website visits - Jun 10, 2026'), 'Jessica');
+  assert.equal(A.senderOf("ANI|Priority Acc|GSI/SI- 3 July'26"), 'Ani');
+  assert.equal(A.senderOf('WP|Accenture|Anju|India|Lead Gen|GSI&SI - Apr 27, 2026'), 'Anju');
+  assert.equal(A.senderOf('Nvidia & AWS Post Amplification'), 'Unknown sender');
+  assert.deepEqual(A.segmentsPresent([{ segment: 'Company' }, { segment: 'Company' }, { segment: '' }]), ['Company']);
+});
