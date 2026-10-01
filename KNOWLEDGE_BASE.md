@@ -458,6 +458,10 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01, Campaign Analytics: bulk delete in the upload list
+- "Files uploaded so far" has a checkbox per file, Select all / Clear, and "Delete selected (N)" with one
+  confirmation listing the files; deletes run three at a time, then the range cache clears and the page redraws.
+
 ### 2026-10-01, Campaign Analytics: real LinkedIn exports (first upload by Kailash)
 - Demographics exports stored 0 rows: the 2026 "Demographics Report" is UTF-16 tab-separated, first column
   "<dimension> Segment" (e.g. "Company Name Segment"), period on separate "Report Start:" / "Report End:" lines.

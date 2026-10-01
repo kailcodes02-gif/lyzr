@@ -121,7 +121,10 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
     try {
       const { uploads } = await ctx.api.get('uploads', { channel, platform: platform || undefined });
       if (!uploads || !uploads.length) { list.innerHTML = '<p class="muted" style="font-size:13px">Nothing uploaded yet.</p>'; return; }
-      list.innerHTML = ctx.ui.table({ cols: [
+      const sel = state.selected || (state.selected = new Set());
+      for (const id of [...sel]) if (!uploads.some(u => u.id === id)) sel.delete(id);
+      list.innerHTML = (isEditor ? `<div class="row" style="align-items:center;margin-bottom:8px" id="bulk"><span class="muted" style="font-size:12.5px"><span data-n>0</span> selected</span><button class="btn tiny" data-delsel disabled>Delete selected</button><button class="btn tiny ghost" data-selall>Select all</button><button class="btn tiny ghost" data-selnone>Clear</button></div>` : '') + ctx.ui.table({ cols: [
+        ...(isEditor ? [{ h: '', k: 'sel', f: u => `<input type="checkbox" data-sel="${esc(u.id)}" aria-label="Select ${esc(u.file_name || u.id)}">` }] : []),
         { h: 'Tab', k: 'channel', left: true, f: u => ctx.ui.pill(u.channel === 'email' ? 'Email' : u.kind === 'performance' ? `Ads · ${PLATFORM_LABEL[u.platform || 'linkedin'] || u.platform}` : 'Ads · LinkedIn demographics', u.channel === 'email' ? 'p-med' : u.kind === 'performance' ? 'p-high' : 'p-low') },
         { h: 'Campaign / window', k: 'w', left: true, f: u => u.channel === 'email' ? `${esc(campaignLabel(u.notes || ''))}<br><span class="muted" style="font-size:11.5px">${u.period_start ? esc(ctx.fmt.rangeLabel(u.period_start, u.period_end)) : ''}</span>` : u.period_start ? `${esc(ctx.fmt.rangeLabel(u.period_start, u.period_end))}${u.kind === 'demographics' ? `<br><span class="muted" style="font-size:11.5px">${esc(u.notes || 'segments not recorded')}</span>` : ''}` : '<span class="muted">per day</span>' },
         { h: 'Rows', k: 'row_count', f: u => u.row_count ? fmt(u.row_count) : '<span class="down" title="Nothing was read from this file: delete it and upload again">0</span>' },
@@ -130,9 +133,28 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
         { h: 'At', k: 'uploaded_at', left: true, f: u => esc(ctx.fmt.istDateTime(u.uploaded_at)) },
         { h: '', k: 'x', f: u => isEditor ? `<button class="btn tiny ghost" data-del="${esc(u.id)}" data-name="${esc(u.file_name || u.id)}">Delete</button>` : '' },
       ], rows: uploads.sort((a, b) => (a.uploaded_at < b.uploaded_at ? 1 : -1)) });
+      // Bulk delete: tick files (or Select all), then Delete selected; one confirmation for the lot.
+      const refreshBulk = () => { const n = sel.size; const b = list.querySelector('#bulk'); if (!b) return; b.querySelector('[data-n]').textContent = n; b.querySelector('[data-delsel]').disabled = !n || state.busy; b.querySelector('[data-delsel]').textContent = n ? `Delete selected (${n})` : 'Delete selected'; };
+      list.querySelectorAll('[data-sel]').forEach(cb => { cb.checked = sel.has(cb.dataset.sel); cb.onchange = () => { if (cb.checked) sel.add(cb.dataset.sel); else sel.delete(cb.dataset.sel); refreshBulk(); }; });
+      const deleteIds = async ids => {
+        state.busy = true; refreshBulk();
+        let ok = 0; const failed = [];
+        let next = 0; const worker = async () => { while (next < ids.length) { const id = ids[next++]; try { await ctx.api.del('uploads', { id }); ok++; sel.delete(id); } catch (e) { failed.push(e.message || String(e)); } } };
+        await Promise.all([worker(), worker(), worker()]);
+        state.busy = false; clearMemo();
+        ctx.toast(`${ok} upload${ok === 1 ? '' : 's'} deleted${failed.length ? `, ${failed.length} failed: ${failed[0]}` : ''}.`, failed.length ? 'err' : '');
+        await drawList(); if (onDone && ok) onDone();
+      };
+      const bulk = list.querySelector('#bulk');
+      if (bulk) {
+        bulk.querySelector('[data-selall]').onclick = () => { uploads.forEach(u => sel.add(u.id)); list.querySelectorAll('[data-sel]').forEach(cb => { cb.checked = true; }); refreshBulk(); };
+        bulk.querySelector('[data-selnone]').onclick = () => { sel.clear(); list.querySelectorAll('[data-sel]').forEach(cb => { cb.checked = false; }); refreshBulk(); };
+        bulk.querySelector('[data-delsel]').onclick = () => { const ids = [...sel]; if (!ids.length) return; const names = uploads.filter(u => sel.has(u.id)).map(u => u.file_name || u.id); if (!confirm(`Delete ${ids.length} upload${ids.length === 1 ? '' : 's'} and their rows? This cannot be undone.\n\n${names.slice(0, 8).join('\n')}${names.length > 8 ? `\n… and ${names.length - 8} more` : ''}`)) return; deleteIds(ids); };
+        refreshBulk();
+      }
       list.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
         if (!confirm(`Delete "${b.dataset.name}" and its rows? This cannot be undone.`)) return;
-        try { await ctx.api.del('uploads', { id: b.dataset.del }); clearMemo(); ctx.toast('Upload deleted.'); await drawList(); if (onDone) onDone(); } catch (e) { ctx.toast('Delete failed: ' + e.message, 'err'); }
+        await deleteIds([b.dataset.del]);
       });
     } catch (e) { list.innerHTML = ctx.ui.empty('Uploads could not be loaded: ' + (e.message || e)); }
   }
