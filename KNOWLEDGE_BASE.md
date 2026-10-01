@@ -458,6 +458,18 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01, Campaign Analytics: real LinkedIn exports (first upload by Kailash)
+- Demographics exports stored 0 rows: the 2026 "Demographics Report" is UTF-16 tab-separated, first column
+  "<dimension> Segment" (e.g. "Company Name Segment"), period on separate "Report Start:" / "Report End:" lines.
+  `js/csv.mjs` now strips the "Segment" suffix, reads both lines, and one file = one segment; the replace rule in
+  `uploads.js` keys on window + segments (`notes`), so Company and Job Title files for the same month coexist.
+- Ad Performance export: "Campaign Name" is the campaign group, "Ad Set Name" is the ad set the dashboard keys
+  on; the parser now maps Ad Set Name -> campaign, Campaign Name -> campaign_group, Ad Set Objective/Type ->
+  objective/format, and uses the headline or intro text when Ad Name is blank. Row key (day, Campaign ID, Ad ID)
+  unchanged, so re-uploading the same files overwrites the earlier rows.
+- After an upload or delete the memoised range cache is cleared (`clearMemo`), so the page refreshes at once.
+- Kailash must re-upload the Ad Performance files (ad set names) and the Demographics files (rows).
+
 ### 2026-10-01, Campaign Analytics: sign-in fix (block_nested_popups)
 - Cause: Chrome had opened the MSAL popup as a normal tab (window name `msal.*`, URL `?state=...`); clicking
   Sign in inside it fails with `block_nested_popups`. Not related to the 007 migration.

@@ -149,3 +149,15 @@ test('delimiter detection ignores commas inside quotes', () => {
   assert.equal(detectDelimiter('a;b;Impressions'), ';');
   assert.equal(detectDelimiter('a,b,Impressions'), ',');
 });
+
+test('2026 Demographics Report export: "<dimension> Segment" first column, Report Start/End lines, tabs', () => {
+  const text = ['Demographics Report (in UTC)', '"Report Start: April 1, 2026, 12:00 AM"', '"Report End: April 30, 2026, 11:59 PM"', '"Date Generated: September 24, 2026, 9:20 AM"', '',
+    'Company Name Segment\tImpressions\tPercent of Total Impressions\tClicks\tPercent of Total Clicks\tClick Through Rate\tConversions\tPercent of Total Conversions\tConversion Rate\tSends\tPercent of Total Sends\tOpens\tPercent of Total Opens\tOpen Rate',
+    'Accenture\t2010\t99.851%\t28\t100%\t1.393%\t0\t0%\t0%\t596\t97.068%\t194\t96.517%\t32.55%',
+    'Accenture Song\t11\t0.546%\t0\t0%\t0%\t0\t0%\t0%\t23\t3.746%\t7\t3.483%\t30.435%'].join('\n');
+  const r = parseLinkedInCsv(text, 'April_Demographic Report.csv');
+  assert.equal(r.kind, 'demographics'); assert.equal(r.period_start, '2026-04-01'); assert.equal(r.period_end, '2026-04-30');
+  assert.equal(r.rows.length, 2); assert.equal(r.rows[0].segment, 'Company'); assert.equal(r.rows[0].value, 'Accenture'); assert.equal(r.rows[0].impressions, 2010); assert.equal(r.rows[0].sends, 596); assert.equal(r.rows[0].opens, 194);
+  const t = parseLinkedInCsv(text.replace('Company Name Segment', 'Job Title Segment'), 'x.csv');
+  assert.equal(t.rows[0].segment, 'Job Title');
+});

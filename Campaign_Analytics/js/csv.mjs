@@ -7,15 +7,21 @@
 //     columns:{ rawHeader: mappedField }, rows:[normalised], warnings:[], preamble:[], delimiter }
 
 // ---- header synonyms (keys are lowercased with non-letters stripped) ----
+// Field order matters: the 2026 "Ad Performance Report" export has Campaign Name = the campaign
+// group and Ad Set Name = what this dashboard calls the campaign (stage, approach, ad set tables
+// all key on it). `campaign` claims Ad Set Name first, then campaign_group takes Campaign Name.
+// Older exports (Campaign Group Name + Campaign Name) still map the same way.
 const PERF_FIELDS = {
   day: ['startdateinutc', 'startdate', 'date', 'day', 'dateinutc', 'reportdate'],
-  campaign_group: ['campaigngroupname', 'campaigngroup', 'adcampaigngroupname'],
-  campaign: ['campaignname', 'campaign', 'adsetname', 'adset'],
+  campaign: ['adsetname', 'adset', 'campaignname', 'campaign'],
+  campaign_group: ['campaigngroupname', 'campaigngroup', 'adcampaigngroupname', 'campaignname', 'campaign'],
   campaign_id: ['campaignid', 'adsetid'],
   ad_id: ['adid', 'creativeid', 'sponsoredcreativeid'],
   ad_name: ['adname', 'creativename', 'adheadline', 'headline', 'introductorytext', 'introtext', 'adtitle'],
-  objective: ['campaignobjective', 'objective', 'objectivetype'],
-  format: ['adformat', 'creativetype', 'format', 'campaigntype'],
+  ad_headline: ['adheadline', 'headline'],
+  ad_text: ['adintroductiontext', 'introductorytext', 'introtext', 'adline'],
+  objective: ['adsetobjective', 'campaignobjective', 'objective', 'objectivetype'],
+  format: ['adsettype', 'adformat', 'creativetype', 'format', 'campaigntype'],
   impressions: ['impressions'],
   clicks: ['clicks', 'totalclicks'],
   spend: ['totalspent', 'spend', 'cost', 'amountspent', 'totalspend'],
@@ -42,6 +48,8 @@ const DEMO_FIELDS = {
 };
 // A demographics export can also put the dimension in the first column header
 // (e.g. "Company", "Job Title"); we treat that column as the value and fix the segment.
+// "Company Name Segment" (the 2026 Demographics Report export) -> companyname
+const segKey = h => normHeader(h).replace(/segment$/, '');
 const SEGMENT_HEADERS = {
   company: 'Company', companyname: 'Company', membercompany: 'Company',
   jobtitle: 'Job Title', title: 'Job Title', memberjobtitle: 'Job Title',
@@ -49,10 +57,11 @@ const SEGMENT_HEADERS = {
   jobfunction: 'Job Function', function: 'Job Function',
   country: 'Country', countryregion: 'Country', membercountry: 'Country',
   location: 'Location', memberlocation: 'Location', region: 'Location',
-  companysize: 'Company Size', companyindustry: 'Industry', industry: 'Industry',
+  companysize: 'Company Size', companyindustry: 'Industry', industry: 'Industry', memberindustry: 'Industry',
+  countyregion: 'Country', memberregion: 'Location', jobtitles: 'Job Title', companies: 'Company',
 };
 export const METRIC_FIELDS = ['impressions', 'clicks', 'spend', 'reach', 'leads', 'lead_forms_opened', 'video_views', 'sends', 'opens', 'engagements', 'reactions', 'comments', 'shares', 'follows', 'viral_impressions', 'conversions'];
-const TEXT_FIELDS = ['day', 'campaign_group', 'campaign', 'campaign_id', 'ad_id', 'ad_name', 'objective', 'format', 'segment', 'value'];
+const TEXT_FIELDS = ['day', 'campaign_group', 'campaign', 'campaign_id', 'ad_id', 'ad_name', 'ad_headline', 'ad_text', 'objective', 'format', 'segment', 'value'];
 
 export const normHeader = h => String(h || '').toLowerCase().replace(/[^a-z]/g, '');
 
@@ -115,6 +124,14 @@ export function decodeCsvBuffer(buf) {
 
 // Find the two dates on a "Report period" / "Date range" line of the preamble.
 export function periodFromPreamble(lines) {
+  // "Report Start: April 1, 2026, 12:00 AM" and "Report End: ..." on separate lines (Demographics Report export).
+  const edges = {};
+  for (const raw of lines) {
+    const line = Array.isArray(raw) ? raw.join(' ') : String(raw);
+    const m = line.match(/report\s*(start|end)\s*:?\s*(.+)$/i); if (!m) continue;
+    const d = parseDate(m[2].trim()); if (d) edges[m[1].toLowerCase()] = d;
+  }
+  if (edges.start && edges.end) return { start: edges.start < edges.end ? edges.start : edges.end, end: edges.start < edges.end ? edges.end : edges.start };
   for (const raw of lines) {
     const line = Array.isArray(raw) ? raw.join(' ') : String(raw);
     if (!/report\s*period|date\s*range|time\s*range|reporting\s*period|period/i.test(line)) continue;
@@ -157,8 +174,8 @@ export function parseLinkedInCsv(text, fileName = '') {
   const normed = headers.map(normHeader);
   let fixedSegment = null;
   if (!Object.values(demoCols).includes('segment')) {
-    const firstDim = headers.find(h => SEGMENT_HEADERS[normHeader(h)] && !PERF_FIELDS.day.includes(normHeader(h)));
-    if (firstDim && !normed.some(h => PERF_FIELDS.day.includes(h))) { fixedSegment = SEGMENT_HEADERS[normHeader(firstDim)]; demoCols[firstDim] = 'value'; delete demoCols[Object.keys(demoCols).find(k => demoCols[k] === 'value' && k !== firstDim)]; }
+    const firstDim = headers.find(h => SEGMENT_HEADERS[segKey(h)] && !PERF_FIELDS.day.includes(normHeader(h)));
+    if (firstDim && !normed.some(h => PERF_FIELDS.day.includes(h))) { fixedSegment = SEGMENT_HEADERS[segKey(firstDim)]; demoCols[firstDim] = 'value'; delete demoCols[Object.keys(demoCols).find(k => demoCols[k] === 'value' && k !== firstDim)]; }
   }
   const hasSegment = Object.values(demoCols).includes('segment') || !!fixedSegment;
   const hasDay = normed.some(h => PERF_FIELDS.day.includes(h));
@@ -178,7 +195,12 @@ export function parseLinkedInCsv(text, fileName = '') {
   for (const r of body) {
     const o = {};
     for (const f of TEXT_FIELDS) if (idxOf[f] != null && idxOf[f] >= 0 && (kind === 'demographics' || !['segment', 'value'].includes(f))) o[f] = String(r[idxOf[f]] ?? '').trim();
-    if (kind === 'performance') { const d = parseDate(o.day); if (o.day && !d) badDates++; o.day = d || ''; }
+    if (kind === 'performance') {
+      const d = parseDate(o.day); if (o.day && !d) badDates++; o.day = d || '';
+      // The 2026 export leaves Ad Name blank for most ads: fall back to the headline, then the intro text.
+      if (!o.ad_name) o.ad_name = (o.ad_headline || o.ad_text || '').split(/\r?\n/)[0].replace(/\s+/g, ' ').trim().slice(0, 120);
+      delete o.ad_headline; delete o.ad_text;
+    }
     else { if (fixedSegment) o.segment = fixedSegment; if (!o.segment) o.segment = ''; }
     for (const f of METRIC_FIELDS) o[f] = idxOf[f] != null && idxOf[f] >= 0 ? num(r[idxOf[f]]) : 0;
     const extra = {}; for (const i of extraCols) extra[headers[i]] = num(r[i]);

@@ -155,11 +155,14 @@ export const onRequestPost = handle(async ({ request, env }) => {
     if (existing[0].kind !== kind || existing[0].channel !== channel) return json({ error: 'upload_id belongs to a different channel or kind' }, 400)
   } else {
     if (kind === 'demographics' && periodStart && periodEnd) {
-      // Re-upload replaces: same window and kind means the old upload goes.
-      const dupes = await d.select('ca_uploads', {
+      // Re-upload replaces: same window, kind and segments (notes, e.g. "Company") means the old
+      // upload goes. A Job Title export for the same window sits next to the Company one.
+      const segs = str(b.notes).slice(0, 2000) || null
+      const found = await d.select('ca_uploads', {
         params: { channel: `eq.${channel}`, kind: `eq.${kind}`, period_start: `eq.${periodStart}`, period_end: `eq.${periodEnd}`, platform: `eq.${platform}` },
-        select: 'id',
+        select: 'id,notes,row_count',
       })
+      const dupes = found.filter((x) => !x.notes || !segs || x.notes === segs || !x.row_count)
       if (dupes.length) {
         for (const filter of inChunks(dupes.map((x) => x.id))) await d.del('ca_uploads', { id: filter })
       }

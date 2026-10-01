@@ -26,6 +26,9 @@ let SIG = '';
 const sig = st => `${st.from}|${st.to}|${st.cmp}|${st.cmpN}`;
 function sync(ctx) { const s = sig(ctx.state); if (s !== SIG) { SIG = s; OVERRIDES.clear(); CACHE.clear(); } }
 
+/** Forget every memoised GET (after an upload, delete or pull changed the store). */
+export function clearMemo() { CACHE.clear(); }
+
 /** GET with a per-range memo, so switching a section's comparison back and forth does not refetch. Cleared when the top bar changes. */
 export function memoGet(ctx, path, params) {
   sync(ctx);

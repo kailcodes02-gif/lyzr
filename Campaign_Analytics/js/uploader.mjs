@@ -5,6 +5,7 @@
 import { detectFile } from './upload-detect.mjs';
 import { campaignLabel } from './email-csv.mjs';
 import { PLATFORM_LABEL } from './ads-csv.mjs';
+import { clearMemo } from './compare.mjs';
 
 const CHUNK = 1500;
 const STATE = {};
@@ -65,7 +66,7 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
         return `<tr data-id="${p.id}"><td class="l mono" style="max-width:260px;word-break:break-all">${esc(p.file)}</td>
           <td class="l">${kindPill(p)}</td>
           <td class="l">${email ? `<input type="text" data-k="campaign" value="${esc(r.campaign)}" style="width:100%;min-width:200px"><div class="muted" style="font-size:11.5px">${esc(r.stats.from || '')} to ${esc(r.stats.to || '')} · ${fmt(r.stats.contacts)} contacts</div>`
-            : p.kind === 'demographics' ? `<input type="date" data-k="start" value="${esc(r.period_start || '')}"> <input type="date" data-k="end" value="${esc(r.period_end || '')}">`
+            : p.kind === 'demographics' ? `<input type="date" data-k="start" value="${esc(r.period_start || '')}"> <input type="date" data-k="end" value="${esc(r.period_end || '')}"><div class="muted" style="font-size:11.5px">${esc([...new Set(r.rows.map(x => x.segment))].filter(Boolean).join(', ') || 'no segment found')}</div>`
             : `<span class="muted">per day in file${r.period_start ? `: ${esc(r.period_start)} to ${esc(r.period_end || '')}` : ''}</span>`}</td>
           <td>${fmt(r.rows.length)}${email ? `<div class="muted" style="font-size:11.5px">${fmt(r.stats.sent)} sent · ${fmt(r.stats.opened)} opens · ${fmt(r.stats.clicked)} clicks</div>` : ''}</td>
           <td class="l" style="font-size:12.5px;color:var(--warn)">${(r.warnings || []).map(esc).join('<br>')}${p.needs.includes('window') && !ready(p) ? '<span class="down">Enter the export window</span>' : ''}</td>
@@ -91,7 +92,7 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
       const period_end = p.channel === 'email' ? r.stats.to : r.period_end || null;
       for (let i = 0; i < r.rows.length; i += CHUNK) {
         const chunk = r.rows.slice(i, i + CHUNK);
-        const res = await ctx.api.post('uploads', { channel: p.channel, platform: p.channel === 'email' ? undefined : (p.platform || 'linkedin'), kind: p.kind, file_name: p.file, period_start, period_end, columns: r.columns, rows: chunk, notes: p.channel === 'email' ? r.campaign : undefined, upload_id: upload_id || undefined, final: i + CHUNK >= r.rows.length });
+        const res = await ctx.api.post('uploads', { channel: p.channel, platform: p.channel === 'email' ? undefined : (p.platform || 'linkedin'), kind: p.kind, file_name: p.file, period_start, period_end, columns: r.columns, rows: chunk, notes: p.channel === 'email' ? r.campaign : p.kind === 'demographics' ? [...new Set(r.rows.map(x => x.segment))].filter(Boolean).join(', ') || undefined : undefined, upload_id: upload_id || undefined, final: i + CHUNK >= r.rows.length });
         upload_id = upload_id || res.upload_id; sent += chunk.length;
         p.progress = `${fmt(sent)} of ${fmt(r.rows.length)} rows`; drawPending();
       }
@@ -111,6 +112,7 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
     ctx.toast(`${ok} file${ok === 1 ? '' : 's'} uploaded${bad ? `, ${bad} failed` : ''}.`, bad ? 'err' : '');
     state.pending = state.pending.filter(p => p.status !== 'done');
     if (!state.pending.length) state.failed = [];
+    clearMemo();
     drawPending(); await drawList();
     if (ok && onDone) onDone();
   }
@@ -121,8 +123,8 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
       if (!uploads || !uploads.length) { list.innerHTML = '<p class="muted" style="font-size:13px">Nothing uploaded yet.</p>'; return; }
       list.innerHTML = ctx.ui.table({ cols: [
         { h: 'Tab', k: 'channel', left: true, f: u => ctx.ui.pill(u.channel === 'email' ? 'Email' : u.kind === 'performance' ? `Ads · ${PLATFORM_LABEL[u.platform || 'linkedin'] || u.platform}` : 'Ads · LinkedIn demographics', u.channel === 'email' ? 'p-med' : u.kind === 'performance' ? 'p-high' : 'p-low') },
-        { h: 'Campaign / window', k: 'w', left: true, f: u => u.channel === 'email' ? `${esc(campaignLabel(u.notes || ''))}<br><span class="muted" style="font-size:11.5px">${u.period_start ? esc(ctx.fmt.rangeLabel(u.period_start, u.period_end)) : ''}</span>` : u.period_start ? esc(ctx.fmt.rangeLabel(u.period_start, u.period_end)) : '<span class="muted">per day</span>' },
-        { h: 'Rows', k: 'row_count', f: u => fmt(u.row_count) },
+        { h: 'Campaign / window', k: 'w', left: true, f: u => u.channel === 'email' ? `${esc(campaignLabel(u.notes || ''))}<br><span class="muted" style="font-size:11.5px">${u.period_start ? esc(ctx.fmt.rangeLabel(u.period_start, u.period_end)) : ''}</span>` : u.period_start ? `${esc(ctx.fmt.rangeLabel(u.period_start, u.period_end))}${u.kind === 'demographics' ? `<br><span class="muted" style="font-size:11.5px">${esc(u.notes || 'segments not recorded')}</span>` : ''}` : '<span class="muted">per day</span>' },
+        { h: 'Rows', k: 'row_count', f: u => u.row_count ? fmt(u.row_count) : '<span class="down" title="Nothing was read from this file: delete it and upload again">0</span>' },
         { h: 'File', k: 'file_name', left: true, f: u => `<span class="mono">${esc(u.file_name || '')}</span>` },
         { h: 'Uploaded by', k: 'uploaded_by', left: true, f: u => esc(u.uploaded_by || '') },
         { h: 'At', k: 'uploaded_at', left: true, f: u => esc(ctx.fmt.istDateTime(u.uploaded_at)) },
@@ -130,7 +132,7 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
       ], rows: uploads.sort((a, b) => (a.uploaded_at < b.uploaded_at ? 1 : -1)) });
       list.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
         if (!confirm(`Delete "${b.dataset.name}" and its rows? This cannot be undone.`)) return;
-        try { await ctx.api.del('uploads', { id: b.dataset.del }); ctx.toast('Upload deleted.'); await drawList(); } catch (e) { ctx.toast('Delete failed: ' + e.message, 'err'); }
+        try { await ctx.api.del('uploads', { id: b.dataset.del }); clearMemo(); ctx.toast('Upload deleted.'); await drawList(); if (onDone) onDone(); } catch (e) { ctx.toast('Delete failed: ' + e.message, 'err'); }
       });
     } catch (e) { list.innerHTML = ctx.ui.empty('Uploads could not be loaded: ' + (e.message || e)); }
   }
