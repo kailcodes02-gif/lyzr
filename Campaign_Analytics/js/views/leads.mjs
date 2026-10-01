@@ -1,15 +1,23 @@
 // Leads analytics: bands, trend, heat maps, sources, follow-up health, full lead table and a
 // Claude read-out. All aggregation lives in js/lib/leads-agg.mjs (unit-tested).
-import { BANDS, enrich, applyFilters, summary, bucketCounts, withGrowth, crossTab, rowTotal, sourceBreakdown, ownerHealth, actionList, sortRows, toCsv, ownerKey, countBy, sortedEntries, clusterShort, sourceChannel, sourceDetail, recentActivity, gsiMatcher, hasActivity } from '../lib/leads-agg.mjs';
+import { BANDS, enrich, applyFilters, summary, bucketCounts, withGrowth, crossTab, rowTotal, sourceBreakdown, ownerHealth, actionList, sortRows, toCsv, ownerKey, countBy, sortedEntries, clusterShort, sourceChannel, sourceDetail, recentActivity, gsiMatcher, hasActivity, funnelCounts, funnelBySource, funnelByBucket, neverContacted, statusBreakdown, lastContactAt, firstContactAt, daysFrom, median } from '../lib/leads-agg.mjs';
 import { mountTrend } from '../trend.mjs';
+import { sectionCompare, memoGet, deltaText } from '../compare.mjs';
 
 export const route = 'leads';
 export const title = 'Leads analytics';
 
-const S = { gran: 'week', excludeSpam: true, gsiOnly: false, status: '', q: '', sort: { key: 'created_at', dir: -1 }, heatPick: null, limit: 200 };
-let chart = null, trendX = null;
+const S = { gran: 'week', funnelGran: 'auto', excludeSpam: true, gsiOnly: false, status: '', q: '', sort: { key: 'created_at', dir: -1 }, heatPick: null, limit: 200 };
+let chart = null, trendX = null, funnelCharts = [];
+let FUNNEL_SEQ = 0;
 const HIST = { rows: null, at: 0 };
-export function destroy() { if (chart) { try { chart.destroy(); } catch {} chart = null; } if (trendX) { trendX.destroy(); trendX = null; } }
+function killFunnelCharts() { for (const c of funnelCharts) { try { c.destroy(); } catch {} } funnelCharts = []; }
+export function destroy() { if (chart) { try { chart.destroy(); } catch {} chart = null; } killFunnelCharts(); if (trendX) { trendX.destroy(); trendX = null; } }
+async function copyText(ctx, text, what) {
+  try { await navigator.clipboard.writeText(text); }
+  catch { const t = document.createElement('textarea'); t.value = text; t.style.position = 'fixed'; t.style.opacity = '0'; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch {} t.remove(); }
+  ctx.toast(`Copied ${what}`);
+}
 
 const COLORS = { MD: '#043E77', 'MD-1': '#FE4B1E', 'MD-2': '#7A9CC6', Other: '#CFCCC7', Unknown: '#E3E1DE' };
 const BAND_COLS = BANDS.map(b => ({ key: b, label: b }));
@@ -36,9 +44,14 @@ export async function render(el, ctx) {
   const bandPill = b => pill(b || 'Unknown', b === 'MD' ? 'p-high' : b === 'MD-1' ? 'p-med' : b === 'MD-2' ? 'p-low' : 'p-na');
   const spamN = all.filter(r => r.spam).length;
 
+  // The page filters (tests / spam, GSI only, status), applied the same way to the range, the comparison range and the lifetime pull.
+  const filterRows = list => applyFilters(list, { excludeSpam: S.excludeSpam }).filter(r => (!S.gsiOnly || r.gsi) && (!S.status || (r.lead_status || 'No status') === S.status));
+  let FUNNEL = null; // what the Sales funnel section last drew, for the AI read-out
+
   function draw() {
     destroy();
-    const rows = applyFilters(all, { excludeSpam: S.excludeSpam }).filter(r => (!S.gsiOnly || r.gsi) && (!S.status || (r.lead_status || 'No status') === S.status));
+    const rows = filterRows(all);
+    const cmpFunnel = sectionCompare(ctx, 'leads:funnel', p => drawFunnel(p));
     const byStatus = crossTab(rows, r => r.lead_status || 'No status', r => r.band || 'Unknown');
     const statuses = [...new Set(all.map(r => r.lead_status || 'No status'))].sort();
     const gsiN = rows.filter(r => r.gsi).length;
@@ -56,7 +69,7 @@ export async function render(el, ctx) {
     const days = daysBetween(from, to);
 
     el.innerHTML = head + `
-      <div class="toc"><span class="tl">On this page</span><a href="#l-tiles">Numbers</a><a href="#l-status">Lead status</a><a href="#l-wow">Week / month</a><a href="#l-trend">Band trend</a><a href="#l-heat">Heat maps</a><a href="#l-sources">Sources</a><a href="#l-health">Follow-up health</a><a href="#l-table">All leads</a><a href="#l-ai">AI read-out</a>
+      <div class="toc"><span class="tl">On this page</span><a href="#l-tiles">Numbers</a><a href="#l-funnel">Sales funnel</a><a href="#l-status">Lead status</a><a href="#l-wow">Week / month</a><a href="#l-trend">Band trend</a><a href="#l-heat">Heat maps</a><a href="#l-sources">Sources</a><a href="#l-health">Follow-up health</a><a href="#l-table">All leads</a><a href="#l-ai">AI read-out</a>
         <span style="margin-left:auto;display:flex;gap:14px;align-items:center;font-size:12.5px;flex-wrap:wrap"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="gsiToggle" ${S.gsiOnly ? 'checked' : ''}> GSI leads only</label>
         <label style="display:flex;gap:6px;align-items:center">Status <select id="statusSel"><option value="">All</option>${statuses.map(x => `<option ${S.status === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
         <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="spamToggle" ${S.excludeSpam ? 'checked' : ''}> Exclude ${fmt(spamN)} tests / spam</label></span></div>
@@ -74,6 +87,8 @@ export async function render(el, ctx) {
         { k: 'Organic search', v: fmt(rows.filter(r => r.channel === 'Organic search').length), d: 'hs_analytics_source' },
         { k: 'No status set', v: fmt(rows.filter(r => !r.lead_status).length), d: 'lead status empty in HubSpot' },
       ]), 'l-tiles')}
+
+      ${section('Sales funnel', `What sales did with the leads created in range. <b>Reached out</b> = HubSpot "Number of times contacted" or "Last contacted" is set, or a call, email or meeting is logged. <b>Replied</b> = replied to a sales email. <b>Demo booked</b> = lead status Demo Booked, any Demo or Intro Call status, Associated with a deal, or lifecycle MQL, SQL, Opportunity or Customer (an MQL is someone trying to book). <b>Demo completed</b> = a Demo Completed or Intro Call Completed status. <b>Sales prospect</b> = lifecycle SQL, Opportunity or Customer, or Associated with a deal. The funnel bars keep only leads that passed every earlier step; "any path" counts every lead at that stage whatever was logged before it, so a completed demo with no logged outreach still shows there. ${cmpFunnel.html()}`, `<div id="funnelBody">${spinner('Loading the funnel')}</div>`, 'l-funnel')}
 
       ${section('Lead status', 'HubSpot lead status (hs_lead_status) by band, with how many have any logged activity. Pick a status in the bar above to filter the whole page.', table({ cols: [
         { h: 'Lead status', k: 'st', left: true, f: r => `<b>${esc(r.st)}</b>` }, ...BANDS.map(b => ({ h: b, k: b, f: r => fmt(r[b] || 0) })), { h: 'Total', k: 'total', f: r => `<b>${fmt(r.total)}</b>` },
@@ -131,6 +146,94 @@ export async function render(el, ctx) {
       { key: 'seniorShare', label: 'MD + MD-1 share', fmt: 'pct', axis: 'right', fn: l => l.length ? l.filter(r => r.band === 'MD' || r.band === 'MD-1').length / l.length * 100 : null },
     ], note: 'Counted by HubSpot create date (IST). "Worked" is judged today, so older periods look better worked than recent ones.' });
     seg(el.querySelector('#granSeg'), [{ value: 'day', label: 'Day' }, { value: 'week', label: 'Week' }, { value: 'month', label: 'Month' }], v => { S.gran = v; draw(); }, S.gran);
+
+    // ---- sales funnel (its own comparison control; only this section redraws) ----------------
+    cmpFunnel.wire(el);
+    const loadRows = async params => { const d = await memoGet(ctx, 'hubspot', params); return filterRows(decorate(enrich(d.contacts || [], d.notes_by_contact || {}, accounts))); };
+    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    const axisInk = dark ? '#B8B4AD' : '#6B675F', gridInk = dark ? '#34353A' : '#E3E1DE', legendInk = dark ? '#F1F0EE' : '#1F2022';
+    async function drawFunnel(p) {
+      const box = el.querySelector('#funnelBody'); if (!box) return;
+      const seq = ++FUNNEL_SEQ;
+      box.innerHTML = spinner('Loading the funnel');
+      const [prevRows, lifeRows] = await Promise.all([p ? loadRows({ from: p.from, to: p.to }).catch(() => []) : [], loadRows({}).catch(() => null)]);
+      if (seq !== FUNNEL_SEQ || !el.isConnected || el.querySelector('#funnelBody') !== box) return;
+      killFunnelCharts();
+      const F = funnelCounts(rows), FP = funnelCounts(prevRows), FL = lifeRows ? funnelCounts(lifeRows) : null;
+      const gran = S.funnelGran === 'auto' ? (days > 70 ? 'month' : 'week') : S.funnelGran;
+      const bySource = funnelBySource(rows);
+      const byBucket = funnelByBucket(rows, gran, ctx.fmt.bucketKey);
+      const never = neverContacted(rows);
+      const statuses = statusBreakdown(rows);
+      const medLast = median(rows.map(r => daysFrom(r.created_at, lastContactAt(r))).filter(x => x != null));
+      const medFirst = median(rows.map(r => daysFrom(r.created_at, firstContactAt(r))).filter(x => x != null));
+      const lifeFirst = lifeRows && lifeRows.length ? lifeRows.reduce((m, r) => !m || r.day < m ? r.day : m, null) : null;
+      const stepRow = s => ({ ...s, prevN: FP.cumulative[s.key] });
+      const pctOf = v => v == null ? '<span class="muted">–</span>' : pct(v * 100, 0);
+      FUNNEL = { range: { from, to, generated: F.generated, cumulative: F.cumulative, raw: F.raw }, comparison: p ? { label: p.label, generated: FP.generated, cumulative: FP.cumulative, raw: FP.raw } : null, lifetime: FL ? { since: lifeFirst, generated: FL.generated, cumulative: FL.cumulative, raw: FL.raw } : null, bySource: bySource.slice(0, 8), byBucket: byBucket.slice(-8).map(b => ({ period: b.key, generated: b.generated, reached: b.reached, replied: b.replied, booked: b.booked, completed: b.completed, prospect: b.prospect, medianDaysToContact: b.medianDaysToContact })), neverContacted: { count: never.length, oldestSince: never[0] ? never[0].day : null }, medianDaysToLastContact: medLast, statuses: statuses.slice(0, 12).map(s => ({ status: s.label, n: s.n, countsAs: s.countsAs })) };
+
+      box.innerHTML = `
+        <div class="grid g2w">
+          <div class="card"><h3>Leads created ${esc(rangeLabel(from, to))}</h3><div class="chartbox short"><canvas id="funnelChart"></canvas></div></div>
+          <div>${table({ cols: [
+            { h: 'Stage', k: 'label', left: true, f: s => `<b>${esc(s.label)}</b>` },
+            { h: 'Leads', k: 'n', f: s => `<b>${fmt(s.n)}</b>` },
+            { h: 'Of generated', k: 'g', f: s => pctOf(s.ofGenerated) },
+            { h: 'Of previous step', k: 'p', f: s => s.ofPrev == null ? '<span class="muted">–</span>' : pctOf(s.ofPrev) },
+            { h: 'Any path', k: 'raw', f: s => s.raw === s.n ? fmt(s.raw) : `${fmt(s.raw)} <span class="muted">(+${fmt(s.raw - s.n)})</span>` },
+            { h: p ? `vs ${esc(p.label)}` : 'Comparison', k: 'd', left: true, f: s => deltaText(p, s.n, s.prevN) + (p && s.prevN ? ` <span class="muted">(${fmt(s.prevN)})</span>` : '') },
+          ], rows: F.steps.map(stepRow) })}
+          <p class="muted" style="font-size:12.5px;margin-top:8px">Median time from lead to last contact: ${medLast == null ? 'no contact dates yet' : fmt(medLast, 1) + ' days'}${medFirst != null && medLast != null && Math.abs(medFirst - medLast) >= 0.5 ? ` (first contact ${fmt(medFirst, 1)} days)` : ''}. HubSpot's "Last contacted" is the last touch, so the first touch is only known when calls, emails or meetings are logged as notes.</p></div>
+        </div>
+
+        <h3 style="margin-top:18px">Lifetime <span class="muted" style="font-weight:400;font-size:13px">all leads pulled so far${FL ? `: ${fmt(FL.generated)} leads${lifeFirst ? ` since ${esc(ctx.fmt.dayLabel(lifeFirst))}` : ''}` : ''}</span></h3>
+        ${FL ? tiles(FL.steps.map(s => ({ k: s.label, v: fmt(s.n), d: `${s.ofGenerated == null ? '' : pct(s.ofGenerated * 100, 0) + ' of all leads'}${s.raw !== s.n ? ` · ${fmt(s.raw)} any path` : ''}` }))) : '<p class="muted">The lifetime pull could not be loaded.</p>'}
+
+        <div style="margin-top:18px">
+          <div><h3>By source</h3><p class="muted" style="font-size:12.5px;margin-bottom:8px">HubSpot lead source first (Book a demo form, LinkedIn, Contact us, a playbook or asset form, events, outbound), else the analytics source. Each column counts every lead that reached that stage, whatever path it took.</p>${table({ cols: [
+            { h: 'Source', k: 'source', left: true, f: r => esc(r.source) }, { h: 'Generated', k: 'generated', f: r => `<b>${fmt(r.generated)}</b>` },
+            { h: 'Reached out', k: 'reached', f: r => `${fmt(r.reached)} <span class="muted">(${pct(r.generated ? r.reached / r.generated * 100 : null, 0)})</span>` }, { h: 'Replied', k: 'replied', f: r => fmt(r.replied) },
+            { h: 'Demo booked', k: 'booked', f: r => fmt(r.booked) }, { h: 'Demo completed', k: 'completed', f: r => fmt(r.completed) }, { h: 'Prospects', k: 'prospect', f: r => fmt(r.prospect) },
+          ], rows: bySource, total: { source: 'Total', generated: fmt(F.generated), reached: `${fmt(F.raw.reached)} (${pct(F.generated ? F.raw.reached / F.generated * 100 : null, 0)})`, replied: fmt(F.raw.replied), booked: fmt(F.raw.booked), completed: fmt(F.raw.completed), prospect: fmt(F.raw.prospect) } })}</div>
+          <div style="margin-top:18px"><h3>Lead status in HubSpot</h3><p class="muted" style="font-size:12.5px;margin-bottom:8px">What HubSpot calls each lead right now (hs_lead_status, portal label) and which funnel stage that status counts as.</p>${table({ cols: [
+            { h: 'Status', k: 'label', left: true, f: r => r.label === r.status || !r.status ? esc(r.label) : `${esc(r.label)} <span class="muted">(${esc(r.status)})</span>` }, { h: 'Leads', k: 'n', f: r => `<b>${fmt(r.n)}</b>` },
+            { h: 'Reached out', k: 'reached', f: r => fmt(r.reached) }, { h: 'Replied', k: 'replied', f: r => fmt(r.replied) },
+            { h: 'Counts as', k: 'countsAs', f: r => r.countsAs ? pill(r.countsAs, r.countsAs === 'Sales prospect' ? 'p-high' : r.countsAs === 'Demo completed' ? 'p-med' : 'p-low') : '<span class="muted">–</span>' },
+          ], rows: statuses })}</div>
+        </div>
+
+        <h3 style="margin-top:18px">Outreach by date</h3>
+        <p class="muted" style="font-size:12.5px;margin-bottom:8px">Leads by the ${gran} HubSpot created them, and how many of each ${gran}'s leads sales has reached out to since (judged today, so older periods look better worked than recent ones). "Days to contact" is the median from lead to last contact.</p>
+        <div id="funnelGranSeg" style="margin-bottom:10px"></div>
+        <div class="card"><div class="chartbox short"><canvas id="outreachChart"></canvas></div></div>
+        <div style="margin-top:14px">
+          <div>${table({ cols: [
+            { h: gran === 'month' ? 'Month' : 'Week', k: 'key', left: true, f: b => esc(bucketLabel(b.key, gran)) }, { h: 'Leads', k: 'generated', f: b => `<b>${fmt(b.generated)}</b>` },
+            { h: 'Reached out', k: 'reached', f: b => fmt(b.reached) }, { h: 'Not yet', k: 'notReached', f: b => b.notReached ? `<span class="down">${fmt(b.notReached)}</span>` : '0' }, { h: '% reached', k: 'reachedShare', f: b => pctOf(b.reachedShare) },
+            { h: 'Days to contact', k: 'medianDaysToContact', f: b => b.medianDaysToContact == null ? '<span class="muted">–</span>' : fmt(b.medianDaysToContact, 1) },
+            { h: 'Replied', k: 'replied', f: b => fmt(b.replied) }, { h: 'Demos', k: 'booked', f: b => `${fmt(b.booked)}${b.completed ? ` <span class="muted">(${fmt(b.completed)} done)</span>` : ''}` },
+          ], rows: byBucket })}</div>
+        </div>
+        <div class="card" style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span>${never.length ? `<b>${fmt(never.length)}</b> lead${never.length === 1 ? '' : 's'} created in range ${never.length === 1 ? 'has' : 'have'} never been contacted; oldest since <b>${esc(ctx.fmt.dayLabel(never[0].day))}</b> (${esc(timeAgo(never[0].created_at))}).` : 'Every lead created in range has been contacted at least once.'}</span>${never.length ? `<button class="btn tiny" id="copyNever" style="margin-left:auto">Copy ${fmt(never.filter(r => r.email).length)} emails</button>` : ''}</div>`;
+
+      seg(box.querySelector('#funnelGranSeg'), [{ value: 'auto', label: days > 70 ? 'Auto (month)' : 'Auto (week)' }, { value: 'week', label: 'Week' }, { value: 'month', label: 'Month' }], v => { S.funnelGran = v; drawFunnel(p); }, S.funnelGran);
+      const copyBtn = box.querySelector('#copyNever');
+      if (copyBtn) copyBtn.onclick = () => { const list = never.filter(r => r.email).map(r => r.email); copyText(ctx, list.join('\n'), `${list.length} emails`); };
+
+      if (typeof Chart !== 'undefined') {
+        const barOpts = extra => ({ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: legendInk, boxWidth: 12 } }, tooltip: { mode: 'index' } }, ...extra });
+        funnelCharts.push(new Chart(box.querySelector('#funnelChart'), { type: 'bar', data: { labels: F.steps.map(s => s.label), datasets: [
+          { label: 'Passed every earlier step', data: F.steps.map(s => s.n), backgroundColor: '#043E77', borderWidth: 0 },
+          { label: 'Any path', data: F.steps.map(s => s.raw), backgroundColor: '#7A9CC6', borderWidth: 0 },
+        ] }, options: barOpts({ indexAxis: 'y', scales: { x: { beginAtZero: true, ticks: { precision: 0, color: axisInk }, grid: { color: gridInk } }, y: { ticks: { color: axisInk }, grid: { display: false } } } }) }));
+        funnelCharts.push(new Chart(box.querySelector('#outreachChart'), { type: 'bar', data: { labels: byBucket.map(b => bucketLabel(b.key, gran)), datasets: [
+          { label: 'Reached out', data: byBucket.map(b => b.reached), backgroundColor: '#043E77', borderWidth: 0, stack: 'a' },
+          { label: 'Not yet reached', data: byBucket.map(b => b.notReached), backgroundColor: '#FE4B1E', borderWidth: 0, stack: 'a' },
+          { label: 'Demo booked', data: byBucket.map(b => b.booked), backgroundColor: '#CFCCC7', borderWidth: 0, stack: 'b' },
+        ] }, options: barOpts({ scales: { x: { stacked: true, grid: { display: false }, ticks: { color: axisInk } }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0, color: axisInk }, grid: { color: gridInk } } } }) }));
+      }
+    }
+    drawFunnel(cmpFunnel.prev);
 
     // chart
     if (typeof Chart !== 'undefined') {
@@ -200,6 +303,7 @@ export async function render(el, ctx) {
       clusters: Object.fromEntries(sortedEntries(countBy(rows.filter(r => r.cluster), r => clusterShort(r.cluster)))),
       lead_status: [...byStatus.entries()].map(([k, m]) => ({ status: k, total: rowTotal(m) })), gsi_leads: gsiN, channels: Object.fromEntries(sortedEntries(countBy(rows, r => r.channel))),
       actionCount: actions.length, actionSample: actions.slice(0, 15).map(r => ({ account: r.account, title: r.jobtitle, band: r.band, owner: r.owner_name, idleDays: r.idleDays })),
+      funnel: FUNNEL,
     }) });
   }
   draw();

@@ -159,20 +159,24 @@ function makeContact({ first, last, company, domain, title, country, msg, month,
   const o = owner === undefined ? ownerFor(account) : owner;
   const own = o ? OWNERS[o] : null;
   const email = personal ? `${first}.${last}${Math.floor(rnd() * 900 + 10)}@${domain}`.toLowerCase().replace(/[^a-z0-9.@]/g, '') : `${first}.${last}@${domain}`.toLowerCase().replace(/[^a-z0-9.@]/g, '');
-  const c = { hs_id: id, email, first_name: first, last_name: last, company_raw: company, account, jobtitle: title, band: b, country, region: regionOf(country), source: hsSource, source_detail: detail, lead_source: src, lsa_message: msg || '', lsa_score: msg ? Math.round(40 + rnd() * 55) : null, lsa_category: msg ? null : null, lifecycle: 'lead', lead_status: 'NEW', owner_id: own ? own.id : null, owner_name: own ? own.name : null, created_at, last_modified: created_at, last_activity_at: null, last_activity_type: null, notes_count: 0, via: via || (account ? ['company'] : msg && /agent/i.test(msg) ? ['gsi_text'] : []), props: { hs_analytics_source: hsSource, hs_analytics_source_data_1: detail, lead_source: src } };
+  const c = { hs_id: id, email, first_name: first, last_name: last, company_raw: company, account, jobtitle: title, band: b, country, region: regionOf(country), source: hsSource, source_detail: detail, lead_source: src, lsa_message: msg || '', lsa_score: msg ? Math.round(40 + rnd() * 55) : null, lsa_category: msg ? null : null, lifecycle: 'lead', lead_status: 'OPEN', owner_id: own ? own.id : null, owner_name: own ? own.name : null, created_at, last_modified: created_at, last_activity_at: null, last_activity_type: null, notes_count: 0, via: via || (account ? ['company'] : msg && /agent/i.test(msg) ? ['gsi_text'] : []), props: { hs_analytics_source: hsSource, hs_analytics_source_data_1: detail, lead_source: src } };
   return c;
 }
+// A logged call, email or meeting is what HubSpot counts in "Number of times contacted" and
+// "Last contacted" (num_contacted_notes, notes_last_contacted); the Sales funnel reads those.
+function touch(c, ts) { c.props.num_contacted_notes = (c.props.num_contacted_notes || 0) + 1; c.props.notes_last_contacted = ts; }
 function addNotes(c, notes) {
   const n = 1 + Math.floor(rnd() * 3);
   let last = c.created_at;
-  const kinds = ['call', 'email', 'meeting', 'note', 'task'];
   for (let i = 0; i < n; i++) {
     const kind = i === 0 ? weighted([['note', 3], ['email', 4], ['call', 3]]) : weighted([['call', 3], ['email', 3], ['meeting', 2], ['note', 2], ['task', 1]]);
     last = laterTs(last, 6);
     notes.push({ id: `n${c.hs_id}-${i}`, contact_id: c.hs_id, kind, body: pick(NOTE_TEMPLATES[kind]), owner_id: c.owner_id || OWNERS.anju.id, created_at: last });
-    if (kind === 'meeting') { c.lifecycle = 'marketingqualifiedlead'; c.lead_status = 'CONNECTED'; }
-    else if (c.lead_status === 'NEW') c.lead_status = 'ATTEMPTED_TO_CONTACT';
-    if (kinds.includes(kind)) { c.last_activity_at = last; c.last_activity_type = kind; }
+    if (kind === 'call' || kind === 'email' || kind === 'meeting') touch(c, last);
+    if (kind === 'meeting') { c.lifecycle = 'marketingqualifiedlead'; c.lead_status = 'Demo Booked'; c.props.hs_last_booked_meeting_date = last; }
+    else if (c.lead_status === 'OPEN') c.lead_status = 'Working';
+    if (kind === 'email' && chance(0.35)) c.props.hs_sales_email_last_replied = laterTs(last, 4);
+    c.last_activity_at = last; c.last_activity_type = kind;
   }
   c.notes_count = n; c.last_modified = last;
 }
@@ -220,14 +224,25 @@ function build() {
   }
   const pitches = ['We provide staff augmentation services for AI and data teams at competitive rates.', 'Call center services at low cost, 24x7 support in 12 languages. We offer a free pilot.', 'Link exchange proposal for your blog, we have DA 50+ sites.', 'Our services include web development services and SEO services, let us know if interested.', 'Hire our dedicated developers for your agent projects, starting at $12 per hour.', 'Business proposal: we offer outsourcing services for annotation and QA.'];
   pitches.forEach((msg, i) => contacts.push(makeContact({ first: pick(FIRST), last: pick(LAST), company: pick(['TechServe Global', 'BPO Prime', 'LinkBoost Media', 'DevHire Solutions', 'Annotate Labs', 'WebCraft Studio']), domain: pick(['gmail.com', 'outlook.com', 'techserveglobal.com']), title: 'Business Development', country: pick(['India', 'India', 'Pakistan']), msg, month: weighted(MONTH_MIX), owner: null, via: [], source: 'Organic' })));
-  // 5. notes on ~30% of real contacts, a logged activity without notes on some more, a few MQLs
+  // 5. notes on ~30% of real contacts, a logged activity without notes on some more, a few MQLs,
+  //    then what became of the demos. Statuses and lifecycle ids are the live portal's values:
+  //    OPEN (New), Working, Stalled, Junk Lead, UNQUALIFIED, Demo Booked, Demo Completed (+ PLG,
+  //    Ghosting, no show, Cancelled by Client), Associated with a deal; lifecycle lead, MQL,
+  //    opportunity (SQL), 249550600 (Opportunity), customer.
   for (const c of contacts) {
     const isJunk = /lyzr|gmail|outlook/.test(c.email) && !c.account;
-    if (isJunk) { if (chance(0.15)) { c.lifecycle = 'subscriber'; c.lead_status = 'UNQUALIFIED'; } continue; }
+    if (isJunk) { if (chance(0.15)) { c.lifecycle = 'subscriber'; c.lead_status = 'UNQUALIFIED'; } else if (chance(0.3)) c.lead_status = 'Junk Lead'; continue; }
     if (chance(0.3) || c.account && chance(0.35)) addNotes(c, notes);
-    else if (chance(0.15)) { c.last_activity_at = laterTs(c.created_at, 5); c.last_activity_type = 'email'; c.lead_status = 'ATTEMPTED_TO_CONTACT'; }
-    if (c.lifecycle === 'lead' && chance(0.06)) c.lifecycle = 'marketingqualifiedlead';
-    if (c.lifecycle === 'marketingqualifiedlead' && chance(0.2)) { c.lifecycle = 'salesqualifiedlead'; c.lead_status = 'OPEN_DEAL'; }
+    else if (chance(0.15)) { c.last_activity_at = laterTs(c.created_at, 5); c.last_activity_type = 'email'; c.lead_status = 'Working'; touch(c, c.last_activity_at); }
+    if (c.lifecycle === 'lead' && chance(0.06)) { c.lifecycle = 'marketingqualifiedlead'; if (c.lead_status === 'OPEN' || c.lead_status === 'Working') c.lead_status = 'Demo Booked'; }
+    if (c.lead_status === 'Demo Booked') c.lead_status = weighted([['Demo Completed', 46], ['Demo Completed - PLG', 8], ['Demo Completed - Ghosting', 8], ['Demo no show', 12], ['Demo Cancelled by Client', 6], ['Demo Booked', 20]]);
+    if (/^Demo Completed/.test(c.lead_status) && chance(0.35)) { c.lifecycle = chance(0.7) ? 'opportunity' : chance(0.6) ? '249550600' : 'customer'; if (chance(0.5)) c.lead_status = 'Associated with a deal'; }
+    else if (c.lead_status === 'Working' && chance(0.12)) c.lead_status = 'Stalled';
+    // Someone who booked a demo was almost always written to and wrote back first.
+    if (/^(Demo|Intro|Associated)/.test(c.lead_status)) {
+      if (!c.props.num_contacted_notes && chance(0.85)) touch(c, laterTs(c.created_at, 3));
+      if (!c.props.hs_sales_email_last_replied && chance(0.7)) c.props.hs_sales_email_last_replied = laterTs(c.props.notes_last_contacted || c.created_at, 4);
+    }
   }
   contacts.sort((a, b) => a.created_at < b.created_at ? 1 : -1);
   const notes_by_contact = {};

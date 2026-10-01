@@ -1,7 +1,7 @@
 // node --test Campaign_Analytics/tests/frontend/leads.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clusterOf, spamReason, looksGibberish, companyType, enrich, bucketCounts, withGrowth, bandCounts, crossTab, rowTotal, sourceBreakdown, ownerHealth, actionList, sortRows, toCsv, applyFilters, summary, countBy, sortedEntries } from '../../js/lib/leads-agg.mjs';
+import { clusterOf, spamReason, looksGibberish, companyType, enrich, bucketCounts, withGrowth, bandCounts, crossTab, rowTotal, sourceBreakdown, ownerHealth, actionList, sortRows, toCsv, applyFilters, summary, countBy, sortedEntries, isReached, isReplied, isDemoBooked, isDemoCompleted, isProspect, funnelFlags, funnelCounts, funnelSource, funnelBySource, funnelByBucket, neverContacted, statusBreakdown, statusLabel, lifecycleLabel, outreachDates, firstContactAt, lastContactAt, repliedAt, median, daysFrom, FUNNEL_KEYS } from '../../js/lib/leads-agg.mjs';
 import { hubspotMock } from '../../js/mock/hubspot.mjs';
 import { linkedinMock } from '../../js/mock/linkedin.mjs';
 import accounts from '../../seed/accounts.json' with { type: 'json' };
@@ -148,6 +148,136 @@ test('hubspotMock: ~220 contacts, named GSI leads with exact messages, cluster a
   assert.ok(rows.every(r => Array.isArray(r.via)));
   // deterministic
   assert.equal(contacts[0].hs_id, hubspotMock.contacts[0].hs_id);
+});
+
+// ---- sales funnel ----------------------------------------------------------------------------
+const stages = o => { const f = funnelFlags(c(o)); return FUNNEL_KEYS.filter(k => k !== 'generated' && f[k]); };
+
+test('funnel: demo booked, completed and prospect from hs_lead_status (case-insensitive) and lifecyclestage', () => {
+  assert.deepEqual(stages({ lead_status: 'OPEN' }), []);
+  assert.deepEqual(stages({ lead_status: 'Working' }), []);
+  assert.deepEqual(stages({ lead_status: 'Demo Booked' }), ['booked']);
+  assert.deepEqual(stages({ lead_status: 'demo booked' }), ['booked'], 'case does not matter');
+  assert.deepEqual(stages({ lead_status: 'Demo no show' }), ['booked']);
+  assert.deepEqual(stages({ lead_status: 'Demo Cancelled by Client' }), ['booked']);
+  assert.deepEqual(stages({ lead_status: 'Intro Call Booked' }), ['booked']);
+  assert.deepEqual(stages({ lead_status: 'Intro Call No-Show' }), ['booked']);
+  for (const s of ['Demo Completed', 'Demo Completed - PLG', 'Demo Completed - Disqualified', 'Demo Completed - Ghosting', 'Intro Call Completed', 'Intro Qualified', 'Intro Disqualified']) assert.deepEqual(stages({ lead_status: s }), ['booked', 'completed'], s);
+  assert.deepEqual(stages({ lead_status: 'Associated with a deal' }), ['booked', 'prospect']);
+  assert.deepEqual(stages({ lead_status: 'Junk Lead' }), []); assert.deepEqual(stages({ lead_status: 'UNQUALIFIED' }), []); assert.deepEqual(stages({ lead_status: 'Stalled' }), []);
+  // lifecycle alone
+  assert.deepEqual(stages({ lifecycle: 'lead' }), []);
+  assert.deepEqual(stages({ lifecycle: 'marketingqualifiedlead' }), ['booked'], 'MQL = trying to book a demo');
+  assert.deepEqual(stages({ lifecycle: 'opportunity' }), ['booked', 'prospect'], 'opportunity is labelled SQL in the portal');
+  assert.deepEqual(stages({ lifecycle: '249550600' }), ['booked', 'prospect'], 'the custom Opportunity stage');
+  assert.deepEqual(stages({ lifecycle: 'customer' }), ['booked', 'prospect']);
+  assert.deepEqual(stages({ lifecycle: '242934529' }), [], 'Discarded'); assert.deepEqual(stages({ lifecycle: '1331052807' }), [], 'Disqualified'); assert.deepEqual(stages({ lifecycle: 'subscriber' }), []);
+  // both: a completed demo at a customer
+  assert.deepEqual(stages({ lead_status: 'Demo Completed', lifecycle: 'customer' }), ['booked', 'completed', 'prospect']);
+  assert.equal(isDemoBooked(c({ lead_status: 'Demo Completed' })), true); assert.equal(isDemoCompleted(c({ lead_status: 'Demo Booked' })), false); assert.equal(isProspect(c({ lead_status: 'Demo Completed' })), false);
+});
+
+test('funnel: reached out and replied from num_contacted_notes, notes_last_contacted, logged touches and sales email replies', () => {
+  assert.equal(isReached(c({})), false);
+  assert.equal(isReached(c({ props: { num_contacted_notes: '2' } })), true, 'HubSpot number of times contacted');
+  assert.equal(isReached(c({ props: { notes_last_contacted: '1757500000000' } })), true, 'HubSpot last contacted as epoch ms');
+  assert.equal(isReached(c({ last_activity_at: '2026-09-12T05:00:00Z', last_activity_type: 'CALL' })), true);
+  assert.equal(isReached(c({ last_activity_at: '2026-09-12T05:00:00Z', last_activity_type: 'NOTE' })), false, 'a note alone is not outreach');
+  assert.equal(isReached(c({ last_activity_at: '2026-09-12T05:00:00Z', last_activity_type: 'TASK' })), false);
+  assert.equal(isReached(c({ notes: [{ kind: 'note', created_at: '2026-09-12T05:00:00Z' }] })), false);
+  assert.equal(isReached(c({ notes: [{ kind: 'email', created_at: '2026-09-12T05:00:00Z' }] })), true);
+  assert.equal(isReached(c({ props: { hs_sales_email_last_replied: '2026-09-14T05:00:00Z' } })), true, 'a reply implies we wrote');
+  assert.equal(isReplied(c({ props: { num_contacted_notes: 3 } })), false);
+  assert.equal(repliedAt(c({ props: { hs_sales_email_last_replied: '2026-09-14T05:00:00Z' } })), '2026-09-14T05:00:00.000Z');
+  assert.equal(repliedAt(c({ last_activity_at: '2026-09-14T05:00:00Z', last_activity_type: 'INCOMING_EMAIL' })), '2026-09-14T05:00:00.000Z');
+  const r = c({ created_at: '2026-09-10T05:00:00Z', props: { notes_last_contacted: '2026-09-16T05:00:00Z' }, notes: [{ kind: 'call', created_at: '2026-09-12T05:00:00Z' }, { kind: 'note', created_at: '2026-09-11T05:00:00Z' }] });
+  assert.deepEqual(outreachDates(r), ['2026-09-12T05:00:00.000Z', '2026-09-16T05:00:00.000Z']);
+  assert.equal(firstContactAt(r), '2026-09-12T05:00:00.000Z'); assert.equal(lastContactAt(r), '2026-09-16T05:00:00.000Z');
+  assert.equal(daysFrom(r.created_at, lastContactAt(r)), 6); assert.equal(daysFrom(null, 'x'), null);
+  assert.equal(median([]), null); assert.equal(median([3, 1, 2]), 2); assert.equal(median([1, 2, 3, 10]), 2.5);
+});
+
+test('funnel: cumulative keeps the chain, raw counts every lead at the stage', () => {
+  const rows = [
+    c({ hs_id: '1' }),                                                                                              // generated only
+    c({ hs_id: '2', props: { num_contacted_notes: 1 } }),                                                            // reached
+    c({ hs_id: '3', props: { num_contacted_notes: 1, hs_sales_email_last_replied: '2026-09-12T05:00:00Z' } }),       // replied
+    c({ hs_id: '4', props: { num_contacted_notes: 2, hs_sales_email_last_replied: '2026-09-12T05:00:00Z' }, lead_status: 'Demo Booked' }),
+    c({ hs_id: '5', props: { num_contacted_notes: 2, hs_sales_email_last_replied: '2026-09-12T05:00:00Z' }, lead_status: 'Demo Completed' }),
+    c({ hs_id: '6', props: { num_contacted_notes: 2, hs_sales_email_last_replied: '2026-09-12T05:00:00Z' }, lead_status: 'Demo Completed', lifecycle: 'opportunity' }),
+    c({ hs_id: '7', lead_status: 'Demo Completed' }),                                                               // completed with nothing logged before it
+    c({ hs_id: '8', lifecycle: 'customer', props: { num_contacted_notes: 1 } }),                                     // prospect, booked by lifecycle, never replied
+  ];
+  const F = funnelCounts(rows);
+  assert.equal(F.generated, 8);
+  assert.deepEqual(F.cumulative, { generated: 8, reached: 6, replied: 4, booked: 3, completed: 2, prospect: 1 });
+  assert.deepEqual(F.raw, { generated: 8, reached: 6, replied: 4, booked: 5, completed: 3, prospect: 2 }, 'lead 7 is completed but never reached, lead 8 is a prospect that never replied');
+  assert.deepEqual(F.steps.map(s => s.key), FUNNEL_KEYS);
+  const booked = F.steps.find(s => s.key === 'booked');
+  assert.equal(booked.n, 3); assert.equal(booked.raw, 5); assert.equal(booked.ofGenerated, 3 / 8); assert.equal(booked.ofPrev, 3 / 4);
+  assert.equal(F.steps[0].ofPrev, null); assert.equal(F.steps[0].ofGenerated, 1);
+  const empty = funnelCounts([]); assert.equal(empty.generated, 0); assert.equal(empty.steps[0].ofGenerated, null);
+  assert.deepEqual(neverContacted(rows).map(r => r.hs_id), ['1', '7']);
+});
+
+test('funnel: source labels from lead_source first, then the analytics source', () => {
+  assert.equal(funnelSource(c({ lead_source: 'Book a Demo' })), 'Book a demo form');
+  assert.equal(funnelSource(c({ lead_source: 'LinkedIn' })), 'LinkedIn');
+  assert.equal(funnelSource(c({ lead_source: 'LinkedIn Ads (GSI & SI)' })), 'LinkedIn');
+  assert.equal(funnelSource(c({ lead_source: 'Contact Us' })), 'Contact us');
+  assert.equal(funnelSource(c({ lead_source: '100+ AI Use Cases' })), 'Playbook / asset form');
+  assert.equal(funnelSource(c({ lead_source: 'Agentic AI Roadmap Playbook' })), 'Playbook / asset form');
+  assert.equal(funnelSource(c({ lead_source: 'OutBound' })), 'Outbound');
+  assert.equal(funnelSource(c({ lead_source: 'apollo_import' })), 'Import (Apollo)');
+  assert.equal(funnelSource(c({ lead_source: 'AI Summit Dubai 2026' })), 'Events');
+  assert.equal(funnelSource(c({ lead_source: '', source: 'ORGANIC_SEARCH' })), 'Organic search');
+  assert.equal(funnelSource(c({ lead_source: null, source: 'PAID_SOCIAL', props: { first_conversion_event_name: 'GSI Lead Form' } })), 'GSI form');
+  const by = funnelBySource([c({ lead_source: 'LinkedIn', props: { num_contacted_notes: 1 } }), c({ lead_source: 'LinkedIn', lead_status: 'Demo Completed' }), c({ lead_source: 'Book a Demo' })]);
+  assert.deepEqual(by.map(s => [s.source, s.generated, s.reached, s.booked, s.completed]), [['LinkedIn', 2, 1, 1, 1], ['Book a demo form', 1, 0, 0, 0]]);
+});
+
+test('funnel: by week and by month buckets with reached share and median days to contact', () => {
+  const rows = enrich([
+    c({ hs_id: '1', created_at: '2026-09-01T05:00:00Z', props: { notes_last_contacted: '2026-09-03T05:00:00Z', num_contacted_notes: 1 } }),   // week of 31 Aug, 2 days
+    c({ hs_id: '2', created_at: '2026-09-02T05:00:00Z', props: { notes_last_contacted: '2026-09-08T05:00:00Z', num_contacted_notes: 1 }, lead_status: 'Demo Booked' }), // 6 days
+    c({ hs_id: '3', created_at: '2026-09-03T05:00:00Z' }),                                                                                   // never reached
+    c({ hs_id: '4', created_at: '2026-09-09T05:00:00Z', props: { hs_sales_email_last_replied: '2026-09-10T05:00:00Z' } }),                   // week of 7 Sep, replied (no contact date)
+    c({ hs_id: '5', created_at: '2026-08-20T05:00:00Z', lead_status: 'Demo Completed', lifecycle: 'opportunity' }),                          // August, completed without outreach
+  ], {}, accounts);
+  const w = funnelByBucket(rows, 'week');
+  assert.deepEqual(w.map(b => [b.key, b.generated, b.reached, b.notReached]), [['2026-08-17', 1, 0, 1], ['2026-08-31', 3, 2, 1], ['2026-09-07', 1, 1, 0]]);
+  const sep1 = w[1]; assert.equal(sep1.reachedShare, 2 / 3); assert.equal(sep1.medianDaysToContact, 4); assert.equal(sep1.booked, 1); assert.equal(sep1.replied, 0);
+  assert.equal(w[2].medianDaysToContact, null, 'a reply without a contact date gives no days'); assert.equal(w[2].replied, 1);
+  assert.equal(w[0].completed, 1); assert.equal(w[0].prospect, 1); assert.equal(w[0].reached, 0);
+  const m = funnelByBucket(rows, 'month');
+  assert.deepEqual(m.map(b => [b.key, b.generated, b.reached]), [['2026-08', 1, 0], ['2026-09', 4, 3]]);
+});
+
+test('funnel: status breakdown shows the portal label and what each status counts as', () => {
+  const rows = [c({ lead_status: 'OPEN' }), c({ lead_status: 'OPEN', props: { num_contacted_notes: 1 } }), c({ lead_status: 'Demo Completed - Ghosting' }), c({ lead_status: 'Associated with a deal' }), c({ lead_status: 'Demo Booked' }), c({ lead_status: '' })];
+  const s = statusBreakdown(rows);
+  assert.deepEqual(s.map(x => [x.label, x.n, x.countsAs, x.reached]), [['New', 2, '', 1], ['Associated with a deal', 1, 'Sales prospect', 0], ['Demo Booked', 1, 'Demo booked', 0], ['Demo Completed - Stalled', 1, 'Demo completed', 0], ['No status', 1, '', 0]]);
+  assert.equal(s[0].status, 'OPEN');
+  assert.equal(statusLabel('OPEN'), 'New'); assert.equal(statusLabel('Working'), 'Working'); assert.equal(statusLabel(''), '');
+  assert.equal(lifecycleLabel('opportunity'), 'SQL'); assert.equal(lifecycleLabel('249550600'), 'Opportunity'); assert.equal(lifecycleLabel('marketingqualifiedlead'), 'MQL'); assert.equal(lifecycleLabel('242934529'), 'Discarded');
+});
+
+test('hubspotMock: a believable sales funnel with the live portal statuses', () => {
+  const rows = enrich(hubspotMock.contacts, hubspotMock.notes_by_contact, accounts).filter(r => !r.spam);
+  const F = funnelCounts(rows);
+  const reachedShare = F.raw.reached / F.generated; assert.ok(reachedShare > 0.3 && reachedShare < 0.7, `reached ${reachedShare}`);
+  assert.ok(F.raw.replied >= 8 && F.raw.replied < F.raw.reached, `replied ${F.raw.replied}`);
+  assert.ok(F.raw.booked >= 10 && F.raw.booked <= 40, `booked ${F.raw.booked}`);
+  assert.ok(F.raw.completed >= 4 && F.raw.completed < F.raw.booked, `completed ${F.raw.completed}`);
+  assert.ok(F.raw.prospect >= 2 && F.raw.prospect <= F.raw.booked, `prospect ${F.raw.prospect}`);
+  assert.ok(F.cumulative.booked >= 5 && F.cumulative.completed >= 2 && F.cumulative.prospect >= 1, `chain ${JSON.stringify(F.cumulative)}`);
+  for (let i = 1; i < FUNNEL_KEYS.length; i++) assert.ok(F.cumulative[FUNNEL_KEYS[i]] <= F.cumulative[FUNNEL_KEYS[i - 1]], 'cumulative never grows');
+  const statuses = new Set(hubspotMock.contacts.map(r => r.lead_status));
+  for (const s of ['OPEN', 'Working', 'Demo Booked', 'Demo Completed', 'Associated with a deal']) assert.ok(statuses.has(s), s);
+  assert.ok(!statuses.has('NEW') && !statuses.has('CONNECTED') && !statuses.has('OPEN_DEAL'), 'old made-up statuses are gone');
+  assert.ok(hubspotMock.contacts.some(r => r.lifecycle === 'opportunity') && hubspotMock.contacts.some(r => r.lifecycle === 'marketingqualifiedlead'));
+  assert.ok(rows.every(r => !r.props.num_contacted_notes || r.props.notes_last_contacted), 'a contact count always has a last-contacted date');
+  assert.ok(funnelByBucket(rows, 'month').length >= 5);
 });
 
 test('linkedinMock has the shape the overview reads (uploads, daily perf rows, demo windows)', () => {

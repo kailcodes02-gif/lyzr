@@ -283,6 +283,158 @@ export function recentActivity(c) {
   return out[0];
 }
 
+// ---- sales funnel ----------------------------------------------------------------------------
+// Generated -> Reached out -> Replied -> Demo booked -> Demo completed -> Sales prospect, from the
+// HubSpot properties refresh.js keeps in `props` (num_contacted_notes, notes_last_contacted,
+// hs_sales_email_last_replied, hs_last_booked_meeting_date), the logged activity columns, the
+// notes list, hs_lead_status and lifecyclestage. Values are compared case-insensitively.
+// HubSpot internal values -> the labels the portal shows (only where they differ).
+export const LEAD_STATUS_LABEL = { OPEN: 'New', 'Demo Completed - Ghosting': 'Demo Completed - Stalled' };
+export const LIFECYCLE_LABEL = { lead: 'Lead', marketingqualifiedlead: 'MQL', salesqualifiedlead: 'SQL', opportunity: 'SQL', 249550600: 'Opportunity', 242934529: 'Discarded', 1331052807: 'Disqualified', subscriber: 'Subscriber', customer: 'Customer', 258802811: 'Blank', evangelist: 'Evangelist', other: 'Other' };
+const normStatus = s => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+const STATUS_LABEL_BY_NORM = new Map(Object.entries(LEAD_STATUS_LABEL).map(([k, v]) => [normStatus(k), v]));
+export const statusLabel = s => { const v = String(s || '').trim(); return v ? (STATUS_LABEL_BY_NORM.get(normStatus(v)) || v) : ''; };
+export const lifecycleLabel = s => { const v = String(s || '').trim(); return v ? (LIFECYCLE_LABEL[v.toLowerCase()] || v) : ''; };
+
+export const DEMO_BOOKED_STATUSES = ['Demo Booked', 'Demo Completed', 'Demo Completed - PLG', 'Demo Completed - Disqualified', 'Demo no show', 'Demo Cancelled by Client', 'Demo Completed - Ghosting', 'Intro Call Booked', 'Intro Call Completed', 'Intro Call No-Show', 'Intro Qualified', 'Intro Disqualified', 'Associated with a deal'];
+export const DEMO_COMPLETED_STATUSES = ['Demo Completed', 'Demo Completed - PLG', 'Demo Completed - Disqualified', 'Demo Completed - Ghosting', 'Intro Call Completed', 'Intro Qualified', 'Intro Disqualified'];
+export const PROSPECT_STATUSES = ['Associated with a deal'];
+// MQL counts as "trying to book a demo" (the user's definition). salesqualifiedlead is HubSpot's
+// default SQL id and is kept for rows pulled before the portal renamed its stages.
+export const DEMO_BOOKED_LIFECYCLES = ['marketingqualifiedlead', 'salesqualifiedlead', 'opportunity', '249550600', 'customer'];
+export const PROSPECT_LIFECYCLES = ['salesqualifiedlead', 'opportunity', '249550600', 'customer'];
+const inSet = list => { const s = new Set(list.map(normStatus)); return v => s.has(normStatus(v)); };
+const bookedStatus = inSet(DEMO_BOOKED_STATUSES), completedStatus = inSet(DEMO_COMPLETED_STATUSES), prospectStatus = inSet(PROSPECT_STATUSES);
+const bookedLifecycle = inSet(DEMO_BOOKED_LIFECYCLES), prospectLifecycle = inSet(PROSPECT_LIFECYCLES);
+
+const OUTREACH_NOTE_KINDS = new Set(['call', 'email', 'meeting']);
+const NON_OUTREACH_ACTIVITY = /^(note|task)$/i;
+/** Every known moment sales touched the lead (ISO strings, ascending). notes_last_contacted is HubSpot's "Last contacted", so with real data this is usually one date: the last touch. */
+export function outreachDates(c) {
+  const p = c.props || {};
+  const out = new Set();
+  const add = v => { const t = tsOf(v); if (t) out.add(t); };
+  add(p.notes_last_contacted);
+  add(p.hs_last_booked_meeting_date);
+  if (c.last_activity_at && !NON_OUTREACH_ACTIVITY.test(String(c.last_activity_type || ''))) add(c.last_activity_at);
+  for (const n of c.notes || []) if (OUTREACH_NOTE_KINDS.has(String(n.kind || '').toLowerCase())) add(n.created_at);
+  return [...out].sort();
+}
+export const contactedCount = c => Math.max(0, Number((c.props || {}).num_contacted_notes) || 0);
+/** When the lead replied to a sales email (hs_sales_email_last_replied, or an incoming-email activity), else null. */
+export function repliedAt(c) {
+  const p = c.props || {};
+  const t = tsOf(p.hs_sales_email_last_replied);
+  if (t) return t;
+  if (c.last_activity_at && /incoming_email|reply|replied/i.test(String(c.last_activity_type || ''))) return tsOf(c.last_activity_at);
+  return null;
+}
+export const isReached = c => contactedCount(c) > 0 || outreachDates(c).length > 0 || !!repliedAt(c);
+export const isReplied = c => !!repliedAt(c);
+export const isDemoBooked = c => bookedStatus(c.lead_status) || bookedLifecycle(c.lifecycle);
+export const isDemoCompleted = c => completedStatus(c.lead_status);
+export const isProspect = c => prospectLifecycle(c.lifecycle) || prospectStatus(c.lead_status);
+export const firstContactAt = c => outreachDates(c)[0] || null;
+export const lastContactAt = c => { const d = outreachDates(c); return d.length ? d[d.length - 1] : null; };
+export const daysFrom = (a, b) => { if (!a || !b) return null; const x = new Date(a).getTime(), y = new Date(b).getTime(); return isNaN(x) || isNaN(y) ? null : Math.max(0, (y - x) / 864e5); };
+export function median(values) {
+  const v = values.filter(x => typeof x === 'number' && isFinite(x)).sort((a, b) => a - b);
+  if (!v.length) return null;
+  const m = v.length >> 1;
+  return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
+}
+
+export const FUNNEL_STAGES = [
+  { key: 'generated', label: 'Generated', test: () => true },
+  { key: 'reached', label: 'Reached out', test: isReached },
+  { key: 'replied', label: 'Replied', test: isReplied },
+  { key: 'booked', label: 'Demo booked', test: isDemoBooked },
+  { key: 'completed', label: 'Demo completed', test: isDemoCompleted },
+  { key: 'prospect', label: 'Sales prospect', test: isProspect },
+];
+export const FUNNEL_KEYS = FUNNEL_STAGES.map(s => s.key);
+/** { generated, reached, replied, booked, completed, prospect } booleans for one lead (raw: each stage judged on its own). */
+export function funnelFlags(c) { const o = {}; for (const s of FUNNEL_STAGES) o[s.key] = !!s.test(c); return o; }
+/**
+ * Funnel for a set of leads. `cumulative` keeps only leads that passed every earlier stage
+ * (a strict chain); `raw` counts every lead at that stage whatever happened before, so a lead
+ * marked Demo Completed with no logged outreach still counts as completed there.
+ * steps: [{ key, label, n (cumulative), raw, ofGenerated, ofPrev }]
+ */
+export function funnelCounts(rows) {
+  const raw = {}, cumulative = {};
+  for (const k of FUNNEL_KEYS) { raw[k] = 0; cumulative[k] = 0; }
+  for (const r of rows) {
+    const f = funnelFlags(r);
+    let alive = true;
+    for (const k of FUNNEL_KEYS) { if (f[k]) raw[k]++; alive = alive && f[k]; if (alive) cumulative[k]++; }
+  }
+  const steps = FUNNEL_STAGES.map((s, i) => {
+    const n = cumulative[s.key], prevN = i ? cumulative[FUNNEL_KEYS[i - 1]] : null;
+    return { key: s.key, label: s.label, n, raw: raw[s.key], ofGenerated: share(n, cumulative.generated), ofPrev: i ? share(n, prevN) : null };
+  });
+  return { generated: rows.length, cumulative, raw, steps };
+}
+
+// lead_source (a HubSpot enumeration: "Book a Demo", "LinkedIn", playbook titles, "Contact Us",
+// events, "OutBound", "apollo_import") -> a short source label; without one, sourceChannel().
+const ASSET_RE = /playbook|use.?cases?|guide|ebook|e-book|whitepaper|white paper|\breport\b|roadmap|checklist|template|handbook|framework|blueprint|toolkit|^\d+\+?\s/i;
+export function funnelSource(c) {
+  const l = String(c.lead_source || '').trim().toLowerCase();
+  if (l) {
+    if (/linkedin/.test(l)) return 'LinkedIn';
+    if (/book.?a.?demo|book.?demo|demo request|request a demo/.test(l)) return 'Book a demo form';
+    if (/contact.?us/.test(l)) return 'Contact us';
+    if (/\bgsi\b/.test(l)) return 'GSI form';
+    if (/outbound/.test(l)) return 'Outbound';
+    if (/apollo|import/.test(l)) return 'Import (Apollo)';
+    if (/event|webinar|summit|conference|meetup|roundtable|dinner|expo/.test(l)) return 'Events';
+    if (ASSET_RE.test(l)) return 'Playbook / asset form';
+  }
+  return sourceChannel(c);
+}
+/** Raw stage counts per source label, biggest first: [{ source, generated, reached, replied, booked, completed, prospect }]. */
+export function funnelBySource(rows, sourceFn = funnelSource) {
+  const by = new Map();
+  for (const r of rows) {
+    const k = sourceFn(r) || 'Unknown';
+    if (!by.has(k)) { const o = { source: k }; for (const s of FUNNEL_KEYS) o[s] = 0; by.set(k, o); }
+    const o = by.get(k), f = funnelFlags(r);
+    for (const s of FUNNEL_KEYS) if (f[s]) o[s]++;
+  }
+  return [...by.values()].sort((a, b) => b.generated - a.generated || a.source.localeCompare(b.source));
+}
+/**
+ * Leads created per bucket (week or month, by IST create day) and how many of them have been
+ * reached, replied, booked, completed, became prospects (raw counts), plus the median days from
+ * create to the last known contact. [{ key, generated, reached, notReached, reachedShare, replied, booked, completed, prospect, medianDaysToContact }]
+ */
+export function funnelByBucket(rows, gran = 'week', bucketKey = defaultBucketKey) {
+  const m = new Map();
+  for (const r of rows) {
+    const day = r.day || isoDayIST(r.created_at); if (!day) continue;
+    const k = bucketKey(day, gran);
+    if (!m.has(k)) { const o = { key: k, days: [] }; for (const s of FUNNEL_KEYS) o[s] = 0; m.set(k, o); }
+    const o = m.get(k), f = funnelFlags(r);
+    for (const s of FUNNEL_KEYS) if (f[s]) o[s]++;
+    const d = daysFrom(r.created_at, lastContactAt(r)); if (d != null) o.days.push(d);
+  }
+  return [...m.values()].sort((a, b) => a.key < b.key ? -1 : 1).map(({ days, ...o }) => ({ ...o, notReached: o.generated - o.reached, reachedShare: share(o.reached, o.generated), medianDaysToContact: median(days) }));
+}
+/** Leads nobody has reached out to, oldest first. */
+export const neverContacted = rows => rows.filter(r => !isReached(r)).sort((a, b) => (a.created_at || '') < (b.created_at || '') ? -1 : 1);
+/** hs_lead_status values with their portal label, count, and which funnel stage the value counts as. */
+export function statusBreakdown(rows) {
+  const by = new Map();
+  for (const r of rows) {
+    const raw = String(r.lead_status || '').trim();
+    const k = raw ? normStatus(raw) : '';
+    if (!by.has(k)) by.set(k, { status: raw || 'No status', label: raw ? statusLabel(raw) : 'No status', n: 0, reached: 0, replied: 0, countsAs: !raw ? '' : completedStatus(raw) ? 'Demo completed' : prospectStatus(raw) ? 'Sales prospect' : bookedStatus(raw) ? 'Demo booked' : '' });
+    const o = by.get(k); o.n++; if (isReached(r)) o.reached++; if (isReplied(r)) o.replied++;
+  }
+  return [...by.values()].sort((a, b) => b.n - a.n || a.label.localeCompare(b.label));
+}
+
 const toks = s => String(s || '').toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
 /** Build a matcher for the GSI company list: whole-token match on company, or the email domain name. */
 export function gsiMatcher(list) {

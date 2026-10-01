@@ -458,6 +458,18 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01, Campaign Analytics: sales funnel on the Leads page
+- "Sales funnel" section (Leads page, own Compare control): Generated -> Reached out -> Replied -> Demo booked ->
+  Demo completed -> Sales prospect, as a strict chain and as "any path"; lifetime row over every lead pulled;
+  by source (Book a demo form / LinkedIn / Playbook or asset form / Contact Us / Events / Outbound / Import);
+  outreach by week or month (reached, not yet reached, % reached, median days to contact, replied, demos);
+  never-contacted list with Copy emails; HubSpot lead-status breakdown with what each status counts as.
+- Rules (`js/lib/leads-agg.mjs`): reached = num_contacted_notes > 0 / notes_last_contacted / booked meeting /
+  non-note activity; replied = hs_sales_email_last_replied; demo booked = lead status Demo Booked and every later
+  status, Intro Call*, Associated with a deal, or lifecycle MQL / SQL / Opportunity / Customer; demo completed = the
+  Demo Completed* and Intro Call Completed / Qualified / Disqualified statuses; prospect = lifecycle SQL / Opportunity /
+  Customer or Associated with a deal. No migration needed (everything is already in ca_hs_contacts.props).
+
 ### 2026-10-01, Campaign Analytics: smoke test on real exports, audiences by person
 - Real data findings: every Demographics export uploaded was the Company breakdown only, so band / region /
   penetration views had nothing to split by (penetration showed the 21 ICP-pool companies at 0%). Those views now

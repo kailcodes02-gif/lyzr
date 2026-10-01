@@ -42,6 +42,10 @@ export const PROPS = [...new Set([
   'num_contacted_notes', 'hs_lifecyclestage_marketingqualifiedlead_date', 'recent_conversion_event_name', 'recent_conversion_date',
   'first_conversion_event_name', 'hs_analytics_source_data_1',
   'first_conversion_date', 'num_conversion_events', 'hs_email_domain',
+  // sales funnel (Leads view): when each lifecycle stage was entered, how many sales touches
+  // and notes. All of these land in the `props` jsonb column; nothing new is written to HubSpot.
+  'hs_lifecyclestage_lead_date', 'hs_lifecyclestage_salesqualifiedlead_date', 'hs_lifecyclestage_opportunity_date',
+  'hs_lifecyclestage_customer_date', 'num_notes', 'hs_last_sales_activity_date',
 ])]
 
 
