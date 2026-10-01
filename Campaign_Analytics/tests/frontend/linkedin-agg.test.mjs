@@ -410,3 +410,17 @@ test('personFromText finds the team member in a file or ad set name', () => {
   assert.equal(A.personFromText('ANI post amplification - Job Title.csv'), 'Ani');
   assert.equal(A.personFromText('September_Demographics Report.csv'), '');
 });
+
+test('byPerson: brand and engagement numbers per team member from ad set names', () => {
+  const rows = [
+    { day: '2026-08-04', campaign: 'ANJU & SIVA|GSI&SI|Single Image Ads|Awareness', impressions: 1000, clicks: 20, engagements: 50, spend: 30 },
+    { day: '2026-08-05', campaign: "ANI|GSI&SI|Video Ads|Awareness", impressions: 500, clicks: 5, engagements: 40, video_views: 300, spend: 20 },
+    { day: '2026-08-05', campaign: 'Playbooks|GSI&SI|Lead Gen', impressions: 2000, clicks: 30, engagements: 10, leads: 3, spend: 100 },
+  ];
+  assert.deepEqual(A.peopleIn('ANJU & SIVA|GSI&SI'), ['Anju', 'Siva']);
+  const P = A.byPerson(rows);
+  assert.deepEqual(P.people.map(p => p.person), ['Anju', 'Siva', 'Ani']);
+  assert.equal(P.people[0].engagements, 50); assert.equal(P.people[0].eng_rate, 5);
+  assert.equal(P.people[2].video_views, 300); assert.equal(P.people[2].ad_sets[0].name, 'ANI|GSI&SI|Video Ads|Awareness');
+  assert.equal(P.unattributed.leads, 3);
+});

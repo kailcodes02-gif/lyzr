@@ -1,7 +1,7 @@
 // Pure aggregation for the LinkedIn ads channel. No DOM, no globals, unit-tested in node.
 // Inputs are the normalised rows produced by js/csv.mjs (perf rows keyed by day, demo rows by segment/value).
 
-export const METRICS = ['spend', 'impressions', 'reach', 'clicks', 'leads', 'lead_forms_opened', 'sends', 'opens', 'video_views', 'engagements', 'conversions'];
+export const METRICS = ['spend', 'impressions', 'reach', 'clicks', 'leads', 'lead_forms_opened', 'sends', 'opens', 'video_views', 'engagements', 'conversions', 'reactions', 'comments', 'shares', 'follows', 'viral_impressions'];
 const n = v => Number(v) || 0;
 export const sum = (rows, k) => rows.reduce((a, r) => a + n(r[k]), 0);
 export const div = (a, b) => b ? a / b : null;
@@ -355,6 +355,28 @@ export function scorecard(sets) {
 export const SENDERS = ['ani', 'jessica', 'siva', 'kailash', 'anju', 'praveen', 'bharath', 'pooja'];
 /** A team member's first name found in free text (a file name like "Sept_Anju_Company.csv" or an ad set name), else ''. */
 export function personFromText(text) { for (const tok of String(text || '').split(/[^A-Za-z]+/)) if (SENDERS.includes(tok.toLowerCase())) return tok.charAt(0).toUpperCase() + tok.slice(1).toLowerCase(); return ''; }
+/** Every team member named in an ad set / program / ad name ("ANJU & SIVA|..." counts for both). */
+export function peopleIn(...texts) {
+  const out = [];
+  for (const t of texts) for (const tok of String(t || '').split(/[^A-Za-z]+/)) { const k = tok.toLowerCase(); if (SENDERS.includes(k)) { const n = k.charAt(0).toUpperCase() + k.slice(1); if (!out.includes(n)) out.push(n); } }
+  return out;
+}
+/**
+ * Brand and engagement numbers per team member whose boosted posts or ads ran (from the performance rows):
+ * { people:[{ person, spend, impressions, reach, clicks, ctr, engagements, eng_rate, reactions, comments, shares, video_views, leads, sends, opens, ad_sets:[{name, impressions, engagements, clicks, leads, spend}] }], unattributed:{...} }
+ */
+export function byPerson(rows) {
+  const KEYS = ['spend', 'impressions', 'reach', 'clicks', 'engagements', 'reactions', 'comments', 'shares', 'video_views', 'leads', 'sends', 'opens'];
+  const blank = person => { const o = { person, sets: new Map() }; for (const k of KEYS) o[k] = 0; return o; };
+  const m = new Map(); const un = blank('Not attributed to a person');
+  for (const r of rows) {
+    const who = peopleIn(r.campaign, r.campaign_group, r.ad_name);
+    const targets = who.length ? who.map(p => { if (!m.has(p)) m.set(p, blank(p)); return m.get(p); }) : [un];
+    for (const o of targets) { for (const k of KEYS) o[k] += n(r[k]); const name = r.campaign || r.campaign_id || '(no ad set)'; const c = o.sets.get(name) || { name, impressions: 0, engagements: 0, clicks: 0, leads: 0, spend: 0, video_views: 0 }; for (const k of ['impressions', 'engagements', 'clicks', 'leads', 'spend', 'video_views']) c[k] += n(r[k]); o.sets.set(name, c); }
+  }
+  const finish = o => { o.ctr = o.impressions ? o.clicks / o.impressions * 100 : null; o.eng_rate = o.impressions ? o.engagements / o.impressions * 100 : null; o.cpm = o.impressions ? o.spend / o.impressions * 1000 : null; o.ad_sets = [...o.sets.values()].sort((a, b) => b.impressions - a.impressions); delete o.sets; return o; };
+  return { people: [...m.values()].map(finish).sort((a, b) => b.impressions - a.impressions), unattributed: finish(un) };
+}
 const capWords = s => s.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 export function senderOf(...names) {
   for (const raw of names) {

@@ -42,7 +42,7 @@ export async function render(el, ctx) {
   const segsPresent = A.segmentsPresent(demoRows);
   const NEED = { 'Job Title': 'Job Title (designation bands MD / MD-1 / MD-2)', 'Country': 'Country/Region (regions)', 'Job Seniority': 'Job Seniority', 'Job Function': 'Job Function', 'Company': 'Company' };
   const missingSegs = Object.keys(NEED).filter(k => !segsPresent.includes(k));
-  const needMsg = segs => { const miss = segs.filter(k => !segsPresent.includes(k)); return miss.length ? ctx.ui.empty(`Needs the ${miss.map(k => NEED[k]).join(' and ')} demographics export${miss.length === 1 ? '' : 's'} for these dates. Uploaded so far for this range: ${segsPresent.length ? segsPresent.join(', ') : 'none'}. In Campaign Manager: Analyze › Demographics › pick the dimension › Export, one file per dimension and month, and drop them above.`) : ''; };
+  const needMsg = segs => { const miss = segs.filter(k => !segsPresent.includes(k)); return miss.length ? ctx.ui.empty(`Needs the ${miss.map(k => NEED[k]).join(' and ')} demographics export${miss.length === 1 ? '' : 's'} for these dates. Uploaded so far for this range: ${segsPresent.length ? segsPresent.join(', ') : 'none'}. The file you uploaded is the Company view of the Demographics report: in Campaign Manager › Analyze › Demographics, the dropdown at the top left of the table (it reads "Company Name") also offers Job Title, Job Seniority, Job Function and Country/Region; pick one, press Export, repeat per month, and drop the files above.`) : ''; };
   const uploads = data.uploads || [];
 
   if (!perf.length && !windows.length) {
@@ -85,6 +85,7 @@ export async function render(el, ctx) {
   const cmpReach = sectionCompare(ctx, 'linkedin:reach', p => drawReach(p));
   const cmpSets = sectionCompare(ctx, 'linkedin:adsets', p => drawAdSets(p));
   const cmpLeads = sectionCompare(ctx, 'linkedin:leadtypes', p => drawLeadTypes(p));
+  const cmpPeople = sectionCompare(ctx, 'linkedin:people', p => drawPeople(p));
 
   // ---- page ----
   let h = `<div class="seghead">Ads · LinkedIn</div><h1>LinkedIn ads</h1>
@@ -101,6 +102,10 @@ export async function render(el, ctx) {
   const leadRules = S.lead_rules || undefined;
   const LS = A.leadSplit(perf, leadRules);
   h += ctx.ui.section('Leads by type', `Every lead-form submission sorted by what asked for it: <b>MQL</b> = someone trying to book a demo (bottom of the funnel), <b>conversation ad leads</b> (bottom), <b>playbook leads</b> (middle), and <b>other form leads</b> such as branding or persona posts (top, NQL). Decided from the ad set, program and ad names and the ad format; keywords in Admin › Targets › Lead types. ${cmpLeads.html()}`, `<div id="li-leadtypes-body">${ctx.ui.spinner('Loading comparison')}</div>`, 'li-leadtypes');
+
+  // 1c. brand awareness and engagement by team member (boosted posts, from the performance rows)
+  const BP = A.byPerson(perf);
+  h += ctx.ui.section('Brand awareness and engagement by person', `Boosted posts and ads run from a team member\'s name (Ani, Anju, Siva, Jessica…), read from the ad set, program and ad names in the performance export. For each person: impressions, reach, clicks, engagements (reactions, comments, shares, follows, clicks counted by LinkedIn), engagement rate, video views, leads and spend, with the posts that did it. The account × designation × region split per person lives in "Audiences by person or ad set" below and needs the demographics exports filtered to that person. ${cmpPeople.html()}`, `<div id="li-people-body">${ctx.ui.spinner('Loading comparison')}</div>`, 'li-people');
 
   // 2. achieved / not achieved (filled by drawWorked)
   const li = list => list.length ? `<ul>${list.map(b => `<li><b>${esc(b.b)}</b> ${esc(b.s)}</li>`).join('')}</ul>` : '<p class="muted" style="margin-top:8px">Nothing to report yet for this range.</p>';
@@ -190,12 +195,38 @@ export async function render(el, ctx) {
   }
   h += `<div class="section" id="aiPanel"></div>`;
   el.innerHTML = h;
-  cmpResults.wire(el); cmpWorked.wire(el); cmpReach.wire(el); cmpSets.wire(el); cmpLeads.wire(el);
+  cmpResults.wire(el); cmpWorked.wire(el); cmpReach.wire(el); cmpSets.wire(el); cmpLeads.wire(el); cmpPeople.wire(el);
   mountUploader(el.querySelector('#uploader'), ctx, { channel: 'linkedin', isEditor: isEditorOf(ctx), onDone: () => render(el, ctx) });
 
   // ---- sections with their own comparison: each fetches the comparison rows it needs (memoised)
   // and redraws only itself. lastPrev / TP / lastBullets feed the AI read-out below. ----
   let TP = A.totals([]), TPn = 0, lastPrev = prev, lastBullets = { achieved: [], missed: [] }, lastWorkedPrev = prev;
+  let peopleChart = null, lastPeoplePrev = null, BPP = null;
+  async function drawPeople(p) {
+    const box = el.querySelector('#li-people-body'); if (!box) return;
+    const prevRows = p ? (await prevBundle(p)).perf : []; if (!el.isConnected) return;
+    BPP = A.byPerson(prevRows); lastPeoplePrev = p;
+    const prevOf = who => BPP.people.find(x => x.person === who) || null;
+    if (!BP.people.length) { box.innerHTML = ctx.ui.empty('No ad set, program or ad name in this range carries a team member\'s name (Ani, Anju, Siva, Jessica…). Boosted posts are recognised by the name in the ad set name.'); return; }
+    const COLORS = ['#043E77', '#FE4B1E', '#1F2022', '#6B675F', '#A8A298', '#CFCCC7'];
+    const tiles = BP.people.map((o, i) => { const q = prevOf(o.person); return { k: o.person, v: `${fmt(o.impressions)} <span class="muted" style="font-size:13px;font-weight:400">impressions</span>`, d: `${fmt(o.engagements)} engagements (${pct(o.eng_rate, 2)}) · ${fmt(o.clicks)} clicks · ${o.video_views ? fmt(o.video_views) + ' video views · ' : ''}${usd(o.spend)}<br>${deltaText(p, o.impressions, q ? q.impressions : null)} on impressions · ${deltaText(p, o.engagements, q ? q.engagements : null)} on engagements` }; });
+    const gran = days > 70 ? 'month' : 'week';
+    const buckets = [...new Set(perf.map(r => A.bucketKey(r.day, gran)))].sort();
+    const series = BP.people.map(o => buckets.map(k => perf.filter(r => A.bucketKey(r.day, gran) === k && A.peopleIn(r.campaign, r.campaign_group, r.ad_name).includes(o.person)).reduce((a, r) => a + (Number(r.impressions) || 0), 0)));
+    const postRows = BP.people.flatMap(o => o.ad_sets.slice(0, 6).map(c => ({ ...c, person: o.person })));
+    box.innerHTML = `${ctx.ui.tiles(tiles)}
+      <div class="grid g2" style="margin-top:12px">
+        <div class="card"><h3>Impressions by person, ${gran === 'month' ? 'month by month' : 'week by week'}</h3><div class="chartbox"><canvas id="peopleChart"></canvas></div></div>
+        <div class="card"><h3>Posts and ads by person</h3>${ctx.ui.table({ cols: [
+          { h: 'Person', k: 'person', left: true, f: r => `<b>${esc(r.person)}</b>` },
+          { h: 'Post / ad set', k: 'name', left: true, f: r => esc(shortName(r.name, 58)) },
+          { h: 'Impressions', k: 'impressions', f: r => fmt(r.impressions) }, { h: 'Engagements', k: 'engagements', f: r => fmt(r.engagements) }, { h: 'Eng. rate', k: 'er', f: r => pct(r.impressions ? r.engagements / r.impressions * 100 : null, 2) }, { h: 'Clicks', k: 'clicks', f: r => fmt(r.clicks) }, { h: 'Video views', k: 'video_views', f: r => fmt(r.video_views) }, { h: 'Leads', k: 'leads', f: r => fmt(r.leads) }, { h: 'Spend', k: 'spend', f: r => usd(r.spend) },
+        ], rows: postRows })}</div>
+      </div>
+      <p class="muted" style="font-size:12.5px;margin-top:8px">Not attributed to a person: ${fmt(BP.unattributed.impressions)} impressions, ${fmt(BP.unattributed.engagements)} engagements, ${fmt(BP.unattributed.leads)} leads (playbook, conversation and other ad sets with no name in them).</p>`;
+    if (peopleChart) { try { peopleChart.destroy(); } catch { /* ignore */ } charts = charts.filter(c => c !== peopleChart); peopleChart = null; }
+    peopleChart = chart(el.querySelector('#peopleChart'), { type: 'bar', data: { labels: buckets.map(k => F.bucketLabel(k, gran)), datasets: BP.people.map((o, i) => ({ label: o.person, data: series[i], backgroundColor: COLORS[i % COLORS.length], stack: 'p' })) }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true } } } });
+  }
   let leadChart = null, lastLeadPrev = null, LSP = null;
   async function drawLeadTypes(p) {
     const box = el.querySelector('#li-leadtypes-body'); if (!box) return;
@@ -246,6 +277,8 @@ export async function render(el, ctx) {
     { k: 'Cost per lead', v: usd(T.cpl), d: dl(T.cpl, TP.cpl, true) },
     { k: 'Message ad opens', v: pct(T.open_rate, 1), d: `${fmt(T.opens)} of ${fmt(T.sends)} sends` },
     { k: 'Video views', v: fmt(T.video_views), d: dl(T.video_views, TP.video_views) },
+    { k: 'Engagements', v: fmt(T.engagements), d: `${pct(T.impressions ? T.engagements / T.impressions * 100 : null, 2)} engagement rate · ${dl(T.engagements, TP.engagements)}` },
+    { k: 'Reactions · comments · shares', v: `${fmt(T.reactions)} · ${fmt(T.comments)} · ${fmt(T.shares)}`, d: `${fmt(T.follows)} follows` },
     { k: 'Accounts reached', v: `${fmt(matched.size)} of ${fmt(accounts.length)}`, d: windows.length ? 'Named target pages in demographics' : 'Needs a demographics upload' },
     { k: 'Awareness CPM', v: usd(SS.totals.ToFu.impressions ? SS.totals.ToFu.spend / SS.totals.ToFu.impressions * 1000 : null, 2), d: 'ToFu spend per 1,000 impressions' },
   ])}`;
@@ -262,7 +295,7 @@ export async function render(el, ctx) {
     const setsP = A.adSets(perf, { to, prevRows: p ? rows : null });
     box.innerHTML = `<div class="tblwrap"><table><thead><tr><th class="l">Ad set</th><th>Status</th><th class="l">Approach</th><th>Spend</th><th>Reach</th><th>Impressions</th><th>CPM</th><th>CTR</th><th>Clicks</th><th>Leads</th><th>Sends</th><th>Open rate</th><th>CPL</th></tr></thead><tbody>${setsP.map(s => `<tr><td class="l" style="white-space:normal;min-width:220px">${esc(shortName(s.name, 60))}<br><span class="muted" style="font-size:12px">${esc(shortName(s.campaign_group || '', 50))}</span></td><td>${ctx.ui.pill(s.status, s.status === 'Active' ? 'p-high' : 'p-na')}</td><td class="l">${esc(s.approach)}</td><td>${usd(s.spend)}${sd(p, s.spend, s.prev && s.prev.spend)}</td><td>${s.reach ? fmt(s.reach) : '–'}</td><td>${s.impressions ? fmt(s.impressions) : '–'}</td><td>${usd(s.cpm, 2)}</td><td>${pct(s.ctr, 2)}</td><td>${fmt(s.clicks)}</td><td>${fmt(s.leads)}${sd(p, s.leads, s.prev && s.prev.leads)}</td><td>${s.sends ? fmt(s.sends) : '–'}</td><td>${pct(s.open_rate, 1)}</td><td>${usd(s.cpl)}${sd(p, s.cpl, s.prev && s.prev.cpl, true)}</td></tr>`).join('') || '<tr><td colspan="13" class="muted">No ad sets in range</td></tr>'}</tbody></table></div>`;
   }
-  drawResults(cmpResults.prev); drawWorked(cmpWorked.prev); drawAdSets(cmpSets.prev); drawLeadTypes(cmpLeads.prev);
+  drawResults(cmpResults.prev); drawWorked(cmpWorked.prev); drawAdSets(cmpSets.prev); drawLeadTypes(cmpLeads.prev); drawPeople(cmpPeople.prev);
 
   // ---- trend explorer (whole history) ----
   const hist = ((histData && histData.perf) || perf);
@@ -274,6 +307,8 @@ export async function render(el, ctx) {
     { key: 'leads', label: 'Leads', additive: true, fn: rows => tot(rows).leads },
     { key: 'reach', label: 'Reach (sum of daily)', additive: true, fn: rows => tot(rows).reach },
     { key: 'video_views', label: 'Video views', additive: true, fn: rows => tot(rows).video_views },
+    { key: 'engagements', label: 'Engagements', additive: true, fn: rows => tot(rows).engagements },
+    { key: 'eng_rate', label: 'Engagement rate', fmt: 'pct', axis: 'right', fn: rows => { const t = tot(rows); return t.impressions ? t.engagements / t.impressions * 100 : null; } },
     { key: 'ctr', label: 'CTR', fmt: 'pct', axis: 'right', fn: rows => tot(rows).ctr },
     { key: 'cpl', label: 'Cost per lead', fmt: 'usd', axis: 'right', fn: rows => tot(rows).cpl },
     { key: 'cpm', label: 'CPM', fmt: 'usd', axis: 'right', fn: rows => tot(rows).cpm },
@@ -579,6 +614,8 @@ export async function render(el, ctx) {
       range: { from, to, days }, previous_range: lastPrev ? { from: lastPrev.from, to: lastPrev.to, label: lastPrev.label } : null,
       totals: round(T), previous_totals: lastPrev && TPn ? round(TP) : null,
       trend_by_week: wk.slice(-16),
+      by_person: BP.people.map(o => ({ person: o.person, impressions: o.impressions, engagements: o.engagements, eng_rate_pct: o.eng_rate == null ? null : Math.round(o.eng_rate * 100) / 100, clicks: o.clicks, video_views: o.video_views, leads: o.leads, spend: Math.round(o.spend), prior_impressions: BPP && BPP.people.find(x => x.person === o.person) ? BPP.people.find(x => x.person === o.person).impressions : null, top_posts: o.ad_sets.slice(0, 3).map(c => ({ name: c.name, impressions: c.impressions, engagements: c.engagements })) })),
+      engagement: { engagements: T.engagements, rate_pct: T.impressions ? Math.round(T.engagements / T.impressions * 10000) / 100 : null, reactions: T.reactions, comments: T.comments, shares: T.shares, follows: T.follows, video_views: T.video_views },
       lead_types: { compared_with: lastLeadPrev ? lastLeadPrev.label : null, types: LS.types.map(t => ({ type: t.label, stage: t.stage, leads: t.leads, share_pct: t.share == null ? null : Math.round(t.share), spend: Math.round(t.spend), cpl: t.cpl == null ? null : Math.round(t.cpl), prior_leads: LSP ? LSP.byType[t.type].leads : null, top_ad_sets: t.campaigns.slice(0, 3).map(c => ({ name: c.name, leads: c.leads })) })) },
       stage_split: Object.fromEntries(Object.entries(SS.totals).map(([k, v]) => [k, { spend: Math.round(v.spend), leads: v.leads, impressions: v.impressions }])),
       programs: progs,

@@ -458,6 +458,15 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01, Campaign Analytics: engagement everywhere, brand awareness by person
+- Engagement is now a first-class metric: Results tiles (engagements, engagement rate, reactions / comments /
+  shares, follows), trend explorer metrics, Overview "Engagement" cell, AI input. `METRICS` in linkedin-agg gains
+  reactions, comments, shares, follows, viral_impressions.
+- "Brand awareness and engagement by person" (LinkedIn page): `byPerson()` reads Ani / Anju / Siva / Jessica from
+  the ad set, program and ad names ("ANJU & SIVA|..." counts for both): impressions, engagements and rate, clicks,
+  video views, leads, spend, vs comparison, impressions by person per week/month, posts per person. The
+  account x designation x region split per person still needs the person-filtered demographics exports.
+
 ### 2026-10-01, Campaign Analytics: sales funnel on the Leads page
 - "Sales funnel" section (Leads page, own Compare control): Generated -> Reached out -> Replied -> Demo booked ->
   Demo completed -> Sales prospect, as a strict chain and as "any path"; lifetime row over every lead pulled;
