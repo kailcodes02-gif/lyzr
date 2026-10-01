@@ -19,7 +19,7 @@ export const OPENAPI = {
     title: 'Lyzr Marketing Tracker API',
     version: '1.0.0',
     description: [
-      'Read and change everything in the Lyzr Marketing Tracker: tasks, sub-tasks, owners, comments, checklists, dependencies, channels, verticals, domains, people, campaigns, weekly and summary numbers, and History.',
+      'Read and change everything in the Lyzr Marketing Tracker: tasks, sub-tasks, owners, comments, checklists, dependencies, channels, verticals, domains, people, campaigns, weekly and summary numbers, and History. There is one board; verticals are tags on tasks (`vertical` filters by tag), and channels are shared.',
       '',
       '**Auth** — `Authorization: Bearer lzt_…`. Admins create keys in Workspace settings › Integrations. A key acts as the admin who created it, with exactly their permissions; every change is logged in History under their name. **Read** keys can only GET; **write** keys can also POST, PATCH and DELETE — except deleting a task, which needs a key with “Can delete tasks” (otherwise 403 `delete_not_allowed`; set status `cancelled` instead). Keys can expire.',
       '',
@@ -62,8 +62,9 @@ export const OPENAPI = {
         type: 'object', required: ['title'],
         properties: {
           title: { type: 'string' }, description: { type: 'string' },
-          vertical: { type: 'string', description: 'Used when channel_id is omitted: the task goes in that vertical’s “No channel”. Default lyzr.' },
-          channel_id: { type: 'string', description: 'Omit for “No channel”.' },
+          vertical: { type: 'string', description: 'The task’s vertical tag (slug, name or id). Omitted: the parent’s tags, else Lyzr (= not vertical-specific).' },
+          verticals: { type: 'array', items: { type: 'string' }, description: 'Several vertical tags — the task shows in each of those views.' },
+          channel_id: { type: 'string', description: 'Any channel — channels are shared across verticals. Omit for “No channel”.' },
           parent_task_id: { type: 'string', description: 'Makes it a sub-task (inherits the parent’s channel).' },
           owners: { description: 'Emails, first is the main owner; or { email, role } objects. Default: the key’s owner.', type: 'array', items: { oneOf: [{ type: 'string' }, { type: 'object', properties: { email: { type: 'string' }, role: { type: 'string' } } }] } },
           due_date: { type: 'string', format: 'date' }, priority: { type: 'string' }, campaign_id: { type: 'string' },
@@ -77,6 +78,7 @@ export const OPENAPI = {
           due_date: { type: ['string', 'null'] }, channel_id: { type: 'string' }, campaign_id: { type: ['string', 'null'] },
           budget: { type: ['number', 'null'] }, blocked_reason: { type: ['string', 'null'] },
           plan: { type: 'object', description: 'Merged into the existing plan fields' }, results: { type: 'object', description: 'Merged into the existing results fields' },
+          verticals: { type: 'array', items: { type: 'string' }, description: 'Replaces the task’s vertical tags' },
         },
       },
     },

@@ -31,12 +31,14 @@ export function DomainGrid({ tasks }: { tasks: Task[] }) {
   const cells = useMemo(() => {
     const m = new Map<string, Task[]>()
     for (const t of tasks) {
-      const v = t.channel?.vertical_id || chById.get(t.channel_id)?.vertical_id
       const f = fnOf(t.channel_id) || 'none'
-      if (!v) continue
-      const k = `${v}|${f}`
-      if (!m.has(k)) m.set(k, [])
-      m.get(k)!.push(t)
+      const vs = t.vertical_ids?.length ? t.vertical_ids : [t.channel?.vertical_id || chById.get(t.channel_id)?.vertical_id]
+      for (const v of vs) {
+        if (!v) continue
+        const k = `${v}|${f}`
+        if (!m.has(k)) m.set(k, [])
+        m.get(k)!.push(t)
+      }
     }
     return m
   // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -244,6 +244,8 @@ export const GRADE_STAR: Record<string, string> = {
 export interface Task {
   id: string
   channel_id: string
+  /** Vertical tags (migration 032). Every task has ≥1; Lyzr = not vertical-specific. */
+  vertical_ids: string[]
   parent_task_id: string | null
   nesting_level: number
   title: string

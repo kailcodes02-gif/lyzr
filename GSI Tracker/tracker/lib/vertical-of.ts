@@ -11,19 +11,20 @@ export function verticalIdOfChannel(channelId: string, channelById: Map<string, 
 }
 
 export function homeVerticalOfTask(task: Task, channelById: Map<string, Channel>): string | null {
+  if (task.vertical_ids?.length) return task.vertical_ids[0]
   if (task.channel?.vertical_id) return task.channel.vertical_id
   return verticalIdOfChannel(task.channel_id, channelById)
 }
 
-// Every vertical a task appears in: home + any vertical it is multi-homed into.
+// Every vertical a task appears in = its tags (032). Tasks not yet backfilled
+// fall back to the old rule: the verticals of its channel(s).
 export function verticalsOfTask(task: Task, channelById: Map<string, Channel>): Set<string> {
+  if (task.vertical_ids?.length) return new Set(task.vertical_ids)
   const out = new Set<string>()
   for (const chId of taskChannelIds(task)) {
     const v = verticalIdOfChannel(chId, channelById)
     if (v) out.add(v)
   }
-  const home = homeVerticalOfTask(task, channelById)
-  if (home) out.add(home)
   return out
 }
 

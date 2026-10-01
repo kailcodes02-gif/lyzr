@@ -52,7 +52,7 @@ export function AssistantDialog({ open, onOpenChange }: { open: boolean; onOpenC
       .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))
       .slice(0, 600)
       .map(t => ({
-        id: t.id, title: t.title, status: t.status, channel: t.channel?.name || '', vertical: vName(t.channel?.vertical_id), due: t.due_date,
+        id: t.id, title: t.title, status: t.status, channel: t.channel?.name || '', vertical: (t.vertical_ids?.length ? t.vertical_ids : [t.channel?.vertical_id]).map(v => vName(v || undefined)).filter(Boolean).join(' · '), due: t.due_date,
         owners: [...(t.assignments || []).map(a => a.user?.display_name || a.user?.email || ''), ...(t.pending_assignments || []).filter(p => !p.resolved_user_id).map(p => p.email)].filter(Boolean),
       })),
   })
@@ -79,7 +79,7 @@ export function AssistantDialog({ open, onOpenChange }: { open: boolean; onOpenC
 
   const taskHit = (t: Task, answer?: string) => {
     const cfg = STATUS_CONFIG[t.status]
-    const v = verticals.find(x => x.id === t.channel?.vertical_id)
+    const v = verticals.find(x => x.id === (t.vertical_ids?.[0] || t.channel?.vertical_id))
     return (
       <div className="rounded-xl border border-zinc-200 bg-white p-3 space-y-1.5">
         {answer && <p className="text-sm text-zinc-800">{answer}</p>}

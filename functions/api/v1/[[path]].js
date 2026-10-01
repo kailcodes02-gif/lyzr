@@ -150,7 +150,9 @@ const TASK_SELECT = [
 function shapeTask(t, cat) {
   const ch = cat.channels.find(c => c.id === t.channel_id)
   const parent = ch?.parent_channel_id ? cat.channels.find(c => c.id === ch.parent_channel_id) : null
-  const v = ch ? cat.verticals.find(x => x.id === ch.vertical_id) : null
+  const tagIds = t.vertical_ids?.length ? t.vertical_ids : (ch?.vertical_id ? [ch.vertical_id] : [])
+  const tags = tagIds.map(id => cat.verticals.find(x => x.id === id)).filter(Boolean).map(x => ({ id: x.id, slug: x.slug, name: x.name }))
+  const v = tags[0] || null
   const owners = [
     ...(t.assignments || []).map(a => ({ email: a.user?.email, name: a.user?.display_name || null, role: a.role, signed_in: true })),
     ...(t.pending_assignments || []).filter(p => !p.resolved_user_id).map(p => ({ email: p.email, name: null, role: p.role, signed_in: false })),
@@ -164,7 +166,8 @@ function shapeTask(t, cat) {
     priority_code: t.priority,
     due_date: t.due_date,
     overdue: !!(t.due_date && OPEN.has(t.status) && t.due_date < todayIso()),
-    vertical: v ? { id: v.id, slug: v.slug, name: v.name } : null,
+    vertical: v,
+    verticals: tags,
     channel: ch && ch.slug !== 'no-channel' ? { id: ch.id, name: ch.name, parent: parent ? { id: parent.id, name: parent.name } : null } : null,
     owners,
     parent_task_id: t.parent_task_id,
@@ -205,18 +208,21 @@ async function fullTask(db, cat, id) {
     history: history.map(h => ({ action: h.action, by: h.actor?.email || null, at: h.created_at, from: h.from_value, to: h.to_value })),
   }
 }
-async function channelScope(cat, { vertical, channel }) {
-  if (channel) {
-    const ch = cat.channels.find(c => c.id === channel)
-    if (!ch) throw new ApiError(404, 'not_found', `No channel ${channel}.`)
-    return [ch.id, ...cat.channels.filter(c => c.parent_channel_id === ch.id).map(c => c.id)]
-  }
-  if (vertical) { const v = findVertical(cat, vertical); return cat.channels.filter(c => c.vertical_id === v.id).map(c => c.id) }
-  return null
+async function channelScope(cat, { channel }) {
+  if (!channel) return null
+  const ch = cat.channels.find(c => c.id === channel)
+  if (!ch) throw new ApiError(404, 'not_found', `No channel ${channel}.`)
+  return [ch.id, ...cat.channels.filter(c => c.parent_channel_id === ch.id).map(c => c.id)]
+}
+// Verticals are tags on tasks (032): ?vertical= filters on the tag.
+function verticalFilter(cat, vertical) {
+  if (!vertical) return ''
+  const v = findVertical(cat, vertical)
+  return `&vertical_ids=cs.{${v.id}}`
 }
 async function tasksForScope(db, cat, q) {
   const ids = await channelScope(cat, q)
-  let path = `tasks?select=id,status,priority,due_date,channel_id,parent_task_id&limit=5000`
+  let path = `tasks?select=id,status,priority,due_date,channel_id,parent_task_id&limit=5000${verticalFilter(cat, q.vertical)}`
   if (ids) path += `&channel_id=${inList(ids.length ? ids : ['00000000-0000-0000-0000-000000000000'])}`
   if (q.top_level !== 'false') path += '&parent_task_id=is.null'
   return db(path)
@@ -249,11 +255,14 @@ async function createTask(ctx, cat, body, parentId) {
   let channelId = body.channel_id || parent?.channel_id || null
   if (channelId && !cat.channels.some(c => c.id === channelId)) throw new ApiError(404, 'not_found', `No channel ${channelId}.`)
   if (!channelId) {
-    const v = findVertical(cat, body.vertical || 'lyzr')
-    const bucket = cat.channels.find(c => c.vertical_id === v.id && c.slug === 'no-channel' && !c.parent_channel_id)
-    if (!bucket) throw new ApiError(409, 'not_configured', `Vertical "${v.name}" has no “No channel” bucket (database update 027).`)
+    const bucket = cat.channels.find(c => c.slug === 'no-channel' && !c.parent_channel_id)
+    if (!bucket) throw new ApiError(409, 'not_configured', 'There is no “No channel” bucket yet (database update 027).')
     channelId = bucket.id
   }
+  // Tags: `verticals` (list) or `vertical`; omitted = parent's tags or Lyzr.
+  const tagRefs = body.verticals != null ? body.verticals : (body.vertical != null ? [body.vertical] : null)
+  need(tagRefs === null || Array.isArray(tagRefs), '`verticals` must be a list of vertical slugs, names or ids.')
+  const vertical_ids = tagRefs === null ? undefined : tagRefs.map(r => findVertical(cat, r).id)
   if (body.due_date != null) need(isDate(body.due_date), 'due_date must be YYYY-MM-DD.')
   let priority = normPriority(body.priority) || 'P2'
   if (parent?.priority === 'P0') priority = 'P0'
@@ -264,6 +273,7 @@ async function createTask(ctx, cat, body, parentId) {
       channel_id: channelId, title: body.title.trim(), description: body.description || null, priority,
       due_date: body.due_date || null, parent_task_id: parent?.id || null, nesting_level: parent ? (parent.nesting_level || 0) + 1 : 0,
       budget_allocated: body.budget ?? null, planning_fields: body.plan || body.fields || {}, campaign_id: body.campaign_id || null,
+      ...(vertical_ids !== undefined ? { vertical_ids } : {}),
       created_by: userId,
     },
   })
@@ -286,7 +296,11 @@ async function updateTask(ctx, cat, id, body, force) {
   if (body.blocked_reason !== undefined) patch.blocked_reason = body.blocked_reason
   if (body.plan !== undefined) patch.planning_fields = { ...(old.planning_fields || {}), ...body.plan }
   if (body.results !== undefined) patch.tracker_fields = { ...(old.tracker_fields || {}), ...body.results }
-  need(Object.keys(patch).length, 'Nothing to update. Send any of: title, description, status, priority, due_date, channel_id, campaign_id, budget, blocked_reason, plan, results.')
+  if (body.verticals !== undefined) {
+    need(Array.isArray(body.verticals) && body.verticals.length, '`verticals` must be a non-empty list of vertical slugs, names or ids.')
+    patch.vertical_ids = body.verticals.map(r => findVertical(cat, r).id)
+  }
+  need(Object.keys(patch).length, 'Nothing to update. Send any of: title, description, status, priority, due_date, channel_id, campaign_id, budget, blocked_reason, plan, results, verticals.')
   if (patch.status === 'done' && old.status !== 'done' && !force) {
     const deps = await db(`task_dependencies?select=task:tasks!depends_on_task_id(title,status)&task_id=eq.${id}`)
     const open = deps.map(d => d.task).filter(t => t && t.status !== 'done' && t.status !== 'cancelled')
@@ -426,7 +440,7 @@ async function route(ctx, method, parts, url, request) {
     if (!id && method === 'GET') {
       const limit = Math.min(Math.max(Number(q.limit) || 100, 1), 500)
       const offset = Math.max(Number(q.offset) || 0, 0)
-      let path = `tasks?select=${TASK_SELECT}&limit=${limit}&offset=${offset}`
+      let path = `tasks?select=${TASK_SELECT}&limit=${limit}&offset=${offset}${verticalFilter(cat, q.vertical)}`
       const scope = await channelScope(cat, q)
       if (scope) path += `&channel_id=${inList(scope.length ? scope : ['00000000-0000-0000-0000-000000000000'])}`
       if (q.status) path += `&status=${inList(q.status.split(',').map(normStatus))}`

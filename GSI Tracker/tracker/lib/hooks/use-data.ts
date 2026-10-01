@@ -543,13 +543,15 @@ export function useChannelLearnings(channelId?: string) {
 
 // ============ TASKS ============
 
-// Channel ids belonging to a vertical (used to scope tasks client-side so
-// tasks multi-homed INTO the vertical via also_channels still show up).
+// Channel ids whose home is a vertical — only a fallback for rows made
+// before vertical tags (032); tags are the source of truth.
 async function verticalChannelIds(supabase: ReturnType<typeof createClient>, verticalId: string) {
   const { data, error } = await supabase.from('channels').select('id').eq('vertical_id', verticalId)
   if (error) throw error
   return new Set((data || []).map(r => r.id as string))
 }
+const taskHasVertical = (t: { vertical_ids?: string[] }, v: string, fallback: () => boolean) =>
+  t.vertical_ids?.length ? t.vertical_ids.includes(v) : fallback()
 
 export function useTasks(filters?: {
   channelId?: string
@@ -598,8 +600,9 @@ export function useTasks(filters?: {
         tasks = tasks.filter(t => t.channel?.category_id === filters.categoryId)
       }
       if (filters?.verticalId && filters.verticalId !== 'all') {
-        const ids = await verticalChannelIds(supabase, filters.verticalId)
-        tasks = tasks.filter(t => taskChannelIds(t).some(id => ids.has(id)))
+        const v = filters.verticalId
+        const ids = await verticalChannelIds(supabase, v)
+        tasks = tasks.filter(t => taskHasVertical(t, v, () => taskChannelIds(t).some(id => ids.has(id))))
       }
       return tasks
     },
@@ -746,7 +749,7 @@ export function useRecentActivity(limit = 20, verticalId: VerticalScope = 'all')
     queryFn: async () => {
       const { data, error } = await supabase
         .from('activity_log')
-        .select('*, actor:users!actor_id(id, display_name, avatar_url), task:tasks(id, title, channel_id)')
+        .select('*, actor:users!actor_id(id, display_name, avatar_url), task:tasks(id, title, channel_id, vertical_ids)')
         .order('created_at', { ascending: false })
         // Over-fetch when scoping so a busy sibling vertical cannot starve the list.
         .limit(verticalId === 'all' ? limit : limit * 4)
@@ -756,7 +759,10 @@ export function useRecentActivity(limit = 20, verticalId: VerticalScope = 'all')
         const ids = await verticalChannelIds(supabase, verticalId)
         // Deleted tasks keep their channel in the log entry's from_value.
         const chOf = (r: { task?: { channel_id?: string } | null; from_value?: unknown }) => r.task?.channel_id || (r.from_value as { channel_id?: string } | null)?.channel_id
-        rows = rows.filter(r => { const c = chOf(r); return !c || ids.has(c) }).slice(0, limit)
+        rows = rows.filter(r => {
+          if (r.task) return taskHasVertical(r.task as { vertical_ids?: string[] }, verticalId, () => !r.task?.channel_id || ids.has(r.task.channel_id))
+          const c = chOf(r); return !c || ids.has(c)
+        }).slice(0, limit)
       }
       return rows
     },

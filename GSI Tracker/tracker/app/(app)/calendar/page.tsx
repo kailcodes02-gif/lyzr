@@ -108,7 +108,8 @@ function CalendarContent() {
 
     // Vertical filter (workspace mode only)
     if (verticalId === 'all' && selectedVertical !== 'all') {
-      if (task.channel?.vertical_id !== selectedVertical) return false
+      const inVertical = task.vertical_ids?.length ? task.vertical_ids.includes(selectedVertical) : task.channel?.vertical_id === selectedVertical
+      if (!inVertical) return false
     }
 
     // Group filter
@@ -244,7 +245,7 @@ function CalendarContent() {
             className="bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:border-violet-500"
           >
             <option value="all">All Channels</option>
-            {channels?.filter(c => selectedVertical === 'all' || c.vertical_id === selectedVertical).map(ch => (
+            {channels?.map(ch => (
               <option key={ch.id} value={ch.id}>{ch.name}</option>
             ))}
           </select>

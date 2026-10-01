@@ -458,6 +458,23 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01 (later still), GSI Tracker: verticals become tags on tasks (migration 032)
+- Per Kailash: ONE board (Lyzr) holds every task; verticals are mandatory tags (Lyzr tag = not
+  vertical-specific); vertical boards are filtered views; channels are shared — any task in any channel —
+  with channels.vertical_id only marking where a channel was made ("primary for" that view).
+- `032_vertical_tags.sql` (user pastes live; in RESET_ALL): tasks.vertical_ids UUID[] + GIN; backfill from
+  channel+also_channels with task triggers paused (no History/notification spam); one shared "No channel"
+  (others emptied + deactivated, ensure_no_channel now returns the shared one); normalising trigger (≥1
+  tag, dedupe, lyzr dropped next to real tags, sub-tasks inherit, unknown vertical refused, delete-vertical
+  untags); can_edit_task via tags; tasks_insert requires membership of every tagged vertical; vertical_ids
+  in History log fields. 21 PGlite checks.
+- App: useTasks/useRecentActivity/calendar/report-builder/dashboards filter by tags (channel fallback
+  pre-032); create dialog offers ALL channels (picked vertical's first) and tags the task with the view it
+  was created from; task drawer gets a Vertical tag editor; sidebar vertical views list own channels then
+  "Shared channels"; cards/table show tag names from vertical_ids.
+- API: ?vertical= filters by tag (`vertical_ids=cs.{}`), task JSON gains `verticals[]`, POST takes
+  `vertical`/`verticals` (tags, channel-independent), PATCH takes `verticals`. 91 API tests green.
+
 ### 2026-10-01 (later), GSI Tracker: admin badge = admin rights; role guard; boards hierarchy
 - Bug: Admin badge (admin_emails) and real rights (users.role) synced only at sign-in or on an exact email
   match, so a person badged under another spelling (.ai/.com or alt address) showed "Admin" with member

@@ -54,16 +54,19 @@ function WorkspaceHomePage() {
 
   const chVertical = useMemo(() => new Map((channels || []).map(c => [c.id, c.vertical_id])), [channels])
   const verticalName = (t: Task) => {
-    const v = t.channel?.vertical_id || chVertical.get(t.channel_id)
+    const v = t.vertical_ids?.[0] || t.channel?.vertical_id || chVertical.get(t.channel_id)
     return verticals.find(x => x.id === v)?.name || ''
   }
   const tasksByVertical = useMemo(() => {
     const m = new Map<string, Task[]>()
     for (const t of tasks || []) {
-      const v = t.channel?.vertical_id || chVertical.get(t.channel_id)
-      if (!v) continue
-      if (!m.has(v)) m.set(v, [])
-      m.get(v)!.push(t)
+      // A task tagged several verticals counts once per view it shows in.
+      const vs = t.vertical_ids?.length ? t.vertical_ids : [t.channel?.vertical_id || chVertical.get(t.channel_id)]
+      for (const v of vs) {
+        if (!v) continue
+        if (!m.has(v)) m.set(v, [])
+        m.get(v)!.push(t)
+      }
     }
     return m
   }, [tasks, chVertical])

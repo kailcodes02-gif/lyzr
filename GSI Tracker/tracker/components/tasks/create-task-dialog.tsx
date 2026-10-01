@@ -87,9 +87,10 @@ export function CreateTaskDialog({
     other: 'Other'
   }
 
-  const effectiveVertical = pickedVertical || (defaultChannelId ? allChannelsForDefault?.find(c => c.id === defaultChannelId)?.vertical_id : undefined) || 'all'
-  const { data: categories } = useCategories(effectiveVertical)
-  const { data: channels } = useChannels(effectiveVertical)
+  const effectiveVertical = pickedVertical || defaultVerticalId || (currentVerticalId !== 'all' ? currentVerticalId : '') || 'all'
+  // Channels are shared: any task can sit in any channel, whatever its tag.
+  // The picked vertical's own ("primary") channels just sort first.
+  const { data: channels } = useChannels('all')
   const { data: users } = useUsers()
   
   // Recurrence state
@@ -211,7 +212,7 @@ export function CreateTaskDialog({
   const onSubmit = (data: FormData) => {
     if (!data.channel_id) {
       if (!effectiveVertical || effectiveVertical === 'all') { toast.error('Pick which vertical this task is for'); return }
-      const bucket = (channels || []).find(c => c.slug === 'no-channel' && !c.parent_channel_id)
+      const bucket = (channels || []).find(c => c.slug === 'no-channel' && !c.parent_channel_id && c.is_active)
       if (!bucket) { toast.error('Pick a channel — the “No channel” option needs database update 027 first'); return }
       data = { ...data, channel_id: bucket.id }
     }
@@ -251,6 +252,8 @@ export function CreateTaskDialog({
       try {
         const task = await createTask({
           ...data,
+          // The tag: the vertical this was created from/for; Lyzr otherwise.
+          vertical_ids: effectiveVertical && effectiveVertical !== 'all' ? [effectiveVertical] : (lyzrId ? [lyzrId] : []),
           parent_task_id: parentTaskId,
           nesting_level: nestingLevel,
           budget_allocated: budget.trim() === '' ? null : Number(budget),
@@ -352,9 +355,9 @@ export function CreateTaskDialog({
                         onChange={e => { setPickedTop(e.target.value); setValue('channel_id', e.target.value || '') }}
                         className={selectCls}>
                         <option value="">{showVerticalPicker && !pickedVertical ? 'Pick a vertical first' : 'No channel'}</option>
-                        {(channels || []).filter(c => !c.parent_channel_id && c.slug !== 'no-channel').sort((a, b) => a.sort_order - b.sort_order).map(c => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
+                        {(channels || []).filter(c => !c.parent_channel_id && c.slug !== 'no-channel')
+                          .sort((a, b) => Number(b.vertical_id === effectiveVertical) - Number(a.vertical_id === effectiveVertical) || a.sort_order - b.sort_order)
+                          .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                       {pickedTop && (channels || []).some(c => c.parent_channel_id === pickedTop) && (
                         <select value={channelId !== pickedTop ? channelId : ''}

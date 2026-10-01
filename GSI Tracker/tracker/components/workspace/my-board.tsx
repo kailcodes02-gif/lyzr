@@ -62,7 +62,7 @@ export function MyBoard({ showFullWorkspaceLink }: { showFullWorkspaceLink?: boo
         <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cfg.color }} />
         <span className="flex-1 min-w-0">
           <span className="block text-sm text-zinc-800 truncate">{t.title}</span>
-          <span className="block text-[11px] text-zinc-500 truncate">{verticalName(t.channel?.vertical_id)} · {t.channel?.name}</span>
+          <span className="block text-[11px] text-zinc-500 truncate">{verticalName(t.vertical_ids?.[0] || t.channel?.vertical_id)} · {t.channel?.name}</span>
         </span>
         {t.due_date && <span className={cn('text-[11px] shrink-0', late ? 'text-red-600 font-medium' : 'text-zinc-500')}>{format(parseISO(t.due_date), 'EEE d MMM')}</span>}
         <Badge className="text-[10px] border-0 shrink-0" style={{ backgroundColor: cfg.bgColor, color: cfg.color }}>{cfg.label}</Badge>

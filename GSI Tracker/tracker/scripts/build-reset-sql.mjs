@@ -42,6 +42,7 @@ const ORDER = [
   '029_api_keys.sql',
   '030_api_hardening.sql',
   '031_admin_sync_and_role_guard.sql',
+  '032_vertical_tags.sql',
 ]
 
 let m001 = mig('001_initial_schema.sql')

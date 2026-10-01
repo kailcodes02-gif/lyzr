@@ -227,7 +227,10 @@ export function TaskCard({ task, onClick, compact, onSubtaskClick }: TaskCardPro
   // On the Lyzr board (every vertical's tasks) each card is tagged with the
   // vertical it belongs to; inside a vertical's view the tag would be noise.
   const { verticals, taskScope } = useVertical()
-  const verticalTag = taskScope === 'all' ? verticals.find(v => v.id === task.channel?.vertical_id)?.name : undefined
+  const tagIds = task.vertical_ids?.length ? task.vertical_ids : (task.channel?.vertical_id ? [task.channel.vertical_id] : [])
+  const verticalTag = taskScope === 'all'
+    ? tagIds.filter(id => verticals.find(v => v.id === id)?.slug !== 'lyzr').map(id => verticals.find(v => v.id === id)?.name).filter(Boolean).join(' · ') || undefined
+    : undefined
 
   // Effective owners with inheritance: task -> sub-channel -> channel
   const own = ownEntries(task)
@@ -312,7 +315,8 @@ export function TaskCard({ task, onClick, compact, onSubtaskClick }: TaskCardPro
 // Table row version
 export function TaskRow({ task, onClick, selectable, selected, onSelectChange, parentLabel, showVerticalColumn }: TaskRowProps) {
   const { verticals } = useVertical()
-  const verticalName = verticals.find(v => v.id === task.channel?.vertical_id)?.name
+  const rowTagIds = task.vertical_ids?.length ? task.vertical_ids : (task.channel?.vertical_id ? [task.channel.vertical_id] : [])
+  const verticalName = rowTagIds.map(id => verticals.find(v => v.id === id)?.name).filter(Boolean).join(' · ')
   const { data: allChannels } = useChannels('all')
   const { data: functions } = useFunctions()
   const parentChannel = task.channel?.parent_channel_id ? allChannels?.find(c => c.id === task.channel!.parent_channel_id) : null

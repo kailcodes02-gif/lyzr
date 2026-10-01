@@ -152,14 +152,16 @@ function VerticalRows({ onNavigate }: { onNavigate: () => void }) {
     const chVertical = new Map((channels || []).map(c => [c.id, c.vertical_id]))
     const today = new Date(); today.setHours(0, 0, 0, 0)
     for (const t of tasks || []) {
-      const v = t.channel?.vertical_id || chVertical.get(t.channel_id)
-      if (!v) continue
-      const c = byVertical.get(v) || { open: 0, overdue: 0 }
-      if (OPEN_STATUSES.has(t.status)) {
-        c.open++
-        if (t.due_date && new Date(t.due_date) < today) c.overdue++
+      const vs = t.vertical_ids?.length ? t.vertical_ids : [t.channel?.vertical_id || chVertical.get(t.channel_id)]
+      for (const v of vs) {
+        if (!v) continue
+        const c = byVertical.get(v) || { open: 0, overdue: 0 }
+        if (OPEN_STATUSES.has(t.status)) {
+          c.open++
+          if (t.due_date && new Date(t.due_date) < today) c.overdue++
+        }
+        byVertical.set(v, c)
       }
-      byVertical.set(v, c)
     }
     return byVertical
   }, [tasks, channels])
@@ -231,7 +233,15 @@ export function AppSidebar() {
   const realAdmin = user?.role === 'admin'
   const { isLeadership } = useMyBadges()
   const { mode, slug, verticalId, vertical, flags, canManage } = useVertical()
-  const { data: spaceChannels } = useChannels(verticalId)
+  // Channels are shared across the one board; a vertical view just lists its
+  // own ("primary") channels before the shared ones.
+  const { data: allSpaceChannels } = useChannels(mode === 'space' ? 'all' : verticalId)
+  const spaceChannels = useMemo(
+    () => (allSpaceChannels || []).filter(c => c.vertical_id === verticalId),
+    [allSpaceChannels, verticalId])
+  const sharedChannels = useMemo(
+    () => (allSpaceChannels || []).filter(c => c.vertical_id !== verticalId && c.slug !== 'no-channel'),
+    [allSpaceChannels, verticalId])
   const [mobileOpen, setMobileOpen] = useState(false)
   const close = () => setMobileOpen(false)
 
@@ -332,6 +342,16 @@ export function AppSidebar() {
                   </p>
                 )}
               </div>
+              {sharedChannels.length > 0 && (
+                <>
+                  <p className="px-3 brand-label text-zinc-500 mt-4 mb-2" title="Channels made elsewhere on the Lyzr board — any task here can use them too">Shared channels</p>
+                  <div className="space-y-0.5">
+                    {buildChannelTree(sharedChannels).map(channel => (
+                      <ChannelItem key={channel.id} channel={channel} depth={0} slug={slug} />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
             <MyFunctionRows onNavigate={close} />
           </>

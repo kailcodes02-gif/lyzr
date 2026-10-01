@@ -546,7 +546,14 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                 </div>
                 <div>
                   <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1">Campaign</p>
-                  <CampaignSelect taskId={taskId!} value={task.campaign_id || null} verticalId={task.channel?.vertical_id} />
+                  <CampaignSelect taskId={taskId!} value={task.campaign_id || null} verticalId={task.vertical_ids?.[0] || task.channel?.vertical_id} />
+                </div>
+                <div>
+                  <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1" title="Which vertical's view this task shows in. Lyzr = not vertical-specific.">Vertical</p>
+                  <VerticalTags task={task} canEdit={canEdit} onChanged={() => {
+                    queryClient.invalidateQueries({ queryKey: ['tasks'] })
+                    queryClient.invalidateQueries({ queryKey: ['task', taskId] })
+                  }} />
                 </div>
                 <div>
                   <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1">Result URL</p>
@@ -1713,6 +1720,43 @@ const SUGGEST_FIELDS: { key: string; label: string; kind: 'text' | 'date' | 'sta
   { key: 'due_date', label: 'Due date', kind: 'date' },
   { key: 'result_url', label: 'Result URL', kind: 'text' },
 ]
+
+// The task's vertical tags. One tag minimum; picking a vertical drops the
+// Lyzr tag (the database normalises either way).
+function VerticalTags({ task, canEdit, onChanged }: { task: Task; canEdit: boolean; onChanged: () => void }) {
+  const { verticals } = useVertical()
+  const [pending, startTransition] = useTransition()
+  const current = task.vertical_ids?.length ? task.vertical_ids : (task.channel?.vertical_id ? [task.channel.vertical_id] : [])
+  const toggle = (id: string) => {
+    const next = current.includes(id) ? current.filter(v => v !== id) : [...current, id]
+    startTransition(async () => {
+      try {
+        await updateTask(task.id, { vertical_ids: next })
+        onChanged()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Could not change the vertical')
+      }
+    })
+  }
+  if (!canEdit) {
+    const names = current.map(id => verticals.find(v => v.id === id)?.name).filter(Boolean).join(' · ')
+    return <p className="text-sm text-zinc-700">{names || '—'}</p>
+  }
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {verticals.map(v => {
+        const on = current.includes(v.id)
+        return (
+          <button key={v.id} type="button" disabled={pending} onClick={() => toggle(v.id)}
+            className={cn('text-[11px] px-2 py-1 rounded-md border transition-colors',
+              on ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300')}>
+            {v.name}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 function TaskEditBar({ task, canEdit, isOwnerish, editMode, setEditMode, onChanged }: {
   task: Task; canEdit: boolean; isOwnerish: boolean; editMode: boolean; setEditMode: (v: boolean) => void; onChanged: () => void

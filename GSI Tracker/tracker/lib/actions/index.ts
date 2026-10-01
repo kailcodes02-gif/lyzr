@@ -72,6 +72,8 @@ export async function queueSlackNotification(channelId: string, message: string)
 
 export async function createTask(data: {
   channel_id: string
+  /** Vertical tags; empty/omitted = Lyzr (the database normalises). */
+  vertical_ids?: string[]
   title: string
   description?: string
   priority: TaskPriority
@@ -220,6 +222,7 @@ export async function updateTask(
     planning_fields: Record<string, unknown>
     tracker_fields: Record<string, unknown>
     campaign_id: string | null
+    vertical_ids: string[]
   }>,
   opts?: { overrideBlockers?: boolean }
 ) {
