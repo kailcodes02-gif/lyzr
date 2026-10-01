@@ -164,19 +164,24 @@ function VerticalRows({ onNavigate }: { onNavigate: () => void }) {
     return byVertical
   }, [tasks, channels])
 
+  // Lyzr is the one main board (every task); each other vertical is a view of
+  // it, filtered to the tasks tagged with that vertical.
   return (
     <div className="space-y-0.5">
       {verticals.map(v => {
         const c = counts.get(v.id)
+        const main = v.slug === 'lyzr'
         return (
           <Link
             key={v.id}
             href={withVertical('/dashboard/', v.slug)}
             onClick={onNavigate}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-[13px] text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
+            title={main ? 'The main board: every task across Lyzr' : `${v.name} view: the Lyzr board filtered to tasks tagged ${v.name}`}
+            className={cn('flex items-center gap-2 py-1.5 rounded-md text-[13px] text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100',
+              main ? 'px-3 font-medium text-zinc-800' : 'ml-5 pl-3 pr-3 border-l border-zinc-200 rounded-l-none')}
           >
             <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-            <span className="truncate flex-1">{v.name}</span>
+            <span className="truncate flex-1">{v.name}{main ? <span className="ml-1.5 text-[10px] font-normal text-zinc-400">main board</span> : <span className="ml-1.5 text-[10px] text-zinc-400">view</span>}</span>
             {ownedVerticalIds.has(v.id) && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
             {c && c.open > 0 && (
               <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full', c.overdue > 0 ? 'bg-red-50 text-red-600' : 'bg-zinc-100 text-zinc-500')}
@@ -307,7 +312,7 @@ export function AppSidebar() {
           <>
             <NavList items={workspaceNav} onNavigate={close} />
             <div>
-              <p className="px-3 brand-label text-zinc-600 mb-2">Verticals</p>
+              <p className="px-3 brand-label text-zinc-600 mb-2">Boards</p>
               <VerticalRows onNavigate={close} />
             </div>
             <MyFunctionRows onNavigate={close} />

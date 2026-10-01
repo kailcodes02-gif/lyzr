@@ -224,6 +224,10 @@ function SubtaskCards({ task, parentOwners, onSubtaskClick }: {
 export function TaskCard({ task, onClick, compact, onSubtaskClick }: TaskCardProps) {
   const priorityColor = PRIORITY_COLORS[task.priority]
   const { data: allChannelOwners } = useAllChannelOwners()
+  // On the Lyzr board (every vertical's tasks) each card is tagged with the
+  // vertical it belongs to; inside a vertical's view the tag would be noise.
+  const { verticals, taskScope } = useVertical()
+  const verticalTag = taskScope === 'all' ? verticals.find(v => v.id === task.channel?.vertical_id)?.name : undefined
 
   // Effective owners with inheritance: task -> sub-channel -> channel
   const own = ownEntries(task)
@@ -258,6 +262,11 @@ export function TaskCard({ task, onClick, compact, onSubtaskClick }: TaskCardPro
           {task.priority}
         </span>
         <GradeStar task={task} />
+        {verticalTag && (
+          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md border border-blue-200 bg-blue-50 text-blue-700 truncate max-w-[8rem]" title={`Tagged ${verticalTag}: also shows in the ${verticalTag} view`}>
+            {verticalTag}
+          </span>
+        )}
         <span className="flex-1" />
         <StatusQuickSelect task={task} />
       </div>

@@ -458,6 +458,19 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01 (later), GSI Tracker: admin badge = admin rights; role guard; boards hierarchy
+- Bug: Admin badge (admin_emails) and real rights (users.role) synced only at sign-in or on an exact email
+  match, so a person badged under another spelling (.ai/.com or alt address) showed "Admin" with member
+  rights (reported: Mothilal couldn't edit channel owners). Security hole: users_update policy let anyone
+  edit their own row incl. role → self-promotion via the API.
+- `031_admin_sync_and_role_guard.sql` (user pastes live; in RESET_ALL): BEFORE UPDATE guard on users (role,
+  email, alt_email changeable only by admins or SECURITY DEFINER functions); admin_emails INSERT/DELETE →
+  users.role at once (matches email, alt_email, .ai/.com twin); users.role change → badge added/removed;
+  one-time repair. 19 checks on PGlite incl. the Mothilal case.
+- UI: sidebar "Verticals" → "Boards" (Lyzr = main board, others indented as views); Kanban cards on the
+  Lyzr board carry a vertical tag; owners/view without ?email= shows the signed-in user instead of a blank
+  "Awaiting first sign-in" profile.
+
 ### 2026-10-01, Campaign Analytics: engagement everywhere, brand awareness by person
 - Engagement is now a first-class metric: Results tiles (engagements, engagement rate, reactions / comments /
   shares, follows), trend explorer metrics, Overview "Engagement" cell, AI input. `METRICS` in linkedin-agg gains
