@@ -458,6 +458,11 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01 (night, later), GSI Tracker: role vocabulary fixed as Assigner / Owner (assignee)
+- Per Kailash: Assigner = whoever gave out the task (auto = creator, never changes); Owner = assignee =
+  responsible for completing it. Drawer "Created by" → "Assigner"; owners header → "Owners (assignees)";
+  My Tasks tab → "Assigned by Me"; help key task_owner rewritten. UI copy only.
+
 ### 2026-10-01 (night), GSI Tracker: crown = Lyzr only; one-board copy sweep
 - Crown now marks Lyzr (the main board) in the switcher and Boards list; owned verticals show a small
   "owner" chip instead (user read the crown as "main"). Vertical dashboard subtitle says it's the Lyzr

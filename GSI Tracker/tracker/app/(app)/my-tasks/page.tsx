@@ -111,8 +111,8 @@ export default function MyTasksPage() {
             <TabsTrigger value="assigned" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
               <CheckSquare className="w-4 h-4 mr-2" /> Assigned to Me
             </TabsTrigger>
-            <TabsTrigger value="created" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900" title="Tasks you wrote up, whoever owns them now">
-              <Plus className="w-4 h-4 mr-2" /> Created by Me ({myCreatedTasks.length})
+            <TabsTrigger value="created" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900" title="Tasks you gave out (you created them), whoever owns them now">
+              <Plus className="w-4 h-4 mr-2" /> Assigned by Me ({myCreatedTasks.length})
             </TabsTrigger>
             <TabsTrigger value="mentioned" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
               <MessageSquare className="w-4 h-4 mr-2" /> Mentioned ({myMentionedTasks.length})

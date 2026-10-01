@@ -577,7 +577,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                   />
                 </div>
                 <div>
-                  <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1" title="Who wrote the task up (the reporter). Doing it is the owners' job above.">Created by</p>
+                  <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1" title="Who gave out the task — set automatically from who created it. Completing it is the owners' (assignees') job.">Assigner</p>
                   <div className="flex items-center gap-1.5 text-sm text-zinc-700">
                     {task.creator && (
                       <Avatar className="w-4 h-4"><AvatarImage src={task.creator.avatar_url || ''} /><AvatarFallback className="bg-zinc-200 text-zinc-600 text-[8px]">{(task.creator.display_name || task.creator.email)[0].toUpperCase()}</AvatarFallback></Avatar>

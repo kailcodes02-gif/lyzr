@@ -34,7 +34,7 @@ export function TaskOwnersEditor({ task, onChanged }: { task: Task; onChanged: (
 
   return (
     <div className="mb-4">
-      <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-2" title="The people doing the task — what other tools call assignees. The first (crowned) person is the main owner, answerable for finishing it.">Owners (assigned to)</p>
+      <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-2" title="Owner = assignee: the people responsible for completing the task. The first (crowned) person is the main owner. The assigner — whoever gave out the task — shows on the right.">Owners (assignees)</p>
       <div className="flex flex-wrap gap-2 mb-2">
         {task.assignments?.map(a => (
           <div key={a.user_id} className={`flex items-center gap-2 rounded-lg px-3 py-1.5 ${a.role === 'primary' ? 'bg-amber-50 border border-amber-200' : 'bg-zinc-100'}`}>
