@@ -43,7 +43,7 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
     if (box && files.length > 3) box.insertAdjacentHTML('afterbegin', `<p class="muted" data-reading>${ctx.ui.spinner(`Reading ${files.length} files`)}</p>`);
     const failed = [];
     for (const f of files) {
-      try { const d = await detectFile(f); if (d.kind === 'demographics') d.tag = personFromText(f.name); state.pending.push(d); }
+      try { const d = await detectFile(f); if (d.kind === 'demographics') d.tag = personFromText(f.name); if (state.pending.some(x => x.file === d.file && x.size === d.size && x.kind === d.kind)) { failed.push(`${f.name}: already in the list`); continue; } state.pending.push(d); }
       catch (e) { failed.push(`${f.name}: ${e.message}`); }
     }
     if (failed.length) ctx.toast(`${failed.length} file${failed.length === 1 ? '' : 's'} not recognised. ${failed.slice(0, 2).join(' · ')}`, 'err');
@@ -108,7 +108,7 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
     state.busy = true; drawPending();
     let next = 0;
     const worker = async () => { while (next < todo.length) { const p = todo[next++]; await uploadOne(p); } };
-    await Promise.all([worker(), worker()]);
+    await worker(); // one at a time: the server recounts earlier uploads after each file
     state.busy = false;
     const ok = todo.filter(p => p.status === 'done').length, bad = todo.length - ok;
     ctx.toast(`${ok} file${ok === 1 ? '' : 's'} uploaded${bad ? `, ${bad} failed` : ''}.`, bad ? 'err' : '');
@@ -129,7 +129,7 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
         ...(isEditor ? [{ h: '', k: 'sel', f: u => `<input type="checkbox" data-sel="${esc(u.id)}" aria-label="Select ${esc(u.file_name || u.id)}">` }] : []),
         { h: 'Tab', k: 'channel', left: true, f: u => ctx.ui.pill(u.channel === 'email' ? 'Email' : u.kind === 'performance' ? `Ads · ${PLATFORM_LABEL[u.platform || 'linkedin'] || u.platform}` : 'Ads · LinkedIn demographics', u.channel === 'email' ? 'p-med' : u.kind === 'performance' ? 'p-high' : 'p-low') },
         { h: 'Campaign / window', k: 'w', left: true, f: u => u.channel === 'email' ? `${esc(campaignLabel(u.notes || ''))}<br><span class="muted" style="font-size:11.5px">${u.period_start ? esc(ctx.fmt.rangeLabel(u.period_start, u.period_end)) : ''}</span>` : u.period_start ? `${esc(ctx.fmt.rangeLabel(u.period_start, u.period_end))}${u.kind === 'demographics' ? `<br><span class="muted" style="font-size:11.5px">${esc(u.notes || 'segments not recorded')}</span>` : ''}` : '<span class="muted">per day</span>' },
-        { h: 'Rows', k: 'row_count', f: u => u.row_count ? fmt(u.row_count) : '<span class="down" title="Nothing was read from this file: delete it and upload again">0</span>' },
+        { h: 'Rows', k: 'row_count', f: u => u.row_count ? fmt(u.row_count) : /^Replaced/.test(u.notes || '') ? '<span class="muted" title="Every day in this file was uploaded again later; the newer file holds the rows">replaced</span>' : '<span class="down" title="Nothing was read from this file: delete it and upload again">0</span>' },
         { h: 'File', k: 'file_name', left: true, f: u => `<span class="mono">${esc(u.file_name || '')}</span>` },
         { h: 'Uploaded by', k: 'uploaded_by', left: true, f: u => esc(u.uploaded_by || '') },
         { h: 'At', k: 'uploaded_at', left: true, f: u => esc(ctx.fmt.istDateTime(u.uploaded_at)) },

@@ -2,7 +2,7 @@
 // a Claude read-out. Every data block loads on its own so one failing API does not hide the rest.
 import { enrich, summary, hasMessage } from '../lib/leads-agg.mjs';
 import { PLATFORM_LABEL } from '../ads-csv.mjs';
-import { leadSplit } from '../lib/linkedin-agg.mjs';
+import { leadSplit, aggregateRows } from '../lib/linkedin-agg.mjs';
 import { mountBoard } from '../actions.mjs';
 import { sectionCompare, memoGet, deltaText } from '../compare.mjs';
 
@@ -21,7 +21,7 @@ function liTotals(li) {
   return t;
 }
 function demoShare(li, segment, pickFn) {
-  const rows = ((li && li.demo) || []).flatMap(d => d.rows || []).filter(r => r.segment === segment);
+  const rows = aggregateRows((li && li.demo) || []).filter(r => r.segment === segment);
   const tot = sumBy(rows, 'impressions'); if (!tot) return null;
   const by = new Map(); for (const r of rows) by.set(r.value, (by.get(r.value) || 0) + (Number(r.impressions) || 0));
   return pickFn(by, tot);

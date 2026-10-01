@@ -165,7 +165,14 @@ export const onRequestPost = handle(async ({ request, env }) => {
         params: { channel: `eq.${channel}`, kind: `eq.${kind}`, period_start: `eq.${periodStart}`, period_end: `eq.${periodEnd}`, platform: `eq.${platform}` },
         select: 'id,notes,row_count',
       })
-      const dupes = found.filter((x) => !x.notes || !segs || x.notes === segs || !x.row_count)
+      const dupes = found.filter((x) => (x.notes || '') === (segs || '') || !x.row_count)
+      // Also drop older uploads of the same breakdown whose window sits inside the new one (e.g. 1-14 Sept after 1-30 Sept).
+      const inside = segs ? await d.select('ca_uploads', { params: { channel: `eq.${channel}`, kind: `eq.${kind}`, platform: `eq.${platform}`, notes: `eq.${segs}`, period_start: `gte.${periodStart}`, period_end: `lte.${periodEnd}` }, select: 'id' }) : []
+      for (const x of inside) if (!dupes.some((y) => y.id === x.id)) dupes.push(x)
+      // A window that only partly overlaps an existing one of the same breakdown would hide days (newest wins
+      // at read time), so it is refused with a clear message instead of silently losing data.
+      const partial = segs ? (await d.select('ca_uploads', { params: { channel: `eq.${channel}`, kind: `eq.${kind}`, platform: `eq.${platform}`, notes: `eq.${segs}`, period_start: `lte.${periodEnd}`, period_end: `gte.${periodStart}` }, select: 'id,period_start,period_end,row_count' })).filter((x) => x.row_count > 0 && !dupes.some((y) => y.id === x.id) && !(x.period_start >= periodStart && x.period_end <= periodEnd)) : []
+      if (partial.length) return json({ error: `This ${segs} export (${periodStart} to ${periodEnd}) partly overlaps one already stored (${partial[0].period_start} to ${partial[0].period_end}). Export the same window, or one that fully covers it, so no days are lost.` }, 409)
       if (dupes.length) {
         for (const filter of inChunks(dupes.map((x) => x.id))) await d.del('ca_uploads', { id: filter })
       }
@@ -195,6 +202,13 @@ export const onRequestPost = handle(async ({ request, env }) => {
     clean = dedupe(rows.map((r) => normalisePerfRow(r, uploadId, platform)).filter(Boolean), (r) => `${r.day}|${r.campaign_id}|${r.ad_id}`)
     table = 'ca_li_perf'
     onConflict = 'platform,day,campaign_id,ad_id'
+    // A campaign-level export (no Ad ID) and an ad-level export of the same days would both be stored and
+    // summed. Keep one granularity per (day, campaign): the file being uploaded wins.
+    if (clean.length) {
+      const adLevel = clean.some((r) => r.ad_id)
+      const camps = [...new Set(clean.map((r) => r.campaign_id))]
+      for (const dayF of inChunks([...new Set(clean.map((r) => r.day))], 60)) for (const campF of inChunks(camps, 60)) await d.del('ca_li_perf', { platform: `eq.${platform}`, day: dayF, campaign_id: campF, ad_id: adLevel ? 'eq.' : 'neq.' })
+    }
   } else if (kind === 'events') {
     clean = dedupe(rows.map((r) => normaliseEventRow(r, uploadId)).filter(Boolean), (r) => `${r.campaign}|${r.contact}|${r.step}|${r.event}|${r.ts}|${r.link}`)
     table = 'ca_em_events'
@@ -216,6 +230,22 @@ export const onRequestPost = handle(async ({ request, env }) => {
     const cur = await d.select('ca_uploads', { params: { id: `eq.${uploadId}` }, select: 'row_count', limit: 1 })
     const rowCount = num(cur[0] && cur[0].row_count, 0) + inserted
     await d.update('ca_uploads', { id: `eq.${uploadId}` }, { row_count: rowCount })
+  }
+  // Rows are keyed by their natural key (performance: platform, day, campaign, ad; events: campaign, contact,
+  // step, event, time, link), so data uploaded twice is stored once and now belongs to this upload. Recount the
+  // other uploads whose dates overlap; one left with no rows is fully replaced and says so (performance) or
+  // is removed (events), instead of looking like a second copy of the same data. Never fails the upload.
+  if (b.final && (kind === 'performance' || kind === 'events')) {
+    try {
+      const win = periodStart && periodEnd ? { period_start: `lte.${periodEnd}`, period_end: `gte.${periodStart}` } : {}
+      const others = await d.select('ca_uploads', { params: { channel: `eq.${channel}`, kind: `eq.${kind}`, ...(kind === 'performance' ? { platform: `eq.${platform}` } : {}), id: `neq.${uploadId}`, ...win }, select: 'id,row_count,notes', order: 'uploaded_at.desc', limit: 12 })
+      for (const u of others) {
+        const left = await d.selectAll(kind === 'performance' ? 'ca_li_perf' : 'ca_em_events', { params: { upload_id: `eq.${u.id}` }, select: kind === 'performance' ? 'ad_id' : 'step', max: 20000 })
+        const n = left.length
+        if (kind === 'events') { if (!n) await d.del('ca_uploads', { id: `eq.${u.id}` }); else if (n !== num(u.row_count, 0)) await d.update('ca_uploads', { id: `eq.${u.id}` }, { row_count: n }) }
+        else if (n !== num(u.row_count, 0) || (!n && !/^Replaced/.test(String(u.notes || '')))) await d.update('ca_uploads', { id: `eq.${u.id}` }, { row_count: n, notes: n ? (u.notes || null) : 'Replaced by a later upload covering the same days' })
+      }
+    } catch (e) { console.error('recount after upload failed', e && e.message) }
   }
   return json({ upload_id: uploadId, inserted, skipped, created, final: Boolean(b.final) }, created ? 201 : 200)
 })

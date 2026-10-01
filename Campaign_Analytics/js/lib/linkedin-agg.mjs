@@ -191,6 +191,32 @@ export function bandShares(titleRows, bands, metric = 'impressions') {
   const share = {}; for (const b of BANDS) share[b] = total ? out[b] / total : 0;
   return { counts: out, share, total };
 }
+/**
+ * Demographics windows to count: newest upload wins where windows of the same breakdown (platform + notes)
+ * overlap, uploads with no rows are skipped. Mirrors functions/api/ca/_lib/windows.js, used by the demo mode.
+ */
+export function activeWindows(wins) {
+  const list = (wins || []).filter(w => w && w.upload && w.upload.period_start && w.upload.period_end && (w.rows ? w.rows.length : (w.upload.row_count == null || w.upload.row_count > 0)));
+  const byGroup = new Map();
+  for (const w of list) { const k = `${w.upload.platform || 'linkedin'}|${w.upload.notes || ''}`; if (!byGroup.has(k)) byGroup.set(k, []); byGroup.get(k).push(w); }
+  const keep = new Set();
+  for (const group of byGroup.values()) {
+    group.sort((a, b) => (a.upload.uploaded_at || '') < (b.upload.uploaded_at || '') ? 1 : -1);
+    const kept = [];
+    for (const w of group) { if (!kept.some(k => w.upload.period_start <= k.upload.period_end && k.upload.period_start <= w.upload.period_end)) { kept.push(w); keep.add(w); } }
+  }
+  return (wins || []).filter(w => keep.has(w));
+}
+/**
+ * Rows for all-campaign aggregates: untagged rows, plus tagged rows (a person's or an ad set's export) only
+ * for segments where no untagged window covers the same dates. A person export is a subset of the
+ * all-campaign export, so counting both would double the shared impressions.
+ */
+export function aggregateRows(windows) {
+  const W = windows || [];
+  const untaggedSegs = w => new Set(w.rows.filter(r => !String(r.campaign || '').trim()).map(r => r.segment));
+  return W.flatMap(w => w.rows.filter(r => !String(r.campaign || '').trim() || !W.some(o => o !== w && o.upload.period_start <= w.upload.period_end && w.upload.period_start <= o.upload.period_end && untaggedSegs(o).has(r.segment)) && !untaggedSegs(w).has(r.segment)));
+}
 /** Which demographics segments a set of rows carries, e.g. ['Company'] when only the company export was uploaded. */
 export const segmentsPresent = rows => [...new Set((rows || []).map(r => r.segment).filter(Boolean))];
 export const segRows = (rows, segment) => rows.filter(r => normName(r.segment) === normName(segment));

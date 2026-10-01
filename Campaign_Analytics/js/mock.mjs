@@ -8,6 +8,7 @@ import { hubspotMock } from './mock/hubspot.mjs';
 import { buildEmailMock, emailPage } from './mock/email.mjs';
 import { countBy, sortedEntries, clusterLabel } from './lib/leads-agg.mjs';
 import { overlaps, fmt, usd, pct } from './fmt.mjs';
+import { activeWindows } from './lib/linkedin-agg.mjs';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 class MockError extends Error { constructor(status, message) { super(message); this.status = status; } }
@@ -52,7 +53,7 @@ export function createMockApi() {
       const uploadedIds = new Set(uploads.map(u => u.id));
       const allPerf = [...linkedinMock.perf.map(r => r.platform ? r : { ...r, platform: 'linkedin' }), ...adsMock.perf.filter(r => uploadedIds.has('u-' + r.platform))];
       const perf = allPerf.filter(r => r.day >= from && r.day <= to && (platform === 'all' || r.platform === platform));
-      const demo = platform === 'linkedin' || platform === 'all' ? linkedinMock.demo.filter(d => uploads.some(u => u.id === d.upload.id) && overlaps(from, to, d.upload.period_start, d.upload.period_end)).map(d => ({ upload: d.upload, rows: d.rows })) : [];
+      const demo = platform === 'linkedin' || platform === 'all' ? activeWindows(linkedinMock.demo.filter(d => uploads.some(u => u.id === d.upload.id) && overlaps(from, to, d.upload.period_start, d.upload.period_end)).map(d => ({ upload: d.upload, rows: d.rows }))) : [];
       return { platform, perf, demo, uploads: uploads.filter(u => u.channel === 'linkedin' && (platform === 'all' || (u.platform || 'linkedin') === platform)) };
     }
     if (p === 'hubspot') {

@@ -6,6 +6,7 @@
 import { json, handle, isoDay } from './_lib/http.js'
 import { requireUser } from './_lib/auth.js'
 import { db, inChunks } from './_lib/db.js'
+import { activeWindows } from './_lib/windows.js'
 
 export { corsPreflight as onRequestOptions } from './_lib/http.js'
 
@@ -35,7 +36,7 @@ export const onRequestGet = handle(async ({ request, env }) => {
   if (from) dayFilter.push(`gte.${from}`)
   if (to) dayFilter.push(`lte.${to}`)
   const [perf, uploads] = await Promise.all([
-    d.selectAll('ca_li_perf', { params: { ...platParam, ...(dayFilter.length ? { day: dayFilter } : {}) }, order: 'day.asc,campaign_id.asc,ad_id.asc' }),
+    d.selectAll('ca_li_perf', { params: { ...platParam, ...(dayFilter.length ? { day: dayFilter } : {}) }, order: 'day.asc,campaign_id.asc,ad_id.asc,platform.asc' }),
     d.select('ca_uploads', {
       params: { channel: 'eq.linkedin', ...platParam },
       select: 'id,channel,kind,platform,file_name,uploaded_by,uploaded_at,period_start,period_end,row_count,notes',
@@ -44,18 +45,27 @@ export const onRequestGet = handle(async ({ request, env }) => {
     }),
   ])
 
-  const demoUploads = uploads.filter((u) => u.kind === 'demographics' && overlaps(u, from, to))
+  // Every demographics upload overlapping the range, rows loaded, then newest-wins de-duplication:
+  // a file uploaded twice (or an older window inside a newer one) counts once. Uploads made before the
+  // segments were recorded (notes null) get their notes from their rows so they group correctly.
+  const candidates = uploads.filter((u) => u.kind === 'demographics' && overlaps(u, from, to))
   const demo = []
-  if (demoUploads.length) {
-    const rowsByUpload = new Map(demoUploads.map((u) => [u.id, []]))
-    for (const filter of inChunks(demoUploads.map((u) => u.id), 50)) {
+  if (candidates.length) {
+    const rowsByUpload = new Map(candidates.map((u) => [u.id, []]))
+    for (const filter of inChunks(candidates.map((u) => u.id), 50)) {
       const rows = await d.selectAll('ca_li_demo', { params: { upload_id: filter }, order: 'id.asc' })
       for (const r of rows) {
         const list = rowsByUpload.get(r.upload_id)
         if (list) list.push(r)
       }
     }
-    for (const u of demoUploads) demo.push({ upload: u, rows: rowsByUpload.get(u.id) || [] })
+    for (const u of candidates) {
+      const rows = rowsByUpload.get(u.id) || []
+      if (!u.notes && rows.length) { const segs = [...new Set(rows.map((r) => r.segment).filter(Boolean))].sort(); const tags = [...new Set(rows.map((r) => r.campaign).filter(Boolean))]; u.notes = segs.join(', ') + (tags.length === 1 ? ` (${tags[0]})` : '') }
+      if (!rows.length) u.row_count = 0
+    }
+    const keep = new Set(activeWindows(candidates).map((u) => u.id))
+    for (const u of candidates) if (keep.has(u.id)) demo.push({ upload: u, rows: rowsByUpload.get(u.id) || [] })
   }
   return json({ from: from || null, to: to || null, platform, perf, demo, uploads })
 })

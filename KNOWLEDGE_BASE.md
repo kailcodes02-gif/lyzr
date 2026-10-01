@@ -523,6 +523,20 @@ Access if the data ever becomes confidential.
   Lyzr board carry a vertical tag; owners/view without ?email= shows the signed-in user instead of a blank
   "Awaiting first sign-in" profile.
 
+### 2026-10-01, Campaign Analytics: no double counting when a file is uploaded more than once
+- Performance rows: keyed by (platform, day, campaign, ad), so a re-upload overwrites; after each file the
+  server recounts the other uploads whose dates overlap and marks a fully replaced one "replaced" (never a
+  second copy). One granularity per (day, campaign): an ad-level export replaces campaign-level rows and back.
+- Demographics windows: identical or contained windows of the same breakdown (and tag) are deleted on upload;
+  a partly overlapping window is refused (409) with the window it clashes with; at read time
+  `activeWindows` (server `_lib/windows.js`, mirror in linkedin-agg) keeps the newest upload where windows
+  overlap and skips 0-row uploads; uploads made before segments were recorded get their notes from their rows.
+- Tagged (person / ad set) exports are a subset of the all-campaign export: `aggregateRows` counts them in
+  the all-campaign numbers only for segments with no untagged window on those dates; the per-person section
+  reads them in full. Instantly exports: events keyed, a fully superseded upload record is removed.
+- Uploader: the same file cannot be queued twice; files upload one at a time. Reviewed adversarially (15
+  findings confirmed and fixed; the "comparison window spanning both ranges" one is by design).
+
 ### 2026-10-01, Campaign Analytics: engagement everywhere, brand awareness by person
 - Engagement is now a first-class metric: Results tiles (engagements, engagement rate, reactions / comments /
   shares, follows), trend explorer metrics, Overview "Engagement" cell, AI input. `METRICS` in linkedin-agg gains

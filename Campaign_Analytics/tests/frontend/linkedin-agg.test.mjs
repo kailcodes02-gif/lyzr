@@ -424,3 +424,19 @@ test('byPerson: brand and engagement numbers per team member from ad set names',
   assert.equal(P.people[2].video_views, 300); assert.equal(P.people[2].ad_sets[0].name, 'ANI|GSI&SI|Video Ads|Awareness');
   assert.equal(P.unattributed.leads, 3);
 });
+
+test('activeWindows (front end mirror): overlapping windows of one breakdown collapse to the newest', () => {
+  const w = (id, start, end, at, notes = 'Company') => ({ upload: { id, period_start: start, period_end: end, uploaded_at: at, notes }, rows: [{ segment: 'Company', value: 'EY', impressions: 1 }] });
+  const out = A.activeWindows([w('a', '2026-09-01', '2026-09-30', '2026-10-01'), w('b', '2026-09-01', '2026-09-30', '2026-10-02'), w('c', '2026-09-15', '2026-09-24', '2026-09-25'), w('d', '2026-09-01', '2026-09-30', '2026-10-02', 'Job Title')]);
+  assert.deepEqual(out.map(x => x.upload.id).sort(), ['b', 'd']);
+});
+
+test('aggregateRows: a person export beside the all-campaign export is not counted twice', () => {
+  const win = (id, start, end, rows) => ({ upload: { id, period_start: start, period_end: end, uploaded_at: '2026-10-01', notes: '' }, rows });
+  const all = win('all', '2026-09-01', '2026-09-30', [{ segment: 'Company', value: 'EY', impressions: 100 }, { segment: 'Job Title', value: 'Partner', impressions: 40 }]);
+  const anju = win('anju', '2026-09-01', '2026-09-30', [{ segment: 'Company', value: 'EY', impressions: 30, campaign: 'Anju' }, { segment: 'Country', value: 'India', impressions: 25, campaign: 'Anju' }]);
+  const rows = A.aggregateRows([all, anju]);
+  assert.equal(rows.filter(r => r.segment === 'Company').reduce((a, r) => a + r.impressions, 0), 100);   // Anju's Company rows excluded
+  assert.equal(rows.filter(r => r.segment === 'Country').reduce((a, r) => a + r.impressions, 0), 25);    // no untagged Country export: tagged one counts
+  assert.equal(A.aggregateRows([anju]).length, 2);                                                        // only a tagged export: it is the data
+});

@@ -36,7 +36,8 @@ export async function render(el, ctx) {
   const rf = Number((S.targets || {}).reach_frequency) || 3; // impressions per person for the reach estimates
   const perf = (data.perf || []).filter(r => r.day >= from && r.day <= to);
   const windows = [...(data.demo || [])].sort((a, b) => a.upload.period_start < b.upload.period_start ? -1 : 1);
-  const demoRows = windows.flatMap(w => w.rows);
+  const allDemoRows = windows.flatMap(w => w.rows);          // everything, for the per-person / per-ad-set section
+  const demoRows = A.aggregateRows(windows);                  // all-campaign aggregates: tagged subsets not counted twice
   // Which demographics breakdowns were uploaded for this range. LinkedIn exports one dimension per file
   // (Company, Job Title, Job Seniority, Country/Region, Job Function); several sections need more than Company.
   const segsPresent = A.segmentsPresent(demoRows);
@@ -438,7 +439,7 @@ export async function render(el, ctx) {
 
   // ---- audiences by person / ad set ----
   {
-    const tags = [...new Set(demoRows.map(r => r.campaign).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    const tags = [...new Set(allDemoRows.map(r => r.campaign).filter(Boolean))].sort((a, b) => a.localeCompare(b));
     const body = el.querySelector('#personBody'), segEl = el.querySelector('#personSeg');
     if (!tags.length) { segEl.innerHTML = ''; body.innerHTML = ctx.ui.empty('No tagged demographics in this range yet. In Campaign Manager filter the campaigns to one person\'s boosted posts (or one ad set), export Demographics by Company, Job Title and Country, and type the name in the "Covers" box when uploading. Each name then gets its own account × designation × region map here.'); }
     else {
