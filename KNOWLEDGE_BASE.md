@@ -458,6 +458,14 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-01, Campaign Analytics: sign-in fix (block_nested_popups)
+- Cause: Chrome had opened the MSAL popup as a normal tab (window name `msal.*`, URL `?state=...`); clicking
+  Sign in inside it fails with `block_nested_popups`. Not related to the 007 migration.
+- Fix (`js/auth.mjs`): a window with no sign-in response drops the `msal.` name and the stale `?state=`;
+  responses whose MSAL state says `interactionType: redirect` are left to `handleRedirectPromise()` instead
+  of the popup bridge; when a popup is refused (`block_nested_popups`, `popup_window_error`,
+  `empty_window_error`) sign-in falls back to a full-page redirect and `restore()` completes it on return.
+
 ### 2026-10-01, Campaign Analytics: per-section comparison, data coverage panel
 - Every section that compares (tiles, comparison columns, "what changed", "what worked") now has its own
   "Compare" selector next to the section title (`js/compare.mjs` `sectionCompare`): the page loads from the
