@@ -1,5 +1,5 @@
 // Shell: sign-in gate, navigation, global date range, view loader, toasts.
-import { isBridging, signIn, restore, signOut, getToken } from './auth.mjs';
+import { isBridging, signIn, signInLocal, restore, signOut, getToken } from './auth.mjs';
 import { createApi } from './api.mjs';
 import * as fmt from './fmt.mjs';
 import * as heat from './heatmap.mjs';
@@ -81,6 +81,7 @@ function setRange(next, silent) {
 async function boot() {
   const demo = new URLSearchParams(location.search).get('demo') === '1' || localStorage.getItem('ca.demo') === '1';
   $('msBtn').onclick = async () => { $('gerr').textContent = ''; try { const u = await signIn(); enter(u, false); } catch (e) { $('gerr').textContent = 'Sign-in failed' + (e && (e.errorCode || e.message) ? ': ' + (e.errorCode || e.message) : '.'); } };
+  $('localForm').onsubmit = async e => { e.preventDefault(); $('gerr').textContent = ''; const btn = $('localBtn'); btn.disabled = true; try { const u = await signInLocal($('localEmail').value, $('localPass').value); enter(u, false); } catch (err) { $('gerr').textContent = err.message || String(err); } finally { btn.disabled = false; } };
   $('demoBtn').onclick = () => { localStorage.setItem('ca.demo', '1'); enter({ name: 'Demo viewer', email: 'demo@lyzr.com' }, true); };
   if (demo) return enter({ name: 'Demo viewer', email: 'demo@lyzr.com' }, true);
   const u = await restore();

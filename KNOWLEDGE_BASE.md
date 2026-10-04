@@ -523,6 +523,16 @@ Access if the data ever becomes confidential.
   Lyzr board carry a vertical tag; owners/view without ?email= shows the signed-in user instead of a blank
   "Awaiting first sign-in" profile.
 
+### 2026-10-04, Campaign Analytics: email + password sign-in for named outside accounts
+- Gate gains "Or sign in with email and password" under the Microsoft button. Accounts come from the Pages
+  secret `CA_LOCAL_USERS` ("email:password, ..."), never from the code. `POST /api/ca/login` answers a
+  `ca1.<payload>.<hmac>` token (HMAC-SHA256 with CA_CRON_SECRET, 12 h) that `requireUser` accepts next to
+  Microsoft tokens (`_lib/auth.js`: localLogin / verifyLocalToken). isha@whitepath.in added to DEFAULT_EDITORS
+  so White Path can upload. Wrong details: 401 after a 600 ms delay, same message either way.
+- Upload queue de-duplicates by content fingerprint (djb2 of the text + length), not by file name: two
+  files with the same name and different rows both go through; the same file under two names is caught once.
+  Server side never keyed on file name (windows and day/campaign/ad keys), so nothing else changed.
+
 ### 2026-10-04, Campaign Analytics: Upload CSVs page, LinkedIn export checklist, month grid
 - New sidebar page `#/uploads` (`views/uploads.mjs`): one drop zone for every file type (uploader channel 'all'),
   the LinkedIn export checklist (4 files per fortnight: Ad Performance daily at ad level; Demographics by Company,

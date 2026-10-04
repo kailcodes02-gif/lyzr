@@ -45,7 +45,7 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
     if (box && files.length > 3) box.insertAdjacentHTML('afterbegin', `<p class="muted" data-reading>${ctx.ui.spinner(`Reading ${files.length} files`)}</p>`);
     const failed = [];
     for (const f of files) {
-      try { const d = await detectFile(f); if (d.kind === 'demographics') d.tag = personFromText(f.name); if (state.pending.some(x => x.file === d.file && x.size === d.size && x.kind === d.kind)) { failed.push(`${f.name}: already in the list`); continue; } state.pending.push(d); }
+      try { const d = await detectFile(f); if (d.kind === 'demographics') d.tag = personFromText(f.name); if (state.pending.some(x => x.hash === d.hash)) { failed.push(`${f.name}: the same file is already in the list`); continue; } state.pending.push(d); }
       catch (e) { failed.push(`${f.name}: ${e.message}`); }
     }
     if (failed.length) ctx.toast(`${failed.length} file${failed.length === 1 ? '' : 's'} not recognised. ${failed.slice(0, 2).join(' · ')}`, 'err');

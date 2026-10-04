@@ -40,6 +40,13 @@
     <p class="muted">Ads, email and HubSpot leads for the GSI and SI programme in one place. Sign in with your Lyzr Microsoft account.</p>
     <button id="msBtn" class="btn primary">Sign in with Microsoft</button>
     <button id="demoBtn" class="btn">Explore with sample data</button>
+    <details id="localBox" style="margin-top:4px"><summary class="muted" style="cursor:pointer;font-size:13px">Or sign in with email and password</summary>
+      <form id="localForm" style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+        <input type="email" id="localEmail" placeholder="Email" autocomplete="username" required>
+        <input type="password" id="localPass" placeholder="Password" autocomplete="current-password" required>
+        <button class="btn" type="submit" id="localBtn">Sign in</button>
+      </form>
+    </details>
     <p id="gerr" class="err"></p>
   </div>
 </div>

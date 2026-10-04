@@ -6,6 +6,7 @@ export const MS_CLIENT_ID = 'cd569c2f-9121-4a99-8ba0-691c6df81cbd';
 export const MS_TENANT_ID = '4b1018eb-9480-4542-89d0-4e6233aba226';
 const SCOPES = ['User.Read'];
 const KEY = 'ca.user';
+const LOCAL = 'ca.local'; // { token, email, name, expires_at } from /api/ca/login
 
 // MSAL puts {id, meta:{interactionType}} base64-encoded in `state` (before the "|"). Popup
 // responses are relayed to the opener; redirect responses are handled by MSAL in this window.
@@ -114,8 +115,21 @@ async function profile(token) {
   return { name: p.displayName || email, email };
 }
 
-// Returns a fresh Graph token (silent renew) or null when the user must sign in again.
+// ---- email + password (named outside accounts; see functions/api/ca/login.js) ----
+function localSession() { try { const s = JSON.parse(localStorage.getItem(LOCAL) || 'null'); return s && s.token && Date.parse(s.expires_at) > Date.now() ? s : null; } catch { return null; } }
+export async function signInLocal(email, password) {
+  const r = await fetch('/api/ca/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || `Sign-in failed (${r.status})`);
+  localStorage.setItem(LOCAL, JSON.stringify({ token: data.token, email: data.email, name: data.name, expires_at: data.expires_at }));
+  const user = { name: data.name || data.email, email: data.email, local: true };
+  localStorage.setItem(KEY, JSON.stringify(user));
+  return user;
+}
+
+// Returns a fresh Graph token (silent renew), the local session token, or null when the user must sign in again.
 export async function getToken() {
+  const local = localSession(); if (local) return local.token;
   if (!window.msal) return null;
   try {
     const app = await getMsal();
@@ -127,6 +141,8 @@ export async function getToken() {
 }
 
 export async function restore() {
+  const local = localSession(); if (local) return { name: local.name || local.email, email: local.email, local: true };
+  localStorage.removeItem(LOCAL);
   if (window.msal) {
     const app = await getMsal();
     if (redirectResult && redirectResult.accessToken) {
@@ -139,7 +155,9 @@ export async function restore() {
 }
 
 export async function signOut() {
-  localStorage.removeItem(KEY);
+  const wasLocal = !!localSession();
+  localStorage.removeItem(KEY); localStorage.removeItem(LOCAL);
+  if (wasLocal) { location.reload(); return; }
   try { const app = await getMsal(); const acct = app.getActiveAccount() || app.getAllAccounts()[0]; if (acct) await app.logoutPopup({ account: acct, mainWindowRedirectUri: location.origin + location.pathname }); } catch {}
   location.reload();
 }

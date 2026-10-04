@@ -25,6 +25,7 @@ Folder: `Campaign_Analytics/` (static, no build step, served by the root Cloudfl
 | `ANTHROPIC_API_KEY` | Claude | to set (also unblocks the tracker assistant) |
 | `INSTANTLY_API_KEY` | Instantly V2 API, read-only daily pull | already set (GSI Tracker weekly report) |
 | `CA_CRON_SECRET` | shared secret for the scheduled sync (`X-CA-Cron` header), same value as the GitHub Actions secret | set |
+| `CA_LOCAL_USERS` | `email:password, email:password` for the named outside accounts that sign in with email + password (POST login) | to set |
 | `PHANTOMBUSTER_API_KEY` | PhantomBuster org API key, read-only daily pull of the LinkedIn outreach phantoms (`X-Phantombuster-Key`) | to set |
 
 ## Frontend module contract
@@ -47,6 +48,7 @@ data derived from the September 2026 reports so the UI can be exercised with no 
 ## API (all under `/api/ca/`, JSON, bearer = Microsoft access token)
 | Method + path | Body / query | Returns |
 |---|---|---|
+| `POST login` | `{ email, password }` | `{ token, email, name, expires_at, isEditor }`; token used as `Bearer` like a Microsoft token (12 h) |
 | `GET health` | | `{ ok, db, hubspot, claude, instantly, phantom, cron, user }` (booleans = env var present) |
 | `GET settings` | | `{ bands, icp_pool, accounts, regions, targets, editors, updated_at }` (defaults from `seed/` when a key is unset) |
 | `PUT settings` | `{ key, value }` (editors only) | `{ ok }` |

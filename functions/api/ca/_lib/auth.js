@@ -16,6 +16,7 @@ export const DEFAULT_EDITORS = [
   'anju@lyzr.com',
   'subs@lyzr.ai',
   'kailash.gm@lyzr.ai',
+  'isha@whitepath.in',   // White Path (the agency running the ads) uploads the LinkedIn exports
 ]
 
 export function parseEmails(v) {
@@ -58,14 +59,50 @@ async function verifyMicrosoftToken(accessToken) {
   }
 }
 
+// ---- email + password sign-in (a few named outside accounts) ----
+// Accounts live in the Pages secret CA_LOCAL_USERS as "email:password, email:password" (never in
+// the code: the repo is public). A successful login returns a token "ca1.<payload>.<hmac>" signed
+// with CA_CRON_SECRET, valid for 12 hours, which /api/ca/* accepts like a Microsoft token.
+export const LOCAL_TOKEN_TTL_MS = 12 * 60 * 60 * 1000
+export function localUsers(env) {
+  const out = new Map()
+  for (const pair of String((env && env.CA_LOCAL_USERS) || '').split(/[,;\n]+/)) { const i = pair.indexOf(':'); if (i > 0) out.set(pair.slice(0, i).trim().toLowerCase(), pair.slice(i + 1).trim()) }
+  return out
+}
+const b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+const fromB64u = (s) => Uint8Array.from(atob(String(s).replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
+async function hmac(secret, text) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+  return b64u(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(text)))
+}
+const same = (a, b) => { a = String(a); b = String(b); if (a.length !== b.length) return false; let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0 }
+export async function localLogin(env, email, password) {
+  const e = String(email || '').trim().toLowerCase(); const users = localUsers(env)
+  if (!users.has(e) || !same(users.get(e), String(password || ''))) return null
+  if (!env.CA_CRON_SECRET) throw new Error('CA_CRON_SECRET is needed to sign local sessions')
+  const payload = b64u(new TextEncoder().encode(JSON.stringify({ e, x: Date.now() + LOCAL_TOKEN_TTL_MS })))
+  return { token: `ca1.${payload}.${await hmac(env.CA_CRON_SECRET, payload)}`, email: e, expires_at: new Date(Date.now() + LOCAL_TOKEN_TTL_MS).toISOString() }
+}
+export async function verifyLocalToken(env, token) {
+  try {
+    const [tag, payload, sig] = String(token || '').split('.')
+    if (tag !== 'ca1' || !payload || !sig || !env.CA_CRON_SECRET) return null
+    if (!same(sig, await hmac(env.CA_CRON_SECRET, payload))) return null
+    const { e, x } = JSON.parse(new TextDecoder().decode(fromB64u(payload)))
+    if (!e || !x || Date.now() > x || !localUsers(env).has(e)) return null
+    return { name: e.split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()), email: e }
+  } catch { return null }
+}
+
 // -> { name, email, isEditor } or null (no token, bad token, or a domain we
 // do not serve). Pass { editors } to skip the settings lookup when the
 // caller already has the list.
 export async function requireUser(request, env, { editors } = {}) {
   const auth = request.headers.get('Authorization') || ''
   if (!auth.startsWith('Bearer ')) return null
-  const u = await verifyMicrosoftToken(auth.slice(7))
-  if (!u || !allowedDomain(u.email)) return null
+  const raw = auth.slice(7)
+  const u = raw.startsWith('ca1.') ? await verifyLocalToken(env, raw) : await verifyMicrosoftToken(raw)
+  if (!u || (!raw.startsWith('ca1.') && !allowedDomain(u.email))) return null
   const list = editors || (await resolveEditors(env))
   return { name: u.name, email: u.email, isEditor: list.includes(u.email) }
 }

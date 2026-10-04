@@ -52,5 +52,8 @@ export function detectText(text, fileName) {
 
 export async function detectFile(file) {
   const text = await readText(file);
-  return { id: Math.random().toString(36).slice(2), file: file.name, size: file.size, ...detectText(text, file.name), status: '', progress: '' };
+  // A content fingerprint, so two files with the same name but different rows are both kept, and the
+  // same file dropped twice is caught even under a different name.
+  let h = 5381; for (let i = 0; i < text.length; i++) h = ((h * 33) ^ text.charCodeAt(i)) >>> 0;
+  return { id: Math.random().toString(36).slice(2), file: file.name, size: file.size, hash: h.toString(16) + '-' + text.length, ...detectText(text, file.name), status: '', progress: '' };
 }

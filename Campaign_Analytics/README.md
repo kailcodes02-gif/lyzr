@@ -26,6 +26,7 @@ into the next read-out.
    npx wrangler pages secret put ANTHROPIC_API_KEY --project-name lyzr-work-os    # Claude (also used by the tracker assistant)
    npx wrangler pages secret put CA_CRON_SECRET --project-name lyzr-work-os      # any long random string
    npx wrangler pages secret put PHANTOMBUSTER_API_KEY --project-name lyzr-work-os # PhantomBuster › Org settings › API keys
+   npx wrangler pages secret put CA_LOCAL_USERS --project-name lyzr-work-os        # "email:password, email:password" for email sign-in
    ```
    `HUBSPOT_ACCESS_TOKEN` and `INSTANTLY_API_KEY` are already set. Add the same `CA_CRON_SECRET` value as a
    GitHub Actions secret: `.github/workflows/ca-daily-pull.yml` runs every day at 07:00 IST: Instantly (all
