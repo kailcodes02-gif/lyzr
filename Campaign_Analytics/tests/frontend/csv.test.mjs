@@ -1,6 +1,7 @@
 // node --test tests/frontend
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { monthGrid, monthsBetween } from '../../js/export-guide.mjs';
 import { parseLinkedInCsv, parseDate, num, periodFromPreamble, decodeCsvBuffer, detectDelimiter } from '../../js/csv.mjs';
 
 const PERF = [
@@ -160,4 +161,21 @@ test('2026 Demographics Report export: "<dimension> Segment" first column, Repor
   assert.equal(r.rows.length, 2); assert.equal(r.rows[0].segment, 'Company'); assert.equal(r.rows[0].value, 'Accenture'); assert.equal(r.rows[0].impressions, 2010); assert.equal(r.rows[0].sends, 596); assert.equal(r.rows[0].opens, 194);
   const t = parseLinkedInCsv(text.replace('Company Name Segment', 'Job Title Segment'), 'x.csv');
   assert.equal(t.rows[0].segment, 'Job Title');
+});
+
+test('month grid: performance days per month, demographics by breakdown, tagged exports do not count', () => {
+  assert.deepEqual(monthsBetween('2026-04', '2026-06'), ['2026-04', '2026-05', '2026-06']);
+  const u = (kind, start, end, notes = null, extra = {}) => ({ channel: 'linkedin', kind, period_start: start, period_end: end, notes, row_count: 10, ...extra });
+  const g = monthGrid([
+    u('performance', '2026-05-01', '2026-05-23'), u('performance', '2026-06-01', '2026-06-30'),
+    u('demographics', '2026-05-01', '2026-05-31', 'Company'), u('demographics', '2026-06-01', '2026-06-14', 'Company, Job Title'), u('demographics', '2026-06-15', '2026-06-30', 'Company'),
+    u('demographics', '2026-06-01', '2026-06-30', 'Country (Anju)'),          // tagged: a person's export, not the whole programme
+    u('demographics', '2026-06-01', '2026-06-30', 'Country', { row_count: 0 }), // nothing read: ignored
+    { channel: 'email', kind: 'events', period_start: '2026-05-01', period_end: '2026-05-31' },
+  ], ['2026-05', '2026-06']);
+  assert.equal(g[0].perf.days, 23); assert.equal(g[0].perf.ok, false); assert.deepEqual(g[0].perf.gaps, [{ from: '2026-05-24', to: '2026-05-31' }]);
+  assert.equal(g[0].company.ok, true); assert.equal(g[0].title.ok, false); assert.equal(g[0].title.days, 0);
+  assert.equal(g[1].perf.ok, true); assert.equal(g[1].company.ok, true);
+  assert.equal(g[1].title.partial, true); assert.equal(g[1].title.days, 14);
+  assert.equal(g[1].country.ok, false); assert.equal(g[1].country.days, 0);
 });

@@ -523,6 +523,14 @@ Access if the data ever becomes confidential.
   Lyzr board carry a vertical tag; owners/view without ?email= shows the signed-in user instead of a blank
   "Awaiting first sign-in" profile.
 
+### 2026-10-04, Campaign Analytics: Upload CSVs page, LinkedIn export checklist, month grid
+- New sidebar page `#/uploads` (`views/uploads.mjs`): one drop zone for every file type (uploader channel 'all'),
+  the LinkedIn export checklist (4 files per fortnight: Ad Performance daily at ad level; Demographics by Company,
+  Job Title, Country/Region, same date range), and a month-by-file grid from April 2026 (`js/export-guide.mjs`:
+  tick = whole month covered, n/30 days = partial, missing). The same checklist + grid sit in an orange box at the
+  top of the LinkedIn page (open when Job Title or Country is missing). Uploads with null notes count as Company.
+- Cadence agreed with Kailash: all months re-uploaded every 2 weeks; de-duplication makes that safe.
+
 ### 2026-10-04, Campaign Analytics: penetration maps always render, headcount estimates
 - Modelled on GSI_Paid_Ads_Penetration_x_Engagement.html. When a date range has only the Company demographics
   export, the band, region, "where the ads land" and penetration maps now use a default audience mix (country

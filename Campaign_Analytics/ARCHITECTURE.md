@@ -102,7 +102,7 @@ Implementation notes (backend, `functions/api/ca/`), where the built code adds t
 ## Layout and pages (Oct 2026 rebuild)
 - Lyzr brand build reference: light only, General Sans (closest free match to Aeonik) + JetBrains Mono uppercase
   labels, 210px sidebar, hairline cards radius 8, black buttons, one orange button per view, navy chart data.
-- Routes: `#/overview`, `#/ads/linkedin`, `#/ads/google|meta|taboola|chatgpt|x|bing` (one shared view
+- Routes: `#/overview`, `#/uploads` (every CSV, export checklist, month grid), `#/ads/linkedin`, `#/ads/google|meta|taboola|chatgpt|x|bing` (one shared view
   `views/ads-platform.mjs`: uploads of daily exports parsed by `js/ads-csv.mjs`, stored in `ca_li_perf` with
   `platform`), `#/linkedin/phantom` (PhantomBuster outreach), `#/email/instantly`, `#/hubspot/leads`,
   `#/hubspot/messaging`, `#/hubspot/pipeline` (deals), `#/admin`. Old routes redirect.

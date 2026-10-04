@@ -20,7 +20,9 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
   const state = STATE[stateKey] || (STATE[stateKey] = { pending: [], failed: [], busy: false });
   const pname = PLATFORM_LABEL[platform] || 'LinkedIn';
   const { esc, fmt } = ctx.fmt;
-  const what = channel === 'email'
+  const what = channel === 'all'
+    ? 'LinkedIn Ad Performance and Demographics exports, Google / Meta / Bing / Taboola / X daily reports, Instantly campaign exports. Overlapping days overwrite, repeated exports only add what is new.'
+    : channel === 'email'
     ? 'Instantly campaign exports (Campaign › Analytics › Export CSV). The campaign comes from the file name. Exports are cumulative, so upload the newest export whenever you like: nothing is double counted.'
     : platform && platform !== 'linkedin' ? `${pname} campaign or ad reports exported by day (one row per campaign or ad per day). Upload whenever you have them; overlapping days are overwritten, not added twice.`
     : 'LinkedIn Campaign Manager exports: Ads › Export (ad level, daily) and Demographics › Export. Upload whenever you have them; overlapping days are overwritten, not added twice.';
@@ -121,7 +123,7 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
   async function drawList() {
     const list = body.querySelector('#list'); if (!list) return;
     try {
-      const { uploads } = await ctx.api.get('uploads', { channel, platform: platform || undefined });
+      const { uploads } = await ctx.api.get('uploads', { channel: channel === 'all' ? undefined : channel, platform: platform || undefined });
       if (!uploads || !uploads.length) { list.innerHTML = '<p class="muted" style="font-size:13px">Nothing uploaded yet.</p>'; return; }
       const sel = state.selected || (state.selected = new Set());
       for (const id of [...sel]) if (!uploads.some(u => u.id === id)) sel.delete(id);

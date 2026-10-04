@@ -274,3 +274,12 @@ h2 .cmpbox,.sub .cmpbox{font-family:var(--font);text-transform:none;letter-spaci
 /* estimated pool cells and the estimated-mix note */
 .heat td.c.est{box-shadow:inset 0 0 0 1px transparent;outline:1px dashed var(--ink2);outline-offset:-2px}
 .note{background:rgba(254,75,30,.06);border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 6px 6px 0;color:var(--ink)}
+
+/* export guide and month grid (js/export-guide.mjs) */
+.guide{background:var(--surface);box-shadow:inset 0 0 0 1px var(--accent);border-radius:8px;padding:16px 20px}
+.guide table td,.guide table th{vertical-align:top}
+.guidebox{box-shadow:inset 0 0 0 1px var(--accent)}
+.mgrid td{text-align:center;font-size:13px}
+.mgrid td.ok{color:var(--good);font-weight:500}
+.mgrid td.part{color:var(--warn)}
+.mgrid td.miss{color:var(--bad)}

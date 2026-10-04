@@ -3,6 +3,7 @@ import * as A from '../lib/linkedin-agg.mjs';
 import { mountTrend } from '../trend.mjs';
 import { mountUploader } from '../uploader.mjs';
 import { sectionCompare, memoGet, deltaText } from '../compare.mjs';
+import { guideHtml, monthGrid, monthsBetween, gridHtml } from '../export-guide.mjs';
 export const route = 'linkedin';
 export const title = 'Ads · LinkedIn';
 
@@ -56,7 +57,7 @@ export async function render(el, ctx) {
   if (!perf.length && !windows.length) {
     el.innerHTML = `<div class="seghead">Ads · LinkedIn</div><h1>LinkedIn ads</h1><p class="sub">${esc(F.rangeLabel(from, to))}</p>` +
       `<div class="intro">${uploads.length ? 'No LinkedIn data in this date range. Widen the dates, or upload the exports that cover it below.' : '<b>No LinkedIn exports yet.</b> LinkedIn has no API connection here: numbers come from Campaign Manager exports. Drop them below (many files at once is fine) and this page fills in.'}</div>` +
-      ctx.ui.section('Upload LinkedIn exports', '', '<div id="uploader"></div>');
+      guideHtml() + ctx.ui.section('Upload LinkedIn exports', '', '<div id="uploader"></div>');
     mountUploader(el.querySelector('#uploader'), ctx, { channel: 'linkedin', isEditor: isEditorOf(ctx), onDone: () => render(el, ctx) });
     return;
   }
@@ -101,6 +102,7 @@ export async function render(el, ctx) {
   <div class="card" style="font-size:13px;margin-bottom:6px"><b>Included data.</b> Performance: ${perfDays.length ? `${perfDays.length} of ${days} days have rows (${esc(F.dayLabel(perfDays[0]))} to ${esc(F.dayLabel(perfDays[perfDays.length - 1]))})` : 'no daily rows in this range'}.
   Demographics: ${windows.length ? `${windows.length} window${windows.length === 1 ? '' : 's'} overlap this range: ${windows.map(w => esc(winLabel(w))).join('; ')}. Breakdowns uploaded: <b>${esc(segsPresent.join(', ') || 'none')}</b>${missingSegs.length ? ` <span class="down">(missing: ${esc(missingSegs.join(', '))}; the band, region and penetration views need Job Title and Country)</span>` : ''}. Demographics are totals per export window, so a person seen in two windows is counted twice.` : 'no export window overlaps this range.'}</div>`;
 
+  h += `<details class="card guidebox" style="margin:10px 0 0" ${missingSegs.includes('Job Title') || missingSegs.includes('Country') ? 'open' : ''}><summary style="cursor:pointer"><span class="ui-label" style="color:var(--accent)">What to export from LinkedIn every 2 weeks</span> <span class="muted" style="font-size:13px">· 4 files, and which months are in</span></summary><div style="margin-top:12px">${guideHtml({ compact: true })}<div style="margin-top:14px"><div class="ui-label" style="margin-bottom:6px">Months in so far</div>${gridHtml(monthGrid(uploads, monthsBetween('2026-04', F.today().slice(0, 7))))}</div><p class="muted" style="font-size:12.5px;margin-top:8px">Drop files in the box below or on the <a href="#/uploads">Upload CSVs</a> page.</p></div></details>`;
   h += `<details class="card" style="margin:10px 0 0" ${uploads.length ? '' : 'open'}><summary style="cursor:pointer"><span class="ui-label">Upload LinkedIn exports</span> <span class="muted" style="font-size:13px">· ${uploads.length} file${uploads.length === 1 ? '' : 's'} so far, last ${uploads[0] ? esc(F.timeAgo(uploads[0].uploaded_at)) : 'never'}</span></summary><div id="uploader" style="margin-top:12px"></div></details>`;
 
   // 1. hero + tiles (filled by drawResults against the comparison chosen in the section)

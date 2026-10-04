@@ -118,6 +118,7 @@ export async function render(el, ctx) {
 
   // ---- links ---------------------------------------------------------------------------------
   const links = [
+    ['uploads', 'Upload CSVs', 'Drop every LinkedIn, ad platform and Instantly export here; the month grid shows what is in.'],
     ['ads/linkedin', 'Ads · LinkedIn', 'Spend, leads, CPL, month on month, account and seniority heat maps.'],
     ['ads/google', 'Ads · other platforms', 'Google, Meta, Taboola, ChatGPT, X and Bing: drop daily exports, get the same trends and read-out.'],
     ['email/instantly', 'Email · Instantly', 'Instantly GSI campaigns: Book a Demo, accounts, weeks, people lists.'],

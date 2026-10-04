@@ -13,6 +13,7 @@ import { mountInsights } from './insights.mjs';
 // LinkedIn shares views/ads-platform.mjs and reads its name from ctx.routeDef.
 const ROUTES = [
   { route: 'overview', title: 'Overview', file: 'overview' },
+  { route: 'uploads', title: 'Upload CSVs', file: 'uploads' },
   { grp: 'Ads' },
   { route: 'ads/linkedin', title: 'LinkedIn', group: 'Ads', file: 'linkedin' },
   { route: 'ads/google', title: 'Google Ads', group: 'Ads', file: 'ads-platform' },
