@@ -529,6 +529,8 @@ Access if the data ever becomes confidential.
   `ca1.<payload>.<hmac>` token (HMAC-SHA256 with CA_CRON_SECRET, 12 h) that `requireUser` accepts next to
   Microsoft tokens (`_lib/auth.js`: localLogin / verifyLocalToken). isha@whitepath.in added to DEFAULT_EDITORS
   so White Path can upload. Wrong details: 401 after a 600 ms delay, same message either way.
+- Gotcha: a Pages secret set with `wrangler pages secret put` only reaches the Functions on the NEXT deployment;
+  push a commit (empty is fine) after setting one. Login returned 401 with the right password until then.
 - Upload queue de-duplicates by content fingerprint (djb2 of the text + length), not by file name: two
   files with the same name and different rows both go through; the same file under two names is caught once.
   Server side never keyed on file name (windows and day/campaign/ad keys), so nothing else changed.
