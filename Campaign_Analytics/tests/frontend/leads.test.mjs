@@ -1,7 +1,8 @@
 // node --test Campaign_Analytics/tests/frontend/leads.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clusterOf, spamReason, looksGibberish, companyType, enrich, bucketCounts, withGrowth, bandCounts, crossTab, rowTotal, sourceBreakdown, ownerHealth, actionList, sortRows, toCsv, applyFilters, summary, countBy, sortedEntries, isReached, isReplied, isDemoBooked, isDemoCompleted, isProspect, funnelFlags, funnelCounts, funnelSource, funnelBySource, funnelByBucket, neverContacted, statusBreakdown, statusLabel, lifecycleLabel, outreachDates, firstContactAt, lastContactAt, repliedAt, median, daysFrom, FUNNEL_KEYS } from '../../js/lib/leads-agg.mjs';
+import { clusterOf, spamReason, looksGibberish, companyType, enrich, bucketCounts, withGrowth, bandCounts, crossTab, rowTotal, sourceBreakdown, ownerHealth, actionList, sortRows, toCsv, applyFilters, summary, countBy, sortedEntries, isReached, isReplied, isDemoBooked, isDemoCompleted, isProspect, funnelFlags, funnelCounts, funnelSource, funnelBySource, funnelByBucket, neverContacted, statusBreakdown, statusLabel, lifecycleLabel, outreachDates, firstContactAt, lastContactAt, repliedAt, median, daysFrom, FUNNEL_KEYS, isFormLead, gsiCampaignsOf, inGsiCampaign, replyType, isHumanReply, replySplit, gsiSplit, gsiCampaignTable } from '../../js/lib/leads-agg.mjs';
+import { attachInstantly } from '../../js/mock/hubspot.mjs';
 import { hubspotMock } from '../../js/mock/hubspot.mjs';
 import { linkedinMock } from '../../js/mock/linkedin.mjs';
 import accounts from '../../seed/accounts.json' with { type: 'json' };
@@ -125,10 +126,11 @@ test('applyFilters and summary', () => {
 
 test('hubspotMock: ~220 contacts, named GSI leads with exact messages, cluster and country mix near the report', () => {
   const { contacts, notes_by_contact, last_sync } = hubspotMock;
-  assert.ok(contacts.length >= 200 && contacts.length <= 240, `got ${contacts.length}`);
+  assert.ok(contacts.length >= 200 && contacts.length <= 250, `got ${contacts.length}`);
   assert.ok(last_sync.finished_at && last_sync.status === 'done');
-  const rows = enrich(contacts, notes_by_contact, accounts);
+  const rows = enrich(contacts.filter(isFormLead), notes_by_contact, accounts);
   const real = rows.filter(r => !r.spam);
+  const nonForm = contacts.filter(r => !isFormLead(r)).length; assert.ok(nonForm >= 10 && nonForm <= 20, `non-form contacts ${nonForm}`);
   assert.ok(real.length >= 140 && real.length <= 175, `real ${real.length}`);
   assert.ok(rows.length - real.length >= 45, 'tests and spam are present and detected');
   const named = [['Infosys', 'Capability Overview and Demo'], ['Accenture', 'Explore a potential use case and opportunity'], ['Accenture', 'Security'], ['Deloitte', 'Use of agentic AI in Marketing and content creation'], ['EY', 'Exploring Agentic AI platforms to build Chat, V2V agents for clients in the region'], ['Trace3', 'Request for a solution overview and technical demo with Innovation team'], ['ITC Infotech', 'Great experience to the customer through its support'], ['Firstsource', 'Want to know what it is exactly and how does it work'], ['Datamatics', 'Interested'], ['Team Computers', 'Create them'], ['Shorthills AI', 'Discovery Call']];
@@ -201,10 +203,10 @@ test('funnel: cumulative keeps the chain, raw counts every lead at the stage', (
   const rows = [
     c({ hs_id: '1' }),                                                                                              // generated only
     c({ hs_id: '2', props: { num_contacted_notes: 1 } }),                                                            // reached
-    c({ hs_id: '3', props: { num_contacted_notes: 1, hs_sales_email_last_replied: '2026-09-12T05:00:00Z' } }),       // replied
-    c({ hs_id: '4', props: { num_contacted_notes: 2, hs_sales_email_last_replied: '2026-09-12T05:00:00Z' }, lead_status: 'Demo Booked' }),
-    c({ hs_id: '5', props: { num_contacted_notes: 2, hs_sales_email_last_replied: '2026-09-12T05:00:00Z' }, lead_status: 'Demo Completed' }),
-    c({ hs_id: '6', props: { num_contacted_notes: 2, hs_sales_email_last_replied: '2026-09-12T05:00:00Z' }, lead_status: 'Demo Completed', lifecycle: 'opportunity' }),
+    c({ hs_id: '3', replies_human: 1, props: { num_contacted_notes: 1, hs_sales_email_last_replied: '2026-09-12T05:00:00Z' } }),       // replied
+    c({ hs_id: '4', replies_human: 1, props: { num_contacted_notes: 2, hs_sales_email_last_replied: '2026-09-12T05:00:00Z' }, lead_status: 'Demo Booked' }),
+    c({ hs_id: '5', replies_human: 2, props: { num_contacted_notes: 2, hs_sales_email_last_replied: '2026-09-12T05:00:00Z' }, lead_status: 'Demo Completed' }),
+    c({ hs_id: '6', replies_human: 1, replies_auto: 1, props: { num_contacted_notes: 2, hs_sales_email_last_replied: '2026-09-12T05:00:00Z' }, lead_status: 'Demo Completed', lifecycle: 'opportunity' }),
     c({ hs_id: '7', lead_status: 'Demo Completed' }),                                                               // completed with nothing logged before it
     c({ hs_id: '8', lifecycle: 'customer', props: { num_contacted_notes: 1 } }),                                     // prospect, booked by lifecycle, never replied
   ];
@@ -218,6 +220,11 @@ test('funnel: cumulative keeps the chain, raw counts every lead at the stage', (
   assert.equal(F.steps[0].ofPrev, null); assert.equal(F.steps[0].ofGenerated, 1);
   const empty = funnelCounts([]); assert.equal(empty.generated, 0); assert.equal(empty.steps[0].ofGenerated, null);
   assert.deepEqual(neverContacted(rows).map(r => r.hs_id), ['1', '7']);
+  assert.deepEqual(F.replies, { human: 4, auto: 0, unknown: 0, any: 4 });
+  // the same chain with an auto-reply-only lead and an unknown-type reply: neither passes Replied (human)
+  const G = funnelCounts([...rows, c({ hs_id: '9', replies_auto: 2, props: { num_contacted_notes: 1, hs_sales_email_last_replied: '2026-09-12T05:00:00Z' } }), c({ hs_id: '10', props: { num_contacted_notes: 1, hs_sales_email_last_replied: '2026-09-12T05:00:00Z' } })]);
+  assert.equal(G.cumulative.reached, 8); assert.equal(G.cumulative.replied, 4); assert.equal(G.raw.replied, 4);
+  assert.deepEqual(G.replies, { human: 4, auto: 1, unknown: 1, any: 6 });
 });
 
 test('funnel: source labels from lead_source first, then the analytics source', () => {
@@ -241,7 +248,7 @@ test('funnel: by week and by month buckets with reached share and median days to
     c({ hs_id: '1', created_at: '2026-09-01T05:00:00Z', props: { notes_last_contacted: '2026-09-03T05:00:00Z', num_contacted_notes: 1 } }),   // week of 31 Aug, 2 days
     c({ hs_id: '2', created_at: '2026-09-02T05:00:00Z', props: { notes_last_contacted: '2026-09-08T05:00:00Z', num_contacted_notes: 1 }, lead_status: 'Demo Booked' }), // 6 days
     c({ hs_id: '3', created_at: '2026-09-03T05:00:00Z' }),                                                                                   // never reached
-    c({ hs_id: '4', created_at: '2026-09-09T05:00:00Z', props: { hs_sales_email_last_replied: '2026-09-10T05:00:00Z' } }),                   // week of 7 Sep, replied (no contact date)
+    c({ hs_id: '4', created_at: '2026-09-09T05:00:00Z', replies_human: 1, props: { hs_sales_email_last_replied: '2026-09-10T05:00:00Z' } }),  // week of 7 Sep, replied (no contact date)
     c({ hs_id: '5', created_at: '2026-08-20T05:00:00Z', lead_status: 'Demo Completed', lifecycle: 'opportunity' }),                          // August, completed without outreach
   ], {}, accounts);
   const w = funnelByBucket(rows, 'week');
@@ -263,10 +270,11 @@ test('funnel: status breakdown shows the portal label and what each status count
 });
 
 test('hubspotMock: a believable sales funnel with the live portal statuses', () => {
-  const rows = enrich(hubspotMock.contacts, hubspotMock.notes_by_contact, accounts).filter(r => !r.spam);
+  const rows = enrich(hubspotMock.contacts.filter(isFormLead), hubspotMock.notes_by_contact, accounts).filter(r => !r.spam);
   const F = funnelCounts(rows);
+  assert.ok(F.replies.human >= 6 && F.replies.auto >= 3 && F.replies.unknown >= 1, `reply split ${JSON.stringify(F.replies)}`);
   const reachedShare = F.raw.reached / F.generated; assert.ok(reachedShare > 0.3 && reachedShare < 0.7, `reached ${reachedShare}`);
-  assert.ok(F.raw.replied >= 8 && F.raw.replied < F.raw.reached, `replied ${F.raw.replied}`);
+  assert.ok(F.raw.replied >= 6 && F.raw.replied < F.raw.reached, `replied ${F.raw.replied}`);
   assert.ok(F.raw.booked >= 10 && F.raw.booked <= 40, `booked ${F.raw.booked}`);
   assert.ok(F.raw.completed >= 4 && F.raw.completed < F.raw.booked, `completed ${F.raw.completed}`);
   assert.ok(F.raw.prospect >= 2 && F.raw.prospect <= F.raw.booked, `prospect ${F.raw.prospect}`);
@@ -286,4 +294,75 @@ test('linkedinMock has the shape the overview reads (uploads, daily perf rows, d
   assert.ok(linkedinMock.perf.some(r => Number(r.leads) > 0), 'some rows carry leads');
   assert.ok(linkedinMock.uploads.every(u => u.uploaded_at && u.kind && u.channel === 'linkedin'));
   assert.ok(linkedinMock.demo.every(d => d.upload && d.upload.period_start && Array.isArray(d.rows)));
+});
+
+// ---- scope, GSI campaigns, reply type ------------------------------------------------------------
+test('isFormLead: only contacts with a first conversion date are leads', () => {
+  assert.equal(isFormLead(c({ props: { first_conversion_date: '2026-09-10T05:00:00Z' } })), true);
+  assert.equal(isFormLead(c({ props: { first_conversion_date: 1757480400000 } })), true, 'epoch ms counts');
+  assert.equal(isFormLead(c({ props: { first_conversion_date: '' } })), false);
+  assert.equal(isFormLead(c({ props: { first_conversion_date: null } })), false);
+  assert.equal(isFormLead(c({ props: {} })), false);
+  assert.equal(isFormLead(c({})), false, 'no props at all');
+  assert.equal(isFormLead(null), false);
+});
+
+const inst = (id, gsi, o = {}) => ({ campaign_id: id, campaign_name: `Camp ${id}`, gsi, status: 1, interest_status: null, reply_count: 0, last_reply_at: null, ...o });
+test('gsiCampaignsOf keeps GSI-tagged campaigns only, once each', () => {
+  assert.deepEqual(gsiCampaignsOf(c({})), []);
+  assert.deepEqual(gsiCampaignsOf(c({ instantly: [] })), []);
+  const l = gsiCampaignsOf(c({ instantly: [inst('a', true), inst('b', false), inst('a', true), inst('c', true), inst('d', null), null] }));
+  assert.deepEqual(l.map(x => x.campaign_id), ['a', 'c'], 'gsi must be exactly true; duplicates and blanks dropped');
+  assert.equal(inGsiCampaign(c({ instantly: [inst('b', false)] })), false);
+  assert.equal(inGsiCampaign(c({ instantly: [inst('b', false), inst('a', true)] })), true);
+});
+
+test('gsiSplit and gsiCampaignTable: where the leads came from', () => {
+  const rows = [
+    c({ hs_id: '1', instantly: [inst('a', true)], lead_status: 'Demo Booked', replies_human: 1 }),
+    c({ hs_id: '2', instantly: [inst('a', true), inst('c', true)], replies_auto: 1 }),
+    c({ hs_id: '3', instantly: [inst('w', false)], lead_status: 'Demo Completed' }),   // only a non-GSI campaign -> form lead
+    c({ hs_id: '4' }),
+    c({ hs_id: '5', instantly: [] }),
+  ];
+  const sp = gsiSplit(rows);
+  assert.deepEqual(sp.map(x => [x.key, x.n, x.booked]), [['campaign', 2, 1], ['form', 3, 1]]);
+  assert.equal(sp[0].share, 2 / 5); assert.equal(sp[1].share, 3 / 5); assert.equal(sp[0].bookedShare, 1 / 2);
+  assert.equal(sp[0].n + sp[1].n, rows.length, 'the two parts add up to Generated');
+  const t = gsiCampaignTable(rows);
+  assert.deepEqual(t.map(x => [x.campaign_id, x.generated, x.repliedHuman, x.autoOnly, x.booked]), [['a', 2, 1, 1, 1], ['c', 1, 0, 1, 0]]);
+  assert.deepEqual(gsiSplit([]).map(x => [x.n, x.share]), [[0, null], [0, null]]);
+});
+
+test('replyType: human, auto only, unknown, none', () => {
+  const R = '2026-09-12T05:00:00Z';
+  assert.equal(replyType(c({})), null);
+  assert.equal(replyType(c({ replies_human: 1 })), 'human');
+  assert.equal(replyType(c({ replies_human: 1, replies_auto: 3 })), 'human', 'a human reply wins over auto replies');
+  assert.equal(replyType(c({ replies_auto: 2 })), 'auto');
+  assert.equal(replyType(c({ replies_auto: 2, props: { hs_sales_email_last_replied: R } })), 'auto', 'stored reply emails beat the HubSpot date');
+  assert.equal(replyType(c({ props: { hs_sales_email_last_replied: R } })), 'unknown', 'HubSpot reply, no reply email stored');
+  assert.equal(replyType(c({ props: { hs_sales_email_last_replied: R }, instantly: [inst('a', true, { reply_count: 1, interest_status: 1 })] })), 'human', 'Instantly rated the reply');
+  assert.equal(replyType(c({ props: { hs_sales_email_last_replied: R }, instantly: [inst('a', true, { reply_count: 1, interest_status: 0 })] })), 'unknown', 'out of office is not a human signal');
+  assert.equal(replyType(c({ props: { hs_sales_email_last_replied: R }, instantly: [inst('a', true, { reply_count: 0, interest_status: 1 })] })), 'unknown', 'no Instantly reply');
+  assert.equal(replyType(c({ instantly: [inst('a', true, { reply_count: 1, interest_status: 1 })] })), null, 'Instantly alone does not make a reply under the fallback rule');
+  assert.equal(isHumanReply(c({ replies_human: '2' })), true, 'numeric strings from the API');
+  assert.equal(isReplied(c({ replies_auto: 1, props: { hs_sales_email_last_replied: R } })), true, 'isReplied stays the old any-reply rule');
+  assert.equal(isReached(c({ replies_auto: 1 })), true, 'an auto reply means we wrote to them');
+  assert.deepEqual(replySplit([c({ replies_human: 1 }), c({ replies_auto: 1 }), c({ props: { hs_sales_email_last_replied: R } }), c({})]), { human: 1, auto: 1, unknown: 1, any: 3 });
+});
+
+test('attachInstantly: uses the lookup when it matches, else a deterministic fallback over the campaigns', () => {
+  const camps = [{ id: 'g1', name: 'GSI one', gsi: true }, { id: 'g2', name: 'GSI two', gsi: true }, { id: 'w1', name: 'Other', gsi: false }];
+  const contacts = hubspotMock.contacts.filter(isFormLead);
+  const a = attachInstantly(contacts, camps), b = attachInstantly(contacts, camps);
+  assert.deepEqual(a.map(x => x.instantly), b.map(x => x.instantly), 'deterministic');
+  const inGsi = a.filter(inGsiCampaign).length; assert.ok(inGsi >= 20 && inGsi < a.length * 0.6, `in GSI campaigns ${inGsi} of ${a.length}`);
+  assert.ok(a.every(x => x.instantly.every(i => 'campaign_id' in i && 'gsi' in i && 'reply_count' in i && 'interest_status' in i)));
+  assert.ok(attachInstantly(hubspotMock.contacts.filter(x => !isFormLead(x)), camps).every(x => !x.instantly.length), 'non-form contacts get no fallback campaigns');
+  const one = contacts[0];
+  const viaLookup = attachInstantly(contacts, camps, e => e === one.email ? [inst('z', true)] : []);
+  assert.deepEqual(viaLookup.find(x => x.hs_id === one.hs_id).instantly.map(i => i.campaign_id), ['z']);
+  assert.ok(viaLookup.every(x => x.instantly.length === (x.email === one.email ? 1 : 0)), 'with a matching lookup the fallback is off');
+  assert.ok(!('instantly' in hubspotMock.contacts[0]), 'the shared mock is not mutated');
 });

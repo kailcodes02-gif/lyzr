@@ -58,7 +58,21 @@ export function createMockApi() {
     }
     if (p === 'hubspot') {
       const { from = '0000', to = '9999' } = params;
-      const contacts = hubspotMock.contacts.filter(c => { const d = dayOf(c.created_at); return d >= from && d <= to; });
+      const inRange = hubspotMock.contacts.filter(c => { const d = dayOf(c.created_at); return d >= from && d <= to && (params.all == 1 || c.in_scope !== false); });
+      // `instantly` per contact (GET /api/ca/hubspot contract). Builder B's instantlyLeadsByEmail
+      // (js/mock/email.mjs) is used when present; attachInstantly falls back to a deterministic set.
+      const [{ attachInstantly }, emailMod] = await Promise.all([import('./mock/hubspot.mjs'), import('./mock/email.mjs')]);
+      let lookup = null;
+      try {
+        const src = emailMod.instantlyLeadsByEmail;
+        // Accepts a Map / object keyed by email, a builder (mock) -> index, or a lookup (email) -> leads.
+        let idx = src;
+        if (typeof src === 'function') { let built; try { built = src(em()); } catch { built = undefined; } idx = built && !Array.isArray(built) ? built : src; }
+        if (typeof idx === 'function') lookup = idx;
+        else if (idx instanceof Map) lookup = e => idx.get(e);
+        else if (idx && typeof idx === 'object') lookup = e => idx[e];
+      } catch { lookup = null; }
+      const contacts = attachInstantly(inRange, em().api.campaigns, lookup);
       const notes_by_contact = {}; for (const c of contacts) if (hubspotMock.notes_by_contact[c.hs_id]) notes_by_contact[c.hs_id] = hubspotMock.notes_by_contact[c.hs_id];
       return { contacts, notes_by_contact, last_sync: lastSync };
     }

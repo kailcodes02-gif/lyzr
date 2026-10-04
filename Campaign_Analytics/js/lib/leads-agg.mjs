@@ -270,7 +270,7 @@ export function recentActivity(c) {
   const push = (ts, label, detail = '') => { const t = tsOf(ts); if (t) out.push({ ts: t, label, detail }); };
   if (c.last_activity_at) push(c.last_activity_at, ACT_TYPE[String(c.last_activity_type || '').toUpperCase()] || (c.last_activity_type ? String(c.last_activity_type).toLowerCase().replace(/_/g, ' ').replace(/^./, x => x.toUpperCase()) : 'Sales activity'));
   const notes = (c.notes || []).filter(n => n.created_at).sort((a, b) => a.created_at < b.created_at ? 1 : -1);
-  if (notes[0]) push(notes[0].created_at, 'Note', String(notes[0].body || '').replace(/\s+/g, ' ').slice(0, 160));
+  if (notes[0]) { const n = notes[0], body = String(n.body || '').replace(/\s+/g, ' '); const auto = n.kind === 'email_in' && /^\[auto\]/.test(body); push(n.created_at, n.kind === 'email_in' ? (auto ? 'Automatic reply' : 'Replied by email') : 'Note', body.replace(/^\[auto\]\s*/, '').slice(0, 160)); }
   push(p.hs_sales_email_last_replied, 'Replied to a sales email');
   push(p.hs_last_booked_meeting_date, 'Meeting booked');
   push(p.hs_email_last_click_date, 'Clicked a marketing email', p.hs_email_last_email_name || '');
@@ -284,7 +284,7 @@ export function recentActivity(c) {
 }
 
 // ---- sales funnel ----------------------------------------------------------------------------
-// Generated -> Reached out -> Replied -> Demo booked -> Demo completed -> Sales prospect, from the
+// Generated -> Reached out -> Replied (human) -> Demo booked -> Demo completed -> Sales prospect, from the
 // HubSpot properties refresh.js keeps in `props` (num_contacted_notes, notes_last_contacted,
 // hs_sales_email_last_replied, hs_last_booked_meeting_date), the logged activity columns, the
 // notes list, hs_lead_status and lifecyclestage. Values are compared case-insensitively.
@@ -329,8 +329,78 @@ export function repliedAt(c) {
   if (c.last_activity_at && /incoming_email|reply|replied/i.test(String(c.last_activity_type || ''))) return tsOf(c.last_activity_at);
   return null;
 }
-export const isReached = c => contactedCount(c) > 0 || outreachDates(c).length > 0 || !!repliedAt(c);
+export const isReached = c => contactedCount(c) > 0 || outreachDates(c).length > 0 || !!repliedAt(c) || replyCounts(c).human + replyCounts(c).auto > 0;
+/** Any reply at all by the old HubSpot rule (hs_sales_email_last_replied or an incoming-email activity). Says nothing about who wrote it. */
 export const isReplied = c => !!repliedAt(c);
+
+// ---- scope, GSI campaigns, reply type ------------------------------------------------------------
+/**
+ * A contact is a lead only if it submitted a form: HubSpot "First conversion date"
+ * (props.first_conversion_date) is set. Older pulls also stored contacts that never filled a
+ * form; those are left out of every count and the next full HubSpot pull removes them.
+ */
+export const isFormLead = c => { const v = (c && c.props || {}).first_conversion_date; return v != null && String(v).trim() !== ''; };
+/** The Instantly campaigns this lead sits in that are tagged GSI (c.instantly from GET /api/ca/hubspot), one entry per campaign. */
+export function gsiCampaignsOf(c) {
+  const seen = new Set(), out = [];
+  for (const x of (c && c.instantly) || []) { if (!x || x.gsi !== true) continue; const k = x.campaign_id || x.campaign_name; if (seen.has(k)) continue; seen.add(k); out.push(x); }
+  return out;
+}
+export const inGsiCampaign = c => gsiCampaignsOf(c).length > 0;
+/** Instantly interest status 0 is "Out of office", i.e. an automatic reply. */
+const INSTANTLY_AUTO_INTEREST = 0;
+const replyCounts = c => ({ human: Math.max(0, Number(c.replies_human) || 0), auto: Math.max(0, Number(c.replies_auto) || 0) });
+/**
+ * Who replied, from the most direct evidence there is:
+ *  1. Reply emails read by the sync (replies_human / replies_auto on ca_hs_contacts): any human
+ *     reply -> 'human'; only automatic replies -> 'auto'.
+ *  2. No reply emails stored yet, but HubSpot says the lead replied (old rule, repliedAt) and the
+ *     lead's Instantly record has a reply with an interest status that is set and is not
+ *     "Out of office" -> 'human' (someone read it and judged the interest).
+ *  3. HubSpot says the lead replied and nothing tells us who wrote it -> 'unknown'.
+ *  4. No reply -> null.
+ */
+export function replyType(c) {
+  const n = replyCounts(c);
+  if (n.human > 0) return 'human';
+  if (n.auto > 0) return 'auto';
+  if (!repliedAt(c)) return null;
+  const inst = (c.instantly || []).filter(x => x && (Number(x.reply_count) || 0) > 0);
+  if (inst.some(x => x.interest_status != null && x.interest_status !== '' && Number(x.interest_status) !== INSTANTLY_AUTO_INTEREST)) return 'human';
+  return 'unknown';
+}
+export const isHumanReply = c => replyType(c) === 'human';
+export const isAutoReplyOnly = c => replyType(c) === 'auto';
+/** { human, auto, unknown, any } lead counts by reply type. */
+export function replySplit(rows) {
+  const o = { human: 0, auto: 0, unknown: 0, any: 0 };
+  for (const r of rows) { const t = replyType(r); if (t) { o[t]++; o.any++; } }
+  return o;
+}
+/**
+ * Where the leads came from: (a) in at least one GSI-tagged Instantly campaign, (b) a GSI account
+ * form lead that is in no GSI campaign. [{ key, label, n, share, booked, bookedShare }]
+ */
+export function gsiSplit(rows) {
+  const parts = [
+    { key: 'campaign', label: 'In a GSI-tagged Instantly campaign', test: inGsiCampaign },
+    { key: 'form', label: 'GSI account form lead, not in any GSI campaign', test: c => !inGsiCampaign(c) },
+  ];
+  return parts.map(p => { const list = rows.filter(p.test); const booked = list.filter(isDemoBooked).length; return { key: p.key, label: p.label, n: list.length, share: share(list.length, rows.length), booked, bookedShare: share(booked, list.length) }; });
+}
+/** GSI campaign -> its leads: [{ campaign_id, campaign_name, generated, repliedHuman, autoOnly, booked }], biggest first. A lead in two campaigns counts in both. */
+export function gsiCampaignTable(rows) {
+  const by = new Map();
+  for (const r of rows) {
+    const t = replyType(r), booked = isDemoBooked(r);
+    for (const x of gsiCampaignsOf(r)) {
+      const k = x.campaign_id || x.campaign_name;
+      if (!by.has(k)) by.set(k, { campaign_id: x.campaign_id || '', campaign_name: x.campaign_name || x.campaign_id || 'Unnamed campaign', generated: 0, repliedHuman: 0, autoOnly: 0, booked: 0 });
+      const o = by.get(k); o.generated++; if (t === 'human') o.repliedHuman++; if (t === 'auto') o.autoOnly++; if (booked) o.booked++;
+    }
+  }
+  return [...by.values()].sort((a, b) => b.generated - a.generated || a.campaign_name.localeCompare(b.campaign_name));
+}
 export const isDemoBooked = c => bookedStatus(c.lead_status) || bookedLifecycle(c.lifecycle);
 export const isDemoCompleted = c => completedStatus(c.lead_status);
 export const isProspect = c => prospectLifecycle(c.lifecycle) || prospectStatus(c.lead_status);
@@ -347,7 +417,7 @@ export function median(values) {
 export const FUNNEL_STAGES = [
   { key: 'generated', label: 'Generated', test: () => true },
   { key: 'reached', label: 'Reached out', test: isReached },
-  { key: 'replied', label: 'Replied', test: isReplied },
+  { key: 'replied', label: 'Replied (human)', test: isHumanReply },
   { key: 'booked', label: 'Demo booked', test: isDemoBooked },
   { key: 'completed', label: 'Demo completed', test: isDemoCompleted },
   { key: 'prospect', label: 'Sales prospect', test: isProspect },
@@ -373,7 +443,7 @@ export function funnelCounts(rows) {
     const n = cumulative[s.key], prevN = i ? cumulative[FUNNEL_KEYS[i - 1]] : null;
     return { key: s.key, label: s.label, n, raw: raw[s.key], ofGenerated: share(n, cumulative.generated), ofPrev: i ? share(n, prevN) : null };
   });
-  return { generated: rows.length, cumulative, raw, steps };
+  return { generated: rows.length, cumulative, raw, steps, replies: replySplit(rows) };
 }
 
 // lead_source (a HubSpot enumeration: "Book a Demo", "LinkedIn", playbook titles, "Contact Us",
@@ -399,8 +469,9 @@ export function funnelBySource(rows, sourceFn = funnelSource) {
   for (const r of rows) {
     const k = sourceFn(r) || 'Unknown';
     if (!by.has(k)) { const o = { source: k }; for (const s of FUNNEL_KEYS) o[s] = 0; by.set(k, o); }
-    const o = by.get(k), f = funnelFlags(r);
+    const o = by.get(k), f = funnelFlags(r), t = replyType(r);
     for (const s of FUNNEL_KEYS) if (f[s]) o[s]++;
+    o.autoOnly = (o.autoOnly || 0) + (t === 'auto' ? 1 : 0); o.replyUnknown = (o.replyUnknown || 0) + (t === 'unknown' ? 1 : 0);
   }
   return [...by.values()].sort((a, b) => b.generated - a.generated || a.source.localeCompare(b.source));
 }
@@ -415,8 +486,9 @@ export function funnelByBucket(rows, gran = 'week', bucketKey = defaultBucketKey
     const day = r.day || isoDayIST(r.created_at); if (!day) continue;
     const k = bucketKey(day, gran);
     if (!m.has(k)) { const o = { key: k, days: [] }; for (const s of FUNNEL_KEYS) o[s] = 0; m.set(k, o); }
-    const o = m.get(k), f = funnelFlags(r);
+    const o = m.get(k), f = funnelFlags(r), t = replyType(r);
     for (const s of FUNNEL_KEYS) if (f[s]) o[s]++;
+    o.autoOnly = (o.autoOnly || 0) + (t === 'auto' ? 1 : 0); o.replyUnknown = (o.replyUnknown || 0) + (t === 'unknown' ? 1 : 0);
     const d = daysFrom(r.created_at, lastContactAt(r)); if (d != null) o.days.push(d);
   }
   return [...m.values()].sort((a, b) => a.key < b.key ? -1 : 1).map(({ days, ...o }) => ({ ...o, notReached: o.generated - o.reached, reachedShare: share(o.reached, o.generated), medianDaysToContact: median(days) }));
@@ -430,7 +502,7 @@ export function statusBreakdown(rows) {
     const raw = String(r.lead_status || '').trim();
     const k = raw ? normStatus(raw) : '';
     if (!by.has(k)) by.set(k, { status: raw || 'No status', label: raw ? statusLabel(raw) : 'No status', n: 0, reached: 0, replied: 0, countsAs: !raw ? '' : completedStatus(raw) ? 'Demo completed' : prospectStatus(raw) ? 'Sales prospect' : bookedStatus(raw) ? 'Demo booked' : '' });
-    const o = by.get(k); o.n++; if (isReached(r)) o.reached++; if (isReplied(r)) o.replied++;
+    const o = by.get(k); o.n++; if (isReached(r)) o.reached++; if (isHumanReply(r)) o.replied++;
   }
   return [...by.values()].sort((a, b) => b.n - a.n || a.label.localeCompare(b.label));
 }

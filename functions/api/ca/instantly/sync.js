@@ -1,5 +1,5 @@
 // POST /api/ca/instantly/sync { cursor? }   editors, or the daily job (X-CA-Cron)
-// -> { done, cursor?, campaigns, workspace_campaigns, days, warnings:[], progress:{ phase, done, total } }
+// -> { done, cursor?, campaigns, workspace_campaigns, days, leads, warnings:[], progress:{ phase, done, total } }
 //
 // READ-ONLY against Instantly: nothing is ever written there. Pulls every
 // campaign tagged GSI in Instantly (tag id verified 2026-08-11, same as
@@ -10,6 +10,14 @@
 // Every other campaign in the workspace is stored too (gsi:false, totals only,
 // no daily rows) so the dashboard can show the GSI share of workspace sends.
 // Resumable like hubspot/refresh.js: keep calling with `cursor` until done.
+//
+// Phases: start (campaign list + totals) -> 'daily' (one call per GSI campaign)
+// -> 'leads' (every lead of every GSI campaign into ca_em_leads, so each HubSpot
+// contact can be checked against the GSI sequences). The leads phase re-reads
+// every GSI campaign in full on each run (a "stop when nothing is new" shortcut
+// would miss reply and status changes on older leads), LEADS_BUDGET pages per
+// call, at most MAX_LEAD_PAGES pages per run (a warning says when that cap cut
+// the run short). Leads list is POST /leads/list: a read, not a write.
 
 import { json, handle, readJson, HttpError } from '../_lib/http.js'
 import { requireUser, cronUser } from '../_lib/auth.js'
@@ -21,10 +29,21 @@ const API = 'https://api.instantly.ai/api/v2'
 export const GSI_TAG_ID = '95da42d3-db60-4b3e-a1a9-6e85cda4e35d'
 export const DAILY_BUDGET = 20
 export const FIRST_DAY = '2026-01-01'
+// Leads phase: one Instantly call per page plus one upsert per 500 rows, so 30
+// pages (3000 rows, 6 upserts) stays under ~40 subrequests per invocation.
+export const LEADS_BUDGET = 30
+export const LEADS_PAGE_SIZE = 100
+export const MAX_LEAD_PAGES = 1000
 
 async function ig(token, path) {
   const res = await fetch(API + path, { headers: { Authorization: `Bearer ${token}` } })
   if (!res.ok) throw new HttpError(502, `Instantly ${res.status} on ${path.split('?')[0]}: ${(await res.text().catch(() => '')).slice(0, 200)}`)
+  return res.json()
+}
+
+async function igPost(token, path, body) {
+  const res = await fetch(API + path, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  if (!res.ok) throw new HttpError(502, `Instantly ${res.status} on ${path}: ${(await res.text().catch(() => '')).slice(0, 200)}`)
   return res.json()
 }
 
@@ -106,6 +125,75 @@ export function mapDaily(campaignId, r, syncedAt) {
   }
 }
 
+const intOrNull = (v) => { if (v === null || v === undefined || v === '') return null; const x = Number(v); return Number.isFinite(x) ? Math.trunc(x) : null }
+
+// One Instantly lead (POST /leads/list item) -> one ca_em_leads row, or null without an email.
+export function mapLead(l, campaign, syncedAt) {
+  const email = String((l && l.email) || '').trim().toLowerCase()
+  if (!email || !email.includes('@')) return null
+  return {
+    email,
+    campaign_id: String(campaign.id),
+    campaign_name: campaign.name || null,
+    gsi: true,
+    status: intOrNull(l.status),
+    interest_status: intOrNull(l.lt_interest_status),
+    open_count: n(l.email_open_count),
+    reply_count: n(l.email_reply_count),
+    click_count: n(l.email_click_count),
+    created_at: l.timestamp_created || null,
+    last_reply_at: l.timestamp_last_reply || null,
+    synced_at: syncedAt,
+  }
+}
+
+// One call's worth of the leads phase. Mutates and returns the cursor.
+async function leadsStep(token, d, cursor, warnings) {
+  const queue = Array.isArray(cursor.leadQueue) ? cursor.leadQueue : []
+  let ci = Number(cursor.campaignIndex) || 0
+  let after = cursor.starting_after || null
+  let pages = Number(cursor.leadPages) || 0
+  const syncedAt = new Date().toISOString()
+  const rows = new Map() // campaign_id|email -> row; Instantly can hold the same email twice in a campaign
+  let calls = 0
+  let capped = false
+  while (ci < queue.length && calls < LEADS_BUDGET) {
+    if (pages >= MAX_LEAD_PAGES) { capped = true; break }
+    const camp = queue[ci]
+    const body = { campaign: camp.id, limit: LEADS_PAGE_SIZE }
+    if (after) body.starting_after = after
+    const data = await igPost(token, '/leads/list', body)
+    calls++; pages++
+    const items = Array.isArray(data && data.items) ? data.items : []
+    for (const l of items) { const r = mapLead(l, camp, syncedAt); if (r) rows.set(r.campaign_id + '|' + r.email, r) }
+    const next = data && data.next_starting_after
+    if (next && items.length && next !== after) after = next
+    else { ci++; after = null }
+  }
+  const out = [...rows.values()]
+  try {
+    for (let i = 0; i < out.length; i += 500) await d.upsert('ca_em_leads', out.slice(i, i + 500), 'campaign_id,email')
+  } catch (e) {
+    // migration 009 not run yet: keep the campaign and daily numbers, skip the leads
+    if (!/PGRST205|42P01|could not find the table|relation .*ca_em_leads.* does not exist/i.test(String(e.message || e))) throw e
+    warnings.push('The ca_em_leads table is missing, so Instantly leads were not saved. Run Campaign_Analytics/supabase/009_em_leads.sql in Supabase.')
+    cursor.campaignIndex = queue.length
+    cursor.starting_after = null
+    cursor.leadPages = pages
+    return cursor
+  }
+  cursor.campaignIndex = ci
+  cursor.starting_after = after
+  cursor.leadPages = pages
+  cursor.leads = (Number(cursor.leads) || 0) + out.length
+  if (capped) {
+    warnings.push(`Stopped reading Instantly leads after ${MAX_LEAD_PAGES} pages today; ${queue.length - ci} GSI campaign(s) were not fully refreshed this run.`)
+    cursor.campaignIndex = queue.length
+    cursor.starting_after = null
+  }
+  return cursor
+}
+
 async function mark(d, id, patch) {
   if (!id) return
   try { await d.update('ca_em_sync', { id: `eq.${id}` }, patch) } catch { /* best effort */ }
@@ -143,14 +231,25 @@ export const onRequestPost = handle(async ({ request, env }) => {
       cursor = {
         sync_id: syncId,
         today,
-        queue: mapped.map((c) => { const start = (c.created_at || FIRST_DAY).slice(0, 10); return { id: c.id, from: start < FIRST_DAY ? FIRST_DAY : start } }),
+        queue: mapped.map((c) => { const start = (c.created_at || FIRST_DAY).slice(0, 10); return { id: c.id, name: c.name, from: start < FIRST_DAY ? FIRST_DAY : start } }),
         index: 0,
         campaigns: mapped.length,
         workspace_campaigns: all.length,
         days: 0,
+        leads: 0,
       }
-      await mark(d, syncId, { campaigns: mapped.length })
-      return json({ done: !mapped.length, cursor: mapped.length ? cursor : undefined, campaigns: mapped.length, workspace_campaigns: all.length, days: 0, warnings, progress: { phase: 'daily', done: 0, total: mapped.length } })
+      await mark(d, syncId, mapped.length ? { campaigns: mapped.length } : { campaigns: 0, status: 'done', finished_at: new Date().toISOString(), days: 0 })
+      return json({ done: !mapped.length, cursor: mapped.length ? cursor : undefined, campaigns: mapped.length, workspace_campaigns: all.length, days: 0, leads: 0, warnings, progress: { phase: 'daily', done: 0, total: mapped.length } })
+    }
+
+    const summary = (c) => ({ campaigns: c.campaigns, workspace_campaigns: c.workspace_campaigns, days: Number(c.days) || 0, leads: Number(c.leads) || 0 })
+
+    if (cursor.phase === 'leads') {
+      await leadsStep(token, d, cursor, warnings)
+      const total = (cursor.leadQueue || []).length
+      const done = cursor.campaignIndex >= total
+      if (done) await mark(d, cursor.sync_id, { status: 'done', finished_at: new Date().toISOString(), days: Number(cursor.days) || 0 })
+      return json({ done, cursor: done ? undefined : cursor, ...summary(cursor), warnings, progress: { phase: done ? 'done' : 'leads', done: Math.min(cursor.campaignIndex, total), total } })
     }
 
     const queue = Array.isArray(cursor.queue) ? cursor.queue : []
@@ -166,9 +265,18 @@ export const onRequestPost = handle(async ({ request, env }) => {
     for (let i = 0; i < out.length; i += 500) await d.upsert('ca_em_daily', out.slice(i, i + 500), 'campaign_id,day')
     cursor.index = index
     cursor.days = (Number(cursor.days) || 0) + out.length
-    const done = index >= queue.length
-    await mark(d, cursor.sync_id, done ? { status: 'done', finished_at: new Date().toISOString(), days: cursor.days } : { days: cursor.days })
-    return json({ done, cursor: done ? undefined : cursor, campaigns: cursor.campaigns, workspace_campaigns: cursor.workspace_campaigns, days: cursor.days, warnings, progress: { phase: done ? 'done' : 'daily', done: index, total: queue.length } })
+    await mark(d, cursor.sync_id, { days: cursor.days })
+    if (index < queue.length) return json({ done: false, cursor, ...summary(cursor), warnings, progress: { phase: 'daily', done: index, total: queue.length } })
+    // daily phase finished: hand over to the leads phase (GSI campaigns only), starting on the next call
+    cursor.phase = 'leads'
+    cursor.leadQueue = queue.map((q) => ({ id: q.id, name: q.name || null }))
+    cursor.campaignIndex = 0
+    cursor.starting_after = null
+    cursor.leadPages = 0
+    cursor.leads = Number(cursor.leads) || 0
+    delete cursor.queue
+    delete cursor.index
+    return json({ done: false, cursor, ...summary(cursor), warnings, progress: { phase: 'leads', done: 0, total: cursor.leadQueue.length } })
   } catch (e) {
     if (syncId) await mark(d, syncId, { status: 'error', finished_at: new Date().toISOString(), error: String(e.message || e).slice(0, 500) })
     throw e

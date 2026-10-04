@@ -627,8 +627,9 @@ test('actions: anyone signed in can add and tick off, only editors delete', asyn
 test('instantly sync: GSI tag, totals joined by id, whole workspace stored with gsi flag, daily rows for GSI only, cron secret, read-only', async () => {
   const daily = (id) => [{ date: '2026-09-20', sent: 30, contacted: 30, new_leads_contacted: 10, unique_opened: 3, unique_replies: 1, unique_clicks: 2, unique_opportunities: 0 }]
   const w = world({ tables: { ca_settings: [], ca_em_sync: [] }, instantly: ({ url, method }) => {
-    assert.equal(method, 'GET', 'never writes to Instantly')
     const j = (b) => new Response(JSON.stringify(b), { headers: { 'content-type': 'application/json' } })
+    if (url.endsWith('/leads/list')) { assert.equal(method, 'POST', 'leads list is a read sent as POST'); return j({ items: [] }) }
+    assert.equal(method, 'GET', 'never writes to Instantly')
     if (url.includes('/campaigns?tag_ids=')) return j({ items: Array.from({ length: 25 }, (_, i) => ({ id: 'c' + i, name: 'GSI_' + i, status: 1, timestamp_created: '2026-09-01T00:00:00Z' })) })
     if (url.endsWith('/campaigns/analytics')) return j([{ campaign_id: 'c0', emails_sent_count: 100, contacted_count: 50, reply_count_unique: 2, bounced_count: 1 }, { campaign_id: 'other', campaign_name: 'Not GSI', campaign_status: 2, emails_sent_count: 9, leads_count: 40, contacted_count: 9 }])
     if (url.includes('/campaigns/analytics/daily')) return j(daily())
@@ -653,8 +654,12 @@ test('instantly sync: GSI tag, totals joined by id, whole workspace stored with 
   assert.equal(b.body.done, false)
   assert.equal(b.body.progress.done, isync.DAILY_BUDGET)
   const c = await run(isync.onRequestPost, cronReq({ cursor: b.body.cursor }), w)
-  assert.equal(c.body.done, true)
+  assert.equal(c.body.done, false, 'the leads phase follows the daily phase')
   assert.equal(c.body.days, 25)
+  assert.deepEqual(c.body.progress, { phase: 'leads', done: 0, total: 25 })
+  const e = await run(isync.onRequestPost, cronReq({ cursor: c.body.cursor }), w)
+  assert.equal(e.body.done, true)
+  assert.equal(e.body.leads, 0)
   const d = w.calls.filter((x) => x.url.includes('/ca_em_daily') && x.method === 'POST').flatMap((x) => x.body)
   assert.deepEqual(Object.keys(d[0]).sort(), ['campaign_id', 'clicks', 'contacted', 'day', 'new_leads_contacted', 'opened', 'opportunities', 'replies', 'replies_automatic', 'sent', 'synced_at', 'unique_clicks', 'unique_opened', 'unique_replies'])
   // viewers cannot trigger it

@@ -1,13 +1,13 @@
 // Leads analytics: bands, trend, heat maps, sources, follow-up health, full lead table and a
 // Claude read-out. All aggregation lives in js/lib/leads-agg.mjs (unit-tested).
-import { BANDS, enrich, applyFilters, summary, bucketCounts, withGrowth, crossTab, rowTotal, sourceBreakdown, ownerHealth, actionList, sortRows, toCsv, ownerKey, countBy, sortedEntries, clusterShort, sourceChannel, sourceDetail, recentActivity, gsiMatcher, hasActivity, funnelCounts, funnelBySource, funnelByBucket, neverContacted, statusBreakdown, lastContactAt, firstContactAt, daysFrom, median } from '../lib/leads-agg.mjs';
+import { BANDS, enrich, applyFilters, summary, bucketCounts, withGrowth, crossTab, rowTotal, sourceBreakdown, ownerHealth, actionList, sortRows, toCsv, ownerKey, countBy, sortedEntries, clusterShort, sourceChannel, sourceDetail, recentActivity, gsiMatcher, hasActivity, funnelCounts, funnelBySource, funnelByBucket, neverContacted, statusBreakdown, lastContactAt, firstContactAt, daysFrom, median, isFormLead, inGsiCampaign, gsiCampaignsOf, gsiSplit, gsiCampaignTable, replyType, share } from '../lib/leads-agg.mjs';
 import { mountTrend } from '../trend.mjs';
 import { sectionCompare, memoGet, deltaText } from '../compare.mjs';
 
 export const route = 'leads';
 export const title = 'Leads analytics';
 
-const S = { gran: 'week', funnelGran: 'auto', excludeSpam: true, gsiOnly: false, status: '', q: '', sort: { key: 'created_at', dir: -1 }, heatPick: null, limit: 200 };
+const S = { gran: 'week', funnelGran: 'auto', excludeSpam: true, gsiOnly: false, gsiCampOnly: false, status: '', q: '', sort: { key: 'created_at', dir: -1 }, heatPick: null, limit: 200 };
 let chart = null, trendX = null, funnelCharts = [];
 let FUNNEL_SEQ = 0;
 const HIST = { rows: null, at: 0 };
@@ -37,15 +37,19 @@ export async function render(el, ctx) {
   const gsiOf = gsiMatcher((ctx.settings && ctx.settings.gsi_companies) || []);
   // Every pulled lead is at a GSI account (hubspot/refresh.js rules); extra names from Admin add to it.
   const decorate = list => list.map(r => ({ ...r, gsi: r.account || gsiOf(r), channel: sourceChannel(r), detail: sourceDetail(r), recent: recentActivity(r) }));
-  const all = decorate(enrich(data.contacts || [], data.notes_by_contact || {}, accounts));
+  // Only form leads count (isFormLead: HubSpot first conversion date set). Contacts an older pull rule stored are left out everywhere.
+  const pulled = data.contacts || [];
+  const nonFormN = pulled.filter(c => !isFormLead(c)).length;
+  const all = decorate(enrich(pulled.filter(isFormLead), data.notes_by_contact || {}, accounts));
+  const scopeLine = nonFormN ? `<p class="muted" id="scopeLine" style="font-size:12.5px;margin:-4px 0 12px">${fmt(nonFormN)} contact${nonFormN === 1 ? '' : 's'} in the store ${nonFormN === 1 ? 'is' : 'are'} not form leads (pulled by an older rule) and ${nonFormN === 1 ? 'is' : 'are'} left out; the next full HubSpot pull removes them.</p>` : '';
   // whole history for week-on-week / month-on-month (cached 10 minutes)
-  if (!HIST.rows || Date.now() - HIST.at > 10 * 60e3) { try { const d = await ctx.api.get('hubspot', {}); HIST.rows = decorate(enrich(d.contacts || [], {}, accounts)); HIST.at = Date.now(); } catch { HIST.rows = all; } }
-  if (!all.length) { el.innerHTML = head + empty(`No HubSpot leads for ${rangeLabel(from, to)}. Widen the range, or refresh HubSpot from the`, `<a href="#/hubspot/messaging">messaging view</a>.`); return; }
+  { try { const d = await ctx.api.get('hubspot', {}); HIST.rows = decorate(enrich((d.contacts || []).filter(isFormLead), {}, accounts)); HIST.at = Date.now(); } catch { HIST.rows = all; } }
+  if (!all.length) { el.innerHTML = head + scopeLine + empty(`No HubSpot leads for ${rangeLabel(from, to)}. Widen the range, or refresh HubSpot from the`, `<a href="#/hubspot/messaging">messaging view</a>.`); return; }
   const bandPill = b => pill(b || 'Unknown', b === 'MD' ? 'p-high' : b === 'MD-1' ? 'p-med' : b === 'MD-2' ? 'p-low' : 'p-na');
   const spamN = all.filter(r => r.spam).length;
 
   // The page filters (tests / spam, GSI only, status), applied the same way to the range, the comparison range and the lifetime pull.
-  const filterRows = list => applyFilters(list, { excludeSpam: S.excludeSpam }).filter(r => (!S.gsiOnly || r.gsi) && (!S.status || (r.lead_status || 'No status') === S.status));
+  const filterRows = list => applyFilters(list, { excludeSpam: S.excludeSpam }).filter(r => (!S.gsiOnly || r.gsi) && (!S.gsiCampOnly || inGsiCampaign(r)) && (!S.status || (r.lead_status || 'No status') === S.status));
   let FUNNEL = null; // what the Sales funnel section last drew, for the AI read-out
 
   function draw() {
@@ -68,9 +72,10 @@ export async function render(el, ctx) {
     const bucketKeys = buckets.map(b => b.key);
     const days = daysBetween(from, to);
 
-    el.innerHTML = head + `
+    el.innerHTML = head + scopeLine + `
       <div class="toc"><span class="tl">On this page</span><a href="#l-tiles">Numbers</a><a href="#l-funnel">Sales funnel</a><a href="#l-status">Lead status</a><a href="#l-wow">Week / month</a><a href="#l-trend">Band trend</a><a href="#l-heat">Heat maps</a><a href="#l-sources">Sources</a><a href="#l-health">Follow-up health</a><a href="#l-table">All leads</a><a href="#l-ai">AI read-out</a>
         <span style="margin-left:auto;display:flex;gap:14px;align-items:center;font-size:12.5px;flex-wrap:wrap"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="gsiToggle" ${S.gsiOnly ? 'checked' : ''}> GSI leads only</label>
+        <label style="display:flex;gap:6px;align-items:center" title="Only leads that sit in at least one Instantly campaign tagged GSI"><input type="checkbox" id="gsiCampToggle" ${S.gsiCampOnly ? 'checked' : ''}> Leads in GSI-tagged campaigns only</label>
         <label style="display:flex;gap:6px;align-items:center">Status <select id="statusSel"><option value="">All</option>${statuses.map(x => `<option ${S.status === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
         <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="spamToggle" ${S.excludeSpam ? 'checked' : ''}> Exclude ${fmt(spamN)} tests / spam</label></span></div>
       ${section('Leads in range', '', tiles([
@@ -84,11 +89,12 @@ export async function render(el, ctx) {
         { k: 'Unowned', v: fmt(s.unowned), d: s.unowned ? 'need an owner' : 'all leads owned' },
         { k: 'GSI leads', v: fmt(gsiN), d: `${pct(s.leads ? gsiN / s.leads * 100 : null, 0)} of leads, company on the GSI list` },
         { k: 'GSI form', v: fmt(rows.filter(r => r.channel === 'GSI form').length), d: 'source mentions GSI' },
+        { k: 'In a GSI campaign', v: fmt(rows.filter(inGsiCampaign).length), d: `${pct(s.leads ? rows.filter(inGsiCampaign).length / s.leads * 100 : null, 0)} of leads are in a GSI-tagged Instantly campaign` },
         { k: 'Organic search', v: fmt(rows.filter(r => r.channel === 'Organic search').length), d: 'hs_analytics_source' },
         { k: 'No status set', v: fmt(rows.filter(r => !r.lead_status).length), d: 'lead status empty in HubSpot' },
       ]), 'l-tiles')}
 
-      ${section('Sales funnel', `What sales did with the leads created in range. <b>Reached out</b> = HubSpot "Number of times contacted" or "Last contacted" is set, or a call, email or meeting is logged. <b>Replied</b> = replied to a sales email. <b>Demo booked</b> = lead status Demo Booked, any Demo or Intro Call status, Associated with a deal, or lifecycle MQL, SQL, Opportunity or Customer (an MQL is someone trying to book). <b>Demo completed</b> = a Demo Completed or Intro Call Completed status. <b>Sales prospect</b> = lifecycle SQL, Opportunity or Customer, or Associated with a deal. The funnel bars keep only leads that passed every earlier step; "any path" counts every lead at that stage whatever was logged before it, so a completed demo with no logged outreach still shows there. ${cmpFunnel.html()}`, `<div id="funnelBody">${spinner('Loading the funnel')}</div>`, 'l-funnel')}
+      ${section('Sales funnel', `What sales did with the leads created in range. <b>Reached out</b> = HubSpot "Number of times contacted" or "Last contacted" is set, or a call, email or meeting is logged. <b>Replied (human)</b> = the lead wrote back themselves: a human reply email was read by the sync, or (before reply emails are stored) HubSpot shows a sales email reply and Instantly rated that reply with an interest status other than out of office. Leads whose only replies were automatic (out of office and similar) are shown beside it as <b>auto-reply only</b>, and HubSpot replies with nothing to say who wrote them as <b>reply type unknown</b>; neither passes the Replied step. <b>Demo booked</b> = lead status Demo Booked, any Demo or Intro Call status, Associated with a deal, or lifecycle MQL, SQL, Opportunity or Customer (an MQL is someone trying to book). <b>Demo completed</b> = a Demo Completed or Intro Call Completed status. <b>Sales prospect</b> = lifecycle SQL, Opportunity or Customer, or Associated with a deal. The funnel bars keep only leads that passed every earlier step; "any path" counts every lead at that stage whatever was logged before it, so a completed demo with no logged outreach still shows there. ${cmpFunnel.html()}`, `<div id="funnelBody">${spinner('Loading the funnel')}</div>`, 'l-funnel')}
 
       ${section('Lead status', 'HubSpot lead status (hs_lead_status) by band, with how many have any logged activity. Pick a status in the bar above to filter the whole page.', table({ cols: [
         { h: 'Lead status', k: 'st', left: true, f: r => `<b>${esc(r.st)}</b>` }, ...BANDS.map(b => ({ h: b, k: b, f: r => fmt(r[b] || 0) })), { h: 'Total', k: 'total', f: r => `<b>${fmt(r.total)}</b>` },
@@ -132,8 +138,9 @@ export async function render(el, ctx) {
     // ---- wiring ------------------------------------------------------------------------------
     el.querySelector('#spamToggle').onchange = e => { S.excludeSpam = e.target.checked; draw(); };
     el.querySelector('#gsiToggle').onchange = e => { S.gsiOnly = e.target.checked; draw(); };
+    el.querySelector('#gsiCampToggle').onchange = e => { S.gsiCampOnly = e.target.checked; draw(); };
     el.querySelector('#statusSel').onchange = e => { S.status = e.target.value; draw(); };
-    const histRows = (HIST.rows || all).filter(r => (!S.excludeSpam || !r.spam) && (!S.gsiOnly || r.gsi));
+    const histRows = (HIST.rows || all).filter(r => (!S.excludeSpam || !r.spam) && (!S.gsiOnly || r.gsi) && (!S.gsiCampOnly || inGsiCampaign(r)));
     trendX = mountTrend(el.querySelector('#wowBox'), ctx, { id: 'leads', items: histRows, dayOf: r => r.day, range: { from, to }, defaults: { gran: 'week', metrics: ['leads', 'mdmd1', 'gsi'], compare: 'avg' }, metrics: [
       { key: 'leads', label: 'Leads', additive: true, fn: l => l.length },
       { key: 'mdmd1', label: 'MD + MD-1', additive: true, fn: l => l.filter(r => r.band === 'MD' || r.band === 'MD-1').length },
@@ -149,7 +156,7 @@ export async function render(el, ctx) {
 
     // ---- sales funnel (its own comparison control; only this section redraws) ----------------
     cmpFunnel.wire(el);
-    const loadRows = async params => { const d = await memoGet(ctx, 'hubspot', params); return filterRows(decorate(enrich(d.contacts || [], d.notes_by_contact || {}, accounts))); };
+    const loadRows = async params => { const d = await memoGet(ctx, 'hubspot', params); return filterRows(decorate(enrich((d.contacts || []).filter(isFormLead), d.notes_by_contact || {}, accounts))); };
     const dark = matchMedia('(prefers-color-scheme: dark)').matches;
     const axisInk = dark ? '#B8B4AD' : '#6B675F', gridInk = dark ? '#34353A' : '#E3E1DE', legendInk = dark ? '#F1F0EE' : '#1F2022';
     async function drawFunnel(p) {
@@ -169,14 +176,38 @@ export async function render(el, ctx) {
       const medFirst = median(rows.map(r => daysFrom(r.created_at, firstContactAt(r))).filter(x => x != null));
       const lifeFirst = lifeRows && lifeRows.length ? lifeRows.reduce((m, r) => !m || r.day < m ? r.day : m, null) : null;
       const stepRow = s => ({ ...s, prevN: FP.cumulative[s.key] });
+      const split = gsiSplit(rows), camps = gsiCampaignTable(rows), RS = F.replies;
+      const anyInstantly = rows.some(r => Array.isArray(r.instantly) && r.instantly.length);
       const pctOf = v => v == null ? '<span class="muted">–</span>' : pct(v * 100, 0);
-      FUNNEL = { range: { from, to, generated: F.generated, cumulative: F.cumulative, raw: F.raw }, comparison: p ? { label: p.label, generated: FP.generated, cumulative: FP.cumulative, raw: FP.raw } : null, lifetime: FL ? { since: lifeFirst, generated: FL.generated, cumulative: FL.cumulative, raw: FL.raw } : null, bySource: bySource.slice(0, 8), byBucket: byBucket.slice(-8).map(b => ({ period: b.key, generated: b.generated, reached: b.reached, replied: b.replied, booked: b.booked, completed: b.completed, prospect: b.prospect, medianDaysToContact: b.medianDaysToContact })), neverContacted: { count: never.length, oldestSince: never[0] ? never[0].day : null }, medianDaysToLastContact: medLast, statuses: statuses.slice(0, 12).map(s => ({ status: s.label, n: s.n, countsAs: s.countsAs })) };
+      FUNNEL = { range: { from, to, generated: F.generated, cumulative: F.cumulative, raw: F.raw }, comparison: p ? { label: p.label, generated: FP.generated, cumulative: FP.cumulative, raw: FP.raw } : null, lifetime: FL ? { since: lifeFirst, generated: FL.generated, cumulative: FL.cumulative, raw: FL.raw } : null, origin: split.map(x => ({ origin: x.label, leads: x.n, share: x.share, demoBooked: x.booked })), gsiCampaigns: camps.slice(0, 15).map(x => ({ campaign: x.campaign_name, leads: x.generated, repliedHuman: x.repliedHuman, demoBooked: x.booked })), replies: { human: RS.human, autoOnly: RS.auto, unknown: RS.unknown }, bySource: bySource.slice(0, 8), byBucket: byBucket.slice(-8).map(b => ({ period: b.key, generated: b.generated, reached: b.reached, replied: b.replied, booked: b.booked, completed: b.completed, prospect: b.prospect, medianDaysToContact: b.medianDaysToContact })), neverContacted: { count: never.length, oldestSince: never[0] ? never[0].day : null }, medianDaysToLastContact: medLast, statuses: statuses.slice(0, 12).map(s => ({ status: s.label, n: s.n, countsAs: s.countsAs })) };
 
       box.innerHTML = `
-        <div class="grid g2w">
+        <h3>Where the leads came from</h3>
+        <p class="muted" style="font-size:12.5px;margin-bottom:8px">Every lead here submitted a form. A lead counts as <b>in a GSI-tagged campaign</b> when its email sits in at least one Instantly campaign tagged GSI; everyone else is a form lead at a GSI account that no GSI campaign reached.${anyInstantly ? '' : ' <span class="down">No Instantly campaign data is matched to these leads yet, so every lead shows as not in a GSI campaign until the Instantly lead sync has run.</span>'}</p>
+        <div id="originBox">${table({ cols: [
+          { h: 'Origin', k: 'label', left: true, f: x => `<b>${esc(x.label)}</b>` },
+          { h: 'Leads', k: 'n', f: x => `<b>${fmt(x.n)}</b>` },
+          { h: 'Share', k: 'share', f: x => pctOf(x.share) },
+          { h: 'Demo booked', k: 'booked', f: x => `${fmt(x.booked)} <span class="muted">(${pctOf(x.bookedShare)})</span>` },
+        ], rows: split, total: { label: 'Generated', n: `<b>${fmt(F.generated)}</b>`, share: pctOf(F.generated ? 1 : null), booked: fmt(split.reduce((a, x) => a + x.booked, 0)) } })}</div>
+        <div style="margin-top:12px" id="gsiCampBox">${camps.length ? table({ cols: [
+          { h: 'GSI campaign', k: 'campaign_name', left: true, f: x => esc(x.campaign_name) },
+          { h: 'Leads', k: 'generated', f: x => `<b>${fmt(x.generated)}</b>` },
+          { h: 'Replied (human)', k: 'repliedHuman', f: x => fmt(x.repliedHuman) + (x.autoOnly ? ` <span class="muted">(+${fmt(x.autoOnly)} auto only)</span>` : '') },
+          { h: 'Demo booked', k: 'booked', f: x => fmt(x.booked) },
+        ], rows: camps }) + '<p class="muted" style="font-size:12.5px;margin-top:6px">A lead in two GSI campaigns counts under both, so this column can add up to more than the leads in GSI campaigns.</p>' : '<p class="muted">No lead in range sits in a GSI-tagged Instantly campaign.</p>'}</div>
+
+        <h3 style="margin-top:18px">Replies</h3>
+        <div id="replySplit">${tiles([
+          { k: 'Human reply', v: fmt(RS.human), d: `${pctOf(share(RS.human, F.generated))} of leads; counts as Replied` },
+          { k: 'Auto-reply only', v: fmt(RS.auto), d: 'out of office or similar, no human reply' },
+          { k: 'Reply type unknown', v: fmt(RS.unknown), d: 'HubSpot shows a reply, no reply email stored yet' },
+        ])}</div>
+
+        <div class="grid g2w" style="margin-top:18px">
           <div class="card"><h3>Leads created ${esc(rangeLabel(from, to))}</h3><div class="chartbox short"><canvas id="funnelChart"></canvas></div></div>
           <div>${table({ cols: [
-            { h: 'Stage', k: 'label', left: true, f: s => `<b>${esc(s.label)}</b>` },
+            { h: 'Stage', k: 'label', left: true, f: s => `<b>${esc(s.label)}</b>${s.key === 'replied' ? `<br><span class="muted" style="font-size:11.5px">auto-reply only ${fmt(RS.auto)} · reply type unknown ${fmt(RS.unknown)}</span>` : ''}` },
             { h: 'Leads', k: 'n', f: s => `<b>${fmt(s.n)}</b>` },
             { h: 'Of generated', k: 'g', f: s => pctOf(s.ofGenerated) },
             { h: 'Of previous step', k: 'p', f: s => s.ofPrev == null ? '<span class="muted">–</span>' : pctOf(s.ofPrev) },
@@ -192,12 +223,12 @@ export async function render(el, ctx) {
         <div style="margin-top:18px">
           <div><h3>By source</h3><p class="muted" style="font-size:12.5px;margin-bottom:8px">HubSpot lead source first (Book a demo form, LinkedIn, Contact us, a playbook or asset form, events, outbound), else the analytics source. Each column counts every lead that reached that stage, whatever path it took.</p>${table({ cols: [
             { h: 'Source', k: 'source', left: true, f: r => esc(r.source) }, { h: 'Generated', k: 'generated', f: r => `<b>${fmt(r.generated)}</b>` },
-            { h: 'Reached out', k: 'reached', f: r => `${fmt(r.reached)} <span class="muted">(${pct(r.generated ? r.reached / r.generated * 100 : null, 0)})</span>` }, { h: 'Replied', k: 'replied', f: r => fmt(r.replied) },
+            { h: 'Reached out', k: 'reached', f: r => `${fmt(r.reached)} <span class="muted">(${pct(r.generated ? r.reached / r.generated * 100 : null, 0)})</span>` }, { h: 'Replied (human)', k: 'replied', f: r => fmt(r.replied) }, { h: 'Auto only', k: 'autoOnly', f: r => fmt(r.autoOnly || 0) },
             { h: 'Demo booked', k: 'booked', f: r => fmt(r.booked) }, { h: 'Demo completed', k: 'completed', f: r => fmt(r.completed) }, { h: 'Prospects', k: 'prospect', f: r => fmt(r.prospect) },
-          ], rows: bySource, total: { source: 'Total', generated: fmt(F.generated), reached: `${fmt(F.raw.reached)} (${pct(F.generated ? F.raw.reached / F.generated * 100 : null, 0)})`, replied: fmt(F.raw.replied), booked: fmt(F.raw.booked), completed: fmt(F.raw.completed), prospect: fmt(F.raw.prospect) } })}</div>
+          ], rows: bySource, total: { source: 'Total', generated: fmt(F.generated), reached: `${fmt(F.raw.reached)} (${pct(F.generated ? F.raw.reached / F.generated * 100 : null, 0)})`, replied: fmt(F.raw.replied), autoOnly: fmt(RS.auto), booked: fmt(F.raw.booked), completed: fmt(F.raw.completed), prospect: fmt(F.raw.prospect) } })}</div>
           <div style="margin-top:18px"><h3>Lead status in HubSpot</h3><p class="muted" style="font-size:12.5px;margin-bottom:8px">What HubSpot calls each lead right now (hs_lead_status, portal label) and which funnel stage that status counts as.</p>${table({ cols: [
             { h: 'Status', k: 'label', left: true, f: r => r.label === r.status || !r.status ? esc(r.label) : `${esc(r.label)} <span class="muted">(${esc(r.status)})</span>` }, { h: 'Leads', k: 'n', f: r => `<b>${fmt(r.n)}</b>` },
-            { h: 'Reached out', k: 'reached', f: r => fmt(r.reached) }, { h: 'Replied', k: 'replied', f: r => fmt(r.replied) },
+            { h: 'Reached out', k: 'reached', f: r => fmt(r.reached) }, { h: 'Replied (human)', k: 'replied', f: r => fmt(r.replied) },
             { h: 'Counts as', k: 'countsAs', f: r => r.countsAs ? pill(r.countsAs, r.countsAs === 'Sales prospect' ? 'p-high' : r.countsAs === 'Demo completed' ? 'p-med' : 'p-low') : '<span class="muted">–</span>' },
           ], rows: statuses })}</div>
         </div>
@@ -211,7 +242,7 @@ export async function render(el, ctx) {
             { h: gran === 'month' ? 'Month' : 'Week', k: 'key', left: true, f: b => esc(bucketLabel(b.key, gran)) }, { h: 'Leads', k: 'generated', f: b => `<b>${fmt(b.generated)}</b>` },
             { h: 'Reached out', k: 'reached', f: b => fmt(b.reached) }, { h: 'Not yet', k: 'notReached', f: b => b.notReached ? `<span class="down">${fmt(b.notReached)}</span>` : '0' }, { h: '% reached', k: 'reachedShare', f: b => pctOf(b.reachedShare) },
             { h: 'Days to contact', k: 'medianDaysToContact', f: b => b.medianDaysToContact == null ? '<span class="muted">–</span>' : fmt(b.medianDaysToContact, 1) },
-            { h: 'Replied', k: 'replied', f: b => fmt(b.replied) }, { h: 'Demos', k: 'booked', f: b => `${fmt(b.booked)}${b.completed ? ` <span class="muted">(${fmt(b.completed)} done)</span>` : ''}` },
+            { h: 'Replied (human)', k: 'replied', f: b => fmt(b.replied) + (b.autoOnly ? ` <span class="muted">(+${fmt(b.autoOnly)} auto)</span>` : '') }, { h: 'Demos', k: 'booked', f: b => `${fmt(b.booked)}${b.completed ? ` <span class="muted">(${fmt(b.completed)} done)</span>` : ''}` },
           ], rows: byBucket })}</div>
         </div>
         <div class="card" style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span>${never.length ? `<b>${fmt(never.length)}</b> lead${never.length === 1 ? '' : 's'} created in range ${never.length === 1 ? 'has' : 'have'} never been contacted; oldest since <b>${esc(ctx.fmt.dayLabel(never[0].day))}</b> (${esc(timeAgo(never[0].created_at))}).` : 'Every lead created in range has been contacted at least once.'}</span>${never.length ? `<button class="btn tiny" id="copyNever" style="margin-left:auto">Copy ${fmt(never.filter(r => r.email).length)} emails</button>` : ''}</div>`;
@@ -267,6 +298,7 @@ export async function render(el, ctx) {
       { k: 'region', h: 'Region', f: r => esc(r.region || 'Other'), csv: r => r.region || 'Other' },
       { k: 'status', h: 'Lead status', g: r => r.lead_status || '', f: r => r.lead_status ? esc(r.lead_status) : '<span class="muted">none</span>', csv: r => r.lead_status || '' },
       { k: 'gsi', h: 'GSI', g: r => r.gsi || '', f: r => r.gsi ? `<span class="pill p-high" title="Matches ${esc(r.gsi)} on the GSI list">GSI</span>` : '', csv: r => r.gsi || '' },
+      { k: 'gsicamp', h: 'GSI campaign', left: true, g: r => gsiCampaignsOf(r).map(x => x.campaign_name).join(', '), f: r => { const l = gsiCampaignsOf(r); return l.length ? esc(truncate(l.map(x => x.campaign_name).join(', '), 60)) : '<span class="muted">–</span>'; }, csv: r => gsiCampaignsOf(r).map(x => x.campaign_name).join('; ') },
       { k: 'source', h: 'Source', g: r => r.channel, f: r => `${esc(r.channel)}${r.detail && r.detail !== r.channel ? `<br><span class="muted" style="font-size:11.5px">${esc(truncate(r.detail, 60))}</span>` : ''}`, csv: r => r.channel + (r.detail ? ' · ' + r.detail : '') },
       { k: 'owner', h: 'Owner', g: r => ownerKey(r), f: r => r.owner_name ? esc(r.owner_name) : '<span class="down">none</span>', csv: r => r.owner_name || '' },
       { k: 'created_at', h: 'Created (IST)', f: r => esc(istDateTime(r.created_at)), csv: r => istDateTime(r.created_at) },
@@ -287,7 +319,7 @@ export async function render(el, ctx) {
     drawTable();
     let t = null; el.querySelector('#leadQ').oninput = e => { clearTimeout(t); t = setTimeout(() => { S.q = e.target.value.trim(); S.limit = 200; drawTable(); }, 150); };
     el.querySelector('#csvBtn').onclick = () => {
-      const csv = toCsv(shown, COLS.map(c => ({ h: c.h, f: c.csv || c.g || (r => r[c.k]) })).concat([{ h: 'Email', f: r => r.email }, { h: 'Country', f: r => r.country }, { h: 'HubSpot id', f: r => r.hs_id }]));
+      const csv = toCsv(shown, COLS.map(c => ({ h: c.h, f: c.csv || c.g || (r => r[c.k]) })).concat([{ h: 'Reply type', f: r => ({ human: 'human', auto: 'auto-reply only', unknown: 'unknown' })[replyType(r)] || '' }, { h: 'Email', f: r => r.email }, { h: 'Country', f: r => r.country }, { h: 'HubSpot id', f: r => r.hs_id }]));
       const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })); a.download = `lyzr-leads-${from}-to-${to}.csv`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
       ctx.toast(`Exported ${fmt(shown.length)} leads`);
     };

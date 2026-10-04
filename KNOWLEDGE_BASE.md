@@ -523,6 +523,21 @@ Access if the data ever becomes confidential.
   Lyzr board carry a vertical tag; owners/view without ?email= shows the signed-in user instead of a blank
   "Awaiting first sign-in" profile.
 
+### 2026-10-04, Campaign Analytics: real GSI leads only, GSI-campaign tagging, human vs auto replies
+- Finding: ~15,000 rows in ca_hs_contacts came from the first pull rule (anyone at a GSI company, no form);
+  HubSpot has only 3,111 form submissions since April across all companies. The Leads page now counts only
+  form leads (`props.first_conversion_date`), says how many stored contacts are left out, and the next FULL
+  HubSpot pull marks them `in_scope=false` (kept, hidden; `?all=1` shows them; a dated pull never prunes; the
+  cursor is checked against ca_hs_sync before pruning).
+- Instantly sync gained a `leads` phase: every lead of every GSI-tagged campaign into `ca_em_leads`
+  (009_em_leads.sql). GET hubspot attaches `instantly:[...]` per form lead by email. Leads page: "Where the leads
+  came from" (in a GSI-tagged campaign vs GSI account form lead), a "GSI-tagged campaigns only" filter, campaign table.
+- Replies: the notes phase batch-reads HubSpot email engagements; incoming ones are classed human / automatic
+  (`isAutoReply`: strong phrases anywhere, weak ones in the subject or a short non-conversational reply) into
+  replies_human / replies_auto (008_funnel.sql) and stored as `email_in` notes. Funnel shows human / auto only /
+  unknown. Contacts whose emails were not read this run keep their earlier counts.
+- User steps: paste 008_funnel.sql and 009_em_leads.sql, then Pull HubSpot now and Pull Instantly now.
+
 ### 2026-10-01, Campaign Analytics: pages stay put for 8 hours, manual Refresh data
 - `js/pagecache.mjs`: every GET answer is kept in memory for 8 hours per path + params; writes drop only the
   answers they can change (actions -> actions + coverage, insights -> insights, anything else -> all).

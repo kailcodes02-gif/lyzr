@@ -244,6 +244,32 @@ function build() {
       if (!c.props.hs_sales_email_last_replied && chance(0.7)) c.props.hs_sales_email_last_replied = laterTs(c.props.notes_last_contacted || c.created_at, 4);
     }
   }
+  // 6. Form date, reply type, and contacts that never filled a form. A second PRNG so everything
+  //    above stays exactly as it was.
+  const rnd2 = mulberry32(20261001);
+  for (const c of contacts) {
+    c.props.first_conversion_date = c.created_at;
+    c.props.first_conversion_event_name = c.lead_source === 'Instantly email' ? 'GSI / SI page form' : c.lead_source === 'Direct' ? 'Book a Demo' : 'LinkedIn Lead Gen Form';
+    c.replies_human = 0; c.replies_auto = 0; c.first_human_reply_at = null; c.last_human_reply_at = null; c.last_auto_reply_at = null; c.in_scope = true;
+    const replied = c.props.hs_sales_email_last_replied;
+    if (replied) {
+      // About 65% wrote back themselves, 20% only sent an out-of-office, 15% have no reply email stored yet.
+      const k = rnd2();
+      if (k < 0.65) { c.replies_human = 1 + Math.floor(rnd2() * 2); c.first_human_reply_at = replied; c.last_human_reply_at = replied; if (rnd2() < 0.25) { c.replies_auto = 1; c.last_auto_reply_at = replied; } }
+      else if (k < 0.85) { c.replies_auto = 1; c.last_auto_reply_at = replied; }
+    } else if (c.props.num_contacted_notes && rnd2() < 0.12) { c.replies_auto = 1; c.last_auto_reply_at = laterTs(c.props.notes_last_contacted || c.created_at, 2); }
+  }
+  // 15 contacts pulled by the older rule (Apollo imports, list uploads) that never submitted a form.
+  for (let i = 0; i < 15; i++) {
+    const country = i % 3 ? 'India' : 'United States';
+    const company = ['Infosys', 'Wipro', 'Accenture', 'Cognizant', 'Capgemini'][i % 5];
+    const acc = matchAccount(company, '');
+    const domain = acc ? Object.keys(DOMAIN_ACCOUNT).find(d => DOMAIN_ACCOUNT[d] === acc) || slug(company) + '.com' : slug(company) + '.com';
+    const c = makeContact({ first: FIRST_BY_COUNTRY[country][i % FIRST_BY_COUNTRY[country].length], last: LAST_BY_COUNTRY[country][(i * 7) % LAST_BY_COUNTRY[country].length], company, domain, title: OTHER_TITLES[i % OTHER_TITLES.length], country, msg: '', month: ['2026-07', '2026-08', '2026-09'][i % 3], owner: null, via: ['company'], source: 'Direct' });
+    c.lead_source = 'apollo_import'; c.props.lead_source = 'apollo_import'; c.source = 'OFFLINE'; c.props.hs_analytics_source = 'OFFLINE';
+    c.replies_human = 0; c.replies_auto = 0; c.in_scope = true;
+    contacts.push(c);
+  }
   contacts.sort((a, b) => a.created_at < b.created_at ? 1 : -1);
   const notes_by_contact = {};
   for (const n of notes) (notes_by_contact[n.contact_id] ||= []).push(n);
@@ -251,3 +277,32 @@ function build() {
 }
 
 export const hubspotMock = build();
+
+/**
+ * Adds `instantly` (the GET /api/ca/hubspot contract: [{ campaign_id, campaign_name, gsi, status,
+ * interest_status, reply_count, last_reply_at }]) to each contact. `lookup(email)` returns the
+ * Instantly leads for an email (builder B's instantlyLeadsByEmail). When it finds nobody, a small
+ * deterministic assignment over `campaigns` (the email mock's campaign list) stands in, so the
+ * demo always has GSI-campaign leads to show. Returns new contact objects.
+ */
+export function attachInstantly(contacts, campaigns = [], lookup = null) {
+  const found = new Map();
+  if (typeof lookup === 'function') for (const c of contacts) { try { const l = lookup(String(c.email || '').toLowerCase()); if (Array.isArray(l) && l.length) found.set(c.hs_id, l); } catch {} }
+  const gsiCamps = campaigns.filter(x => x.gsi !== false), otherCamps = campaigns.filter(x => x.gsi === false);
+  const h = s => { let x = 2166136261; for (const ch of String(s)) { x ^= ch.charCodeAt(0); x = Math.imul(x, 16777619); } return (x >>> 0) / 4294967296; };
+  const entry = (camp, c, salt) => {
+    const replies = (Number(c.replies_human) || 0) + (Number(c.replies_auto) || 0);
+    const human = (Number(c.replies_human) || 0) > 0;
+    return { campaign_id: camp.id, campaign_name: camp.name, gsi: camp.gsi !== false, status: h(c.hs_id + salt + 's') < 0.7 ? 1 : 3, interest_status: replies ? (human ? (h(c.hs_id + 'i') < 0.5 ? 1 : 2) : 0) : null, reply_count: replies, last_reply_at: c.last_human_reply_at || c.last_auto_reply_at || null };
+  };
+  // TODO(builder B): drop this fallback once instantlyLeadsByEmail in js/mock/email.mjs matches the HubSpot mock emails.
+  const fallback = c => {
+    if (!campaigns.length || !(c.props && c.props.first_conversion_date)) return [];
+    const r = h(c.hs_id), out = [];
+    const p = c.lead_source === 'Instantly email' ? 0.9 : c.account ? 0.38 : 0.06;
+    if (gsiCamps.length && r < p) { out.push(entry(gsiCamps[Math.floor(h(c.hs_id + 'a') * gsiCamps.length)], c, 'a')); if (h(c.hs_id + 'b') < 0.2) { const second = gsiCamps[Math.floor(h(c.hs_id + 'c') * gsiCamps.length)]; if (second.id !== out[0].campaign_id) out.push(entry(second, c, 'c')); } }
+    if (otherCamps.length && h(c.hs_id + 'w') < 0.1) out.push(entry(otherCamps[Math.floor(h(c.hs_id + 'x') * otherCamps.length)], c, 'x'));
+    return out;
+  };
+  return contacts.map(c => ({ ...c, instantly: found.size ? (found.get(c.hs_id) || []) : fallback(c) }));
+}

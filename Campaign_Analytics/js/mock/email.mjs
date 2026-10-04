@@ -1,6 +1,7 @@
 // Demo-mode email data: synthetic Instantly events shaped like the GSI sequences of Jul to Sep 2026,
 // plus a few non-GSI campaigns (totals only) so the workspace share has something to show.
 // Every person and domain is made up (".example" domains). Deterministic (seeded) so the demo is stable.
+import { hubspotMock } from './hubspot.mjs';
 const CAMPAIGNS = [
   ['TCS - US - July', '2026-07-07', 'tcs', 380, 5, .08, .5, 'direct'],
   ['Deloitte - US - July', '2026-07-09', 'deloitte', 420, 5, .01, .45, 'direct'],
@@ -100,5 +101,44 @@ export function emailPage(mock, offset = 0, size = 15000) {
   const idx = (m, l, v) => { if (!m.has(v)) { m.set(v, l.length); l.push(v); } return m.get(v); };
   const out = { events: slice.map(e => [idx(ci, campaigns, e.campaign), e.contact, e.step, e.event, e.ts, idx(si, senders, e.sender), e.link, e.lag]), campaigns, senders, next: offset + size < mock.events.length ? offset + size : null };
   if (!offset) { out.uploads = mock.uploads; out.api = mock.api; }
+  return out;
+}
+
+// Instantly leads of the GSI campaigns, keyed by lower-cased email, for the HubSpot demo contacts:
+// the demo answer to "is this HubSpot lead also in a GSI-tagged Instantly campaign?". Same shape as
+// `instantly` on GET /api/ca/hubspot. About 40% of the demo contacts match; internal tests, spam
+// and personal-mail sign-ups never do. Hash-based, so it is stable and independent of the PRNGs above.
+const hash01 = s => { let x = 2166136261; for (const ch of String(s)) { x ^= ch.charCodeAt(0); x = Math.imul(x, 16777619); } return (x >>> 0) / 4294967296; };
+export function buildInstantlyLeadsByEmail(contacts = hubspotMock.contacts) {
+  const camps = CAMPAIGNS.map(([name, start], i) => ({ id: 'demo-' + (i + 1), name, start }));
+  const out = new Map();
+  for (const c of contacts || []) {
+    const email = String(c.email || '').trim().toLowerCase();
+    if (!email.includes('@') || /@(lyzr\.ai|lyzrteam\.com|gmail\.com|outlook\.com)$/.test(email) || out.has(email)) continue;
+    const p = c.lead_source === 'Instantly email' ? 0.95 : c.account ? 0.6 : 0.3;
+    if (hash01(email) >= p) continue;
+    const replies = (Number(c.replies_human) || 0) + (Number(c.replies_auto) || 0);
+    const human = (Number(c.replies_human) || 0) > 0;
+    const entry = (camp, salt) => ({
+      campaign_id: camp.id,
+      campaign_name: camp.name,
+      gsi: true,
+      status: hash01(email + salt + 's') < 0.6 ? 1 : 3,
+      interest_status: human ? (hash01(email + salt + 'i') < 0.5 ? 1 : 2) : replies ? 0 : null,
+      reply_count: replies,
+      last_reply_at: c.last_human_reply_at || c.last_auto_reply_at || null,
+    });
+    const first = camps[Math.floor(hash01(email + 'a') * camps.length)];
+    const list = [entry(first, 'a')];
+    if (hash01(email + 'b') < 0.2) { const second = camps[Math.floor(hash01(email + 'c') * camps.length)]; if (second.id !== first.id) list.push({ ...entry(second, 'c'), reply_count: 0, interest_status: null, last_reply_at: null }); }
+    out.set(email, list);
+  }
+  return out;
+}
+export const instantlyLeadsByEmail = buildInstantlyLeadsByEmail();
+/** Matches for a list of emails: { [lower-cased email]: [...] }, only emails that are in a GSI campaign. */
+export function emailLeadsFor(emails) {
+  const out = {};
+  for (const e of emails || []) { const k = String(e || '').trim().toLowerCase(); const l = instantlyLeadsByEmail.get(k); if (l) out[k] = l; }
   return out;
 }

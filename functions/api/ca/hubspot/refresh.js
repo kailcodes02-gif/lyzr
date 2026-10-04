@@ -1,5 +1,6 @@
 // POST /api/ca/hubspot/refresh { cursor?, from?, to? }   editors only
-// -> { done, cursor?, contacts, notes, warnings:[], progress:{ phase, done, total } }
+// -> { done, cursor?, contacts, notes, replies:{ human, auto }, pruned?, warnings:[],
+//      progress:{ phase, done, total } }
 //
 // READ-ONLY against HubSpot. Nothing is ever written to HubSpot. A GSI lead is
 // a contact who submitted a form (first_conversion_date is set) AND whose company
@@ -12,6 +13,13 @@
 // done:true. Phase "search" pulls contacts (upserted into ca_hs_contacts with
 // account, band and region from classify.js); phase "notes" fetches the notes
 // and counts calls, meetings and emails for the contacts touched by this sync.
+// The notes phase also reads the logged emails: incoming ones are replies,
+// split into human and automatic (isAutoReply) and stored per contact
+// (replies_human, replies_auto, first/last_human_reply_at, last_auto_reply_at)
+// and in ca_hs_notes as kind 'email_in'.
+// When a FULL sync (no from/to) finishes, every contact it did not touch is
+// marked in_scope=false (kept, not deleted) and every one it did touch
+// in_scope=true. Dated syncs never prune. The count comes back as `pruned`.
 
 import { json, handle, readJson, isoDay, HttpError } from '../_lib/http.js'
 import { requireUser, cronUser } from '../_lib/auth.js'
@@ -54,7 +62,8 @@ export const PROPS = [...new Set([
 export const SEARCH_BUDGET = 20
 export const NOTES_CHUNK = 200
 export const HS_BATCH = 100
-export const NOTE_READ_CAP = 10 // batch reads of notes per invocation (1000 notes)
+export const NOTE_READ_CAP = 10 // batch reads of notes + emails per invocation (1000 objects)
+export const EMAIL_PROPS = ['hs_email_direction', 'hs_email_subject', 'hs_email_text', 'hs_timestamp', 'hs_email_headers']
 const ENGAGEMENT_TYPES = ['notes', 'calls', 'meetings', 'emails']
 
 const HS = 'https://api.hubapi.com'
@@ -191,6 +200,56 @@ export function stripHtml(html) {
     .trim()
 }
 
+// ---- automatic replies --------------------------------------------------------
+// Out of office, bounces and "no longer with the company" answers are incoming
+// emails, but not a person replying. Checked on the subject, the first part of
+// the text (quoted earlier messages cut off) and the headers when present.
+// Strong signals count anywhere in the reply; weak ones ("on leave", "vacation", "do not reply") only in
+// the subject, because people write them in normal replies too.
+const AUTO_PATTERNS = [
+  /out of (the )?office/, /automatic reply/, /auto[- ]?reply/, /autoreply/, /auto[- ]?response/, /automatic response/,
+  /has left the company/, /is no longer employed/, /no longer (works|working) (at|for|with) /,
+  /undeliverable/, /delivery status notification/, /delivery has failed/, /mail delivery (failed|subsystem)/, /could not be delivered/,
+  /mailer-daemon/, /\bpostmaster\b/, /this mailbox is not monitored/,
+  /abwesenheitsnotiz/, /automatische antwort/, /fuera de la oficina/, /respuesta autom[aá]tica/, /je suis absente? du bureau/,
+  /r[ée]ponse automatique/, /fora do escrit[oó]rio/, /resposta autom[aá]tica/, /automatisch antwoord/, /risposta automatica/, /fuori ufficio/,
+]
+const WEAK_PATTERNS = [/\booo\b/, /away from (the |my )?office/, /\bon leave\b/, /\bvacation\b/, /annual leave/, /maternity/, /paternity/, /parental leave/, /no longer with/, /\babsence\b/, /abwesenheit/, /\bafwezig/]
+const SUBJECT_ONLY = [/do not reply/, /do-not-reply/]
+
+function headerText(headers) {
+  if (!headers) return ''
+  if (typeof headers === 'string') return headers
+  try { return JSON.stringify(headers) } catch { return '' }
+}
+
+// Only the reply itself: drop quoted lines and everything after "On ... wrote:"
+// or an "-----Original Message-----" / "From:" block.
+export function replyPart(text) {
+  const t = String(text || '')
+  const cut = t.search(/(^|\n)\s*(>|on [^\n]{0,200}wrote:|-{2,}\s*original message|from:\s)/i)
+  return (cut >= 0 ? t.slice(0, cut) : t).slice(0, 1500)
+}
+
+export function isAutoReply({ subject = '', text = '', headers = '' } = {}) {
+  const h = headerText(headers).toLowerCase()
+  if (h) {
+    if (/auto-submitted"?\s*[:=]\s*"?(auto|yes)/.test(h)) return true
+    if (/x-autorespond|x-autoreply|x-auto-response-suppress"?\s*[:=]\s*"?(all|oof)/.test(h)) return true
+    if (/precedence"?\s*[:=]\s*"?(auto_reply|bulk|junk)/.test(h)) return true
+    if (/mailer-daemon@|postmaster@/.test(h)) return true
+  }
+  const reply = replyPart(text).toLowerCase()
+  const hay = (String(subject || '') + '\n' + reply).toLowerCase()
+  if (AUTO_PATTERNS.some((re) => re.test(hay))) return true
+  const subj = String(subject || '').toLowerCase()
+  if (WEAK_PATTERNS.some((re) => re.test(subj)) || SUBJECT_ONLY.some((re) => re.test(subj))) return true
+  // In the body, a weak phrase counts only in a short reply with no sign of a person talking back.
+  const short = reply.replace(/\s+/g, ' ').trim()
+  const conversational = /\b(let'?s|let us|talk|call|chat|happy to|interested|thanks for reaching|sounds good|yes|sure)\b|\?/.test(short)
+  return short.length <= 220 && !conversational && WEAK_PATTERNS.some((re) => re.test(short))
+}
+
 const numOrNull = (v) => { const n = Number(v); return v === null || v === undefined || v === '' || !Number.isFinite(n) ? null : n }
 const tsOrNull = (v) => {
   if (!v) return null
@@ -316,6 +375,8 @@ async function searchPhase({ d, token, env, request, cursor, warnings }) {
   const syncedAt = new Date().toISOString()
   const rows = [...found.values()].map(({ raw, via }) => mapContact(raw, via, { ownerNames, settings, syncedAt }))
   for (let i = 0; i < rows.length; i += 500) await d.upsert('ca_hs_contacts', rows.slice(i, i + 500), 'hs_id')
+  // A contact that matches the rule again is in scope again, whatever an earlier full sync decided.
+  if (rows.length) { try { for (const filter of inChunks(rows.map((r) => r.hs_id))) await d.update('ca_hs_contacts', { hs_id: filter, in_scope: 'is.false' }, { in_scope: true }) } catch { /* 008 not run yet */ } }
   cursor.contacts += rows.length
 
   const finished = taskIndex >= tasks.length
@@ -327,6 +388,7 @@ async function searchPhase({ d, token, env, request, cursor, warnings }) {
     cursor,
     contacts: cursor.contacts,
     notes: cursor.notes,
+    replies: replies(cursor),
     warnings,
     progress: { phase: finished ? 'notes' : 'search', done: Math.min(taskIndex, tasks.length), total: tasks.length },
   }
@@ -340,6 +402,31 @@ async function hsAssociations(token, type, ids) {
     for (const r of data.results || []) map.set(String(r.from?.id), (r.to || []).map((t) => String(t.toObjectId)))
   }
   return map
+}
+
+// Split the per-invocation batch-read cap between notes and emails: each gets
+// what it needs when both fit, otherwise emails keep at least half the cap.
+export function splitReads(noteCount, emailCount, cap = NOTE_READ_CAP) {
+  const needN = Math.ceil(noteCount / HS_BATCH), needE = Math.ceil(emailCount / HS_BATCH)
+  if (needN + needE <= cap) return { notes: needN, emails: needE }
+  const emails = Math.min(needE, Math.max(cap - needN, Math.floor(cap / 2)))
+  return { notes: Math.min(needN, cap - emails), emails }
+}
+
+async function batchRead(token, object, properties, ids, maxReads) {
+  const out = []
+  let reads = 0
+  for (let i = 0; i < ids.length && reads < maxReads; i += HS_BATCH, reads++) {
+    const data = await hsPost(token, `/crm/v3/objects/${object}/batch/read`, { properties, inputs: ids.slice(i, i + HS_BATCH).map((id) => ({ id })) })
+    out.push(...(data.results || []))
+  }
+  return { results: out, unread: Math.max(0, ids.length - reads * HS_BATCH) }
+}
+
+// One incoming email -> the body kept in ca_hs_notes (kind 'email_in').
+export function emailNoteBody(subject, text, auto) {
+  const body = [String(subject || '').trim(), replyPart(text).replace(/\s+/g, ' ').trim().slice(0, 400)].filter(Boolean).join(' - ')
+  return (auto ? '[auto] ' : '') + body
 }
 
 async function notesPhase({ d, token, cursor, warnings }) {
@@ -357,26 +444,33 @@ async function notesPhase({ d, token, cursor, warnings }) {
   const assoc = {}
   for (const type of ENGAGEMENT_TYPES) assoc[type] = await hsAssociations(token, type, ids)
 
-  // Notes bodies: cap the reads per invocation, the rest is reported.
+  // Note and email bodies share one cap on batch reads per invocation; the rest is reported.
   const noteIds = [...new Set([...assoc.notes.values()].flat())]
-  const noteRows = []
-  let reads = 0
-  for (let i = 0; i < noteIds.length && reads < NOTE_READ_CAP; i += HS_BATCH, reads++) {
-    const data = await hsPost(token, '/crm/v3/objects/notes/batch/read', {
-      properties: ['hs_note_body', 'hs_timestamp', 'hubspot_owner_id'],
-      inputs: noteIds.slice(i, i + HS_BATCH).map((id) => ({ id })),
-    })
-    for (const n of data.results || []) {
-      const p = n.properties || {}
-      noteRows.push({ id: String(n.id), body: stripHtml(p.hs_note_body).slice(0, 8000), owner_id: p.hubspot_owner_id || null, created_at: tsOrNull(p.hs_timestamp || n.createdAt) })
-    }
-  }
-  if (noteIds.length > reads * HS_BATCH) warnings.push(`${noteIds.length - reads * HS_BATCH} notes in this chunk were not read (per-call cap); run refresh again to pick them up.`)
+  const emailIds = [...new Set([...assoc.emails.values()].flat())]
+  const budget = splitReads(noteIds.length, emailIds.length)
+  const notesRead = await batchRead(token, 'notes', ['hs_note_body', 'hs_timestamp', 'hubspot_owner_id'], noteIds, budget.notes)
+  const noteRows = notesRead.results.map((n) => {
+    const p = n.properties || {}
+    return { id: String(n.id), body: stripHtml(p.hs_note_body).slice(0, 8000), owner_id: p.hubspot_owner_id || null, created_at: tsOrNull(p.hs_timestamp || n.createdAt) }
+  })
+  if (notesRead.unread) warnings.push(`${notesRead.unread} notes in this chunk were not read (per-call cap); run refresh again to pick them up.`)
   const noteById = new Map(noteRows.map((n) => [n.id, n]))
+
+  const emailsRead = emailIds.length ? await batchRead(token, 'emails', EMAIL_PROPS, emailIds, budget.emails) : { results: [], unread: 0 }
+  if (emailsRead.unread) warnings.push(`${emailsRead.unread} emails in this chunk were not read (per-call cap), so some reply counts may be low; run refresh again to pick them up.`)
+  const replyById = new Map()
+  const readIds = new Set(emailsRead.results.map((e) => String(e.id)))
+  for (const e of emailsRead.results) {
+    const p = e.properties || {}
+    if (String(p.hs_email_direction || '').toUpperCase() !== 'INCOMING_EMAIL') continue
+    const auto = isAutoReply({ subject: p.hs_email_subject, text: p.hs_email_text, headers: p.hs_email_headers })
+    replyById.set(String(e.id), { id: String(e.id), auto, at: tsOrNull(p.hs_timestamp || e.createdAt), body: emailNoteBody(p.hs_email_subject, p.hs_email_text, auto) })
+  }
 
   const syncedAt = new Date().toISOString()
   const notesOut = []
   const patches = []
+  let human = 0, autoN = 0
   for (const c of contacts) {
     const nids = assoc.notes.get(c.hs_id) || []
     let latest = c.last_activity_at || null
@@ -387,12 +481,42 @@ async function notesPhase({ d, token, cursor, warnings }) {
       notesOut.push({ id: n.id, contact_id: c.hs_id, kind: 'note', body: n.body, owner_id: n.owner_id, created_at: n.created_at, synced_at: syncedAt })
       if (n.created_at && (!latest || n.created_at > latest)) { latest = n.created_at; latestType = latestType || 'note' }
     }
+    const r = { replies_human: 0, replies_auto: 0, first_human_reply_at: null, last_human_reply_at: null, last_auto_reply_at: null }
+    // Emails of this contact that were not read this time (read cap): keep the counts from the last sync.
+    const emailIdsOf = assoc.emails.get(c.hs_id) || []
+    const allRead = emailIdsOf.every((eid) => readIds.has(String(eid)))
+    for (const eid of emailIdsOf) {
+      const e = replyById.get(eid)
+      if (!e) continue
+      notesOut.push({ id: `email-${e.id}`, contact_id: c.hs_id, kind: 'email_in', body: e.body, owner_id: null, created_at: e.at, synced_at: syncedAt })
+      if (e.auto) {
+        r.replies_auto++
+        if (e.at && (!r.last_auto_reply_at || e.at > r.last_auto_reply_at)) r.last_auto_reply_at = e.at
+      } else {
+        r.replies_human++
+        if (e.at && (!r.first_human_reply_at || e.at < r.first_human_reply_at)) r.first_human_reply_at = e.at
+        if (e.at && (!r.last_human_reply_at || e.at > r.last_human_reply_at)) r.last_human_reply_at = e.at
+      }
+    }
+    human += r.replies_human
+    autoN += r.replies_auto
     const count = ENGAGEMENT_TYPES.reduce((s, t) => s + ((assoc[t].get(c.hs_id) || []).length), 0)
-    patches.push({ hs_id: c.hs_id, notes_count: count, last_activity_at: latest, last_activity_type: latestType })
+    patches.push({ hs_id: c.hs_id, notes_count: count, last_activity_at: latest, last_activity_type: latestType, ...(allRead ? r : {}) })
   }
   for (let i = 0; i < notesOut.length; i += 500) await d.upsert('ca_hs_notes', notesOut.slice(i, i + 500), 'id')
-  if (patches.length) await d.upsert('ca_hs_contacts', patches, 'hs_id')
+  if (patches.length) {
+    try {
+      await d.upsert('ca_hs_contacts', patches, 'hs_id')
+    } catch (e) {
+      // The reply columns come with 008_funnel.sql; until it runs, keep the counts working.
+      if (!/replies_|reply_at|column/i.test(String(e.message || e))) throw e
+      warnings.push('Reply counts were not saved: run Campaign_Analytics/supabase/008_funnel.sql in Supabase.')
+      await d.upsert('ca_hs_contacts', patches.map(({ hs_id, notes_count, last_activity_at, last_activity_type }) => ({ hs_id, notes_count, last_activity_at, last_activity_type })), 'hs_id')
+    }
+  }
   cursor.notes += notesOut.length
+  cursor.replies_human = (Number(cursor.replies_human) || 0) + human
+  cursor.replies_auto = (Number(cursor.replies_auto) || 0) + autoN
   cursor.offset = offset + contacts.length
   await markSync(d, cursor.sync_id, { notes: cursor.notes })
 
@@ -402,12 +526,49 @@ async function notesPhase({ d, token, cursor, warnings }) {
     cursor,
     contacts: cursor.contacts,
     notes: cursor.notes,
+    replies: replies(cursor),
     warnings,
     progress: { phase: 'notes', done: cursor.offset, total: cursor.contacts },
   }
 }
 
+function replies(cursor) {
+  return { human: Number(cursor.replies_human) || 0, auto: Number(cursor.replies_auto) || 0 }
+}
+
+// A full sync covers the whole GSI rule set: only then can "not seen this run"
+// mean "no longer a GSI lead". Dated syncs (from/to) only see part of it.
+export function isFullSync(cursor) {
+  return Boolean(cursor && !cursor.from && !cursor.to)
+}
+
+// Mark contacts this full sync did not touch as out of scope (kept, not
+// deleted) and the ones it touched as in scope. Returns how many are out.
+export async function pruneScope(d, cursor) {
+  const now = new Date().toISOString()
+  const out = await d.update('ca_hs_contacts', { synced_at: `lt.${cursor.started_at}`, select: 'hs_id' }, { in_scope: false, scope_checked_at: now }, { returning: true })
+  await d.update('ca_hs_contacts', { synced_at: `gte.${cursor.started_at}` }, { in_scope: true, scope_checked_at: now })
+  return out.length
+}
+
 async function finish({ d, cursor, warnings }) {
+  let pruned
+  if (isFullSync(cursor)) {
+    if (!cursor.contacts) {
+      warnings.push('This sync found no contacts, so nothing was marked out of scope (check the GSI account list in Settings).')
+    } else {
+      try {
+        // Only prune for a sync this server started: the cursor comes from the browser.
+        const run = cursor.sync_id ? await d.select('ca_hs_sync', { params: { id: `eq.${cursor.sync_id}` }, select: 'started_at,status', limit: 1 }) : []
+        if (!run.length || run[0].status !== 'running' || new Date(run[0].started_at).getTime() !== new Date(cursor.started_at).getTime()) throw new Error('sync record does not match this cursor')
+        pruned = await pruneScope(d, cursor)
+      } catch (e) {
+        warnings.push(`Old contacts could not be marked out of scope (${String(e.message || e).slice(0, 160)}). If the message mentions in_scope, run Campaign_Analytics/supabase/008_funnel.sql in Supabase.`)
+      }
+    }
+  }
   await markSync(d, cursor.sync_id, { status: 'done', finished_at: new Date().toISOString(), contacts: cursor.contacts, notes: cursor.notes })
-  return { done: true, contacts: cursor.contacts, notes: cursor.notes, warnings, progress: { phase: 'done', done: cursor.contacts, total: cursor.contacts } }
+  const out = { done: true, contacts: cursor.contacts, notes: cursor.notes, replies: replies(cursor), warnings, progress: { phase: 'done', done: cursor.contacts, total: cursor.contacts } }
+  if (pruned !== undefined) out.pruned = pruned
+  return out
 }
