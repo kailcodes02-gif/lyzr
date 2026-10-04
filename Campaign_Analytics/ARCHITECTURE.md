@@ -54,6 +54,7 @@ data derived from the September 2026 reports so the UI can be exercised with no 
 | `POST uploads` | `{ channel, kind, file_name, period_start, period_end, columns, rows:[...] }` rows already normalised by `js/csv.mjs` (perf rows keyed `day,campaign_id,ad_id,...`; demo rows `segment,value,campaign,...`). Max 2,000 rows per call; client chunks and sends `upload_id` on continuation | `{ upload_id, inserted }` |
 | `DELETE uploads?id=` | | `{ ok }` (cascades rows) |
 | `GET linkedin` | `?from&to&platform=` | `{ platform, perf:[daily rows in range], demo:[{upload:{...}, rows:[...]}] for uploads overlapping the range], uploads:[...] }`. `platform` = `linkedin` (default), `google`, `meta`, `taboola`, `chatgpt`, `x`, `bing` or `all`; rows carry `platform` (`007_ad_platforms.sql`) |
+| `POST icp-estimate` | `{ accounts:[names], countries?, force? }` editors | Claude headcount estimates per account x country x band -> saved in the `icp_estimates` setting; `{ estimates, model, skipped }` |
 | `GET coverage` | | what the store holds per source: ad platform day coverage and gaps (from uploads + table edges), demographics windows, Instantly/HubSpot/deals/PhantomBuster edges and last sync, action counts. Admin › Data coverage |
 | `GET hubspot/deals` | `?from&to` | GSI/SI pipeline: deals with bucket/substage/amount/owner, weekly snapshots and what changed since last week (`004_deals.sql`) |
 | `POST hubspot/deals-sync` | `{ cursor? }` editors or `X-CA-Cron` | resumable, read-only: deals with the `gsi` property or a company on the GSI list |
@@ -105,6 +106,9 @@ Implementation notes (backend, `functions/api/ca/`), where the built code adds t
   `views/ads-platform.mjs`: uploads of daily exports parsed by `js/ads-csv.mjs`, stored in `ca_li_perf` with
   `platform`), `#/linkedin/phantom` (PhantomBuster outreach), `#/email/instantly`, `#/hubspot/leads`,
   `#/hubspot/messaging`, `#/hubspot/pipeline` (deals), `#/admin`. Old routes redirect.
+- Penetration maps: people reached = company impressions x country share x band share / frequency; shares come
+  from the Country / Job Title exports or, when missing, the `mix_defaults` setting (built-in Apr-Aug 2026 mix).
+  Pools = Apollo `icp_pool` + ratio-derived rows (`expandPool`) + Claude `icp_estimates`; estimated cells are dashed.
 - Sales funnel (Leads page): reached out / replied / demo booked / demo completed / prospect from HubSpot lead
   status, lifecycle and activity properties; rules in `js/lib/leads-agg.mjs` (`funnelCounts`, `isDemoBooked`...).
 - Lead types: LinkedIn lead-form leads are MQL (book a demo, BoFu), conversation ad leads (BoFu), playbook leads

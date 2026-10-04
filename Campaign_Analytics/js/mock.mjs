@@ -36,7 +36,7 @@ export function createMockApi() {
   }
   async function settings() {
     const [bands, icp_pool, accounts, regions] = await Promise.all([seed('band_titles'), seed('icp_pool'), seed('accounts'), seed('regions')]);
-    return { bands, icp_pool, accounts, regions: (regions && regions.regions) || regions, targets: DEFAULT_TARGETS, lead_rules: { conversation: ['conversation', 'message ad', 'inmail'], mql: ['book a demo', 'demo', 'meeting'], playbook: ['playbook', 'roadmap', 'guide', 'workshop', 'webinar'] }, contact_lists: { Accenture: 1200, TCS: 800, Infosys: 650, Wipro: 500, Capgemini: 420 }, editors: EDITORS, email_rules: { fast_click_seconds: 180, gsi_page_counts_as_demo: true, link_rules: [], domains: DEMO_DOMAINS }, gsi_companies: ['Accenture', 'TCS', 'Infosys', 'Wipro', 'HCL', 'Tech Mahindra', 'LTI Mindtree', 'Cognizant', 'Capgemini', 'Deloitte', 'KPMG', 'EY', 'PwC', 'McKinsey', 'BCG', 'Bain', 'Genpact', 'Firstsource'], ...overrides, updated_at: overrides.__updated_at || '2026-09-24T10:00:00.000Z' };
+    return { bands, icp_pool, accounts, regions: (regions && regions.regions) || regions, targets: DEFAULT_TARGETS, mix_defaults: null, icp_estimates: overrides.icp_estimates || [], lead_rules: { conversation: ['conversation', 'message ad', 'inmail'], mql: ['book a demo', 'demo', 'meeting'], playbook: ['playbook', 'roadmap', 'guide', 'workshop', 'webinar'] }, contact_lists: { Accenture: 1200, TCS: 800, Infosys: 650, Wipro: 500, Capgemini: 420 }, editors: EDITORS, email_rules: { fast_click_seconds: 180, gsi_page_counts_as_demo: true, link_rules: [], domains: DEMO_DOMAINS }, gsi_companies: ['Accenture', 'TCS', 'Infosys', 'Wipro', 'HCL', 'Tech Mahindra', 'LTI Mindtree', 'Cognizant', 'Capgemini', 'Deloitte', 'KPMG', 'EY', 'PwC', 'McKinsey', 'BCG', 'Bain', 'Genpact', 'Firstsource'], ...overrides, updated_at: overrides.__updated_at || '2026-09-24T10:00:00.000Z' };
   }
 
   async function get(path, params = {}) {
@@ -105,6 +105,15 @@ export function createMockApi() {
     if (p === 'instantly/sync') { await sleep(500); if (!body.cursor) return { done: false, cursor: { step: 1 }, campaigns: em().api.campaigns.length, days: 0, warnings: [], progress: { phase: 'daily', done: 0, total: em().api.campaigns.length } }; em().api.last_sync = { status: 'done', started_at: new Date(Date.now() - 4000).toISOString(), finished_at: new Date().toISOString() }; return { done: true, campaigns: em().api.campaigns.length, days: em().api.daily.length, warnings: [], progress: { phase: 'done', done: em().api.campaigns.length, total: em().api.campaigns.length } }; }
     if (p === 'phantom/sync') { await sleep(400); return phantomSyncPost(body); }
     if (p === 'hubspot/deals-sync') { await sleep(500); try { return dealsSyncPost(body); } catch (e) { throw new MockError(e.status || 500, e.message); } }
+    if (p === 'icp-estimate') {
+      await sleep(900);
+      const countries = body.countries || ['India', 'United States', 'United Kingdom', 'Saudi Arabia', 'United Arab Emirates', 'Australia', 'Japan', 'Singapore'];
+      const base = { 'India': [40, 90, 260], 'United States': [25, 60, 150], 'United Kingdom': [8, 20, 50], 'Saudi Arabia': [3, 6, 15], 'United Arab Emirates': [4, 8, 20], 'Australia': [5, 10, 25], 'Japan': [3, 6, 15], 'Singapore': [3, 6, 15] };
+      const estimates = []; let seed = 7;
+      for (const company of body.accounts || []) for (const country of countries) { seed = (seed * 9301 + 49297) % 233280; const f = 0.6 + (seed / 233280) * 1.2; const b = base[country] || [2, 4, 10]; estimates.push({ company, country, md: Math.round(b[0] * f), md1: Math.round(b[1] * f), md2: Math.round(b[2] * f), conf: f > 1.3 ? 'Low' : 'Medium', basis: 'Demo estimate from the firm category (no Claude call in sample data)', model: 'demo', estimated_at: new Date().toISOString() }); }
+      overrides.icp_estimates = [...(overrides.icp_estimates || []).filter(e => !estimates.some(x => x.company === e.company && x.country === e.country)), ...estimates];
+      return { estimates, model: 'demo', skipped: [], total: overrides.icp_estimates.length };
+    }
     if (p === 'hubspot/classify') { await sleep(300); return { done: true, classified: 0, remaining: 0, model: 'demo (no Claude call)' }; }
     if (p === 'hubspot/refresh') {
       const steps = { '': ['p2', 96, 41, []], p2: ['p3', 182, 98, ['3 contacts had no email and were skipped']], p3: [null, hubspotMock.contacts.length, Object.values(hubspotMock.notes_by_contact).flat().length, []] };

@@ -45,6 +45,13 @@ export async function render(el, ctx) {
   const missingSegs = Object.keys(NEED).filter(k => !segsPresent.includes(k));
   const needMsg = segs => { const miss = segs.filter(k => !segsPresent.includes(k)); return miss.length ? ctx.ui.empty(`Needs the ${miss.map(k => NEED[k]).join(' and ')} demographics export${miss.length === 1 ? '' : 's'} for these dates. Uploaded so far for this range: ${segsPresent.length ? segsPresent.join(', ') : 'none'}. The file you uploaded is the Company view of the Demographics report: in Campaign Manager › Analyze › Demographics, the dropdown at the top left of the table (it reads "Company Name") also offers Job Title, Job Seniority, Job Function and Country/Region; pick one, press Export, repeat per month, and drop the files above.`) : ''; };
   const uploads = data.uploads || [];
+  // Reach pools: Apollo counts, plus derived rows (category ratios) and Claude estimates (Admin › Reach pools),
+  // so every reached account has a denominator; derived rows are flagged `est` and drawn as estimates.
+  const mix = S.mix_defaults || null;
+  const icpEstimates = Array.isArray(S.icp_estimates) ? S.icp_estimates : [];
+  const poolAll = A.expandPool(icp_pool, accounts, { estimates: icpEstimates });
+  const poolCountries = [...new Set(poolAll.map(p => p.country))];
+  const mixNote = segs => { const miss = segs.filter(k => !segsPresent.includes(k)); if (!miss.length) return ''; const what = miss.map(k => k === 'Job Title' ? 'designation mix' : 'country mix').join(' and '); return `<p class="note" style="font-size:12.5px;margin:0 0 8px"><b>Estimated ${what}.</b> No ${miss.join(' or ')} export covers these dates, so the split uses the ${esc((mix && mix.source) || A.DEFAULT_MIX.source)} (Admin › Reach pools). Upload the ${miss.join(' and ')} demographics export${miss.length === 1 ? '' : 's'} for the real split.</p>`; };
 
   if (!perf.length && !windows.length) {
     el.innerHTML = `<div class="seghead">Ads · LinkedIn</div><h1>LinkedIn ads</h1><p class="sub">${esc(F.rangeLabel(from, to))}</p>` +
@@ -323,11 +330,11 @@ export async function render(el, ctx) {
     let seriesMap = new Map();
     const put = (k, i, v) => { if (!seriesMap.has(k)) seriesMap.set(k, allWin.map(() => 0)); seriesMap.get(k)[i] = v; };
     allWin.forEach((w, i) => {
-      if (qMode === 'band') { const b = A.bandShares(A.segRows(w.rows, 'Job Title'), bands); for (const k of A.BANDS) put(k, i, Math.round(b.share[k] * 1000) / 10); }
+      if (qMode === 'band') { const b = A.bandSharesOrMix(w.rows, bands, mix); for (const k of A.BANDS) put(k, i, Math.round(b.share[k] * 1000) / 10); }
       else if (qMode === 'accounts') { const rowsC = A.segRows(w.rows, 'Company'); const totI = rowsC.reduce((a, r) => a + (Number(r.impressions) || 0), 0); const m = rowsC.filter(r => A.matchAccount(r.value, accounts)).reduce((a, r) => a + (Number(r.impressions) || 0), 0); put('Named target accounts', i, totI ? Math.round(m / totI * 1000) / 10 : 0); }
       else {
         const seg = qMode === 'region' ? 'Country' : 'Job Seniority';
-        const sh = A.segmentShare(w.rows, seg, 'impressions', qMode === 'region' ? r => A.regionOf(r.value, regions) : r => r.value);
+        const sh = qMode === 'region' ? (() => { const g = A.countryShareOrMix(w.rows, mix); const m = new Map(); for (const [ct, v] of g.values) { const k = A.regionOf(ct, regions); m.set(k, (m.get(k) || 0) + v); } return { total: g.total, values: m }; })() : A.segmentShare(w.rows, seg, 'impressions', r => r.value);
         for (const [k, v] of sh.values) put(k, i, sh.total ? Math.round(v / sh.total * 1000) / 10 : 0);
         if (qMode === 'seniority') { const dp = ['Director', 'VP', 'CXO', 'Partner', 'Owner'].reduce((a, k) => a + (sh.values.get(k) || 0), 0); put('Director and above', i, sh.total ? Math.round(dp / sh.total * 1000) / 10 : 0); }
       }
@@ -338,11 +345,12 @@ export async function render(el, ctx) {
     const palette = ['#043E77', '#FE4B1E', '#1F2022', '#A8A298', '#6B675F', '#CFCCC7', '#8A857C', '#B8B4AD'];
     const cv = el.querySelector('#qualChart'); const old = charts.find(c => c.canvas === cv); if (old) { old.destroy(); charts = charts.filter(c => c !== old); }
     if (!allWin.length) { el.querySelector('#qualTable').innerHTML = ctx.ui.empty('No demographics export uploaded yet.'); return; }
-    { const need = qMode === 'region' ? ['Country'] : qMode === 'seniority' ? ['Job Seniority'] : qMode === 'band' ? ['Job Title'] : []; const allRows = allWin.flatMap(w => w.rows); const have = A.segmentsPresent(allRows); const miss = need.filter(k => !have.includes(k)); if (miss.length) { el.querySelector('#qualTable').innerHTML = ctx.ui.empty(`Needs the ${miss.map(k => NEED[k]).join(' and ')} demographics export (uploaded so far: ${have.join(', ') || 'none'}).`); { const cv = el.querySelector('#qualChart'); const old = charts.find(c => c.canvas === cv); if (old) { old.destroy(); charts = charts.filter(c => c !== old); } } return; } }
+    { const need = qMode === 'seniority' ? ['Job Seniority'] : []; const allRows = allWin.flatMap(w => w.rows); const have = A.segmentsPresent(allRows); const miss = need.filter(k => !have.includes(k)); if (miss.length) { el.querySelector('#qualTable').innerHTML = ctx.ui.empty(`Needs the ${miss.map(k => NEED[k]).join(' and ')} demographics export (uploaded so far: ${have.join(', ') || 'none'}).`); { const cv = el.querySelector('#qualChart'); const old = charts.find(c => c.canvas === cv); if (old) { old.destroy(); charts = charts.filter(c => c !== old); } } return; } }
     chart(cv, { type: 'line', data: { labels, datasets: keys.map((k, i) => ({ label: k, data: seriesMap.get(k), borderColor: palette[i % palette.length], backgroundColor: palette[i % palette.length], borderWidth: k === 'Director and above' || i === 0 ? 3 : 2, pointRadius: 3, tension: .25 })) },
       options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmt(c.raw, 1)}%` } } }, scales: { y: { beginAtZero: true, ticks: { callback: v => v + '%' } }, x: { grid: { display: false } } } } });
     const lastI = allWin.length - 1;
-    el.querySelector('#qualTable').innerHTML = `<table><thead><tr><th class="l">${qMode === 'region' ? 'Region' : qMode === 'seniority' ? 'Seniority' : qMode === 'band' ? 'Band' : 'Share'}</th>${labels.map(l => `<th>${esc(l)}</th>`).join('')}<th>Change, first to last</th></tr></thead><tbody>${keys.map(k => { const v = seriesMap.get(k); const d = lastI > 0 ? v[lastI] - v[0] : null; return `<tr><td class="l"><b>${esc(k)}</b></td>${v.map(x => `<td>${fmt(x, 1)}%</td>`).join('')}<td class="${d == null ? 'muted' : d >= 0 ? 'up' : 'down'}">${d == null ? '–' : (d > 0 ? '+' : '') + fmt(d, 1) + ' pts'}</td></tr>`; }).join('')}</tbody></table>`;
+    const qualNote = qMode === 'band' ? mixNote(['Job Title']) : qMode === 'region' ? mixNote(['Country']) : '';
+    el.querySelector('#qualTable').innerHTML = qualNote + `<table><thead><tr><th class="l">${qMode === 'region' ? 'Region' : qMode === 'seniority' ? 'Seniority' : qMode === 'band' ? 'Band' : 'Share'}</th>${labels.map(l => `<th>${esc(l)}</th>`).join('')}<th>Change, first to last</th></tr></thead><tbody>${keys.map(k => { const v = seriesMap.get(k); const d = lastI > 0 ? v[lastI] - v[0] : null; return `<tr><td class="l"><b>${esc(k)}</b></td>${v.map(x => `<td>${fmt(x, 1)}%</td>`).join('')}<td class="${d == null ? 'muted' : d >= 0 ? 'up' : 'down'}">${d == null ? '–' : (d > 0 ? '+' : '') + fmt(d, 1) + ' pts'}</td></tr>`; }).join('')}</tbody></table>`;
   };
   ctx.ui.seg(el.querySelector('#qualSeg'), [{ value: 'region', label: 'Regions' }, { value: 'seniority', label: 'Seniority' }, { value: 'band', label: 'Designation bands' }, { value: 'accounts', label: 'Target accounts' }], v => { qMode = v; drawQual(); }, qMode);
   drawQual();
@@ -353,8 +361,8 @@ export async function render(el, ctx) {
     const m = new Map();
     const put = (k, imp) => { if (imp) m.set(k, (m.get(k) || 0) + imp / rf); };
     if (dim === 'account') for (const r of A.segRows(w.rows, 'Company')) put(A.matchAccount(r.value, accounts) || 'Other pages', Number(r.impressions) || 0);
-    else if (dim === 'band') { const b = A.bandShares(A.segRows(w.rows, 'Job Title'), bands, 'impressions'); for (const k of A.BANDS) put(k, b.counts[k] || 0); }
-    else { const sh = A.segmentShare(w.rows, 'Country', 'impressions', r => A.regionOf(r.value, regions)); for (const [k, v] of sh.values) put(k, v); }
+    else if (dim === 'band') { const b = A.bandSharesOrMix(w.rows, bands, mix); for (const k of A.BANDS) put(k, b.counts[k] || 0); }
+    else { const g = A.countryShareOrMix(w.rows, mix); const compTot = g.estimated ? A.segRows(w.rows, 'Company').reduce((a, r) => a + (Number(r.impressions) || 0), 0) : 1; const byRegion = new Map(); for (const [ct, v] of g.values) { const k = A.regionOf(ct, regions); byRegion.set(k, (byRegion.get(k) || 0) + (g.estimated ? v * compTot : v)); } for (const [k, v] of byRegion) put(k, v); }
     return m;
   });
   const sumMaps = maps => { const t = new Map(); for (const m of maps) for (const [k, v] of m) t.set(k, (t.get(k) || 0) + v); return t; };
@@ -365,8 +373,7 @@ export async function render(el, ctx) {
     const box = el.querySelector('#reachHeat'); if (!box) return;
     reachPrev = p;
     if (!windows.length) { box.innerHTML = ctx.ui.empty('No demographics export covers this range. Upload one at the top of this page.'); return; }
-    if (reachDim === 'band' && needMsg(['Job Title'])) { box.innerHTML = needMsg(['Job Title']); return; }
-    if (reachDim === 'region' && needMsg(['Country'])) { box.innerHTML = needMsg(['Country']); return; }
+    const reachNote = reachDim === 'band' ? mixNote(['Job Title']) : reachDim === 'region' ? mixNote(['Country']) : '';
     const prevWindows = (await prevBundle(p)).demo; if (!el.isConnected || p !== reachPrev) return;
     const prev = p;
     const curMaps = reachMaps(windows, reachDim), curTot = sumMaps(curMaps);
@@ -393,24 +400,25 @@ export async function render(el, ctx) {
       const top = [...un.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
       if (top.length) box.insertAdjacentHTML('beforeend', `<p class="muted" style="font-size:12.5px;margin-top:8px"><b>Pages not matched to any account</b> (${fmt(un.size)}; add them as aliases in Admin › GSI accounts if they belong to one): ${top.map(([k, v]) => `${esc(k)} (${fmt(v / rf)})`).join(', ')}.</p>`);
     }
+    if (reachNote) box.insertAdjacentHTML('afterbegin', reachNote);
     box.querySelectorAll('td.c').forEach(td => { if (/^(cur|cmp|chg)$/.test(td.dataset.c)) { td.style.background = 'var(--offwhite)'; td.style.color = ''; if (td.dataset.c === 'chg') td.classList.add(/^\+/.test(td.textContent) ? 'up' : /^-/.test(td.textContent) ? 'down' : 'muted'); } });
   };
   ctx.ui.seg(el.querySelector('#reachSeg'), [{ value: 'account', label: 'Accounts' }, { value: 'band', label: 'Designation bands' }, { value: 'region', label: 'Regions' }], v => { reachDim = v; drawReach(); }, reachDim);
   drawReach();
 
   // ---- penetration cube (company x region x band, cumulative) ----
-  const cube = A.penetrationCube({ windows, accounts, icp_pool, bands, frequency, regions });
+  let cube = A.penetrationCube({ windows, accounts, icp_pool: poolAll, bands, frequency, regions, mix });
   let cubeMetric = 'pct', cubeRegion = 'all', cubeLimit = 25; const cubeOpen = new Set();
   const cubeVal = (t, b) => cubeMetric === 'pct' ? t[b].pct : cubeMetric === 'reached' ? t[b].reached : t[b].pool;
   const cubeCell = (t, b, who) => {
     if (!t) return { v: null, text: '·' };
     const x = t[b];
-    if (cubeMetric === 'pct') { if (x.pct == null || !x.reached) return { v: null, text: x.reached ? '·' : '–', sub: x.reached ? `${fmt(x.reached)} reached, no pool` : '', title: `${who} · ${b}: ${x.reached ? 'no Apollo headcount for this pool' : 'nobody reached'}` }; return { v: A.penLevel(x.pct), text: fmt(x.pct, x.pct < 10 ? 1 : 0) + '%', sub: `${fmt(x.reached)} / ${fmt(x.pool)}`, title: `${who} · ${b}\nPeople reached (est.): ${fmt(x.reached)}\nICP pool: ${fmt(x.pool)}\nPenetration: ${fmt(x.pct, 1)}%` }; }
+    const estTag = x.est_pool ? ' est.' : '';
+    if (cubeMetric === 'pct') { if (x.pct == null || !x.reached) return { v: null, text: x.reached ? '·' : '–', sub: x.reached ? `${fmt(x.reached)} reached, no pool` : '', title: `${who} · ${b}: ${x.reached ? 'no headcount for this pool yet (estimate it with Claude below)' : 'nobody reached'}` }; return { v: A.penLevel(x.pct), text: fmt(x.pct, x.pct < 10 ? 1 : 0) + '%', sub: `${fmt(x.reached)} / ${fmt(x.pool)}${estTag}`, title: `${who} · ${b}\nPeople reached (est.): ${fmt(x.reached)}\nPool: ${fmt(x.pool)}${x.est_pool ? ' (estimated: ' + (t.All.sources || []).join('; ') + ')' : ' (Apollo)'}\nPenetration: ${fmt(x.pct, 1)}%` }; }
     const v = cubeVal(t, b); return { v: v || 0, text: v ? fmt(v) : '–', title: `${who} · ${b}: ${fmt(v)} ${cubeMetric === 'reached' ? 'people reached (est.)' : 'people in the ICP pool'}` };
   };
   const drawCube = () => {
     const box = el.querySelector('#cubeHeat'); if (!box) return;
-    if (needMsg(['Job Title', 'Country'])) { box.innerHTML = needMsg(['Job Title', 'Country']); el.querySelector('#cubeCount').textContent = ''; el.querySelector('#cubeLegend').innerHTML = ''; return; }
     const list = cube.accounts.filter(a => cubeRegion === 'all' || a.regions[cubeRegion]);
     if (cubeRegion !== 'all') list.sort((x, y) => (y.regions[cubeRegion].All.reached || 0) - (x.regions[cubeRegion].All.reached || 0));
     const shown = list.slice(0, cubeLimit);
@@ -426,12 +434,27 @@ export async function render(el, ctx) {
     ctx.heat.renderHeat(box, { corner: cubeRegion === 'all' ? 'Company / region' : `Company · ${cubeRegion}`, rows, cols, sortRows: false, scale: cubeMetric === 'pct' ? 'linear' : 'sqrt', max: cubeMetric === 'pct' ? 5 : undefined,
       cell: (r, c) => { const [t, who] = src.get(r) || []; return cubeCell(t, c, who); },
       onClick: cubeRegion === 'all' ? (r) => { if (r.includes('\u0001')) return; if (cubeOpen.has(r)) cubeOpen.delete(r); else cubeOpen.add(r); drawCube(); } : undefined });
+    box.querySelectorAll('td.c').forEach(td => { const [t] = src.get(td.dataset.r) || []; const x = t && t[td.dataset.c]; if (x && x.est_pool) td.classList.add('est'); });
+    const noPool = cube.accounts.filter(a => !a.total.All.has_pool).map(a => a.account);
+    const estN = poolAll.filter(p => p.est).length, claudeN = icpEstimates.length;
+    box.insertAdjacentHTML('afterbegin', mixNote(['Job Title', 'Country']) + `<p class="muted" style="font-size:12.5px;margin:0 0 8px">Pools: ${fmt(icp_pool.length)} Apollo counts${estN ? `, ${fmt(estN)} derived or estimated rows (dashed cells)` : ''}${claudeN ? `, ${fmt(claudeN)} from Claude` : ''}.${noPool.length ? ` <b>${fmt(noPool.length)} reached account${noPool.length === 1 ? '' : 's'} with no headcount yet</b>: ${esc(noPool.slice(0, 8).join(', '))}${noPool.length > 8 ? '…' : ''}.${isEditorOf(ctx) ? ` <button class="btn tiny" data-estimate>Estimate with Claude</button>` : ''}` : ''}</p>`);
+    const estBtn = box.querySelector('[data-estimate]');
+    if (estBtn) estBtn.onclick = async () => {
+      estBtn.disabled = true; estBtn.innerHTML = '<span class="spin"></span> Estimating';
+      try {
+        let done = 0; const all = [];
+        for (let i = 0; i < noPool.length; i += 12) { const r = await ctx.api.post('icp-estimate', { accounts: noPool.slice(i, i + 12), countries: poolCountries }); all.push(...(r.estimates || [])); done += (r.estimates || []).length; estBtn.innerHTML = `<span class="spin"></span> ${fmt(done)} rows so far`; }
+        try { ctx.settings = await ctx.api.get('settings'); } catch { /* keep */ }
+        ctx.toast(`${fmt(all.length)} headcount estimates saved. Redrawing.`);
+        render(el, ctx);
+      } catch (e) { estBtn.disabled = false; estBtn.textContent = 'Estimate with Claude'; ctx.toast('Estimate failed: ' + (e.message || e), 'err'); }
+    };
     box.querySelectorAll('tr.child td.c').forEach(td => td.classList.remove('click'));
     box.querySelectorAll('tr.grp td.l').forEach(td => { td.style.cursor = 'pointer'; td.onclick = () => { const k = td.parentElement.querySelector('td.c')?.dataset.r; if (!k) return; if (cubeOpen.has(k)) cubeOpen.delete(k); else cubeOpen.add(k); drawCube(); }; });
     el.querySelector('#cubeCount').innerHTML = `${fmt(shown.length)} of ${fmt(list.length)} companies${list.length > cubeLimit ? ` · <a href="#" data-more>show all</a>` : cubeLimit > 25 && list.length > 25 ? ` · <a href="#" data-less>show top 25</a>` : ''}`;
     const more = el.querySelector('#cubeCount [data-more]'); if (more) more.onclick = e => { e.preventDefault(); cubeLimit = 10000; drawCube(); };
     const less = el.querySelector('#cubeCount [data-less]'); if (less) less.onclick = e => { e.preventDefault(); cubeLimit = 25; drawCube(); };
-    el.querySelector('#cubeLegend').innerHTML = cubeMetric === 'pct' ? [['under 5%', 1], ['5 to 15%', 2], ['15 to 35%', 3], ['35 to 70%', 4], ['over 70%', 5]].map(([l, k]) => `<span><i style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px;background:${ctx.heat.cellColor(k, 5, { scale: 'linear' })}"></i>${l}</span>`).join('') + '<span>· = reached but no Apollo pool</span><span>Over 100% = the same people were reached more than once across windows</span>' : ctx.heat.legend('orange');
+    el.querySelector('#cubeLegend').innerHTML = cubeMetric === 'pct' ? [['under 5%', 1], ['5 to 15%', 2], ['15 to 35%', 3], ['35 to 70%', 4], ['over 70%', 5]].map(([l, k]) => `<span><i style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px;background:${ctx.heat.cellColor(k, 5, { scale: 'linear' })}"></i>${l}</span>`).join('') + '<span><i style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px;border:1px dashed var(--ink2)"></i>dashed = estimated pool</span><span>· = reached but no pool</span><span>Over 100% = the same people were reached more than once across windows</span>' : ctx.heat.legend('orange');
   };
   ctx.ui.seg(el.querySelector('#cubeMetric'), [{ value: 'pct', label: 'Penetration %' }, { value: 'reached', label: 'People reached' }, { value: 'pool', label: 'ICP pool' }], v => { cubeMetric = v; drawCube(); }, cubeMetric);
   ctx.ui.seg(el.querySelector('#cubeRegion'), [{ value: 'all', label: 'All regions' }, ...cube.regions.map(r => ({ value: r, label: r }))], v => { cubeRegion = v; drawCube(); }, cubeRegion);
@@ -447,16 +470,16 @@ export async function render(el, ctx) {
         const wins = windows.map(w => ({ upload: w.upload, rows: w.rows.filter(r => r.campaign === tag) })).filter(w => w.rows.length);
         const rows = wins.flatMap(w => w.rows);
         const have = A.segmentsPresent(rows);
-        const cube = A.penetrationCube({ windows: wins, accounts, icp_pool, bands, frequency, regions });
+        const cube = A.penetrationCube({ windows: wins, accounts, icp_pool: poolAll, bands, frequency, regions, mix });
         const accs = cube.accounts.slice(0, 12);
         const regionsSeen = cube.regions;
         const totalReach = cube.accounts.reduce((a, x) => a + x.total.All.reached, 0);
         const bandTot = {}; for (const b of A.PEN_BANDS) bandTot[b] = cube.accounts.reduce((a, x) => a + x.total[b].reached, 0);
-        const topBand = A.PEN_BANDS.sort((x, y) => bandTot[y] - bandTot[x])[0];
+        const topBand = [...A.PEN_BANDS].sort((x, y) => bandTot[y] - bandTot[x])[0];
         const regionTot = {}; for (const a of cube.accounts) for (const [r, t] of Object.entries(a.regions)) regionTot[r] = (regionTot[r] || 0) + t.All.reached;
         const topRegion = Object.entries(regionTot).sort((a, b) => b[1] - a[1])[0];
         const best = cube.accounts.filter(a => a.total.All.pct != null).sort((a, b) => b.total.All.pct - a.total.All.pct)[0];
-        let out = `<div class="card" style="font-size:13.5px"><b>${esc(tag)}</b>: ${esc(wins.map(w => winLabel(w)).join('; '))}. Breakdowns: ${esc(have.join(', ') || 'none')}${['Job Title', 'Country'].some(k => !have.includes(k)) ? ` <span class="down">(needs ${['Job Title', 'Country'].filter(k => !have.includes(k)).join(' and ')} to split by band and region)</span>` : ''}.
+        let out = `<div class="card" style="font-size:13.5px"><b>${esc(tag)}</b>: ${esc(wins.map(w => winLabel(w)).join('; '))}. Breakdowns: ${esc(have.join(', ') || 'none')}${['Job Title', 'Country'].some(k => !have.includes(k)) ? ` <span class="muted">(${['Job Title', 'Country'].filter(k => !have.includes(k)).join(' and ')} split estimated from the programme mix)</span>` : ''}.
           ${accs.length ? `About <b>${fmt(totalReach)}</b> people at target accounts reached (impressions ÷ ${fmt(frequency, 1)}); most were <b>${esc(accs[0].account)}</b> (${fmt(accs[0].total.All.reached)})${topBand && bandTot[topBand] ? `, the <b>${esc(topBand)}</b> band saw the most (${fmt(bandTot[topBand])})` : ''}${topRegion ? `, mainly in <b>${esc(topRegion[0])}</b> (${fmt(topRegion[1])})` : ''}${best ? `. Deepest penetration: <b>${esc(best.account)}</b> at ${pct(best.total.All.pct, 0)} of its pool` : ''}.` : 'No company page here matches a target account.'}</div>`;
         if (accs.length) {
           out += `<div class="grid g2" style="margin-top:12px"><div class="card"><h3>People reached by account and region</h3><div class="tblwrap" style="border:none" id="personGeo"></div></div><div class="card"><h3>People reached by account and designation</h3><div class="tblwrap" style="border:none" id="personBand"></div></div></div>`;
@@ -573,20 +596,21 @@ export async function render(el, ctx) {
     metricSeg('funSeg', m => shareMap('funHeat', 'Job Function', m, r => r.value, 'Function')); shareMap('funHeat', 'Job Function', metricsPresent[0], r => r.value, 'Function');
 
     // (f) penetration
-    const countries = [...new Set(icp_pool.map(p => p.country))];
+    const countries = poolCountries;
     el.querySelector('#penLegend').innerHTML = [['under 5%', 1], ['5 to 15%', 2], ['15 to 35%', 3], ['35 to 70%', 4], ['over 70%', 5]].map(([l, k]) => `<span><i style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px;background:${ctx.heat.cellColor(k, 5, { scale: 'linear' })}"></i>${l}</span>`).join('') + '<span><i style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px;border:1px dashed var(--g300)"></i>no headcount</span>';
     el.querySelector('#penMethod').innerHTML = `Method. Estimated people reached = impressions ÷ ${fmt(frequency, 1)} (frequency, editable in Settings › Targets). Penetration = estimated people reached ÷ Apollo headcount for the company, country and band. Company × country allocation uses the global country share because LinkedIn exports no cross-tab; the band split uses the Job Title mix of the same windows. Windows included: ${windows.map(w => esc(winLabel(w))).join('; ')}.`;
     const detail = el.querySelector('#penDetail');
     let penBand = 'All';
     const drawPen = () => {
-      const R = A.penetration({ windows, accounts, icp_pool, bands, frequency, band: penBand, countries });
+      const R = A.penetration({ windows, accounts, icp_pool: poolAll, bands, frequency, band: penBand, countries, mix });
       const byKey = new Map(R.cells.map(c => [c.account + '||' + c.country, c]));
       const rows = R.accounts.map(a => ({ key: a, label: a, sub: (accounts.find(x => x.name === a) || {}).category || '' }));
-      if (needMsg(['Job Title', 'Country'])) { el.querySelector('#penHeat').innerHTML = needMsg(['Job Title', 'Country']); return; }
       if (!rows.length) { el.querySelector('#penHeat').innerHTML = ctx.ui.empty('No company page in these windows matches a target account.'); return; }
       ctx.heat.renderHeat(el.querySelector('#penHeat'), { corner: 'Account', rows, cols: countries.map(c => ({ key: c, label: c.replace('United ', 'U.') })), scale: 'linear', max: 5, sortRows: false,
         cell: (r, c) => { const x = byKey.get(r + '||' + c); if (!x || x.pool_band == null) return { v: null, text: '·', title: `${r} · ${c}: no headcount in the ICP pool` }; return { v: A.penLevel(x.pct), text: fmt(x.pct, x.pct < 10 ? 1 : 0) + '%', sub: `${fmt(x.reached_band)} / ${fmt(x.pool_band)}`, title: `${r} · ${c} · ${penBand}\nPeople reached (est.): ${fmt(x.reached_band)}\nICP pool: ${fmt(x.pool_band)}\nPenetration: ${fmt(x.pct, 1)}%\nClick for detail` }; },
         onClick: (r, c) => showDetail(r, c, byKey.get(r + '||' + c)) });
+      el.querySelector('#penHeat').querySelectorAll('td.c').forEach(td => { const x = byKey.get(td.dataset.r + '||' + td.dataset.c); if (x && x.pool && x.pool.est) td.classList.add('est'); });
+      el.querySelector('#penHeat').insertAdjacentHTML('afterbegin', mixNote(['Job Title', 'Country']));
       penSummary = R.cells.filter(c => c.pct != null).sort((a, b) => b.pct - a.pct);
     };
     const showDetail = (acc, country, x) => {
@@ -595,7 +619,7 @@ export async function render(el, ctx) {
       const tt = reached.MD + reached['MD-1'] + reached['MD-2'], pt = pool ? pool.MD + pool['MD-1'] + pool['MD-2'] : 0;
       const cres = A.creativesForCountry(perf, country, countries);
       detail.innerHTML = `<div class="card" style="background:var(--soft)"><h3>${esc(acc)} · ${esc(country)}</h3><div class="grid g2" style="margin-top:8px"><div>
-        <div class="tblwrap"><table><thead><tr><th class="l">Designation</th><th>People reached (est.)</th><th>ICP pool (Apollo)</th><th>Penetration</th></tr></thead><tbody>${['MD', 'MD-1', 'MD-2'].map(bandRow).join('')}<tr class="total"><td class="l">All ICP</td><td>${fmt(tt)}</td><td>${pt ? fmt(pt) : '–'}</td><td>${pt ? fmt(tt / pt * 100, 1) + '%' : '–'}</td></tr></tbody></table></div>
+        <div class="tblwrap"><table><thead><tr><th class="l">Designation</th><th>People reached (est.)</th><th>ICP pool${pool && pool.est ? ' (estimated)' : ' (Apollo)'}</th><th>Penetration</th></tr></thead><tbody>${['MD', 'MD-1', 'MD-2'].map(bandRow).join('')}<tr class="total"><td class="l">All ICP</td><td>${fmt(tt)}</td><td>${pt ? fmt(pt) : '–'}</td><td>${pt ? fmt(tt / pt * 100, 1) + '%' : '–'}</td></tr></tbody></table></div>
         <p class="muted" style="font-size:12.5px;margin-top:8px">People reached is impressions ÷ ${fmt(frequency, 1)} spread by country share and title mix, summed over the included windows, so a person seen in two windows counts twice. Unique people sit below the number shown.</p></div>
         <div><div class="tblwrap"><table><thead><tr><th class="l">Best creatives serving ${esc(country)}</th><th>Impr.</th><th>CTR</th><th>Leads</th></tr></thead><tbody>${cres.map(c => `<tr><td class="l" style="white-space:normal;min-width:200px">${esc(shortName(c.ad_name, 70))}${c.exclusive ? ' <span class="tag">named geography</span>' : ''}<br><span class="muted" style="font-size:12px">${esc(shortName(c.campaign || '', 60))}</span></td><td>${c.impressions ? fmt(c.impressions) : fmt(c.sends) + ' sends'}</td><td>${pct(c.ctr, 2)}</td><td>${fmt(c.leads)}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">No creatives in range for this country</td></tr>'}</tbody></table></div>
         <p class="muted" style="font-size:12.5px;margin-top:8px">Creatives are matched by the geography written in the ad set name; ad sets without one ran to shared audiences, so every account in that audience saw the same ads.</p></div></div></div>`;

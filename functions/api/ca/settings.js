@@ -64,6 +64,18 @@ function validate(key, value) {
       for (const k of ['mql', 'conversation', 'playbook']) { const list = Array.isArray(value[k]) ? value[k] : String(value[k] || '').split(/\n|,/); out[k] = [...new Set(list.map((x) => String(x).trim().toLowerCase()).filter(Boolean))] }
       return out
     }
+    case 'mix_defaults': {
+      if (value === null) return null
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw Object.assign(new Error('mix_defaults must be an object { country_share:{}, band_share:{} } or null'), { status: 400 })
+      const out = {}
+      for (const k of ['country_share', 'band_share']) if (value[k]) { out[k] = {}; for (const [c, v] of Object.entries(value[k])) { const n = Number(v); if (Number.isFinite(n) && n >= 0) out[k][String(c).trim()] = n } }
+      if (value.source) out.source = String(value.source).slice(0, 200)
+      return out
+    }
+    case 'icp_estimates': {
+      if (!Array.isArray(value)) throw Object.assign(new Error('icp_estimates must be an array'), { status: 400 })
+      return value.filter((e) => e && e.company && e.country).map((e) => ({ company: String(e.company).trim(), country: String(e.country).trim(), md: Math.max(0, Math.round(Number(e.md) || 0)), md1: Math.max(0, Math.round(Number(e.md1) || 0)), md2: Math.max(0, Math.round(Number(e.md2) || 0)), conf: ['High', 'Medium', 'Low'].includes(e.conf) ? e.conf : 'Low', basis: String(e.basis || '').slice(0, 300), model: e.model ? String(e.model).slice(0, 60) : null, estimated_at: e.estimated_at || null }))
+    }
     case 'contact_lists': {
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw Object.assign(new Error('contact_lists must be an object of account name to number'), { status: 400 })
       return Object.fromEntries(Object.entries(value).map(([k, v]) => [String(k).trim(), Number(v)]).filter(([k, v]) => k && Number.isFinite(v) && v >= 0))

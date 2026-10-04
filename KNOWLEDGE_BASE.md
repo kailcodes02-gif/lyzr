@@ -523,6 +523,20 @@ Access if the data ever becomes confidential.
   Lyzr board carry a vertical tag; owners/view without ?email= shows the signed-in user instead of a blank
   "Awaiting first sign-in" profile.
 
+### 2026-10-04, Campaign Analytics: penetration maps always render, headcount estimates
+- Modelled on GSI_Paid_Ads_Penetration_x_Engagement.html. When a date range has only the Company demographics
+  export, the band, region, "where the ads land" and penetration maps now use a default audience mix (country
+  share and MD / MD-1 / MD-2 share from the Apr to Aug 2026 report, `DEFAULT_MIX` in linkedin-agg; Admin ›
+  Reach pools › Estimated mix overrides it) and say so in an orange note instead of showing "Needs ...".
+- Pools: `expandPool()` fills missing (company, country, band) counts the way the report's "ratio est." did
+  (bands from the category's MD-1/MD and MD-2/MD ratios, countries from the category's country mix). Accounts
+  with no count at all: "Estimate with Claude" on the penetration map calls `POST /api/ca/icp-estimate`
+  (Sonnet 5, forced tool, 12 accounts per call, 8 ICP countries, confidence + one-line basis), saved in the
+  `icp_estimates` setting (Admin › Reach pools shows them; an Apollo count always wins). Estimated cells are
+  dashed, cell titles say the source; the old per-country map and the per-person maps use the same pools.
+- Bug fixed on the way: the person section sorted the shared `PEN_BANDS` array in place, which swapped the
+  MD and MD-2 columns on every re-render (now frozen).
+
 ### 2026-10-04, Campaign Analytics: real GSI leads only, GSI-campaign tagging, human vs auto replies
 - Finding: ~15,000 rows in ca_hs_contacts came from the first pull rule (anyone at a GSI company, no form);
   HubSpot has only 3,111 form submissions since April across all companies. The Leads page now counts only

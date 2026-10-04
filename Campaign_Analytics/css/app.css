@@ -270,3 +270,7 @@ h2 .cmpbox,.sub .cmpbox{font-family:var(--font);text-transform:none;letter-spaci
 /* top bar: data age + manual refresh (js/pagecache.mjs) */
 .refreshbox{display:inline-flex;align-items:center;gap:8px;margin-left:12px;white-space:nowrap}
 .refreshbox #dataAt{font-size:11.5px}
+
+/* estimated pool cells and the estimated-mix note */
+.heat td.c.est{box-shadow:inset 0 0 0 1px transparent;outline:1px dashed var(--ink2);outline-offset:-2px}
+.note{background:rgba(254,75,30,.06);border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 6px 6px 0;color:var(--ink)}

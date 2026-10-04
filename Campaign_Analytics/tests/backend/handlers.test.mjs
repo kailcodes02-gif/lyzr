@@ -189,7 +189,7 @@ test('settings GET: seeds merged under ca_settings rows', async () => {
   const r = await run(settings.onRequestGet, req('GET', 'settings', { token: 'tok-viewer' }), w)
   assert.equal(r.status, 200)
   const b = r.body
-  assert.deepEqual(Object.keys(b).sort(), ['accounts', 'bands', 'contact_lists', 'db', 'editors', 'email_rules', 'gsi_companies', 'icp_pool', 'lead_rules', 'regions', 'source', 'targets', 'updated_at'])
+  assert.deepEqual(Object.keys(b).sort(), ['accounts', 'bands', 'contact_lists', 'db', 'editors', 'email_rules', 'gsi_companies', 'icp_estimates', 'icp_pool', 'lead_rules', 'mix_defaults', 'regions', 'source', 'targets', 'updated_at'])
   assert.deepEqual(b.targets, { leads_per_month: 250, demo_mqls_per_month: 30, frequency: 3.5, reach_frequency: 3 })
   assert.equal(b.source.targets, 'db')
   assert.equal(b.source.accounts, 'seed')

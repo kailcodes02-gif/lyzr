@@ -440,3 +440,35 @@ test('aggregateRows: a person export beside the all-campaign export is not count
   assert.equal(rows.filter(r => r.segment === 'Country').reduce((a, r) => a + r.impressions, 0), 25);    // no untagged Country export: tagged one counts
   assert.equal(A.aggregateRows([anju]).length, 2);                                                        // only a tagged export: it is the data
 });
+
+test('mix fallback: Company-only exports still give a country and band split, flagged as estimated', () => {
+  const accounts = [{ name: 'EY', aliases: ['EY'] }];
+  const icp_pool = [{ company: 'EY', country: 'India', md: 1000, md1: 2000, md2: 3000 }, { company: 'EY', country: 'United States', md: 500, md1: 500, md2: 500 }];
+  const rows = [{ segment: 'Company', value: 'EY', impressions: 3500 }];
+  const P = A.penetration({ windows: [{ rows }], accounts, icp_pool, bands: {}, frequency: 3.5, band: 'All', countries: ['India', 'United States'] });
+  assert.deepEqual(P.estimated, { country: true, band: true });
+  const india = P.cells.find(c => c.country === 'India');
+  // 3500 x 0.4838 (India share) x 0.1127 (MD share) / 3.5 = 54.5 MDs reached
+  assert.equal(Math.round(india.reached.MD), 55);
+  const mix = { country_share: { India: 1 }, band_share: { MD: 1, 'MD-1': 0, 'MD-2': 0, Other: 0 } };
+  const P2 = A.penetration({ windows: [{ rows }], accounts, icp_pool, bands: {}, frequency: 3.5, band: 'MD', countries: ['India', 'United States'], mix });
+  assert.equal(Math.round(P2.cells.find(c => c.country === 'India').reached.MD), 1000);
+  // with a real Country export nothing is estimated for country
+  const rows2 = [...rows, { segment: 'Country', value: 'India', impressions: 100 }];
+  assert.deepEqual(A.penetration({ windows: [{ rows: rows2 }], accounts, icp_pool, bands: {}, countries: ['India'] }).estimated, { country: false, band: true });
+});
+
+test('expandPool: missing bands and countries are derived from the category ratios, Claude estimates fill empty accounts', () => {
+  const accounts = [{ name: 'A', category: 'Big Four' }, { name: 'B', category: 'Big Four' }, { name: 'C', category: 'Global SI' }];
+  const pool = [
+    { company: 'A', country: 'India', md: 100, md1: 200, md2: 300 }, { company: 'A', country: 'United States', md: 300, md1: 300, md2: 300 },
+    { company: 'B', country: 'India', md: 50 },                       // MD only -> bands derived
+  ];
+  const out = A.expandPool(pool, accounts, { countries: ['India', 'United States', 'Japan'], estimates: [{ company: 'C', country: 'India', md: 10, md1: 20, md2: 30, conf: 'Low', basis: 'Claude' }] });
+  const get = (c, ct) => out.find(p => p.company === c && p.country === ct);
+  assert.equal(get('A', 'India').est, false);
+  assert.equal(get('B', 'India').est, true); assert.equal(get('B', 'India').md1, Math.round(50 * 500 / 400)); // Big Four MD-1/MD ratio = (200+300)/(100+300)
+  assert.ok(get('B', 'United States'), 'B gets a US row from the Big Four country mix'); assert.equal(get('B', 'United States').est, true);
+  assert.equal(get('A', 'Japan'), undefined, 'no Big Four row in Japan, so nothing to derive from');
+  assert.equal(get('C', 'India').source, 'Claude estimate'); assert.equal(get('C', 'India').md2, 30);
+});

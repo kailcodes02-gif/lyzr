@@ -229,21 +229,84 @@ export function segmentShare(rows, segment, metric, labelFn = r => r.value) {
   return { total, values: m };
 }
 
+// ---- audience mix when a demographics breakdown is missing ----
+// LinkedIn exports one breakdown per file. When a date range has the Company export but not the
+// Country or Job Title one, the maps still need a country share and a band share. These defaults are
+// the April to August 2026 programme mix from the Penetration x Engagement report (120,663
+// impressions); Admin › Reach pools › Estimated mix can replace them. Every map built on them says so.
+export const DEFAULT_MIX = {
+  source: 'Apr to Aug 2026 programme mix (Penetration x Engagement report)',
+  country_share: { 'India': 0.4838, 'United States': 0.3067, 'United Kingdom': 0.0207, 'Saudi Arabia': 0.0185, 'United Arab Emirates': 0.0156, 'Australia': 0.0141, 'Japan': 0.0097, 'Italy': 0.0065, 'Spain': 0.0057, 'Türkiye': 0.0051, 'Ireland': 0.0041, 'Netherlands': 0.0038, 'Portugal': 0.0037, 'Poland': 0.0036, 'Singapore': 0.0034, 'Germany': 0.0033, 'Denmark': 0.0033, 'Israel': 0.003, 'France': 0.0025, 'Egypt': 0.0025, 'Switzerland': 0.0024, 'Brazil': 0.0023, 'Greece': 0.0023, 'Belgium': 0.0021, 'Luxembourg': 0.0019 },
+  band_share: { MD: 0.1127, 'MD-1': 0.1593, 'MD-2': 0.3912, Other: 0.3368 },
+};
+const mixOf = mix => ({ ...DEFAULT_MIX, ...(mix || {}), country_share: (mix && mix.country_share) || DEFAULT_MIX.country_share, band_share: (mix && mix.band_share) || DEFAULT_MIX.band_share });
+/** Country share for a window: the Country rows when the export is there, else the default mix (flagged). */
+export function countryShareOrMix(rows, mix) {
+  const sh = segmentShare(rows, 'Country', 'impressions');
+  if (sh.total) return { total: sh.total, values: sh.values, estimated: false };
+  const m = mixOf(mix).country_share; const values = new Map(Object.entries(m));
+  return { total: 1, values, estimated: true };
+}
+/** Band share for a window: the Job Title rows when the export is there, else the default mix (flagged). */
+export function bandSharesOrMix(rows, bands, mix) {
+  const b = bandShares(segRows(rows, 'Job Title'), bands, 'impressions');
+  if (b.total) return { ...b, estimated: false };
+  const share = { ...mixOf(mix).band_share }; const total = segRows(rows, 'Company').reduce((a, r) => a + n(r.impressions), 0);
+  const counts = {}; for (const k of BANDS) counts[k] = total * (share[k] || 0);
+  return { counts, share, total, estimated: true };
+}
+
+// ---- ICP pool filling (the report's "ratio est.") ----
+// Apollo counts cover some (company, country) pairs. For a reached account the missing pairs are
+// derived: a country with only an MD count gets MD-1 / MD-2 from its category's ratios; a country
+// with no count at all gets the company's own totals scaled by the category's country ratio. Claude
+// estimates (Admin › Reach pools) fill accounts that have no count anywhere. Every derived row carries
+// `source` and `conf` so the maps can show it as an estimate.
+export const POOL_COUNTRIES = ['India', 'United States', 'United Kingdom', 'Saudi Arabia', 'United Arab Emirates', 'Australia', 'Japan', 'Singapore'];
+export function expandPool(icp_pool, accounts, { countries = POOL_COUNTRIES, estimates = [] } = {}) {
+  const key = (c, ct) => normName(c) + '||' + normName(ct);
+  const cat = name => (accounts || []).find(a => a.name === name)?.category || 'Other';
+  const real = new Map(); for (const p of icp_pool || []) real.set(key(p.company, p.country), { ...p, md: n(p.md), md1: n(p.md1), md2: n(p.md2), est: false, conf: p.conf || 'High', source: p.source || 'Apollo' });
+  // Category ratios from the real rows: MD-1/MD and MD-2/MD per category, and country/India share per category.
+  const byCat = {};
+  for (const p of real.values()) { if (!(p.md1 || p.md2)) continue; /* only complete rows set the ratios */ const c = cat(p.company); const o = byCat[c] || (byCat[c] = { md: 0, md1: 0, md2: 0, byCountry: {} }); o.md += p.md; o.md1 += p.md1; o.md2 += p.md2; const bc = o.byCountry[p.country] || (o.byCountry[p.country] = 0); o.byCountry[p.country] = bc + p.md + p.md1 + p.md2; }
+  const allCat = { md: 0, md1: 0, md2: 0, byCountry: {} }; for (const o of Object.values(byCat)) { allCat.md += o.md; allCat.md1 += o.md1; allCat.md2 += o.md2; for (const [c, v] of Object.entries(o.byCountry)) allCat.byCountry[c] = (allCat.byCountry[c] || 0) + v; }
+  const ratios = c => { const o = byCat[c] && byCat[c].md ? byCat[c] : allCat; const tot = Object.values(o.byCountry).reduce((a, b) => a + b, 0) || 1; return { r1: o.md ? o.md1 / o.md : 1.4, r2: o.md ? o.md2 / o.md : 3.5, cshare: Object.fromEntries(Object.entries(o.byCountry).map(([k, v]) => [k, v / tot])) }; };
+  const out = new Map(real);
+  const names = [...new Set([...(icp_pool || []).map(p => p.company), ...(estimates || []).map(e => e.company)])];
+  for (const e of estimates || []) { const k = key(e.company, e.country); if (!out.has(k)) out.set(k, { company: e.company, country: e.country, md: n(e.md), md1: n(e.md1), md2: n(e.md2), est: true, conf: e.conf || 'Low', source: e.source || 'Claude estimate', basis: e.basis || '' }); }
+  for (const name of names) {
+    const c = cat(name), R = ratios(c);
+    const own = countries.map(ct => out.get(key(name, ct))).filter(Boolean);
+    const ownTotal = own.reduce((a, p) => a + p.md + p.md1 + p.md2, 0);
+    const ownShare = own.reduce((a, p) => a + (R.cshare[p.country] || 0), 0);
+    for (const ct of countries) {
+      const k = key(name, ct); const p = out.get(k);
+      if (p) { if (p.md && !p.md1 && !p.md2) { p.md1 = Math.round(p.md * R.r1); p.md2 = Math.round(p.md * R.r2); p.est = true; p.conf = 'Low'; p.source = 'Derived from the MD count and the category ratio'; } continue; }
+      if (!ownTotal || !ownShare || !R.cshare[ct]) continue;
+      const total = ownTotal / ownShare * R.cshare[ct]; const denom = 1 + R.r1 + R.r2;
+      out.set(k, { company: name, country: ct, md: Math.round(total / denom), md1: Math.round(total / denom * R.r1), md2: Math.round(total / denom * R.r2), est: true, conf: 'Low', source: `Derived from the company's other countries and the ${c} country mix` });
+    }
+  }
+  return [...out.values()];
+}
+
 // ---- penetration: account x country for a band ----
 // People reached = account impressions x country share x band share, divided by frequency.
 // Penetration = people reached / ICP pool headcount (icp_pool rows: company, country, md, md1, md2).
-export function penetration({ windows, accounts, icp_pool, bands, frequency = 3.5, band = 'All', countries }) {
+export function penetration({ windows, accounts, icp_pool, bands, frequency = 3.5, band = 'All', countries, mix }) {
   const poolKey = (c, ct) => normName(c) + '||' + normName(ct);
   const pool = new Map();
-  for (const p of icp_pool || []) pool.set(poolKey(p.company, p.country), { MD: n(p.md), 'MD-1': n(p.md1), 'MD-2': n(p.md2) });
+  for (const p of icp_pool || []) pool.set(poolKey(p.company, p.country), { MD: n(p.md), 'MD-1': n(p.md1), 'MD-2': n(p.md2), est: !!p.est, conf: p.conf || (p.est ? 'Low' : 'High'), source: p.source || '', basis: p.basis || '' });
+  const estimated = { country: false, band: false };
   const ctys = countries && countries.length ? countries : [...new Set((icp_pool || []).map(p => p.country))];
   const cell = new Map(); // key -> { imp, reached:{MD,MD-1,MD-2}, pool }
   const accImp = new Map();
   for (const w of windows || []) {
     const rows = w.rows || [];
     const comp = segRows(rows, 'Company');
-    const geo = segmentShare(rows, 'Country', 'impressions');
-    const bs = bandShares(segRows(rows, 'Job Title'), bands, 'impressions');
+    const geo = countryShareOrMix(rows, mix); if (geo.estimated && comp.length) estimated.country = true;
+    const bs = bandSharesOrMix(rows, bands, mix); if (bs.estimated && comp.length) estimated.band = true;
     for (const r of comp) {
       const acc = matchAccount(r.value, accounts); if (!acc) continue;
       const imp = n(r.impressions); if (!imp) continue;
@@ -266,7 +329,7 @@ export function penetration({ windows, accounts, icp_pool, bands, frequency = 3.
     return { ...c, reached_band: reached, pool_band: p, pct: p ? reached / p * 100 : null };
   });
   const accountsSorted = [...accImp.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]);
-  return { cells, accounts: accountsSorted, countries: ctys, frequency, band };
+  return { cells, accounts: accountsSorted, countries: ctys, frequency, band, estimated };
 }
 /**
  * Cumulative penetration cube: company x region x designation band, every window in range summed.
@@ -275,14 +338,14 @@ export function penetration({ windows, accounts, icp_pool, bands, frequency = 3.
  *           regions:[ordered region names], bands:['MD','MD-1','MD-2'] }.
  * Accounts are ordered by estimated people reached (all bands); regions by total reached.
  */
-export const PEN_BANDS = ['MD', 'MD-1', 'MD-2'];
-export function penetrationCube({ windows, accounts, icp_pool, bands, frequency = 3.5, regions }) {
+export const PEN_BANDS = Object.freeze(['MD', 'MD-1', 'MD-2']);
+export function penetrationCube({ windows, accounts, icp_pool, bands, frequency = 3.5, regions, mix }) {
   // Every country with a pool row plus every country seen in the windows, so reach outside the pool geographies still counts.
   const countries = [...new Set([...(icp_pool || []).map(p => p.country), ...(windows || []).flatMap(w => segRows(w.rows || [], 'Country').map(r => r.value))])].filter(Boolean);
-  const P = penetration({ windows, accounts, icp_pool, bands, frequency, band: 'All', countries });
-  const blank = () => { const o = {}; for (const b of [...PEN_BANDS, 'All']) o[b] = { reached: 0, pool: 0, pct: null, has_pool: false }; return o; };
+  const P = penetration({ windows, accounts, icp_pool, bands, frequency, band: 'All', countries, mix });
+  const blank = () => { const o = {}; for (const b of [...PEN_BANDS, 'All']) o[b] = { reached: 0, pool: 0, pct: null, has_pool: false, est_pool: false, sources: [] }; return o; };
   const add = (t, c) => {
-    for (const b of PEN_BANDS) { t[b].reached += c.reached[b] || 0; t.All.reached += c.reached[b] || 0; if (c.pool) { t[b].pool += c.pool[b] || 0; t.All.pool += c.pool[b] || 0; t[b].has_pool = true; t.All.has_pool = true; } }
+    for (const b of PEN_BANDS) { t[b].reached += c.reached[b] || 0; t.All.reached += c.reached[b] || 0; if (c.pool) { t[b].pool += c.pool[b] || 0; t.All.pool += c.pool[b] || 0; t[b].has_pool = true; t.All.has_pool = true; if (c.pool.est) { t[b].est_pool = true; t.All.est_pool = true; } if (c.pool.source && !t.All.sources.includes(c.pool.source)) t.All.sources.push(c.pool.source); } }
   };
   const finish = t => { for (const b of [...PEN_BANDS, 'All']) t[b].pct = t[b].has_pool && t[b].pool ? t[b].reached / t[b].pool * 100 : null; return t; };
   const byAcc = new Map(), regionReach = new Map();
@@ -296,7 +359,7 @@ export function penetrationCube({ windows, accounts, icp_pool, bands, frequency 
   }
   const list = [...byAcc.values()].map(a => { finish(a.total); for (const r of Object.keys(a.regions)) finish(a.regions[r]); return a; }).sort((x, y) => y.total.All.reached - x.total.All.reached);
   const regionList = [...regionReach.entries()].sort((x, y) => y[1] - x[1]).map(e => e[0]);
-  return { accounts: list, regions: regionList, bands: PEN_BANDS, frequency };
+  return { accounts: list, regions: regionList, bands: PEN_BANDS, frequency, estimated: P.estimated };
 }
 export const PEN_BREAKS = [5, 15, 35, 70];
 export const penLevel = pct => pct == null ? 0 : pct < 5 ? 1 : pct < 15 ? 2 : pct < 35 ? 3 : pct < 70 ? 4 : 5;

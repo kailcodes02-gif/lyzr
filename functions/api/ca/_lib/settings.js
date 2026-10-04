@@ -11,7 +11,7 @@ export const DEFAULT_LEAD_RULES = {
   mql: ['book a demo', 'book-a-demo', 'bookademo', 'book demo', 'demo', 'meeting', 'consultation'],
   playbook: ['playbook', 'roadmap', 'guide', 'ebook', 'e-book', 'whitepaper', 'report', 'workshop', 'webinar'],
 }
-export const SETTING_KEYS = ['bands', 'icp_pool', 'accounts', 'regions', 'targets', 'editors', 'email_rules', 'gsi_companies', 'contact_lists', 'lead_rules']
+export const SETTING_KEYS = ['bands', 'icp_pool', 'accounts', 'regions', 'targets', 'editors', 'email_rules', 'gsi_companies', 'contact_lists', 'lead_rules', 'mix_defaults', 'icp_estimates']
 
 export const DEFAULT_TARGETS = { leads_per_month: 200, demo_mqls_per_month: 30, frequency: 3.5, reach_frequency: 3 }
 
@@ -87,6 +87,10 @@ export async function loadSettings(env, request, { keys = SETTING_KEYS } = {}) {
   if (keys.includes('contact_lists')) pick('contact_lists', {})
   // Keywords that sort LinkedIn lead-form leads into MQL / conversation / playbook (else other).
   if (keys.includes('lead_rules')) pick('lead_rules', DEFAULT_LEAD_RULES)
+  // Audience mix used when a range has no Country / Job Title export (null = the built-in Apr to Aug 2026 mix).
+  if (keys.includes('mix_defaults')) pick('mix_defaults', null)
+  // Claude headcount estimates for accounts with no Apollo count: [{ company, country, md, md1, md2, conf, basis, model, estimated_at }].
+  if (keys.includes('icp_estimates')) pick('icp_estimates', [])
   if (keys.includes('editors')) {
     pick('editors', parseEmails(env && env.CA_EDITORS).length ? parseEmails(env.CA_EDITORS) : DEFAULT_EDITORS)
     if (byKey.editors) out.editors = parseEmails(byKey.editors.value)

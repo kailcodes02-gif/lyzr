@@ -22,13 +22,15 @@ export async function render(el, ctx) {
   draw();
 }
 
-const TAB_RENDER = { email: emailRulesTab, gsi: async (b, c, e) => { const top = document.createElement('div'); const extra = document.createElement('div'); b.append(top, extra); await settingTab(top, c, e, 'accounts'); await gsiTab(extra, c, e); }, regions: (b, c, e) => settingTab(b, c, e, 'regions'), icp: (b, c, e) => settingTab(b, c, e, 'icp_pool'), targets: async (b, c, e) => { const top = document.createElement('div'); const extra = document.createElement('div'); b.append(top, extra); await settingTab(top, c, e, 'targets'); const lr = document.createElement('div'); b.append(lr); await settingTab(lr, c, e, 'lead_rules'); await settingTab(extra, c, e, 'contact_lists'); }, editors: (b, c, e) => settingTab(b, c, e, 'editors'), coverage: coverageTab, connection: connectionTab };
+const TAB_RENDER = { email: emailRulesTab, gsi: async (b, c, e) => { const top = document.createElement('div'); const extra = document.createElement('div'); b.append(top, extra); await settingTab(top, c, e, 'accounts'); await gsiTab(extra, c, e); }, regions: (b, c, e) => settingTab(b, c, e, 'regions'), icp: async (b, c, e) => { for (const k of ['icp_pool', 'icp_estimates', 'mix_defaults']) { const d = document.createElement('div'); b.append(d); await settingTab(d, c, e, k); } }, targets: async (b, c, e) => { const top = document.createElement('div'); const extra = document.createElement('div'); b.append(top, extra); await settingTab(top, c, e, 'targets'); const lr = document.createElement('div'); b.append(lr); await settingTab(lr, c, e, 'lead_rules'); await settingTab(extra, c, e, 'contact_lists'); }, editors: (b, c, e) => settingTab(b, c, e, 'editors'), coverage: coverageTab, connection: connectionTab };
 
 // ---------------- generic setting tabs ----------------
 const META = {
   accounts: { title: 'GSI accounts and designations', sub: 'This list decides who is a GSI lead. A HubSpot contact who submitted a form is pulled and counted as a GSI lead when their company name matches an account or alias below, or their email domain matches the account\'s website. Each account\'s own titles for MD (the top band, people who sign partnerships), MD-1 and MD-2 are used to band every lead\'s job title. Built from "GSI_SI Accounts – Over All" (owners and designations) and the ABM list export (websites).' },
   regions: { title: 'Regions', sub: 'Which countries roll up into which region. Used wherever a page groups by region: leads by region, where the ads land. A country that is in no list shows as Other.' },
-  icp_pool: { title: 'Reach pools', sub: 'How many people work at each account, by country and band (Apollo headcounts). The LinkedIn page divides people reached by these numbers to show how much of each account the ads cover.' },
+  icp_pool: { title: 'Reach pools', sub: 'How many people work at each account, by country and band (Apollo headcounts). The LinkedIn page divides people reached by these numbers to show how much of each account the ads cover. Accounts with no count get derived rows (category ratios) or Claude estimates, listed below.' },
+  icp_estimates: { title: 'Claude headcount estimates', sub: 'Estimates for accounts with no Apollo count, made on request from the LinkedIn page (Estimate with Claude). Each row says what it rests on and how confident it is. Edit or delete rows here; a real Apollo count always wins over an estimate.' },
+  mix_defaults: { title: 'Estimated mix', sub: 'The country share and designation-band share used when a date range has no Country or Job Title demographics export. Leave as null to use the built-in April to August 2026 programme mix; or set { "country_share": { "India": 0.48, ... }, "band_share": { "MD": 0.11, "MD-1": 0.16, "MD-2": 0.39, "Other": 0.34 } }.' },
   targets: { title: 'Targets', sub: 'Monthly goals the Overview compares the current pace against, and two divisors that turn LinkedIn impressions into people: reach heat maps use impressions ÷ 3, penetration uses impressions ÷ 3.5 (people reached = impressions divided by the divisor).' },
   lead_rules: { title: 'Lead types', sub: 'Keywords (in the ad set, program or ad name) that make a LinkedIn lead an MQL (book a demo, bottom of funnel), a conversation ad lead (bottom; sends in the ad set also count) or a playbook lead (middle). Anything else is an other form lead (NQL, top of funnel).' },
   contact_lists: { title: 'Contact list sizes', sub: 'How many contacts each account has in the LinkedIn custom lists, as { "Account name": number }. Used by Ads › LinkedIn › Reach vs contacts by company. Optional.' },
@@ -53,6 +55,16 @@ function readable(key, value, ctx) {
   if (key === 'icp_pool') {
     const rows = Array.isArray(value) ? value : [];
     return T({ cols: [{ h: 'Account', k: 'company', left: true }, { h: 'Country', k: 'country', left: true }, { h: 'MD', k: 'md', f: r => fmt(r.md) }, { h: 'MD-1', k: 'md1', f: r => fmt(r.md1) }, { h: 'MD-2', k: 'md2', f: r => fmt(r.md2) }, { h: 'All', k: 'all', f: r => fmt((+r.md || 0) + (+r.md1 || 0) + (+r.md2 || 0)) }, { h: 'Source', k: 'source', left: true, f: r => `<span class="muted">${esc(r.source || '')}</span>` }], rows });
+  }
+  if (key === 'icp_estimates') {
+    const rows = Array.isArray(value) ? value : [];
+    if (!rows.length) return ctx.ui.empty('No Claude estimates yet. On Ads › LinkedIn › Penetration by company, region and designation, press "Estimate with Claude".');
+    return T({ cols: [{ h: 'Account', k: 'company', left: true }, { h: 'Country', k: 'country', left: true }, { h: 'MD', k: 'md', f: r => fmt(r.md) }, { h: 'MD-1', k: 'md1', f: r => fmt(r.md1) }, { h: 'MD-2', k: 'md2', f: r => fmt(r.md2) }, { h: 'Confidence', k: 'conf', f: r => ctx.ui.pill(r.conf || 'Low', r.conf === 'High' ? 'p-high' : r.conf === 'Medium' ? 'p-med' : 'p-low') }, { h: 'Basis', k: 'basis', left: true, f: r => `<span style="font-size:12.5px">${esc(r.basis || '')}</span>` }, { h: 'When', k: 'estimated_at', left: true, f: r => esc(r.estimated_at ? ctx.fmt.istDateTime(r.estimated_at) : '') }], rows });
+  }
+  if (key === 'mix_defaults') {
+    const m = value || null;
+    if (!m) return `<p style="font-size:13.5px">Using the built-in mix: <b>India 48%, United States 31%, United Kingdom 2%, Saudi Arabia 2%, UAE 2%, Australia 1%</b> of impressions by country; <b>MD 11%, MD-1 16%, MD-2 39%</b> of impressions by designation band (April to August 2026 programme, Penetration x Engagement report).</p>`;
+    return `<pre class="mono">${esc(JSON.stringify(m, null, 1))}</pre>`;
   }
   if (key === 'targets') {
     const t = value || {};
