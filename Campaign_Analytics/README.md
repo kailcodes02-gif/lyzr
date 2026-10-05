@@ -73,6 +73,20 @@ be edited by hand. **What to do next** lists fixed-rule items (extend reach, rot
 the MD band) with a Track button. **Designations reached** shows the exact titles LinkedIn exported (top 25 per
 export) and their cohorts; **Designation cohorts by company** lists the exact titles of the HubSpot leads per account.
 
+## Leads page: origin, drill-down and the activity checklist
+The HubSpot Leads page reads the portal's own properties, so every lead says which form it came through
+(First conversion, Lead Form Type), which Lead Source the picklist holds (Book a Demo, LinkedIn, a playbook,
+an event...), which campaign (Lead Campaign Name, else the UTM campaign, else HubSpot's converting campaign) and
+which traffic source the first visit had. "Where the leads came from" shows one table per view (form, lead
+source, campaign, traffic source), each with band mix, reached-out, never-contacted and demo-booked counts; the
+Origin dropdown filters the whole page to one of them. **Every number on the page is a link**: it opens the leads
+behind it in a side panel (copy emails, export CSV), and each lead opens with its origin properties, an activity
+checklist (form, owner, status, contacted, sales email, call, sequence, LinkedIn via HeyReach, reply, meeting,
+demo, next activity, marketing email, note: each with the date it happened or "none"), and a timeline of every
+dated event HubSpot holds. Instantly campaign membership is no longer a page-level split; it appears only as a
+line on the lead when the lead sits in a GSI-tagged campaign. The extra properties arrive with the next
+**Pull HubSpot now** (Admin), so until then older leads show fewer origin fields.
+
 ## Data API and MCP server (pull anything from outside)
 Everything the dashboard holds can be pulled read-only, by Claude or by anyone with a key, as JSON or CSV.
 - **Index, no key:** `GET https://lyzr.kailash-gm.com/api/ca/v1` lists every source with its parameters and

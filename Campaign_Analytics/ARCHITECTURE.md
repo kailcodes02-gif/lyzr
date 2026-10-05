@@ -150,6 +150,13 @@ Implementation notes (backend, `functions/api/ca/`), where the built code adds t
   syntax checks, limit ≤ 5000). Add a source by appending to `SOURCES` and a `case` in `runSource`.
 
 ## GSI leads and messages
+- Lead origin and activity: `js/lib/lead-origin.mjs` (`originOf`, `originForm/Source/Campaign/Traffic`, `groupRows`,
+  `activityChecklist`, `missingWork`, `workSummary`, `timeline`, `leadFacts`) reads the props `hubspot/refresh.js`
+  PROPS keeps (lead_form_type, lead_campaign_name, utm_*, first_touch_utm_*, converting campaigns,
+  hs_object_source_label, last_outreach_activity, sequences, HeyReach, notes_next_activity_date, meetings tool...).
+  The Leads page registers every count with `pick(label, list)` and a delegated click opens the drawer
+  (`openList` → `openLead`); the data API `hubspot/leads` spreads `leadFacts` into each row and groups by
+  form, lead source and campaign.
 - GSI account list = `seed/accounts.json` (279 accounts: "GSI_SI Accounts – Over All" with owners and
   MD/MD-1/MD-2 titles, merged with the ABM list export's websites; sub-brands folded into parents).
 - HubSpot pull (`hubspot/refresh.js`): contacts with `first_conversion_date` (submitted a form) whose company

@@ -55,6 +55,18 @@ export const PROPS = [...new Set([
   // and notes. All of these land in the `props` jsonb column; nothing new is written to HubSpot.
   'hs_lifecyclestage_lead_date', 'hs_lifecyclestage_salesqualifiedlead_date', 'hs_lifecyclestage_opportunity_date',
   'hs_lifecyclestage_customer_date', 'num_notes', 'hs_last_sales_activity_date',
+  // origin (Leads view "Where the leads came from" and the lead drawer): the portal's own form, lead
+  // source, campaign, UTM and record-source properties, so a lead says which form, which campaign, which visit.
+  'lead_form_type', 'lead_campaign_name', 'lead_form_submission_date', 'ad_campaign_id', 'conversion_page',
+  'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'first_touch_utm_source', 'first_touch_utm_medium', 'first_touch_utm_campaign',
+  'hs_analytics_first_touch_converting_campaign', 'hs_analytics_last_touch_converting_campaign', 'hs_latest_source_timestamp',
+  'hs_object_source_label', 'num_unique_conversion_events', 'gad_source', 'li_fat_id', 'lyzr_product',
+  // activity checklist: what sales did and when (sequences, LinkedIn via HeyReach, next activity, meetings tool, marketing replies)
+  'last_outreach_activity', 'hs_is_unworked', 'hs_sequences_enrolled_count', 'hs_sequences_is_enrolled', 'hs_latest_sequence_enrolled', 'hs_latest_sequence_enrolled_date', 'hs_latest_sequence_ended_date',
+  'notes_next_activity_date', 'hs_email_replied', 'hs_email_first_reply_date', 'hs_email_last_reply_date',
+  'hs_sa_first_engagement_date', 'hs_sa_first_engagement_descr', 'hs_sa_first_engagement_object_type',
+  'engagements_last_meeting_booked', 'engagements_last_meeting_booked_campaign', 'first_meeting_booked_by',
+  'heyreach_last_activity_date', 'heyreach_reply_count', 'heyreach_first_reply_date', 'heyreach_last_reply_date', 'lead_sla_respond_by',
 ])]
 
 

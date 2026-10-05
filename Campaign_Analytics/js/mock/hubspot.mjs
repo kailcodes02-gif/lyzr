@@ -250,6 +250,21 @@ function build() {
   for (const c of contacts) {
     c.props.first_conversion_date = c.created_at;
     c.props.first_conversion_event_name = c.lead_source === 'Instantly email' ? 'GSI / SI page form' : c.lead_source === 'Direct' ? 'Book a Demo' : 'LinkedIn Lead Gen Form';
+    // The portal's own origin properties (Lead Form Type, Lead Campaign Name, UTMs, record source) and the activity
+    // properties the checklist reads (last outreach, sequences, next activity). Deterministic from the id.
+    const h = Number(c.hs_id) % 97;
+    c.props.lead_form_type = c.props.first_conversion_event_name === 'Book a Demo' ? 'Book a Demo' : c.props.first_conversion_event_name === 'GSI / SI page form' ? 'GSI and SI' : h % 3 ? 'Playbook Form' : 'Webinar';
+    c.props.lead_source = c.lead_source === 'Direct' ? 'Book a Demo' : c.lead_source === 'LinkedIn' ? 'LinkedIn' : c.lead_source === 'Instantly email' ? 'OutBound' : h % 4 ? '100+ AI Use Cases' : 'Agentic AI webinar';
+    c.props.hs_object_source_label = c.lead_source === 'Instantly email' ? 'INTEGRATION' : 'FORM';
+    c.props.num_conversion_events = 1 + (h % 5 === 0 ? 1 : 0);
+    if (h % 5 === 0) { c.props.recent_conversion_event_name = '100+ AI Use Cases'; c.props.recent_conversion_date = laterTs(c.created_at, 9); }
+    if (c.lead_source === 'LinkedIn') { c.props.lead_campaign_name = h % 2 ? 'GSI&SI | Playbooks | Q3' : 'WP | Accenture | Anju | India'; c.props.utm_source = 'linkedin'; c.props.utm_medium = 'paid-social'; c.props.utm_campaign = c.props.lead_campaign_name; }
+    else if (c.lead_source === 'Instantly email') { c.props.lead_campaign_name = h % 2 ? 'GSI Big Four Partners Sep' : 'GSI India SI Leaders'; c.props.utm_source = 'instantly'; c.props.utm_medium = 'email'; }
+    else if (h % 6 === 0) { c.props.utm_source = 'google'; c.props.utm_medium = 'cpc'; c.props.utm_campaign = 'brand-search'; c.props.hs_analytics_first_touch_converting_campaign = 'Brand search'; }
+    if (c.props.num_contacted_notes) { c.props.last_outreach_activity = c.lead_status === 'Demo Booked' || /^Demo/.test(c.lead_status || '') ? 'meeting_scheduled' : h % 3 === 0 ? 'email_follow_up' : h % 3 === 1 ? 'phone_no_answer' : 'linkedin_message_inmail'; c.props.num_notes = c.notes_count || 1; }
+    if (h % 5 === 1 && c.account) { c.props.hs_sequences_enrolled_count = 1; c.props.hs_latest_sequence_enrolled = 'GSI partner intro'; c.props.hs_latest_sequence_enrolled_date = laterTs(c.created_at, 2); c.props.hs_sequences_is_enrolled = h % 2 ? 'true' : 'false'; }
+    if (h % 7 === 2 && c.lead_status === 'Working') c.props.notes_next_activity_date = laterTs(c.props.notes_last_contacted || c.created_at, 5);
+    if (h % 9 === 3 && c.account) { c.props.heyreach_last_activity_date = laterTs(c.created_at, 4); if (h % 2) { c.props.heyreach_reply_count = 1; c.props.heyreach_last_reply_date = laterTs(c.created_at, 6); } }
     c.replies_human = 0; c.replies_auto = 0; c.first_human_reply_at = null; c.last_human_reply_at = null; c.last_auto_reply_at = null; c.in_scope = true;
     const replied = c.props.hs_sales_email_last_replied;
     if (replied) {

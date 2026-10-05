@@ -283,3 +283,10 @@ h2 .cmpbox,.sub .cmpbox{font-family:var(--font);text-transform:none;letter-spaci
 .mgrid td.ok{color:var(--good);font-weight:500}
 .mgrid td.part{color:var(--warn)}
 .mgrid td.miss{color:var(--bad)}
+
+/* click-to-drill numbers, lead rows, the lead drawer */
+a.pick{color:inherit;text-decoration:underline;text-decoration-style:dotted;text-decoration-color:var(--accent);text-underline-offset:3px;font-variant-numeric:tabular-nums}
+a.pick:hover{color:var(--accent);text-decoration-style:solid}
+tr.lead{cursor:pointer}tr.lead:hover td{background:var(--offwhite)}
+.ok{color:#1FA64A}.miss{color:#B3261E}
+table.kv{width:100%;border-collapse:collapse;font-size:13px}table.kv td{padding:4px 8px 4px 0;vertical-align:top;border:none}

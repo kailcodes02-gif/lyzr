@@ -533,6 +533,23 @@ Access if the data ever becomes confidential.
   Lyzr board carry a vertical tag; owners/view without ?email= shows the signed-in user instead of a blank
   "Awaiting first sign-in" profile.
 
+### 2026-10-06, Campaign Analytics: Leads page reads HubSpot origin properties, every number drills down
+- User: "why does the HubSpot leads page show Instantly campaign data"; wanted every number clickable with the
+  leads and details behind it, leads by GSI / source / campaign from the HubSpot properties ("which form and
+  everything"), and per lead what activity was done and where nothing was done.
+- Looked up the portal's contact properties through the HubSpot MCP: custom `lead_form_type` (enum of forms),
+  `lead_source` (enum: Book a Demo, LinkedIn, playbooks, events, OutBound...), `lead_campaign_name`, `utm_*`,
+  `first_touch_utm_*`, `ad_campaign_id`, `conversion_page`, `last_outreach_activity` (enum of outreach steps),
+  `hs_sequences_*`, `heyreach_*`, `notes_next_activity_date`, `engagements_last_meeting_booked`, etc. Added them to
+  `hubspot/refresh.js` PROPS (next Pull HubSpot now fills them).
+- New `js/lib/lead-origin.mjs` (origin precedence, 14-item activity checklist with dates or "none", timeline) +
+  tests. Leads page rebuilt: Instantly campaign split, toggle, tile and column removed (membership shown only on
+  the lead); "Where the leads came from" = form / lead source / campaign / traffic tables; Origin filter;
+  `pick()` registry makes every count a link to a drawer list, lead rows open the full record (origin, status,
+  checklist, timeline); All leads gained Form / lead source, Campaign and Activity done columns. CSS `.pick`,
+  `.ok/.miss`, `table.kv`. Data API `hubspot/leads` rows carry `leadFacts`; `by_form`, `by_campaign`,
+  `missing_work` counts; `form=` and `campaign=` filters. Tests 214.
+
 ### 2026-10-05 (night), Campaign Analytics: data API + MCP server, cube no longer double counts tagged exports
 - **Data API** `GET /api/ca/v1/<source>` (`functions/api/ca/v1/[[path]].js`, `_lib/query.js`, `_lib/apikeys.js`,
   `v1/_openapi.js`): index and OpenAPI need no key; sources (linkedin/performance, linkedin/demographics,
