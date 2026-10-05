@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-05T14:34:01.103Z",
+  "generated_at": "2026-10-05T15:12:29.724Z",
   "source_file": "tracker.xlsx",
   "rows": [
     {
@@ -8125,21 +8125,49 @@
       "created_by": "Aravind D",
       "created_at": "2026-10-05T14:34:01.103Z",
       "edit_history": []
+    },
+    {
+      "id": "ENT-0363",
+      "segment": "Enterprises",
+      "sn": 190,
+      "company": "MBRHE",
+      "industry": "Real Estate",
+      "project": "Legal Agent",
+      "use_case": "Workspace that checks contracts for compliance and drafts and translates them using ready templates and customer data.",
+      "category": "RPT Prototype",
+      "stage": "lost",
+      "prototype_owners": [
+        "Monisha",
+        "Aravind"
+      ],
+      "opportunity_owners": [
+        "Arko"
+      ],
+      "prototype_link": "https://legal-agent.rapid.studio.lyzr.ai/workspace-home",
+      "prototype_link_text": "https://legal-agent.rapid.studio.lyzr.ai/workspace-home",
+      "acv": 50000,
+      "acv_raw": "50000",
+      "time_period": null,
+      "close_date_raw": null,
+      "close_quarter": null,
+      "created_by": "Aravind D",
+      "created_at": "2026-10-05T15:12:29.724Z",
+      "edit_history": []
     }
   ],
   "aggregates": {
-    "total_rows": 362,
-    "total_acv": 38459000,
+    "total_rows": 363,
+    "total_acv": 38509000,
     "acv_open": 31446000,
     "acv_won": 3630000,
-    "acv_lost": 3383000,
-    "unique_companies": 209,
+    "acv_lost": 3433000,
+    "unique_companies": 210,
     "by_stage": {
       "Demo": 66,
       "in-conversation": 215,
       "win": 13,
       "customer": 29,
-      "lost": 39
+      "lost": 40
     },
     "by_segment": {
       "Internal": {
@@ -8172,10 +8200,10 @@
         }
       },
       "Enterprises": {
-        "count": 183,
-        "acv": 18774000,
+        "count": 184,
+        "acv": 18824000,
         "stages": {
-          "lost": 32,
+          "lost": 33,
           "Demo": 41,
           "in-conversation": 83,
           "win": 7,
@@ -8280,6 +8308,11 @@
         "acv": 100000
       },
       {
+        "name": "Arko",
+        "deals": 2,
+        "acv": 75000
+      },
+      {
         "name": "Ravi Kumar",
         "deals": 2,
         "acv": 58000
@@ -8293,11 +8326,6 @@
         "name": "Shefali",
         "deals": 1,
         "acv": 50000
-      },
-      {
-        "name": "Arko",
-        "deals": 1,
-        "acv": 25000
       },
       {
         "name": "Thomas Therkatil",
@@ -8778,6 +8806,11 @@
       },
       {
         "company": "Volkswagen Financial Services",
+        "deals": 1,
+        "acv": 50000
+      },
+      {
+        "company": "MBRHE",
         "deals": 1,
         "acv": 50000
       },
@@ -9401,6 +9434,7 @@
       "Procurement",
       "Property Management",
       "R&D",
+      "Real Estate",
       "Research",
       "Retail Apparel and Fashion",
       "Sales",
