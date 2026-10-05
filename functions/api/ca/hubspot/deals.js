@@ -42,7 +42,7 @@ export const onRequestGet = handle(async ({ request, env, waitUntil }) => {
   return cacheResponse(await cachedGet(env, request, { path: 'hubspot/deals', params: { from, to }, waitUntil }, () => load(env, { from, to })))
 })
 
-async function load(env, { from, to }) {
+export async function load(env, { from, to }) {
   const d = db(env)
   const at = []
   if (from) at.push(`gte.${from}T00:00:00+05:30`)

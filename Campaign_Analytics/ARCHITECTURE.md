@@ -139,6 +139,16 @@ Implementation notes (backend, `functions/api/ca/`), where the built code adds t
   board (every tracked action by status: open, in progress, blocked, done in 30 days), sections, AI read-out.
 - Uploads live on the channel pages (`js/uploader.mjs`); Admin holds lists and "pull now" buttons.
 
+## Data API and MCP (read-only, keyed)
+- `functions/api/ca/v1/[[path]].js` serves `GET /api/ca/v1/<source>`; `_lib/query.js` holds `SOURCES` (name, params,
+  description) and `runSource(env, request, name, params)`; `v1/_openapi.js` builds the OpenAPI document from
+  `SOURCES`; `functions/api/ca/mcp/[[key]].js` exposes the same sources as MCP tools (JSON-RPC 2.0 over POST,
+  stateless streamable HTTP, protocol versions 2024-11-05 to 2025-11-25, key accepted in the path). Auth in
+  `_lib/apikeys.js`: Pages secret `CA_API_KEYS` ("label:key, label:key"), or a dashboard session. The Function
+  imports `Campaign_Analytics/js/lib/*.mjs` directly (wrangler bundles across the repo), so penetration and lead
+  maths are the dashboard's. `table` is a guarded PostgREST passthrough (table whitelist, filter / select / order
+  syntax checks, limit ≤ 5000). Add a source by appending to `SOURCES` and a `case` in `runSource`.
+
 ## GSI leads and messages
 - GSI account list = `seed/accounts.json` (279 accounts: "GSI_SI Accounts – Over All" with owners and
   MD/MD-1/MD-2 titles, merged with the ABM list export's websites; sub-brands folded into parents).

@@ -126,8 +126,17 @@ async function connectionTab(body, ctx) {
     ${row('Instantly API (daily campaign pull)', h.instantly, 'Set INSTANTLY_API_KEY on the Pages site (already used by the GSI Tracker weekly report).')}
     ${row('PhantomBuster API (LinkedIn automation pull)', h.phantom, 'Set PHANTOMBUSTER_API_KEY on the Pages site (Org settings › API keys in PhantomBuster). Read-only.')}
     ${row('Daily schedule', h.cron, 'Set CA_CRON_SECRET on the Pages site and the same value as a GitHub Actions secret; .github/workflows/ca-daily-pull.yml runs the pull every morning at 07:00 IST.')}
+    ${row(`Data API and MCP server (${h.api_keys || 0} key${h.api_keys === 1 ? '' : 's'})`, (h.api_keys || 0) > 0, 'Set CA_API_KEYS on the Pages site as "label:key, label:key" (make each key with: openssl rand -hex 24), then redeploy. Read-only.')}
     </tbody></table></div>
     ${h.error ? `<p class="err" style="margin-top:10px">Health check failed: ${esc(h.error)}</p>` : ''}
+    <h3 style="margin:18px 0 6px">Pull data from outside (Claude, scripts, anyone with a key)</h3>
+    <p class="muted" style="font-size:13px;margin:0 0 8px">Every number on this dashboard can be pulled as JSON or CSV, read-only, with an API key. The index needs no key and lists every source, its parameters and the raw tables.</p>
+    <div class="tblwrap"><table><tbody>
+      <tr><td class="l"><b>REST</b></td><td class="l"><span class="mono">${esc(location.origin)}/api/ca/v1</span> (index) · <span class="mono">/api/ca/v1/openapi.json</span> · e.g. <span class="mono">/api/ca/v1/linkedin/penetration?from=2026-09-01&amp;to=2026-09-30</span></td></tr>
+      <tr><td class="l"><b>Key</b></td><td class="l"><span class="mono">Authorization: Bearer &lt;key&gt;</span>, <span class="mono">x-api-key: &lt;key&gt;</span> or <span class="mono">?key=&lt;key&gt;</span>; add <span class="mono">format=csv</span> for a file.</td></tr>
+      <tr><td class="l"><b>MCP (Claude)</b></td><td class="l">claude.ai › Settings › Connectors › Add custom connector: <span class="mono">${esc(location.origin)}/api/ca/mcp/&lt;key&gt;</span>. Claude Code: <span class="mono">claude mcp add --transport http lyzr-ca ${esc(location.origin)}/api/ca/mcp --header "Authorization: Bearer &lt;key&gt;"</span>. Tools = the same sources.</td></tr>
+      <tr><td class="l"><b>Sources</b></td><td class="l">linkedin/performance, linkedin/demographics, linkedin/penetration, linkedin/windows, hubspot/leads, hubspot/deals, email/summary, phantom/summary, actions, settings, coverage, table (any ca_* table with filters).</td></tr>
+    </tbody></table></div>
     <h3 style="margin-top:22px">Pull now</h3>
     <p class="muted" style="font-size:13px;margin-bottom:10px">Everything below also runs by itself every morning at 07:00 IST. Use these to pull straight away. Pulls only read from Instantly, HubSpot and PhantomBuster; nothing is written back.</p>
     <div class="grid g3">

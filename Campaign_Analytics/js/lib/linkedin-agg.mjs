@@ -212,6 +212,13 @@ export function activeWindows(wins) {
  * for segments where no untagged window covers the same dates. A person export is a subset of the
  * all-campaign export, so counting both would double the shared impressions.
  */
+/** Windows that cover the whole programme: tagged subsets ("(Anju)" in the upload notes) are left out unless
+ * nothing else is there, so a person's boosted-post export is never added on top of the all-campaign one. */
+export function mainWindows(windows) {
+  const tagOf = w => /\(([^)]+)\)\s*$/.test(String((w && w.upload && w.upload.notes) || w && w.notes || ''));
+  const main = (windows || []).filter(w => !tagOf(w));
+  return main.length ? main : (windows || []);
+}
 export function aggregateRows(windows) {
   const W = windows || [];
   const untaggedSegs = w => new Set(w.rows.filter(r => !String(r.campaign || '').trim()).map(r => r.segment));

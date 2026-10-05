@@ -27,6 +27,7 @@ into the next read-out.
    npx wrangler pages secret put CA_CRON_SECRET --project-name lyzr-work-os      # any long random string
    npx wrangler pages secret put PHANTOMBUSTER_API_KEY --project-name lyzr-work-os # PhantomBuster › Org settings › API keys
    npx wrangler pages secret put CA_LOCAL_USERS --project-name lyzr-work-os        # "email:password, email:password" for email sign-in
+   npx wrangler pages secret put CA_API_KEYS --project-name lyzr-work-os           # "label:key, label:key" read-only keys for the data API and MCP (make a key: openssl rand -hex 24)
    ```
    `HUBSPOT_ACCESS_TOKEN` and `INSTANTLY_API_KEY` are already set. Add the same `CA_CRON_SECRET` value as a
    GitHub Actions secret: `.github/workflows/ca-daily-pull.yml` runs every day at 07:00 IST: Instantly (all
@@ -71,6 +72,30 @@ Sonnet once, 80 accounts per call, and saves the answer in Admin › GSI account
 be edited by hand. **What to do next** lists fixed-rule items (extend reach, rotate creative, open a region, reach
 the MD band) with a Track button. **Designations reached** shows the exact titles LinkedIn exported (top 25 per
 export) and their cohorts; **Designation cohorts by company** lists the exact titles of the HubSpot leads per account.
+
+## Data API and MCP server (pull anything from outside)
+Everything the dashboard holds can be pulled read-only, by Claude or by anyone with a key, as JSON or CSV.
+- **Index, no key:** `GET https://lyzr.kailash-gm.com/api/ca/v1` lists every source with its parameters and
+  example, plus the raw tables; `GET /api/ca/v1/openapi.json` is the OpenAPI 3.1 description (import it into
+  Postman, a GPT action or an agent builder).
+- **Sources:** `linkedin/performance` (totals grouped by day, week, month, campaign, ad, platform, person,
+  stage, format; `platform=all` adds Google, Meta, Bing, Taboola, X, ChatGPT), `linkedin/demographics` (who the
+  ads reached, any breakdown, tagged exports via `tag=`), `linkedin/penetration` (the cube with tiers, exposure,
+  frequency and the what-to-do-next items, same reach model as the page), `linkedin/windows` (which dates have
+  data), `hubspot/leads` (GSI leads with exact titles, counts, funnel), `hubspot/deals`, `email/summary`,
+  `phantom/summary`, `actions`, `settings?name=accounts`, `coverage`, and `table?name=ca_li_perf&day=gte.2026-09-01`
+  (read-only PostgREST filters on any `ca_*` table).
+- **Key:** `Authorization: Bearer <key>`, `x-api-key: <key>` or `?key=<key>`; `format=csv` returns the rows as a
+  file. Keys live only in the Pages secret `CA_API_KEYS` ("label:key, label:key", one key per consumer, 16+
+  characters; `openssl rand -hex 24` makes one). Redeploy after setting it. Remove a key by setting the secret
+  again without it. A signed-in dashboard session works too. Admin › Connection shows how many keys are set.
+- **MCP (Claude):** the same sources are tools on `https://lyzr.kailash-gm.com/api/ca/mcp` (streamable HTTP,
+  stateless JSON-RPC). claude.ai › Settings › Connectors › Add custom connector with the URL
+  `https://lyzr.kailash-gm.com/api/ca/mcp/<key>` (no OAuth). Claude Code:
+  `claude mcp add --transport http lyzr-ca https://lyzr.kailash-gm.com/api/ca/mcp --header "Authorization: Bearer <key>"`.
+  Tool results above about 400k characters are cut to the rows that fit, with a note to narrow the scope.
+- The numbers equal the dashboard's: the API runs the same aggregation code (`js/lib/linkedin-agg.mjs`,
+  `js/lib/leads-agg.mjs`) inside the Pages Function.
 
 ## Demo mode
 `?demo=1` (or the "Explore in demo mode" button) runs the whole UI on generated data shaped like the

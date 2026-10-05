@@ -35,7 +35,7 @@ export const onRequestGet = handle(async ({ request, env, waitUntil }) => {
   return cacheResponse(await cachedGet(env, request, { path: 'linkedin', params: { from, to, platform }, waitUntil }, () => load(env, { from, to, platform })))
 })
 
-async function load(env, { from, to, platform }) {
+export async function load(env, { from, to, platform }) {
   const platParam = platform === 'all' ? {} : { platform: `eq.${platform}` }
   const d = db(env)
   const dayFilter = []

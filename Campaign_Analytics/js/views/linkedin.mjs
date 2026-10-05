@@ -414,7 +414,8 @@ export async function render(el, ctx) {
   drawReach();
 
   // ---- penetration cube (company x region x band, cumulative) ----
-  let cube = A.penetrationCube({ windows, accounts, icp_pool: poolAll, bands, frequency, regions, mix });
+  // Only the all-campaign windows: a tagged export (a person's posts) is a subset of the same impressions.
+  let cube = A.penetrationCube({ windows: A.mainWindows(windows), accounts, icp_pool: poolAll, bands, frequency, regions, mix });
   let cubeMetric = 'pct', cubeRegion = 'all', cubeLimit = 25; const cubeOpen = new Set();
   const cubeVal = (t, b) => cubeMetric === 'pct' ? t[b].pct : cubeMetric === 'reached' ? t[b].reached : cubeMetric === 'exposure' ? t[b].exposure : cubeMetric === 'freq' ? t[b].freq : t[b].pool;
   const cubeCell = (t, b, who) => {

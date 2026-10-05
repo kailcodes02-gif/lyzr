@@ -50,7 +50,7 @@ export const onRequestGet = handle(async ({ request, env, waitUntil }) => {
   return cacheResponse(await cachedGet(env, request, { path: 'coverage', waitUntil }, () => load(env)))
 })
 
-async function load(env) {
+export async function load(env) {
   const d = db(env)
 
   const ads = await guard(async () => {

@@ -2,6 +2,7 @@
 // db = env present and one cheap select works; hubspot / claude = env present only.
 
 import { json, handle } from './_lib/http.js'
+import { apiKeys } from './_lib/apikeys.js'
 import { requireUser } from './_lib/auth.js'
 import { db, dbConfigured } from './_lib/db.js'
 
@@ -34,6 +35,7 @@ export const onRequestGet = handle(async ({ request, env }) => {
     instantly,
     phantom,
     cron: Boolean(env.CA_CRON_SECRET),
+    api_keys: apiKeys(env).size,   // data API / MCP keys in CA_API_KEYS (count only)
     user,
   })
 })

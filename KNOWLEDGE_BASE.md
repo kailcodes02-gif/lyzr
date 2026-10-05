@@ -523,6 +523,22 @@ Access if the data ever becomes confidential.
   Lyzr board carry a vertical tag; owners/view without ?email= shows the signed-in user instead of a blank
   "Awaiting first sign-in" profile.
 
+### 2026-10-05 (night), Campaign Analytics: data API + MCP server, cube no longer double counts tagged exports
+- **Data API** `GET /api/ca/v1/<source>` (`functions/api/ca/v1/[[path]].js`, `_lib/query.js`, `_lib/apikeys.js`,
+  `v1/_openapi.js`): index and OpenAPI need no key; sources (linkedin/performance, linkedin/demographics,
+  linkedin/penetration, linkedin/windows, hubspot/leads, hubspot/deals, email/summary, phantom/summary, actions,
+  settings, coverage, table) need a key from the Pages secret `CA_API_KEYS` ("label:key, ..."), sent as bearer,
+  x-api-key or ?key=. `format=csv`. The Function imports the dashboard's own aggregation modules from
+  `Campaign_Analytics/js/lib/` (wrangler bundles across the repo: verified with `wrangler pages functions build`).
+- **MCP server** `POST /api/ca/mcp` or `/api/ca/mcp/<key>` (`functions/api/ca/mcp/[[key]].js`): stateless
+  streamable HTTP JSON-RPC (initialize, ping, tools/list, tools/call, notifications → 202); one tool per source;
+  results over 400k characters cut to the rows that fit. For claude.ai custom connectors (key in the URL) and
+  Claude Code (`claude mcp add --transport http ... --header`).
+- Fix: the penetration cube summed tagged (per-person) demographics exports on top of the all-campaign ones;
+  `mainWindows()` now drops tagged windows unless nothing else exists (dashboard and API).
+- Admin › Connection shows the key count and the URLs; `health` returns `api_keys`. Tests 209. User must set
+  `CA_API_KEYS` and redeploy.
+
 ### 2026-10-05 (later), Campaign Analytics: realistic penetration, account tiers, exact designations, shared cache, palette
 - **Penetration science.** `reachModel` in `js/lib/linkedin-agg.mjs`: negative-binomial (gamma-Poisson) reach curve,
   share reached = 1 − (1 + λ/k)^−k with λ = impressions ÷ pool, k calibrated so one window averages
