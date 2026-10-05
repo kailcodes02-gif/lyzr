@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-05T14:29:52.179Z",
+  "generated_at": "2026-10-05T14:34:01.103Z",
   "source_file": "tracker.xlsx",
   "rows": [
     {
@@ -8097,18 +8097,46 @@
       "created_by": "Aravind D",
       "created_at": "2026-10-05T14:29:52.179Z",
       "edit_history": []
+    },
+    {
+      "id": "GSI-0362",
+      "segment": "GSI-SI",
+      "sn": 189,
+      "company": "Volkswagen Financial Services",
+      "industry": "Finance",
+      "project": "Refund Recommendation",
+      "use_case": "Identifies overpayments, separates refund-eligible payments, and uses voice outreach to process refunds.",
+      "category": "RPT Prototype",
+      "stage": "in-conversation",
+      "prototype_owners": [
+        "Monisha",
+        "Aravind"
+      ],
+      "opportunity_owners": [
+        "Amol"
+      ],
+      "prototype_link": "https://refund-recommendation.rapid.studio.lyzr.ai/",
+      "prototype_link_text": "https://refund-recommendation.rapid.studio.lyzr.ai/",
+      "acv": 50000,
+      "acv_raw": "50000",
+      "time_period": null,
+      "close_date_raw": null,
+      "close_quarter": null,
+      "created_by": "Aravind D",
+      "created_at": "2026-10-05T14:34:01.103Z",
+      "edit_history": []
     }
   ],
   "aggregates": {
-    "total_rows": 361,
-    "total_acv": 38409000,
-    "acv_open": 31396000,
+    "total_rows": 362,
+    "total_acv": 38459000,
+    "acv_open": 31446000,
     "acv_won": 3630000,
     "acv_lost": 3383000,
-    "unique_companies": 208,
+    "unique_companies": 209,
     "by_stage": {
       "Demo": 66,
-      "in-conversation": 214,
+      "in-conversation": 215,
       "win": 13,
       "customer": 29,
       "lost": 39
@@ -8133,10 +8161,10 @@
         }
       },
       "GSI-SI": {
-        "count": 71,
-        "acv": 9620000,
+        "count": 72,
+        "acv": 9670000,
         "stages": {
-          "in-conversation": 55,
+          "in-conversation": 56,
           "Demo": 6,
           "win": 2,
           "customer": 6,
@@ -8257,6 +8285,11 @@
         "acv": 58000
       },
       {
+        "name": "Amol",
+        "deals": 2,
+        "acv": 50000
+      },
+      {
         "name": "Shefali",
         "deals": 1,
         "acv": 50000
@@ -8268,11 +8301,6 @@
       },
       {
         "name": "Thomas Therkatil",
-        "deals": 1,
-        "acv": 0
-      },
-      {
-        "name": "Amol",
         "deals": 1,
         "acv": 0
       },
@@ -8745,6 +8773,11 @@
       },
       {
         "company": "Kencor Health",
+        "deals": 1,
+        "acv": 50000
+      },
+      {
+        "company": "Volkswagen Financial Services",
         "deals": 1,
         "acv": 50000
       },
