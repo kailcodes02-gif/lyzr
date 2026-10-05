@@ -58,6 +58,7 @@ const SEGMENT_HEADERS = {
   country: 'Country', countryregion: 'Country', membercountry: 'Country',
   location: 'Location', memberlocation: 'Location', region: 'Location',
   companysize: 'Company Size', companyindustry: 'Industry', industry: 'Industry', memberindustry: 'Industry',
+  contextualcountryregion: 'Country', contextualcountry: 'Country', county: 'County', designatedmarketarea: 'DMA', dma: 'DMA',
   countyregion: 'Country', memberregion: 'Location', jobtitles: 'Job Title', companies: 'Company',
 };
 export const METRIC_FIELDS = ['impressions', 'clicks', 'spend', 'reach', 'leads', 'lead_forms_opened', 'video_views', 'sends', 'opens', 'engagements', 'reactions', 'comments', 'shares', 'follows', 'viral_impressions', 'conversions'];
@@ -156,7 +157,33 @@ function mapHeaders(headers, fields) {
   return columns;
 }
 
+// One Demographics Report export holds up to ten tables, one per breakdown (Company Name, Company
+// Industry, Company Size, Contextual Country/Region, Location, Job Seniority, Job Title, Job Function,
+// County, Designated Market Area), separated by blank lines and each headed "<dimension> Segment".
+// Every table is read; rows carry their segment. A single-table file goes through unchanged.
 export function parseLinkedInCsv(text, fileName = '') {
+  if (text && text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const lines = String(text || '').split(/\r\n|\n|\r/);
+  const blocks = []; let cur = null;
+  for (let i = 0; i < lines.length; i++) { const blank = !lines[i].trim() || /^[\s,\t;"]*$/.test(lines[i]); if (blank) { cur = null; continue; } if (!cur) { cur = { start: i, lines: [] }; blocks.push(cur); } cur.lines.push(lines[i]); }
+  const isSeg = b => { const first = (parseRows(b.lines[0], detectDelimiter(b.lines[0]))[0] || [])[0]; return !!(first && SEGMENT_HEADERS[segKey(first)] && /impressions|sends/i.test(b.lines[0])); };
+  const segBlocks = blocks.filter(isSeg);
+  if (segBlocks.length < 2) return parseOneTable(text, fileName);
+  const preamble = blocks.filter(b => !isSeg(b) && b.start < segBlocks[0].start).flatMap(b => b.lines);
+  const out = { kind: 'demographics', period_start: null, period_end: null, columns: {}, rows: [], warnings: [], preamble: [], delimiter: detectDelimiter(segBlocks[0].lines[0]), fileName, segments: [] };
+  for (const b of segBlocks) {
+    const one = parseOneTable([...preamble, '', ...b.lines].join('\n'), fileName);
+    if (one.kind !== 'demographics') continue;
+    out.rows.push(...one.rows); Object.assign(out.columns, one.columns);
+    out.preamble = one.preamble; if (!out.period_start) { out.period_start = one.period_start; out.period_end = one.period_end; }
+    for (const w of one.warnings) if (!/Ignored text columns|No data rows/.test(w) && !out.warnings.includes(w)) out.warnings.push(w);
+    const seg = one.rows[0] && one.rows[0].segment; if (seg && !out.segments.includes(seg)) out.segments.push(seg);
+  }
+  if (!out.rows.length) out.warnings.push('No data rows found.');
+  return out;
+}
+
+function parseOneTable(text, fileName = '') {
   const warnings = [];
   if (text && text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
   const lines = String(text || '').split(/\r\n|\n|\r/);

@@ -163,19 +163,32 @@ test('2026 Demographics Report export: "<dimension> Segment" first column, Repor
   assert.equal(t.rows[0].segment, 'Job Title');
 });
 
-test('month grid: performance days per month, demographics by breakdown, tagged exports do not count', () => {
+test('month grid: performance days per month; demographics needs the whole month and every breakdown', () => {
   assert.deepEqual(monthsBetween('2026-04', '2026-06'), ['2026-04', '2026-05', '2026-06']);
   const u = (kind, start, end, notes = null, extra = {}) => ({ channel: 'linkedin', kind, period_start: start, period_end: end, notes, row_count: 10, ...extra });
   const g = monthGrid([
     u('performance', '2026-05-01', '2026-05-23'), u('performance', '2026-06-01', '2026-06-30'),
-    u('demographics', '2026-05-01', '2026-05-31', 'Company'), u('demographics', '2026-06-01', '2026-06-14', 'Company, Job Title'), u('demographics', '2026-06-15', '2026-06-30', 'Company'),
-    u('demographics', '2026-06-01', '2026-06-30', 'Country (Anju)'),          // tagged: a person's export, not the whole programme
-    u('demographics', '2026-06-01', '2026-06-30', 'Country', { row_count: 0 }), // nothing read: ignored
-    { channel: 'email', kind: 'events', period_start: '2026-05-01', period_end: '2026-05-31' },
+    u('demographics', '2026-05-01', '2026-05-31', 'Company'),
+    u('demographics', '2026-06-01', '2026-06-30', 'Company, Country, DMA, Industry, Job Function, Job Seniority, Job Title, Location'),
+    u('demographics', '2026-06-01', '2026-06-30', 'Company (Anju)'),
   ], ['2026-05', '2026-06']);
-  assert.equal(g[0].perf.days, 23); assert.equal(g[0].perf.ok, false); assert.deepEqual(g[0].perf.gaps, [{ from: '2026-05-24', to: '2026-05-31' }]);
-  assert.equal(g[0].company.ok, true); assert.equal(g[0].title.ok, false); assert.equal(g[0].title.days, 0);
-  assert.equal(g[1].perf.ok, true); assert.equal(g[1].company.ok, true);
-  assert.equal(g[1].title.partial, true); assert.equal(g[1].title.days, 14);
-  assert.equal(g[1].country.ok, false); assert.equal(g[1].country.days, 0);
+  assert.equal(g[0].perf.days, 23); assert.deepEqual(g[0].perf.gaps, [{ from: '2026-05-24', to: '2026-05-31' }]);
+  assert.equal(g[0].demo.ok, false); assert.equal(g[0].demo.partial, true); assert.deepEqual(g[0].demo.missing, ['Job Title', 'Country', 'Job Seniority', 'Job Function']);
+  assert.equal(g[1].perf.ok, true); assert.equal(g[1].demo.ok, true); assert.deepEqual(g[1].demo.missing, []);
+});
+
+test('parser: a ten-table Demographics Report export yields every segment', () => {
+  const hdr = 'Impressions\tPercent of Total Impressions\tClicks\tPercent of Total Clicks\tClick Through Rate\tConversions\tPercent of Total Conversions\tConversion Rate\tSends\tPercent of Total Sends\tOpens\tPercent of Total Opens\tOpen Rate';
+  const text = ['Demographics Report (in UTC)', '"Report Start: September 1, 2026, 12:00 AM"', '"Report End: September 30, 2026, 11:59 PM"', '"Date Generated: October 1, 2026, 3:42 AM"', '',
+    'Company Name Segment\t' + hdr, 'EY\t44748\t12%\t300\t9%\t0.6%\t0\t0%\t0%\t0\t0%\t0\t0%\t0%', 'Accenture\t34876\t10%\t280\t8%\t0.8%\t0\t0%\t0%\t5\t1%\t2\t1%\t40%', '',
+    'Contextual Country/Region Segment\t' + hdr, 'India\t258137\t74.8%\t2400\t76%\t0.93%\t0\t0%\t0%\t547\t77%\t330\t74%\t60%', 'United States\t10206\t3%\t85\t2.7%\t0.83%\t0\t0%\t0%\t126\t17%\t79\t17%\t62%', '',
+    'Job Seniority Segment\t' + hdr, 'Senior\t185072\t53%\t1678\t53%\t0.9%\t0\t0%\t0%\t257\t36%\t165\t37%\t64%', '',
+    'Job Title Segment\t' + hdr, 'Senior Manager\t42775\t12%\t311\t9.9%\t0.7%\t0\t0%\t0%\t134\t18%\t77\t17%\t57%', 'Partner\t12980\t3.7%\t122\t3.8%\t0.94%\t0\t0%\t0%\t6\t0.8%\t0\t0%\t0%', ''].join('\n');
+  const r = parseLinkedInCsv(text, 'September_Demographics Report.csv');
+  assert.equal(r.kind, 'demographics'); assert.equal(r.period_start, '2026-09-01'); assert.equal(r.period_end, '2026-09-30');
+  assert.deepEqual(r.segments, ['Company', 'Country', 'Job Seniority', 'Job Title']);
+  assert.equal(r.rows.length, 7);
+  assert.equal(r.rows.find(x => x.segment === 'Country' && x.value === 'India').impressions, 258137);
+  assert.equal(r.rows.find(x => x.segment === 'Job Title' && x.value === 'Partner').clicks, 122);
+  assert.equal(r.rows.find(x => x.segment === 'Company' && x.value === 'Accenture').sends, 5);
 });

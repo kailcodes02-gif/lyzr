@@ -165,7 +165,11 @@ export const onRequestPost = handle(async ({ request, env }) => {
         params: { channel: `eq.${channel}`, kind: `eq.${kind}`, period_start: `eq.${periodStart}`, period_end: `eq.${periodEnd}`, platform: `eq.${platform}` },
         select: 'id,notes,row_count',
       })
-      const dupes = found.filter((x) => (x.notes || '') === (segs || '') || !x.row_count)
+      // Same window: replace an older upload with the same breakdowns, no rows, or a subset of the new file's
+      // breakdowns (an old Company-only upload gives way to the full ten-table export) and the same tag.
+      const parts = (n) => { const m = String(n || '').match(/^(.*?)(?:\s*\((.*)\))?$/); return { segs: new Set(m[1].split(',').map((t) => t.trim()).filter(Boolean)), tag: (m[2] || '').trim() } }
+      const mine = parts(segs)
+      const dupes = found.filter((x) => { if ((x.notes || '') === (segs || '') || !x.row_count) return true; const p = parts(x.notes); return p.tag === mine.tag && [...p.segs].every((t) => mine.segs.has(t)) && (p.segs.size > 0 || !x.notes) })
       // Also drop older uploads of the same breakdown whose window sits inside the new one (e.g. 1-14 Sept after 1-30 Sept).
       const inside = segs ? await d.select('ca_uploads', { params: { channel: `eq.${channel}`, kind: `eq.${kind}`, platform: `eq.${platform}`, notes: `eq.${segs}`, period_start: `gte.${periodStart}`, period_end: `lte.${periodEnd}` }, select: 'id' }) : []
       for (const x of inside) if (!dupes.some((y) => y.id === x.id)) dupes.push(x)

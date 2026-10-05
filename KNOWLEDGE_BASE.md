@@ -523,6 +523,16 @@ Access if the data ever becomes confidential.
   Lyzr board carry a vertical tag; owners/view without ?email= shows the signed-in user instead of a blank
   "Awaiting first sign-in" profile.
 
+### 2026-10-05, Campaign Analytics: the Demographics export holds ten tables (parser fix)
+- Kailash was right: one Professional Demographics CSV contains ten blank-line separated tables (Company Name,
+  Company Industry, Company Size, Contextual Country/Region, Location, Job Seniority, Job Title, Job Function,
+  County, Designated Market Area), each "<dimension> Segment" + the same metric columns. The parser read only
+  the first, which is why every band / region / penetration view said "Needs Job Title / Country".
+  `parseLinkedInCsv` now splits the file into blocks and parses every segment table (`segments` on the result).
+- Re-uploading the same window replaces an older upload whose breakdowns are a subset (Company-only -> full file).
+  Export checklist is now 2 files per period (Ad Performance daily at ad level + Professional Demographics); the
+  month grid has 2 columns and flags "old export: company only". Existing uploads must be re-uploaded once.
+
 ### 2026-10-04, Campaign Analytics: email + password sign-in for named outside accounts
 - Gate gains "Or sign in with email and password" under the Microsoft button. Accounts come from the Pages
   secret `CA_LOCAL_USERS` ("email:password, ..."), never from the code. `POST /api/ca/login` answers a
