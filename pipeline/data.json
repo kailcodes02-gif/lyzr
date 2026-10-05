@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-14T07:47:04.505Z",
+  "generated_at": "2026-10-05T14:29:52.179Z",
   "source_file": "tracker.xlsx",
   "rows": [
     {
@@ -8069,21 +8069,49 @@
           }
         }
       ]
+    },
+    {
+      "id": "ENT-0361",
+      "segment": "Enterprises",
+      "sn": 188,
+      "company": "Flamergy",
+      "industry": "Inventory Management",
+      "project": "Vendor Management",
+      "use_case": "AI Powered vendor management for procurement teams",
+      "category": "RPT Prototype",
+      "stage": "lost",
+      "prototype_owners": [
+        "Monisha",
+        "Aravind"
+      ],
+      "opportunity_owners": [
+        "Arko"
+      ],
+      "prototype_link": "https://vendor-management.rapid.studio.lyzr.ai/workspace-home",
+      "prototype_link_text": "https://vendor-management.rapid.studio.lyzr.ai/workspace-home",
+      "acv": 25000,
+      "acv_raw": "25000",
+      "time_period": null,
+      "close_date_raw": null,
+      "close_quarter": null,
+      "created_by": "Aravind D",
+      "created_at": "2026-10-05T14:29:52.179Z",
+      "edit_history": []
     }
   ],
   "aggregates": {
-    "total_rows": 360,
-    "total_acv": 38384000,
+    "total_rows": 361,
+    "total_acv": 38409000,
     "acv_open": 31396000,
     "acv_won": 3630000,
-    "acv_lost": 3358000,
-    "unique_companies": 207,
+    "acv_lost": 3383000,
+    "unique_companies": 208,
     "by_stage": {
       "Demo": 66,
       "in-conversation": 214,
       "win": 13,
       "customer": 29,
-      "lost": 38
+      "lost": 39
     },
     "by_segment": {
       "Internal": {
@@ -8116,10 +8144,10 @@
         }
       },
       "Enterprises": {
-        "count": 182,
-        "acv": 18749000,
+        "count": 183,
+        "acv": 18774000,
         "stages": {
-          "lost": 31,
+          "lost": 32,
           "Demo": 41,
           "in-conversation": 83,
           "win": 7,
@@ -8232,6 +8260,11 @@
         "name": "Shefali",
         "deals": 1,
         "acv": 50000
+      },
+      {
+        "name": "Arko",
+        "deals": 1,
+        "acv": 25000
       },
       {
         "name": "Thomas Therkatil",
@@ -8737,6 +8770,11 @@
       },
       {
         "company": "Sapcon Steels",
+        "deals": 1,
+        "acv": 25000
+      },
+      {
+        "company": "Flamergy",
         "deals": 1,
         "acv": 25000
       },
@@ -9323,6 +9361,7 @@
       "Human Resource",
       "Image generation",
       "Insurance",
+      "Inventory Management",
       "Legal",
       "Marketing",
       "Media & Entertainment",
