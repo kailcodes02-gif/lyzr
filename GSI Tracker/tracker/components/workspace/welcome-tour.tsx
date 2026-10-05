@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { LyzrSail } from '@/components/ui/lyzr-logo'
 import { useCurrentUser } from '@/lib/hooks/use-data'
 import { markIntroSeen } from '@/components/workspace/page-intro'
+import { useOnboardingFlags, useMarkOnboardingFlag } from '@/lib/onboarding-flags'
 import { cn } from '@/lib/utils'
 
 // Guided walkthrough. A centered modal over a dimmed page: each step
@@ -168,6 +169,8 @@ const load = (k: string) => { try { return window.localStorage.getItem(k) } catc
 
 export function WelcomeTour() {
   const { data: user } = useCurrentUser()
+  const { flags, ready } = useOnboardingFlags()
+  const markFlag = useMarkOnboardingFlag()
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState(0)
@@ -178,7 +181,7 @@ export function WelcomeTour() {
     const s = STEPS[i]
     setStep(i)
     save(STEP_KEY, String(i))
-    if (s.introKey) markIntroSeen(s.introKey)
+    if (s.introKey) { markIntroSeen(s.introKey); void markFlag(`intro:${s.introKey}`) }
     if (navigate && s.href) router.push(s.href)
   }
 
@@ -205,17 +208,23 @@ export function WelcomeTour() {
         goTo(i, false) // stay on whatever page they are on until they press Next
         return
       }
-      if (load(DONE_KEY) !== '1') begin()
+      // Auto-start only on a person's FIRST ever sign-in: the account-level
+      // flag decides; localStorage is just this browser's cache of it. Until
+      // the account flags have loaded, show nothing — never guess and replay.
+      if (!ready) return
+      if (flags?.['tour:v3'] || load(DONE_KEY) === '1') return
+      begin()
     }, 0)
     return () => window.clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user])
+  }, [user, ready, flags])
 
   const finish = () => {
     setOpen(false)
     setActive(false)
     save(DONE_KEY, '1')
     drop(STEP_KEY)
+    void markFlag('tour:v3') // remembered on the account: no replay on the next sign-in or device
   }
 
   if (!open) return null

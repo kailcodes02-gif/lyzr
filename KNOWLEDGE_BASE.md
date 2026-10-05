@@ -458,6 +458,16 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-10-05, GSI Tracker: tour/intros remembered per ACCOUNT, not per browser (+ migration 033)
+- Complaint: the walkthrough replayed every login. Cause: "seen" lived only in localStorage, which the
+  lyzr.ai iframe/partitioned storage resets. Now the flags live per user in saved_views (page 'onboarding',
+  name 'flags', config jsonb) via lib/onboarding-flags.ts; tour + page intros check the account flag first,
+  show NOTHING until flags load, and write both stores on dismiss. All 11 existing users pre-seeded
+  (tour:v3 + 19 intro flags) via service_role, so nobody sees the demo again; new users get it once.
+- Drift found: live saved_views never had the UNIQUE (user_id,page,name) that 009 declares (42P10 on
+  on_conflict). `033_saved_views_unique.sql` (user pastes live; in RESET_ALL) dedupes + adds it; app flag
+  writes use update-then-insert so they work either way.
+
 ### 2026-10-02, GSI Tracker: API live end-to-end; HubSpot card copy corrected
 - SUPABASE_JWT_SECRET set on GitHub (user supplied in chat — treat as exposed; rotate if it ever matters)
   and bound to Pages after a second deploy (the secret-put step runs AFTER the deploy step, so the first

@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { startTour, useTourActive } from '@/components/workspace/welcome-tour'
 import { useCurrentUser } from '@/lib/hooks/use-data'
+import { useOnboardingFlags, useMarkOnboardingFlag } from '@/lib/onboarding-flags'
 
 // First-visit page intros. The first time someone opens a page on this
 // browser, a centered modal runs through the page's main features — what each
@@ -249,6 +250,8 @@ function introFor(pathname: string): Intro | undefined {
 export function PageIntro() {
   const pathname = usePathname()
   const { data: user } = useCurrentUser()
+  const { flags, ready } = useOnboardingFlags()
+  const markFlag = useMarkOnboardingFlag()
   const touring = useTourActive()
   const [dismissed, setDismissed] = useState<string | null>(null)
 
@@ -256,10 +259,13 @@ export function PageIntro() {
   // persistence is markIntroSeen, and each page has its own key, so nothing
   // needs resetting on navigation.
   const intro = introFor(pathname ?? '/')
-  const show = !!user && !touring && !!intro && !seen(intro.key) && dismissed !== intro.key
+  // The account-level flag rules; localStorage only covers this session while
+  // the flags load. No flags yet → show nothing (better to skip an intro once
+  // than to repeat them at every sign-in).
+  const show = !!user && ready && !touring && !!intro && !flags?.[`intro:${intro.key}`] && !seen(intro.key) && dismissed !== intro.key
 
   if (!show || !intro) return null
-  const close = () => { markIntroSeen(intro.key); setDismissed(intro.key) }
+  const close = () => { markIntroSeen(intro.key); void markFlag(`intro:${intro.key}`); setDismissed(intro.key) }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
