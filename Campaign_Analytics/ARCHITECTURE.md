@@ -92,8 +92,14 @@ Implementation notes (backend, `functions/api/ca/`), where the built code adds t
   window overlaps `[from,to]`; the UI states which windows are included and that people can be
   counted in more than one window.
 - Reach in LinkedIn exports is a daily figure; summing days over-counts people. Label it "reach (sum of daily)".
-- Penetration = estimated people reached ÷ ICP pool (Apollo headcount by account × country × band).
-  People reached = impressions ÷ frequency (default 3.5, editable in Settings) unless a Reach column exists.
+- Penetration = people reached ÷ ICP pool (Apollo headcount by account × country × band), never above 100%.
+  People reached comes from the negative-binomial reach model (`reachModel` in `js/lib/linkedin-agg.mjs`): with
+  λ = impressions ÷ pool exposures per person, share reached = 1 − (1 + λ/k)^−k, k calibrated so one window
+  averages `targets.frequency` (default 3.5) impressions per person reached. One window therefore equals
+  impressions ÷ frequency; more windows flatten towards the pool. Cells with no pool fall back to impressions ÷
+  frequency and show no percentage. Roll-ups (company, region, tier) divide only the reach inside pooled cells
+  (`reached_pooled`) by the summed pool. Also reported: exposure (impressions per person in the pool) and
+  frequency (impressions per person reached).
 - Designation bands: MD, MD-1, MD-2 (Settings › Bands). Per-account title conventions in `seed/accounts.json`,
   generic LinkedIn title buckets in `seed/band_titles.json`. Everything else = Other.
 - Regions: `seed/regions.json` (file wraps the map as `{note, regions:{Region:[countries]}}`; the settings API returns the flat map `{Region:[countries]}` and consumers accept either); unknown country = Other.
@@ -111,6 +117,18 @@ Implementation notes (backend, `functions/api/ca/`), where the built code adds t
 - Penetration maps: people reached = company impressions x country share x band share / frequency; shares come
   from the Country / Job Title exports or, when missing, the `mix_defaults` setting (built-in Apr-Aug 2026 mix).
   Pools = Apollo `icp_pool` + ratio-derived rows (`expandPool`) + Claude `icp_estimates`; estimated cells are dashed.
+- Account tiers (`js/lib/tiers.mjs`, mirrored in `functions/api/ca/_lib/tiers.js`): GSI / SI / Big Four / MBB /
+  Other, Tier 1 = GSI + Big Four + MBB, Tier 2 = SI + Other. Rules first (named firms, category, industry +
+  headcount), then `POST account-tiers` asks Claude Sonnet (low effort, one call per 80 accounts, saved in the
+  `account_tiers` setting, editable in Admin › GSI accounts). LinkedIn page part `views/parts/tiers.mjs`: tier
+  summary, Tier 1 vs Tier 2 and GSI vs SI vs Big Four vs MBB region × band maps, and "What to do next"
+  (`penetrationActions`: extend / rotate / open a region / reach the MD band, fixed thresholds, Track button).
+- Exact designations (`views/parts/designations.mjs`, `js/lib/designations-agg.mjs`): titles exactly as LinkedIn
+  exported them (top 25 per export) with cohorts, and per-company designation cohorts from HubSpot leads; the reach
+  heat maps also have an "Exact designations" dimension. LinkedIn has no title × company cross-tab.
+- Page parts: `views/linkedin.mjs` mounts `views/parts/<name>.mjs` into empty slots after the cube; a part that fails
+  to load never breaks the page.
+- Chart colours: `js/palette.mjs` (SERIES, BAND_COLORS, TIER_COLORS, BUCKET_COLORS, LEAD_TYPE_COLORS, personColor).
 - Sales funnel (Leads page): reached out / replied / demo booked / demo completed / prospect from HubSpot lead
   status, lifecycle and activity properties; rules in `js/lib/leads-agg.mjs` (`funnelCounts`, `isDemoBooked`...).
 - Lead types: LinkedIn lead-form leads are MQL (book a demo, BoFu), conversation ad leads (BoFu), playbook leads

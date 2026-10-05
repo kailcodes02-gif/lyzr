@@ -10,6 +10,7 @@
 import { json, handle } from './_lib/http.js'
 import { requireUser } from './_lib/auth.js'
 import { db } from './_lib/db.js'
+import { cachedGet, cacheResponse } from './_lib/cache.js'
 
 export { corsPreflight as onRequestOptions } from './_lib/http.js'
 
@@ -42,9 +43,14 @@ async function lastSync(d, table) {
 }
 const guard = async fn => { try { return await fn() } catch (e) { return { error: String(e.message || e).slice(0, 160) } } }
 
-export const onRequestGet = handle(async ({ request, env }) => {
+export const onRequestGet = handle(async ({ request, env, waitUntil }) => {
   const user = await requireUser(request, env)
   if (!user) return json({ error: 'Sign in required' }, 401)
+  // Shared 8-hour cache; every write (upload, sync, settings) bumps the version so the grid stays right.
+  return cacheResponse(await cachedGet(env, request, { path: 'coverage', waitUntil }, () => load(env)))
+})
+
+async function load(env) {
   const d = db(env)
 
   const ads = await guard(async () => {
@@ -103,5 +109,5 @@ export const onRequestGet = handle(async ({ request, env }) => {
     return out
   })
 
-  return json({ ads, email, hubspot, deals, phantom, actions, generated_at: new Date().toISOString() })
-})
+  return { ads, email, hubspot, deals, phantom, actions, generated_at: new Date().toISOString() }
+}

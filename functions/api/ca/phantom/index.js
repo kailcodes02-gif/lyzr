@@ -8,15 +8,21 @@
 import { json, handle, isoDay } from '../_lib/http.js'
 import { requireUser } from '../_lib/auth.js'
 import { db } from '../_lib/db.js'
+import { cachedGet, cacheResponse } from '../_lib/cache.js'
 
 export { corsPreflight as onRequestOptions } from '../_lib/http.js'
 
-export const onRequestGet = handle(async ({ request, env }) => {
+export const onRequestGet = handle(async ({ request, env, waitUntil }) => {
   const user = await requireUser(request, env)
   if (!user) return json({ error: 'Sign in required' }, 401)
   const url = new URL(request.url)
   const from = isoDay(url.searchParams.get('from')) ? url.searchParams.get('from') : '2026-01-01'
   const to = isoDay(url.searchParams.get('to')) ? url.searchParams.get('to') : new Date().toISOString().slice(0, 10)
+  // Shared 8-hour cache; the PhantomBuster sync bumps the version when it finishes.
+  return cacheResponse(await cachedGet(env, request, { path: 'phantom', params: { from, to }, waitUntil }, () => load(env, { from, to })))
+})
+
+async function load(env, { from, to }) {
   const d = db(env)
   const [agents, runs, daily, syncs] = await Promise.all([
     d.select('ca_pb_agents', { select: 'id,name,script,last_run_at,status,synced_at', order: 'name.asc', limit: 1000 }).catch(() => []),
@@ -29,5 +35,5 @@ export const onRequestGet = handle(async ({ request, env }) => {
     d.selectAll('ca_pb_daily', { select: 'agent_id,day,profiles,invites_sent,accepted,messages_sent,replies', order: 'day.asc,agent_id.asc', max: 20000 }).catch(() => []),
     d.select('ca_pb_sync', { order: 'started_at.desc', limit: 1 }).catch(() => []),
   ])
-  return json({ agents, runs, daily, last_sync: syncs[0] || null, configured: Boolean(env.PHANTOMBUSTER_API_KEY), from, to })
-})
+  return { agents, runs, daily, last_sync: syncs[0] || null, configured: Boolean(env.PHANTOMBUSTER_API_KEY), from, to }
+}

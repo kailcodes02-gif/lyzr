@@ -21,6 +21,7 @@
 import { json, handle, readJson, HttpError } from '../_lib/http.js'
 import { requireUser, cronUser } from '../_lib/auth.js'
 import { db } from '../_lib/db.js'
+import { bumpCacheVersion } from '../_lib/cache.js'
 
 export { corsPreflight as onRequestOptions } from '../_lib/http.js'
 
@@ -183,7 +184,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
       if (mapped.length && !queue.length) warnings.push('No phantom in the workspace looks like an outreach phantom (Auto Connect, Outreach, Message Sender); only the agent list was stored.')
       cursor = { sync_id: syncId, queue, index: 0, pending: [], agents: mapped.length, runs: 0 }
       await mark(d, syncId, { agents: mapped.length })
-      if (!queue.length) { await mark(d, syncId, { status: 'done', finished_at: new Date().toISOString() }); return json({ done: true, agents: mapped.length, runs: 0, warnings, progress: { phase: 'done', done: 0, total: 0 } }) }
+      if (!queue.length) { await mark(d, syncId, { status: 'done', finished_at: new Date().toISOString() }); await bumpCacheVersion(d); return json({ done: true, agents: mapped.length, runs: 0, warnings, progress: { phase: 'done', done: 0, total: 0 } }) }
       return json({ done: false, cursor, agents: mapped.length, runs: 0, warnings, progress: { phase: 'runs', done: 0, total: queue.length } })
     }
 
@@ -236,6 +237,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
       const daily = rollupDaily(all, syncedAt)
       for (let i = 0; i < daily.length; i += 500) await d.upsert('ca_pb_daily', daily.slice(i, i + 500), 'agent_id,day')
       await mark(d, cursor.sync_id, { status: 'done', finished_at: new Date().toISOString(), runs: cursor.runs })
+      await bumpCacheVersion(d) // agents, runs and daily rows changed: the shared GET cache must recompute
     } else await mark(d, cursor.sync_id, { runs: cursor.runs })
     return json({ done, cursor: done ? undefined : cursor, agents: cursor.agents, runs: cursor.runs, warnings, progress: { phase: done ? 'done' : 'runs', done: index, total: queue.length } })
   } catch (e) {

@@ -22,6 +22,7 @@
 import { json, handle, readJson, HttpError } from '../_lib/http.js'
 import { requireUser, cronUser } from '../_lib/auth.js'
 import { db } from '../_lib/db.js'
+import { bumpCacheVersion } from '../_lib/cache.js'
 
 export { corsPreflight as onRequestOptions } from '../_lib/http.js'
 
@@ -239,6 +240,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
         leads: 0,
       }
       await mark(d, syncId, mapped.length ? { campaigns: mapped.length } : { campaigns: 0, status: 'done', finished_at: new Date().toISOString(), days: 0 })
+      if (!mapped.length) await bumpCacheVersion(d)
       return json({ done: !mapped.length, cursor: mapped.length ? cursor : undefined, campaigns: mapped.length, workspace_campaigns: all.length, days: 0, leads: 0, warnings, progress: { phase: 'daily', done: 0, total: mapped.length } })
     }
 
@@ -249,6 +251,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
       const total = (cursor.leadQueue || []).length
       const done = cursor.campaignIndex >= total
       if (done) await mark(d, cursor.sync_id, { status: 'done', finished_at: new Date().toISOString(), days: Number(cursor.days) || 0 })
+      if (done) await bumpCacheVersion(d) // campaigns, daily rows and leads changed: the shared GET cache must recompute
       return json({ done, cursor: done ? undefined : cursor, ...summary(cursor), warnings, progress: { phase: done ? 'done' : 'leads', done: Math.min(cursor.campaignIndex, total), total } })
     }
 

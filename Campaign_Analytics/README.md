@@ -18,7 +18,7 @@ into the next read-out.
 ## Runbook
 1. Database. Either create a dedicated Supabase project (recommended, full isolation) or reuse an
    existing one. Paste `supabase/001_campaign_analytics.sql`, `002_email_actions.sql`, `003_message_ai.sql`, then
-   `004_deals.sql`, `006_phantom.sql` and `007_ad_platforms.sql` into its SQL Editor (project `gfzimvqfmninrcyapike`).
+   `004_deals.sql`, `006_phantom.sql`, `007_ad_platforms.sql`, `008_funnel.sql`, `009_em_leads.sql` and `010_cache.sql` into its SQL Editor (project `gfzimvqfmninrcyapike`).
 2. Secrets on Pages (run from the repo root, wrangler is already logged in):
    ```
    npx wrangler pages secret put CA_SUPABASE_URL --project-name lyzr-work-os      # https://<ref>.supabase.co
@@ -47,6 +47,30 @@ count), demographics per export window, Instantly exports as de-duplicated event
 leads, deals, PhantomBuster) run every morning and on the Admin Pull now buttons into the same store. Every date
 range you pick reads from the store; nothing needs re-uploading. Actions (Track / Add) are rows in `ca_actions`.
 Admin › Data coverage shows exactly which dates each source covers and where the gaps are.
+
+## Shared cache
+The heavy reads (`/api/ca/linkedin`, `hubspot`, `hubspot/deals`, `email`, `phantom`, `coverage`) are computed once
+and kept for 8 hours in the `ca_cache` table, so the same answer is served to every user, across logins and
+date ranges (one entry per path + parameters). Every write that changes the data (uploads and their deletion,
+settings, the HubSpot, deals, Instantly and PhantomBuster pulls, message reading, ICP estimates) bumps a
+`_version` row, and entries older than it are recomputed on the next read. The top-bar **Refresh data** button
+sends `x-ca-refresh: 1` with the GETs of the next 90 seconds, which bypasses the cache and rewrites it for
+everyone. Responses carry `x-ca-cache: hit|miss|bypass` and `x-ca-cached-at`, which the "Data as of" label
+shows. Claude read-outs are not part of this layer (they keep their own cache in `insights.js`).
+Run `supabase/010_cache.sql` once in the Supabase SQL editor; until then the API works as before and adds
+the warning `cache: run Campaign_Analytics/supabase/010_cache.sql` where a response has a `warnings` array.
+
+## Penetration, tiers and designations (LinkedIn page)
+Penetration can never read above 100%: people reached come from a reach curve (negative-binomial model, see
+ARCHITECTURE.md › Data conventions) calibrated to the frequency in Admin › Targets, so one window equals
+impressions ÷ frequency and further windows add fewer new people. The cube shows penetration, people reached,
+pool, exposure (impressions per person in the pool) and frequency (impressions per person reached).
+**Penetration by tier** rolls the same cube up by GSI / SI / Big Four / MBB and Tier 1 (GSI + Big Four + MBB) vs
+Tier 2 (SI + Other). Tiers come from rules; the "Classify with Claude" button (editors) sends the rest to Claude
+Sonnet once, 80 accounts per call, and saves the answer in Admin › GSI accounts › Account tiers, where any tier can
+be edited by hand. **What to do next** lists fixed-rule items (extend reach, rotate creative, open a region, reach
+the MD band) with a Track button. **Designations reached** shows the exact titles LinkedIn exported (top 25 per
+export) and their cohorts; **Designation cohorts by company** lists the exact titles of the HubSpot leads per account.
 
 ## Demo mode
 `?demo=1` (or the "Explore in demo mode" button) runs the whole UI on generated data shaped like the

@@ -7,6 +7,7 @@ import { json, handle, isoDay } from './_lib/http.js'
 import { requireUser } from './_lib/auth.js'
 import { db, inChunks } from './_lib/db.js'
 import { activeWindows } from './_lib/windows.js'
+import { cachedGet, cacheResponse } from './_lib/cache.js'
 
 export { corsPreflight as onRequestOptions } from './_lib/http.js'
 
@@ -20,7 +21,7 @@ export function overlaps(u, from, to) {
   return true
 }
 
-export const onRequestGet = handle(async ({ request, env }) => {
+export const onRequestGet = handle(async ({ request, env, waitUntil }) => {
   const user = await requireUser(request, env)
   if (!user) return json({ error: 'Sign in required' }, 401)
   const url = new URL(request.url)
@@ -30,6 +31,11 @@ export const onRequestGet = handle(async ({ request, env }) => {
   if (to && !isoDay(to)) return json({ error: 'to must be YYYY-MM-DD' }, 400)
 
   const platform = (url.searchParams.get('platform') || 'linkedin').toLowerCase()
+  // Shared 8-hour cache (same body for every user); uploads bump the version so `uploads` stays fresh.
+  return cacheResponse(await cachedGet(env, request, { path: 'linkedin', params: { from, to, platform }, waitUntil }, () => load(env, { from, to, platform })))
+})
+
+async function load(env, { from, to, platform }) {
   const platParam = platform === 'all' ? {} : { platform: `eq.${platform}` }
   const d = db(env)
   const dayFilter = []
@@ -67,5 +73,5 @@ export const onRequestGet = handle(async ({ request, env }) => {
     const keep = new Set(activeWindows(candidates).map((u) => u.id))
     for (const u of candidates) if (keep.has(u.id)) demo.push({ upload: u, rows: rowsByUpload.get(u.id) || [] })
   }
-  return json({ from: from || null, to: to || null, platform, perf, demo, uploads })
-})
+  return { from: from || null, to: to || null, platform, perf, demo, uploads }
+}

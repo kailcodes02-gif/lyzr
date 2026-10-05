@@ -5,8 +5,9 @@
 
 export const BUCKETS = ['conversation', 'demo', 'won', 'lost'];
 export const BUCKET_LABELS = { conversation: 'In conversation', demo: 'Demo', won: 'Won', lost: 'Lost' };
-// Brand palette: navy for data, orange accent, greys for the closed states.
-export const BUCKET_COLORS = { conversation: '#043E77', demo: '#FE4B1E', won: '#1F2022', lost: '#CFCCC7' };
+// Bucket colours live in the shared palette (js/palette.mjs); re-exported here for the views and tests.
+import { BUCKET_COLORS } from '../palette.mjs';
+export { BUCKET_COLORS };
 export const MOTIONS = ['New Business', 'Expansion', 'Partnership', 'POC'];
 const OPEN = new Set(['conversation', 'demo']);
 

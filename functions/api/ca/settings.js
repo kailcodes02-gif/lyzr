@@ -7,6 +7,8 @@ import { json, handle, readJson } from './_lib/http.js'
 import { requireUser, parseEmails } from './_lib/auth.js'
 import { db } from './_lib/db.js'
 import { loadSettings, SETTING_KEYS } from './_lib/settings.js'
+import { bumpCacheVersion } from './_lib/cache.js'
+import { TIERS } from './_lib/tiers.js'
 
 export { corsPreflight as onRequestOptions } from './_lib/http.js'
 
@@ -76,6 +78,16 @@ function validate(key, value) {
       if (!Array.isArray(value)) throw Object.assign(new Error('icp_estimates must be an array'), { status: 400 })
       return value.filter((e) => e && e.company && e.country).map((e) => ({ company: String(e.company).trim(), country: String(e.country).trim(), md: Math.max(0, Math.round(Number(e.md) || 0)), md1: Math.max(0, Math.round(Number(e.md1) || 0)), md2: Math.max(0, Math.round(Number(e.md2) || 0)), conf: ['High', 'Medium', 'Low'].includes(e.conf) ? e.conf : 'Low', basis: String(e.basis || '').slice(0, 300), model: e.model ? String(e.model).slice(0, 60) : null, estimated_at: e.estimated_at || null }))
     }
+    case 'account_tiers': {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw Object.assign(new Error('account_tiers must be an object of account name to { tier, conf, basis }'), { status: 400 })
+      const out = {}
+      for (const [k, v] of Object.entries(value)) {
+        const name = String(k).trim()
+        if (!name || !v || typeof v !== 'object' || !TIERS.includes(v.tier)) continue
+        out[name] = { tier: v.tier, conf: ['High', 'Medium', 'Low', 'Rule'].includes(v.conf) ? v.conf : 'Medium', basis: String(v.basis || '').slice(0, 300), source: ['rule', 'claude', 'manual'].includes(v.source) ? v.source : 'manual', ...(v.model ? { model: String(v.model).slice(0, 60) } : {}), at: v.at ? String(v.at) : null }
+      }
+      return out
+    }
     case 'contact_lists': {
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw Object.assign(new Error('contact_lists must be an object of account name to number'), { status: 400 })
       return Object.fromEntries(Object.entries(value).map(([k, v]) => [String(k).trim(), Number(v)]).filter(([k, v]) => k && Number.isFinite(v) && v >= 0))
@@ -107,5 +119,6 @@ export const onRequestPut = handle(async ({ request, env }) => {
   const value = validate(key, body.value)
   const d = db(env)
   await d.upsert('ca_settings', [{ key, value, updated_at: new Date().toISOString(), updated_by: user.email }], 'key')
+  await bumpCacheVersion(env) // accounts, bands, rules... change what the cached GETs mean
   return json({ ok: true, key })
 })

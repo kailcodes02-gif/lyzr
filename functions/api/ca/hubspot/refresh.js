@@ -26,6 +26,7 @@ import { requireUser, cronUser } from '../_lib/auth.js'
 import { db, inChunks } from '../_lib/db.js'
 import { loadSettings } from '../_lib/settings.js'
 import { toAccount, toBand, toRegion, NO_TARGETS } from '../_lib/classify.js'
+import { bumpCacheVersion } from '../_lib/cache.js'
 
 export { corsPreflight as onRequestOptions } from '../_lib/http.js'
 
@@ -568,6 +569,7 @@ async function finish({ d, cursor, warnings }) {
     }
   }
   await markSync(d, cursor.sync_id, { status: 'done', finished_at: new Date().toISOString(), contacts: cursor.contacts, notes: cursor.notes })
+  await bumpCacheVersion(d) // contacts and notes changed: the shared GET cache must recompute
   const out = { done: true, contacts: cursor.contacts, notes: cursor.notes, replies: replies(cursor), warnings, progress: { phase: 'done', done: cursor.contacts, total: cursor.contacts } }
   if (pruned !== undefined) out.pruned = pruned
   return out

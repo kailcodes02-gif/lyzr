@@ -17,6 +17,7 @@
 import { json, handle, readJson, isoDay, num } from './_lib/http.js'
 import { requireUser } from './_lib/auth.js'
 import { db, inChunks } from './_lib/db.js'
+import { bumpCacheVersion } from './_lib/cache.js'
 
 export { corsPreflight as onRequestOptions } from './_lib/http.js'
 
@@ -251,6 +252,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
       }
     } catch (e) { console.error('recount after upload failed', e && e.message) }
   }
+  await bumpCacheVersion(env) // rows changed: the shared GET cache must recompute
   return json({ upload_id: uploadId, inserted, skipped, created, final: Boolean(b.final) }, created ? 201 : 200)
 })
 
@@ -261,5 +263,6 @@ export const onRequestDelete = handle(async ({ request, env }) => {
   const id = str(new URL(request.url).searchParams.get('id'))
   if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ error: 'Missing or invalid ?id=' }, 400)
   await db(env).del('ca_uploads', { id: `eq.${id}` })
+  await bumpCacheVersion(env)
   return json({ ok: true, id })
 })

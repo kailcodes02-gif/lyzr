@@ -23,6 +23,7 @@ import { db, inChunks } from '../_lib/db.js'
 import { loadSettings } from '../_lib/settings.js'
 import { toAccount, NO_TARGETS } from '../_lib/classify.js'
 import { searchTerms, SEARCH_GAP_MS } from './refresh.js'
+import { bumpCacheVersion } from '../_lib/cache.js'
 
 export { corsPreflight as onRequestOptions } from '../_lib/http.js'
 
@@ -348,6 +349,7 @@ async function step({ d, token, env, request, cursor, warnings }) {
   const done = cursor.phase === 'deals' && cursor.taskIndex >= chunks.length
   if (done) {
     await markSync(d, cursor.sync_id, { status: 'done', finished_at: now, deals: cursor.deals, changes: cursor.changes })
+    await bumpCacheVersion(d) // deals and history changed: the shared GET cache must recompute
     return { done: true, deals: cursor.deals, changes: cursor.changes, warnings, progress: { phase: 'done', done: chunks.length, total: chunks.length } }
   }
   await markSync(d, cursor.sync_id, { deals: cursor.deals, changes: cursor.changes })

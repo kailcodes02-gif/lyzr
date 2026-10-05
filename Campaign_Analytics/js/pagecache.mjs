@@ -2,7 +2,9 @@
 //   1. withGetCache(api): every GET answer is kept for TTL (8 hours) per path + params, so going back
 //      to a page never refetches. Writes (uploads, pulls, actions, settings) drop the GETs they can change.
 //   2. The router keeps one rendered page per route (app.mjs): switching tabs shows it again untouched.
-// The "Refresh data" button in the top bar clears both and redraws the page from the server.
+// The "Refresh data" button in the top bar clears both and redraws the page from the server; it also
+// opens the api's refresh window (api.refreshNext) so the server's shared 8-hour cache is bypassed
+// and rewritten for every user.
 // Claude is never called by either layer: AI read-outs only run on their own Generate button.
 export const TTL_MS = 8 * 60 * 60 * 1000;
 
@@ -33,6 +35,8 @@ export function withGetCache(api) {
     ...api,
     get,
     post: wrap(api.post), put: wrap(api.put), del: wrap(api.del),
-    clearCache: () => { cache.clear(); stamp = Date.now(); },
+    // The server stamp lives on the inner api (set per response), so forward it instead of copying it once.
+    get lastCachedAt() { return api.lastCachedAt || null; },
+    clearCache: () => { cache.clear(); stamp = Date.now(); api.lastCachedAt = null; if (typeof api.refreshNext === 'function') api.refreshNext(); },
   };
 }

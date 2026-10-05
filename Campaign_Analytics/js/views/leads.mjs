@@ -3,6 +3,7 @@
 import { BANDS, enrich, applyFilters, summary, bucketCounts, withGrowth, crossTab, rowTotal, sourceBreakdown, ownerHealth, actionList, sortRows, toCsv, ownerKey, countBy, sortedEntries, clusterShort, sourceChannel, sourceDetail, recentActivity, gsiMatcher, hasActivity, funnelCounts, funnelBySource, funnelByBucket, neverContacted, statusBreakdown, lastContactAt, firstContactAt, daysFrom, median, isFormLead, inGsiCampaign, gsiCampaignsOf, gsiSplit, gsiCampaignTable, replyType, share } from '../lib/leads-agg.mjs';
 import { mountTrend } from '../trend.mjs';
 import { sectionCompare, memoGet, deltaText } from '../compare.mjs';
+import { BAND_COLORS, NAVY, ORANGE, TEAL, GREEN } from '../palette.mjs';
 
 export const route = 'leads';
 export const title = 'Leads analytics';
@@ -19,7 +20,7 @@ async function copyText(ctx, text, what) {
   ctx.toast(`Copied ${what}`);
 }
 
-const COLORS = { MD: '#043E77', 'MD-1': '#FE4B1E', 'MD-2': '#7A9CC6', Other: '#CFCCC7', Unknown: '#E3E1DE' };
+const COLORS = BAND_COLORS;
 const BAND_COLS = BANDS.map(b => ({ key: b, label: b }));
 const truncate = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; };
 
@@ -254,13 +255,13 @@ export async function render(el, ctx) {
       if (typeof Chart !== 'undefined') {
         const barOpts = extra => ({ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: legendInk, boxWidth: 12 } }, tooltip: { mode: 'index' } }, ...extra });
         funnelCharts.push(new Chart(box.querySelector('#funnelChart'), { type: 'bar', data: { labels: F.steps.map(s => s.label), datasets: [
-          { label: 'Passed every earlier step', data: F.steps.map(s => s.n), backgroundColor: '#043E77', borderWidth: 0 },
-          { label: 'Any path', data: F.steps.map(s => s.raw), backgroundColor: '#7A9CC6', borderWidth: 0 },
+          { label: 'Passed every earlier step', data: F.steps.map(s => s.n), backgroundColor: NAVY, borderWidth: 0 },
+          { label: 'Any path', data: F.steps.map(s => s.raw), backgroundColor: TEAL, borderWidth: 0 },
         ] }, options: barOpts({ indexAxis: 'y', scales: { x: { beginAtZero: true, ticks: { precision: 0, color: axisInk }, grid: { color: gridInk } }, y: { ticks: { color: axisInk }, grid: { display: false } } } }) }));
         funnelCharts.push(new Chart(box.querySelector('#outreachChart'), { type: 'bar', data: { labels: byBucket.map(b => bucketLabel(b.key, gran)), datasets: [
-          { label: 'Reached out', data: byBucket.map(b => b.reached), backgroundColor: '#043E77', borderWidth: 0, stack: 'a' },
-          { label: 'Not yet reached', data: byBucket.map(b => b.notReached), backgroundColor: '#FE4B1E', borderWidth: 0, stack: 'a' },
-          { label: 'Demo booked', data: byBucket.map(b => b.booked), backgroundColor: '#CFCCC7', borderWidth: 0, stack: 'b' },
+          { label: 'Reached out', data: byBucket.map(b => b.reached), backgroundColor: NAVY, borderWidth: 0, stack: 'a' },
+          { label: 'Not yet reached', data: byBucket.map(b => b.notReached), backgroundColor: ORANGE, borderWidth: 0, stack: 'a' },
+          { label: 'Demo booked', data: byBucket.map(b => b.booked), backgroundColor: GREEN, borderWidth: 0, stack: 'b' },
         ] }, options: barOpts({ scales: { x: { stacked: true, grid: { display: false }, ticks: { color: axisInk } }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0, color: axisInk }, grid: { color: gridInk } } } }) }));
       }
     }

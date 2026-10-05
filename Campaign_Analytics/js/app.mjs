@@ -158,7 +158,8 @@ async function route(rerender) {
   }
   stampLabel();
 }
-function stampLabel() { const el = $('dataAt'); if (el) el.textContent = 'Data as of ' + new Date(cachedSince()).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); }
+// Prefers the server's shared-cache stamp (x-ca-cached-at: when the data was computed, same for every user).
+function stampLabel() { const el = $('dataAt'); if (!el) return; const srv = ctx.api && ctx.api.lastCachedAt; const t = srv && !Number.isNaN(Date.parse(srv)) ? new Date(srv) : new Date(cachedSince()); el.textContent = 'Data as of ' + t.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); }
 // "Refresh data": forget every kept page and cached answer, redraw this page from the server.
 function hardRefresh() {
   if (ctx.api.clearCache) ctx.api.clearCache();

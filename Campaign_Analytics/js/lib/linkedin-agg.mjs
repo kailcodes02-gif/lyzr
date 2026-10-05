@@ -291,18 +291,52 @@ export function expandPool(icp_pool, accounts, { countries = POOL_COUNTRIES, est
   return [...out.values()];
 }
 
+// ---- reach model: how many distinct people N impressions reach in a pool of P ----
+// Impressions are attributed to a (company, country, band) cell; the cell's pool is P people. Dividing
+// impressions by the average frequency gives a count that keeps growing with every window and passes
+// 100% of the pool, which cannot happen. The standard media-planning model instead treats each person's
+// exposure count as Poisson with a rate that varies across people (gamma-Poisson, the negative binomial
+// reach model of Goodhardt and Ehrenberg):
+//   exposures per pool person  λ = N / P
+//   share of the pool reached  R = 1 − (1 + λ/k)^(−k)       (k = how unevenly exposure is spread)
+// k is calibrated so that in a typical window the people reached average the campaign's frequency
+// (Admin › Targets, default 3.5): for one window this reproduces impressions ÷ frequency exactly, and over
+// several windows the same k is kept, so reach grows but flattens towards the pool size instead of passing
+// it. The excess shows up as frequency (impressions ÷ people reached) and exposure (λ), both reported.
+// When the frequency cannot be met even with every person exposed evenly, the Poisson limit applies.
+export function nbdReach(lambda, k) { if (!(lambda > 0)) return 0; if (!isFinite(k)) return 1 - Math.exp(-lambda); return 1 - Math.pow(1 + lambda / k, -k); }
+export function calibrateK(lambdaWindow, frequency) {
+  if (!(lambdaWindow > 0) || !(frequency > 1)) return Infinity;
+  const mean = k => { const r = nbdReach(lambdaWindow, k); return r > 0 ? lambdaWindow / r : Infinity; }; // mean exposures among the reached
+  if (mean(Infinity) >= frequency) return Infinity;                                                      // even spread already repeats this much
+  let lo = -14, hi = 14;                                                                                   // log k; mean() falls as k rises
+  for (let i = 0; i < 64; i++) { const mid = (lo + hi) / 2; if (mean(Math.exp(mid)) > frequency) lo = mid; else hi = mid; }
+  return Math.exp((lo + hi) / 2);
+}
+/** { impressions, pool, windows, frequency } -> { model:'nbd'|'naive', reached, pct, exposure, freq, k } */
+export function reachModel({ impressions, pool, windows = 1, frequency = 3.5 }) {
+  const imp = Math.max(0, Number(impressions) || 0), f = frequency > 1 ? frequency : 3.5;
+  if (!(pool > 0)) return { model: 'naive', reached: imp / f, pct: null, exposure: null, freq: imp ? f : null, k: null };
+  const lambda = imp / pool, k = calibrateK(lambda / Math.max(1, windows), f);
+  const frac = Math.min(1, nbdReach(lambda, k)), reached = pool * frac;
+  return { model: 'nbd', reached, pct: frac * 100, exposure: lambda, freq: reached ? imp / reached : null, k };
+}
+
 // ---- penetration: account x country for a band ----
-// People reached = account impressions x country share x band share, divided by frequency.
-// Penetration = people reached / ICP pool headcount (icp_pool rows: company, country, md, md1, md2).
+// Impressions landing in a cell = account impressions x country share x band share. People reached comes
+// from reachModel() against the cell's pool (icp_pool rows: company, country, md, md1, md2); without a
+// pool the cell falls back to impressions ÷ frequency and shows no percentage.
 export function penetration({ windows, accounts, icp_pool, bands, frequency = 3.5, band = 'All', countries, mix }) {
   const poolKey = (c, ct) => normName(c) + '||' + normName(ct);
   const pool = new Map();
   for (const p of icp_pool || []) pool.set(poolKey(p.company, p.country), { MD: n(p.md), 'MD-1': n(p.md1), 'MD-2': n(p.md2), est: !!p.est, conf: p.conf || (p.est ? 'Low' : 'High'), source: p.source || '', basis: p.basis || '' });
   const estimated = { country: false, band: false };
   const ctys = countries && countries.length ? countries : [...new Set((icp_pool || []).map(p => p.country))];
-  const cell = new Map(); // key -> { imp, reached:{MD,MD-1,MD-2}, pool }
+  const cell = new Map(); // key -> { imp, imps:{MD,MD-1,MD-2}, reached:{...}, exposure:{...}, pool, wins:Set }
   const accImp = new Map();
+  let wi = 0;
   for (const w of windows || []) {
+    wi++;
     const rows = w.rows || [];
     const comp = segRows(rows, 'Company');
     const geo = countryShareOrMix(rows, mix); if (geo.estimated && comp.length) estimated.country = true;
@@ -314,23 +348,30 @@ export function penetration({ windows, accounts, icp_pool, bands, frequency = 3.
       for (const ct of ctys) {
         const cs = geo.total ? (geo.values.get(ct) || 0) / geo.total : 0; if (!cs) continue;
         const k = acc + '||' + ct;
-        if (!cell.has(k)) cell.set(k, { account: acc, country: ct, imp: 0, reached: { MD: 0, 'MD-1': 0, 'MD-2': 0 }, pool: pool.get(poolKey(acc, ct)) || null });
-        const c = cell.get(k); c.imp += imp * cs;
-        for (const b of ['MD', 'MD-1', 'MD-2']) c.reached[b] += imp * cs * (bs.share[b] || 0) / (frequency || 3.5);
+        if (!cell.has(k)) cell.set(k, blankCell(acc, ct, pool.get(poolKey(acc, ct)) || null));
+        const c = cell.get(k); c.imp += imp * cs; c.wins.add(wi);
+        for (const b of PEN_BANDS) c.imps[b] += imp * cs * (bs.share[b] || 0);
       }
     }
   }
   // Pool-only cells: a reached account's countries that have a headcount but got no impressions,
   // so unreached regions show as 0% and the company's denominator is its whole pool.
-  for (const acc of accImp.keys()) for (const ct of ctys) { const k = acc + '||' + ct, p = pool.get(poolKey(acc, ct)); if (p && !cell.has(k)) cell.set(k, { account: acc, country: ct, imp: 0, reached: { MD: 0, 'MD-1': 0, 'MD-2': 0 }, pool: p }); }
+  for (const acc of accImp.keys()) for (const ct of ctys) { const k = acc + '||' + ct, p = pool.get(poolKey(acc, ct)); if (p && !cell.has(k)) cell.set(k, blankCell(acc, ct, p)); }
+  // People reached per band through the reach model (saturating against the pool; naive without one).
+  for (const c of cell.values()) {
+    c.model = c.pool ? 'nbd' : 'naive';
+    for (const b of PEN_BANDS) { const m = reachModel({ impressions: c.imps[b], pool: c.pool ? c.pool[b] : 0, windows: c.wins.size, frequency }); c.reached[b] = m.reached; c.exposure[b] = m.exposure; c.freq[b] = m.freq; }
+  }
   const cells = [...cell.values()].map(c => {
-    const reached = band === 'All' ? c.reached.MD + c.reached['MD-1'] + c.reached['MD-2'] : c.reached[band] || 0;
-    const p = c.pool ? (band === 'All' ? c.pool.MD + c.pool['MD-1'] + c.pool['MD-2'] : c.pool[band]) : null;
-    return { ...c, reached_band: reached, pool_band: p, pct: p ? reached / p * 100 : null };
+    const pick = o => band === 'All' ? PEN_BANDS.reduce((a, b) => a + (o[b] || 0), 0) : o[band] || 0;
+    const reached = pick(c.reached), imp = pick(c.imps);
+    const p = c.pool ? pick(c.pool) : null;
+    return { ...c, reached_band: reached, imp_band: imp, pool_band: p, pct: p ? reached / p * 100 : null, exposure_band: p ? imp / p : null, freq_band: reached ? imp / reached : null };
   });
   const accountsSorted = [...accImp.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]);
   return { cells, accounts: accountsSorted, countries: ctys, frequency, band, estimated };
 }
+const blankCell = (account, country, pool) => ({ account, country, imp: 0, imps: { MD: 0, 'MD-1': 0, 'MD-2': 0 }, reached: { MD: 0, 'MD-1': 0, 'MD-2': 0 }, exposure: { MD: null, 'MD-1': null, 'MD-2': null }, freq: { MD: null, 'MD-1': null, 'MD-2': null }, pool, wins: new Set() });
 /**
  * Cumulative penetration cube: company x region x designation band, every window in range summed.
  * Built on penetration() (company x country cells); countries roll up to regions with regionOf.
@@ -343,11 +384,13 @@ export function penetrationCube({ windows, accounts, icp_pool, bands, frequency 
   // Every country with a pool row plus every country seen in the windows, so reach outside the pool geographies still counts.
   const countries = [...new Set([...(icp_pool || []).map(p => p.country), ...(windows || []).flatMap(w => segRows(w.rows || [], 'Country').map(r => r.value))])].filter(Boolean);
   const P = penetration({ windows, accounts, icp_pool, bands, frequency, band: 'All', countries, mix });
-  const blank = () => { const o = {}; for (const b of [...PEN_BANDS, 'All']) o[b] = { reached: 0, pool: 0, pct: null, has_pool: false, est_pool: false, sources: [] }; return o; };
+  const blank = () => { const o = {}; for (const b of [...PEN_BANDS, 'All']) o[b] = { reached: 0, reached_pooled: 0, imp: 0, pool: 0, pct: null, exposure: null, freq: null, has_pool: false, est_pool: false, sources: [] }; return o; };
   const add = (t, c) => {
-    for (const b of PEN_BANDS) { t[b].reached += c.reached[b] || 0; t.All.reached += c.reached[b] || 0; if (c.pool) { t[b].pool += c.pool[b] || 0; t.All.pool += c.pool[b] || 0; t[b].has_pool = true; t.All.has_pool = true; if (c.pool.est) { t[b].est_pool = true; t.All.est_pool = true; } if (c.pool.source && !t.All.sources.includes(c.pool.source)) t.All.sources.push(c.pool.source); } }
+    for (const b of PEN_BANDS) { t[b].reached += c.reached[b] || 0; t.All.reached += c.reached[b] || 0; t[b].imp += c.imps[b] || 0; t.All.imp += c.imps[b] || 0; if (c.pool) { t[b].reached_pooled += c.reached[b] || 0; t.All.reached_pooled += c.reached[b] || 0; t[b].pool += c.pool[b] || 0; t.All.pool += c.pool[b] || 0; t[b].has_pool = true; t.All.has_pool = true; if (c.pool.est) { t[b].est_pool = true; t.All.est_pool = true; } if (c.pool.source && !t.All.sources.includes(c.pool.source)) t.All.sources.push(c.pool.source); } }
   };
-  const finish = t => { for (const b of [...PEN_BANDS, 'All']) t[b].pct = t[b].has_pool && t[b].pool ? t[b].reached / t[b].pool * 100 : null; return t; };
+  // Percentages count only the people reached in cells that have a pool (reached_pooled), so a country with
+  // impressions but no headcount cannot inflate the company's figure; saturating cells never pass their pool.
+  const finish = t => { for (const b of [...PEN_BANDS, 'All']) { const x = t[b]; x.pct = x.has_pool && x.pool ? Math.min(100, x.reached_pooled / x.pool * 100) : null; x.exposure = x.has_pool && x.pool ? x.imp / x.pool : null; x.freq = x.reached ? x.imp / x.reached : null; } return t; };
   const byAcc = new Map(), regionReach = new Map();
   for (const c of P.cells) {
     const region = regionOf(c.country, regions);
@@ -363,6 +406,32 @@ export function penetrationCube({ windows, accounts, icp_pool, bands, frequency 
 }
 export const PEN_BREAKS = [5, 15, 35, 70];
 export const penLevel = pct => pct == null ? 0 : pct < 5 ? 1 : pct < 15 ? 2 : pct < 35 ? 3 : pct < 70 ? 4 : 5;
+export const EXPOSURE_BREAKS = [0.5, 2, 5, 10];
+export const exposureLevel = x => x == null ? 0 : x < 0.5 ? 1 : x < 2 ? 2 : x < 5 ? 3 : x < 10 ? 4 : 5;
+
+// ---- actionable items from the cube ----
+// Fixed rules over the cumulative cube, so the list reads the same way every time:
+//   extend   pool >= minPool and penetration < lowPct            -> big pool, hardly reached
+//   rotate   exposure >= highExposure (and penetration >= 35%)   -> the same people see the ads again and again
+//   region   a company reached in one region with a pool of >= minPool elsewhere and nothing there
+//   md       MD penetration under a third of the MD-2 penetration while MD-2 is above lowPct
+// Each item: { kind, account, region?, band?, title, evidence, action, score } sorted by score (pool size x gap).
+export function penetrationActions(cube, { minPool = 50, lowPct = 5, highExposure = 8, limit = 12, tiers } = {}) {
+  const out = [];
+  const tierOf = a => tiers && typeof tiers === 'function' ? tiers(a) : null;
+  for (const a of cube.accounts || []) {
+    const t = a.total.All, tag = tierOf(a.account); const who = tag ? `${a.account} (${tag})` : a.account;
+    if (t.has_pool && t.pool >= minPool && t.pct != null && t.pct < lowPct && t.imp > 0) out.push({ kind: 'extend', account: a.account, title: `Extend reach at ${who}`, evidence: `${fmtN(t.reached)} of ${fmtN(t.pool)} people reached (${t.pct.toFixed(1)}%), ${t.exposure.toFixed(2)} exposures per person in the pool`, action: `Add ${a.account} to a company-targeted ad set and raise its budget until penetration passes ${lowPct}%`, score: t.pool * (lowPct - t.pct) });
+    if (t.has_pool && t.exposure != null && t.exposure >= highExposure && t.pct >= 35) out.push({ kind: 'rotate', account: a.account, title: `Rotate creative or cap frequency at ${who}`, evidence: `${t.exposure.toFixed(1)} exposures per person in the pool, ${fmtN(t.freq, 1)} impressions per person reached, ${t.pct.toFixed(0)}% penetrated`, action: `Swap the creatives shown to ${a.account} and set a frequency cap; the extra impressions are landing on people already reached`, score: t.pool * (t.exposure - highExposure) });
+    const regs = Object.entries(a.regions || {});
+    const reachedSomewhere = regs.some(([, r]) => r.All.reached > 0);
+    for (const [region, r] of regs) if (reachedSomewhere && r.All.has_pool && r.All.pool >= minPool && !(r.All.reached > 0)) out.push({ kind: 'region', account: a.account, region, title: `Open ${region} for ${who}`, evidence: `${fmtN(r.All.pool)} people in the pool in ${region}, none reached; the company is reached in ${regs.filter(([, x]) => x.All.reached > 0).map(([k]) => k).join(', ')}`, action: `Add ${region} to the geography of the ad sets that target ${a.account}`, score: r.All.pool * lowPct });
+    const md = a.total.MD, md2 = a.total['MD-2'];
+    if (md.has_pool && md2.has_pool && md.pool >= 20 && md2.pct != null && md2.pct >= lowPct && md.pct != null && md.pct < md2.pct / 3) out.push({ kind: 'md', account: a.account, band: 'MD', title: `Reach the MD band at ${who}`, evidence: `MD ${md.pct.toFixed(1)}% vs MD-2 ${md2.pct.toFixed(1)}% penetrated (${fmtN(md.reached)} of ${fmtN(md.pool)} MDs)`, action: `Add a seniority-targeted ad set (Partner / Managing Director titles) for ${a.account}`, score: md.pool * (md2.pct / 3 - md.pct) });
+  }
+  return out.sort((x, y) => y.score - x.score).slice(0, limit);
+}
+const fmtN = (v, d = 0) => v == null ? '–' : Number(v).toLocaleString('en-US', { maximumFractionDigits: d });
 
 // Geography written into an ad set name, used to pick creatives per country in the cell detail.
 const GEO_WORDS = { 'India': ['india', 'ind '], 'United States': ['|us|', ' us ', 'usa', 'united states', 'north america', 'na|'], 'United Kingdom': ['uk', 'united kingdom', 'britain'], 'Saudi Arabia': ['saudi', 'ksa', 'middle east', 'gcc', 'mea'], 'United Arab Emirates': ['uae', 'dubai', 'emirates', 'middle east', 'gcc', 'mea'], 'Australia': ['australia', 'anz', 'apac'], 'Japan': ['japan', 'apac'], 'Singapore': ['singapore', 'apac', 'sea', 'asean'] };

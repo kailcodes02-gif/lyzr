@@ -10,6 +10,7 @@
 import * as E from '../lib/email-agg.mjs';
 import { campaignLabel } from '../email-csv.mjs';
 import { mountTrend } from '../trend.mjs';
+import { NAVY, ORANGE, TEAL, GREEN } from '../palette.mjs';
 import { mountUploader } from '../uploader.mjs';
 import { sectionCompare, deltaText } from '../compare.mjs';
 
@@ -22,7 +23,7 @@ const CACHE = { pages: null, at: 0, hs: null };
 let charts = [], trend = null, ACTIVE = null;
 export function destroy() { ACTIVE = null; for (const c of charts) { try { c.destroy(); } catch { /* ignore */ } } charts = []; if (trend) { trend.destroy(); trend = null; } closeDrawer(); }
 const chart = (canvas, cfg) => { if (typeof Chart === 'undefined' || !canvas) return null; const c = new Chart(canvas, cfg); charts.push(c); return c; };
-const C = { orange: '#FE4B1E', navy: '#043E77', forest: '#1F2022', oxblood: '#6B675F', stone: '#A8A298', sky: '#CFCCC7' };
+const C = { orange: ORANGE, navy: NAVY, forest: GREEN, oxblood: '#6B675F', stone: '#A8A298', sky: '#CFCCC7' };
 
 async function loadAll(ctx, force) {
   if (CACHE.pages && !force && Date.now() - CACHE.at < 10 * 60e3) return CACHE.pages;
@@ -368,7 +369,7 @@ export async function render(el, ctx) {
     const steps = [...new Set([...c.stepSent.keys(), ...c.stepClicks.keys()])].sort((x, y) => x - y);
     const lp = [...c.linkPop.entries()].sort((x, y) => y[1] - x[1]).slice(0, 10);
     chart(root.querySelector('[data-ch="links"]'), { type: 'bar', data: { labels: lp.map(([l]) => l.length > 36 ? l.slice(0, 35) + '…' : l), datasets: [{ data: lp.map(([, n]) => n), backgroundColor: lp.map(([l]) => /Book a Demo/.test(l) ? C.navy : C.orange), borderRadius: 4 }] }, options: { indexAxis: 'y', maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { grid: { display: false }, ticks: { font: { size: 11 } } } } } });
-    chart(root.querySelector('[data-ch="steps"]'), { type: 'bar', data: { labels: steps.map(s => 'Step ' + s), datasets: [{ label: 'Human clicks', data: steps.map(s => c.stepClicks.get(s) || 0), backgroundColor: C.orange, borderRadius: 4, yAxisID: 'y' }, { type: 'line', label: 'Emails sent', data: steps.map(s => c.stepSent.get(s) || 0), borderColor: C.stone, backgroundColor: C.stone, yAxisID: 'y2', tension: .3 }] }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, y2: { position: 'right', beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } } } });
+    chart(root.querySelector('[data-ch="steps"]'), { type: 'bar', data: { labels: steps.map(s => 'Step ' + s), datasets: [{ label: 'Human clicks', data: steps.map(s => c.stepClicks.get(s) || 0), backgroundColor: C.orange, borderRadius: 4, yAxisID: 'y' }, { type: 'line', label: 'Emails sent', data: steps.map(s => c.stepSent.get(s) || 0), borderColor: TEAL, backgroundColor: TEAL, yAxisID: 'y2', tension: .3 }] }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, y2: { position: 'right', beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } } } });
   };
   const panelData = c => {
     const cp = E.people(c.events);

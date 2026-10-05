@@ -13,9 +13,10 @@
 //   note,                       // text under the chart
 // }) -> { destroy }
 import { esc, fmt, usd, pct, addDays, today, monthLabel, dayLabel } from './fmt.mjs';
+import { SERIES } from './palette.mjs';
 
-// Brand palette only: navy carries data, orange leads, then black and the warm greys.
-const COLORS = ['#043E77', '#FE4B1E', '#1F2022', '#A8A298', '#6B675F', '#CFCCC7', '#8A857C', '#B8B4AD'];
+// Shared series palette (js/palette.mjs): brand navy and orange first, then the vivid set.
+const COLORS = SERIES;
 const STATE = new Map();
 const f = (m, v) => v == null || !isFinite(v) ? '–' : m.fmt === 'pct' ? pct(v, 1) : m.fmt === 'usd' ? usd(v) : fmt(v, v % 1 && Math.abs(v) < 100 ? 1 : 0);
 const g = (cur, base) => (base == null || !base || cur == null) ? null : (cur - base) / base * 100;

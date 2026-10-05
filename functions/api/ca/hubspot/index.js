@@ -12,6 +12,7 @@
 import { json, handle, isoDay } from '../_lib/http.js'
 import { requireUser } from '../_lib/auth.js'
 import { db, inChunks } from '../_lib/db.js'
+import { cachedGet, cacheResponse } from '../_lib/cache.js'
 
 export { corsPreflight as onRequestOptions } from '../_lib/http.js'
 
@@ -45,7 +46,7 @@ export async function instantlyByEmail(d, emails, warnings = []) {
   return byEmail
 }
 
-export const onRequestGet = handle(async ({ request, env }) => {
+export const onRequestGet = handle(async ({ request, env, waitUntil }) => {
   const user = await requireUser(request, env)
   if (!user) return json({ error: 'Sign in required' }, 401)
   const url = new URL(request.url)
@@ -55,6 +56,12 @@ export const onRequestGet = handle(async ({ request, env }) => {
   if (from && !isoDay(from)) return json({ error: 'from must be YYYY-MM-DD' }, 400)
   if (to && !isoDay(to)) return json({ error: 'to must be YYYY-MM-DD' }, 400)
 
+  // Shared 8-hour cache; the HubSpot refresh, message reading and the Instantly sync bump the version.
+  // A cache problem lands in `warnings` (the body has that array), never in an error.
+  return cacheResponse(await cachedGet(env, request, { path: 'hubspot', params: { from, to, all: all ? '1' : '' }, waitUntil }, () => load(env, { from, to, all })))
+})
+
+async function load(env, { from, to, all }) {
   const d = db(env)
   const warnings = []
   const created = []
@@ -89,5 +96,5 @@ export const onRequestGet = handle(async ({ request, env }) => {
   // Only form leads count on the Leads page, so only their emails are looked up (a few hundred, not the whole store).
   const em = await instantlyByEmail(d, contacts.filter((c) => c.props && c.props.first_conversion_date).map((c) => c.email), warnings)
   for (const c of contacts) c.instantly = em.get(String(c.email || '').trim().toLowerCase()) || []
-  return json({ from: from || null, to: to || null, all, contacts, notes_by_contact, last_sync: syncs[0] || null, warnings })
-})
+  return { from: from || null, to: to || null, all, contacts, notes_by_contact, last_sync: syncs[0] || null, warnings }
+}

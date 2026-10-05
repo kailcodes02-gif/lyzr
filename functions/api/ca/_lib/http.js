@@ -4,15 +4,17 @@
 export const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-ca-refresh',
 }
 
+// extraHeaders: e.g. the shared-cache stamps (x-ca-cache, x-ca-cached-at) from _lib/cache.js.
 export function json(body, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
+      'Access-Control-Expose-Headers': 'x-ca-cache, x-ca-cached-at',
       'Cache-Control': 'no-store',
       ...extraHeaders,
     },

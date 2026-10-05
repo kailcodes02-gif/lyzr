@@ -8,6 +8,7 @@
 import { json, handle, isoDay } from '../_lib/http.js'
 import { requireUser } from '../_lib/auth.js'
 import { db } from '../_lib/db.js'
+import { cachedGet, cacheResponse } from '../_lib/cache.js'
 
 export { corsPreflight as onRequestOptions } from '../_lib/http.js'
 
@@ -28,7 +29,7 @@ export function kpisOf(deals) {
   return k
 }
 
-export const onRequestGet = handle(async ({ request, env }) => {
+export const onRequestGet = handle(async ({ request, env, waitUntil }) => {
   const user = await requireUser(request, env)
   if (!user) return json({ error: 'Sign in required' }, 401)
   const url = new URL(request.url)
@@ -37,6 +38,11 @@ export const onRequestGet = handle(async ({ request, env }) => {
   if (from && !isoDay(from)) return json({ error: 'from must be YYYY-MM-DD' }, 400)
   if (to && !isoDay(to)) return json({ error: 'to must be YYYY-MM-DD' }, 400)
 
+  // Shared 8-hour cache; the deals sync bumps the version when it finishes.
+  return cacheResponse(await cachedGet(env, request, { path: 'hubspot/deals', params: { from, to }, waitUntil }, () => load(env, { from, to })))
+})
+
+async function load(env, { from, to }) {
   const d = db(env)
   const at = []
   if (from) at.push(`gte.${from}T00:00:00+05:30`)
@@ -46,5 +52,5 @@ export const onRequestGet = handle(async ({ request, env }) => {
     d.selectAll('ca_hs_deal_history', { params: at.length ? { at } : {}, order: 'at.desc,id.desc' }),
     d.select('ca_hs_deals_sync', { order: 'started_at.desc', limit: 1 }),
   ])
-  return json({ from: from || null, to: to || null, deals, history, last_sync: syncs[0] || null, kpis: kpisOf(deals) })
-})
+  return { from: from || null, to: to || null, deals, history, last_sync: syncs[0] || null, kpis: kpisOf(deals) }
+}

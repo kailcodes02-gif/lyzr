@@ -359,19 +359,26 @@ test('penetrationCube: company x region x band, cumulative over windows', () => 
   const C = A.penetrationCube({ windows: [{ rows }, { rows }], accounts, icp_pool, bands, frequency: 3.5, regions });
   assert.equal(C.accounts.length, 1);
   const ey = C.accounts[0];
-  assert.equal(Math.round(ey.regions.India.MD.reached), 1600);         // 2 x (7000 x .8 x .5 / 3.5)
+  // India MD: 5,600 impressions on a pool of 1,000 (5.6 exposures per person). One window alone would reach
+  // 2800 / 3.5 = 800; the second window mostly lands on people already reached, so the model gives ~908, not 1,600.
+  assert.equal(ey.regions.India.MD.imp, 5600);
   assert.equal(ey.regions.India.MD.pool, 1000);
-  assert.equal(Math.round(ey.regions.India.MD.pct), 160);              // more people reached than the pool: frequency-based estimate, shown as is
-  assert.equal(Math.round(ey.regions['United States'].All.reached), 800); // 2 x (7000 x .2 / 3.5)
+  assert.ok(ey.regions.India.MD.reached > 850 && ey.regions.India.MD.reached < 950, String(ey.regions.India.MD.reached));
+  assert.ok(ey.regions.India.MD.pct < 100 && ey.regions.India.MD.pct > 80);
+  assert.equal(Math.round(ey.regions.India.MD.exposure * 10) / 10, 5.6);
+  assert.ok(ey.regions.India.MD.freq > 5.5 && ey.regions.India.MD.freq < 7);   // impressions per person reached, above the 3.5 of a single window
+  // United States: 2 x 1,400 impressions over a pool of 1,500 (MD 700 per window on 500 MDs = 1.4 exposures): one window
+  // would reach 400 in all; the second adds less, so the total sits between 400 and 800.
   assert.equal(ey.regions['United States'].All.pool, 1500);
-  assert.equal(Math.round(ey.total.All.reached), 4000);
+  assert.ok(ey.regions['United States'].All.reached > 400 && ey.regions['United States'].All.reached < 800, String(ey.regions['United States'].All.reached));
   assert.equal(ey.total.All.pool, 7800);                                 // whole-company pool, Middle East included although nobody was reached there
+  assert.ok(ey.total.All.pct < 100 && ey.total.All.reached < 4000);
   assert.equal(ey.regions['Middle East'].All.pct, 0); assert.equal(ey.regions['Middle East'].All.pool, 300);
   assert.deepEqual(C.regions, ['India', 'United States', 'Middle East']);
   // reach in a country with no pool row still counts as people reached (no pct)
   const C2 = A.penetrationCube({ windows: [{ rows: [...rows.filter(r => r.segment !== 'Country'), { segment: 'Country', value: 'India', impressions: 500 }, { segment: 'Country', value: 'Germany', impressions: 500 }] }], accounts, icp_pool, bands, frequency: 3.5, regions: { ...regions, Europe: ['Germany'] } });
-  assert.equal(Math.round(C2.accounts[0].total.All.reached), 2000);
-  assert.equal(Math.round(C2.accounts[0].regions.Europe.All.reached), 1000); assert.equal(C2.accounts[0].regions.Europe.All.pct, null);
+  assert.equal(Math.round(C2.accounts[0].regions.Europe.All.reached), 1000); assert.equal(C2.accounts[0].regions.Europe.All.pct, null);   // no pool: impressions ÷ frequency
+  assert.equal(Math.round(C2.accounts[0].total.All.reached), 2000);   // one window: the model equals impressions ÷ frequency everywhere
   assert.deepEqual(C.bands, ['MD', 'MD-1', 'MD-2']);
 });
 
@@ -452,7 +459,7 @@ test('mix fallback: Company-only exports still give a country and band split, fl
   assert.equal(Math.round(india.reached.MD), 55);
   const mix = { country_share: { India: 1 }, band_share: { MD: 1, 'MD-1': 0, 'MD-2': 0, Other: 0 } };
   const P2 = A.penetration({ windows: [{ rows }], accounts, icp_pool, bands: {}, frequency: 3.5, band: 'MD', countries: ['India', 'United States'], mix });
-  assert.equal(Math.round(P2.cells.find(c => c.country === 'India').reached.MD), 1000);
+  assert.equal(Math.round(P2.cells.find(c => c.country === 'India').reached.MD), 970);   // 3,500 impressions on 1,000 MDs: 3.5 exposures each, Poisson reach 1 - e^-3.5 = 97%, not 100%
   // with a real Country export nothing is estimated for country
   const rows2 = [...rows, { segment: 'Country', value: 'India', impressions: 100 }];
   assert.deepEqual(A.penetration({ windows: [{ rows: rows2 }], accounts, icp_pool, bands: {}, countries: ['India'] }).estimated, { country: false, band: true });
@@ -471,4 +478,38 @@ test('expandPool: missing bands and countries are derived from the category rati
   assert.ok(get('B', 'United States'), 'B gets a US row from the Big Four country mix'); assert.equal(get('B', 'United States').est, true);
   assert.equal(get('A', 'Japan'), undefined, 'no Big Four row in Japan, so nothing to derive from');
   assert.equal(get('C', 'India').source, 'Claude estimate'); assert.equal(get('C', 'India').md2, 30);
+});
+
+test('reach model: one window reproduces impressions / frequency, more windows saturate below the pool', () => {
+  const one = A.reachModel({ impressions: 1400, pool: 1000, windows: 1, frequency: 3.5 });
+  assert.equal(Math.round(one.reached), 400); assert.equal(Math.round(one.pct), 40); assert.equal(Math.round(one.freq * 10) / 10, 3.5); assert.equal(one.exposure, 1.4);
+  const two = A.reachModel({ impressions: 5600, pool: 1000, windows: 2, frequency: 3.5 });
+  assert.ok(two.reached > 800 && two.reached < 1000, 'two windows reach more than one but never the whole pool');
+  const huge = A.reachModel({ impressions: 1e6, pool: 1000, windows: 3 });
+  assert.equal(huge.pct, 100); assert.equal(huge.reached, 1000);
+  assert.deepEqual(A.reachModel({ impressions: 700, pool: 0 }), { model: 'naive', reached: 200, pct: null, exposure: null, freq: 3.5, k: null });
+  assert.equal(A.reachModel({ impressions: 0, pool: 100 }).reached, 0);
+  // the calibrated shape: mean exposures among the reached equals the frequency; Poisson when even spread already repeats more
+  const k = A.calibrateK(1.4, 3.5); assert.ok(Math.abs(1.4 / A.nbdReach(1.4, k) - 3.5) < 1e-6);
+  assert.equal(A.calibrateK(20, 3.5), Infinity);
+  assert.equal(A.exposureLevel(0.2), 1); assert.equal(A.exposureLevel(12), 5); assert.equal(A.exposureLevel(null), 0);
+});
+
+test('penetrationActions: extend, rotate, region and MD rules from the cube', () => {
+  const t = (reached, pool, imp) => ({ reached, imp, pool, pct: pool ? Math.min(100, reached / pool * 100) : null, exposure: pool ? imp / pool : null, freq: reached ? imp / reached : null, has_pool: pool > 0, est_pool: false, sources: [] });
+  const cube = { accounts: [
+    { account: 'Big Quiet', total: { MD: t(1, 100, 4), 'MD-1': t(2, 200, 8), 'MD-2': t(5, 700, 20), All: t(8, 1000, 32) }, regions: { India: { All: t(8, 600, 32) }, 'United States': { All: t(0, 400, 0) } } },
+    { account: 'Saturated', total: { MD: t(50, 100, 1000), 'MD-1': t(50, 100, 1000), 'MD-2': t(50, 100, 1000), All: t(150, 300, 3000) }, regions: { India: { All: t(150, 300, 3000) } } },
+    { account: 'Top light', total: { MD: t(1, 100, 4), 'MD-1': t(30, 100, 110), 'MD-2': t(40, 100, 150), All: t(71, 300, 264) }, regions: { India: { All: t(71, 300, 264) } } },
+  ] };
+  const acts = A.penetrationActions(cube, { tiers: a => a === 'Saturated' ? 'GSI' : null });
+  const kinds = acts.map(a => a.kind + ':' + a.account);
+  assert.ok(kinds.includes('extend:Big Quiet'), kinds.join());
+  assert.ok(kinds.includes('region:Big Quiet'));
+  assert.ok(kinds.includes('rotate:Saturated'));
+  assert.ok(kinds.includes('md:Top light'));
+  assert.ok(!kinds.includes('extend:Saturated'));
+  assert.ok(acts.find(a => a.kind === 'rotate').title.includes('(GSI)'));
+  assert.ok(acts.every(a => a.title && a.evidence && a.action && a.score > 0));
+  assert.deepEqual(A.penetrationActions({ accounts: [] }), []);
 });

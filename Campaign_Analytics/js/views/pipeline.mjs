@@ -11,8 +11,9 @@ const S = { mode: 'all', partner: '', tab: 'timeline', q: '', sort: { key: 'crea
 let charts = [];
 export function destroy() { for (const c of charts) { try { c.destroy(); } catch {} } charts = []; }
 
-// Brand palette (bucket colours live in pipeline-agg.mjs): navy for data, black for closed money, greys for axes.
-const NAVY = '#043E77', BLACK = '#1F2022', INK2 = '#4A4744';
+// Shared palette (js/palette.mjs): navy for open money, the won green for closed money, greys for axes.
+import { NAVY, BLACK } from '../palette.mjs';
+const INK2 = '#4A4744';
 const TABS = [{ value: 'timeline', label: 'Timeline' }, { value: 'companies', label: 'Companies' }, { value: 'motion', label: 'Motion' }, { value: 'stages', label: 'Stage mix' }, { value: 'substages', label: 'Sub-stage' }, { value: 'acv', label: 'ACV' }];
 const truncate = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; };
 const money = (usd, v) => v ? usd(v) : '<span class="muted">no amount</span>';
@@ -171,7 +172,7 @@ export async function render(el, ctx) {
       side.innerHTML = table({ cols: [{ h: 'Sub-stage', k: 'substage', left: true, f: r => esc(r.substage) }, { h: 'Bucket', k: 'bucket', f: r => bucketPill(r.bucket) }, { h: 'Deals', k: 'count', f: r => fmt(r.count) }, { h: 'Share', k: 'share', f: r => pct(rows.length ? r.count / rows.length * 100 : null, 0) }, { h: 'Amount', k: 'amount', f: r => usd(r.amount) }], rows: ss });
     } else if (S.tab === 'acv') {
       const ac = acvByPartner(rows, 12);
-      chart = new Chart(canvas, { type: 'bar', data: { labels: ac.map(r => r.partner), datasets: [{ label: 'Closed ACV', data: ac.map(r => r.closed), backgroundColor: BLACK, borderWidth: 0, stack: 'a' }, { label: 'Open ACV', data: ac.map(r => r.open), backgroundColor: NAVY, borderWidth: 0, stack: 'a' }] }, options: { ...base(true), scales: { x: { stacked: true, beginAtZero: true, ticks: { color: INK2, callback: v => '$' + ctx.fmt.compact(v) }, grid: { color: '#E3E1DE' } }, y: { stacked: true, grid: { display: false }, ticks: { color: INK2 } } } } });
+      chart = new Chart(canvas, { type: 'bar', data: { labels: ac.map(r => r.partner), datasets: [{ label: 'Closed ACV', data: ac.map(r => r.closed), backgroundColor: BUCKET_COLORS.won, borderWidth: 0, stack: 'a' }, { label: 'Open ACV', data: ac.map(r => r.open), backgroundColor: NAVY, borderWidth: 0, stack: 'a' }] }, options: { ...base(true), scales: { x: { stacked: true, beginAtZero: true, ticks: { color: INK2, callback: v => '$' + ctx.fmt.compact(v) }, grid: { color: '#E3E1DE' } }, y: { stacked: true, grid: { display: false }, ticks: { color: INK2 } } } } });
       side.innerHTML = table({ cols: [{ h: 'Partner', k: 'partner', left: true, f: r => esc(r.partner) }, { h: 'Closed ACV', k: 'closed', f: r => usd(r.closed) }, { h: 'Open ACV', k: 'open', f: r => usd(r.open) }, { h: 'Total', k: 'total', f: r => `<b>${usd(r.total)}</b>` }], rows: ac }) + `<p class="muted" style="font-size:12.5px;margin-top:6px">Top 12 partners by money. Lost deals and deals without an amount are left out. ${fmt(rows.filter(r => isOpen(r) && !r.amount).length)} open deals have no amount yet.</p>`;
     }
     if (chart) charts.push(chart);

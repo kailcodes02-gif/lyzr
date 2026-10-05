@@ -13,6 +13,7 @@ import { requireUser } from './_lib/auth.js'
 import { db } from './_lib/db.js'
 import { loadSettings } from './_lib/settings.js'
 import { MODEL_MAIN } from './insights.js'
+import { bumpCacheVersion } from './_lib/cache.js'
 
 export { corsPreflight as onRequestOptions } from './_lib/http.js'
 
@@ -115,5 +116,6 @@ export const onRequestPost = handle(async ({ request, env }) => {
   const fresh = new Set(estimates.map(key))
   const merged = [...(S.icp_estimates || []).filter((e) => !fresh.has(key(e))), ...estimates]
   await db(env).upsert('ca_settings', [{ key: 'icp_estimates', value: merged, updated_at: new Date().toISOString(), updated_by: user.email }], 'key')
+  await bumpCacheVersion(env)
   return json({ estimates, model, skipped, total: merged.length })
 })

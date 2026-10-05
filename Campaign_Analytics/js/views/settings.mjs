@@ -5,7 +5,7 @@ export const noRange = true;
 
 const TABS = [['gsi', 'GSI accounts'], ['regions', 'Regions'], ['targets', 'Targets'], ['email', 'Email rules'], ['icp', 'Reach pools'], ['editors', 'Editors'], ['coverage', 'Data coverage'], ['connection', 'Connections and pulls']];
 const SEED_FILE = { accounts: 'accounts.json', bands: 'band_titles.json', regions: 'regions.json', icp_pool: 'icp_pool.json' };
-const DEFAULTS = { targets: { leads_per_month: 200, demo_mqls_per_month: 30, frequency: 3.5, reach_frequency: 3 }, editors: [] };
+const DEFAULTS = { targets: { leads_per_month: 200, demo_mqls_per_month: 30, frequency: 3.5, reach_frequency: 3 }, editors: [], account_tiers: {} };
 const REDIRECT_URI = 'https://lyzr.kailash-gm.com/Campaign_Analytics/';
 const state = { tab: 'gsi', health: null };
 
@@ -22,7 +22,7 @@ export async function render(el, ctx) {
   draw();
 }
 
-const TAB_RENDER = { email: emailRulesTab, gsi: async (b, c, e) => { const top = document.createElement('div'); const extra = document.createElement('div'); b.append(top, extra); await settingTab(top, c, e, 'accounts'); await gsiTab(extra, c, e); }, regions: (b, c, e) => settingTab(b, c, e, 'regions'), icp: async (b, c, e) => { for (const k of ['icp_pool', 'icp_estimates', 'mix_defaults']) { const d = document.createElement('div'); b.append(d); await settingTab(d, c, e, k); } }, targets: async (b, c, e) => { const top = document.createElement('div'); const extra = document.createElement('div'); b.append(top, extra); await settingTab(top, c, e, 'targets'); const lr = document.createElement('div'); b.append(lr); await settingTab(lr, c, e, 'lead_rules'); await settingTab(extra, c, e, 'contact_lists'); }, editors: (b, c, e) => settingTab(b, c, e, 'editors'), coverage: coverageTab, connection: connectionTab };
+const TAB_RENDER = { email: emailRulesTab, gsi: async (b, c, e) => { const top = document.createElement('div'); const extra = document.createElement('div'); const tiers = document.createElement('div'); b.append(top, extra, tiers); await settingTab(top, c, e, 'accounts'); await gsiTab(extra, c, e); await settingTab(tiers, c, e, 'account_tiers'); }, regions: (b, c, e) => settingTab(b, c, e, 'regions'), icp: async (b, c, e) => { for (const k of ['icp_pool', 'icp_estimates', 'mix_defaults']) { const d = document.createElement('div'); b.append(d); await settingTab(d, c, e, k); } }, targets: async (b, c, e) => { const top = document.createElement('div'); const extra = document.createElement('div'); b.append(top, extra); await settingTab(top, c, e, 'targets'); const lr = document.createElement('div'); b.append(lr); await settingTab(lr, c, e, 'lead_rules'); await settingTab(extra, c, e, 'contact_lists'); }, editors: (b, c, e) => settingTab(b, c, e, 'editors'), coverage: coverageTab, connection: connectionTab };
 
 // ---------------- generic setting tabs ----------------
 const META = {
@@ -35,6 +35,7 @@ const META = {
   lead_rules: { title: 'Lead types', sub: 'Keywords (in the ad set, program or ad name) that make a LinkedIn lead an MQL (book a demo, bottom of funnel), a conversation ad lead (bottom; sends in the ad set also count) or a playbook lead (middle). Anything else is an other form lead (NQL, top of funnel).' },
   contact_lists: { title: 'Contact list sizes', sub: 'How many contacts each account has in the LinkedIn custom lists, as { "Account name": number }. Used by Ads › LinkedIn › Reach vs contacts by company. Optional.' },
   editors: { title: 'Editors', sub: 'People allowed to upload files, change these lists and run pulls. Everyone else at Lyzr can view.' },
+  account_tiers: { title: 'Account tiers', sub: 'Which kind of firm each account is: GSI (global system integrator, 50,000+ staff, multi-region), SI (mid-size or regional integrator, digital consultancy or advisory firm), Big Four (Deloitte, EY, PwC, KPMG), MBB (McKinsey, BCG, Bain and other pure strategy houses) or Other (not an SI or consultancy). Tier 1 = GSI + Big Four + MBB; Tier 2 = SI + Other. Named firms, the account category and the industry plus headcount are sorted by rules first (free); only the rest go to Claude Sonnet, in one low-effort call per batch. Manual edits made here win over both.' },
 };
 function readable(key, value, ctx) {
   const { esc, fmt } = ctx.fmt;
@@ -70,6 +71,14 @@ function readable(key, value, ctx) {
     const t = value || {};
     const labels = { leads_per_month: 'Leads a month', demo_mqls_per_month: 'Book a demo MQLs a month', frequency: 'Frequency for penetration (impressions per person, default 3.5)', reach_frequency: 'Impressions per reach for the reach heat maps (default 3)', monthly_budget: 'Monthly budget (USD)' };
     return T({ cols: [{ h: 'Target', k: 'k', left: true, f: r => esc(labels[r.k] || r.k) }, { h: 'Value', k: 'v', f: r => esc(String(r.v)) }], rows: Object.entries(t).map(([k, v]) => ({ k, v })) });
+  }
+  if (key === 'account_tiers') {
+    const map = value && typeof value === 'object' ? value : {};
+    const rows = Object.entries(map).map(([name, v]) => ({ name, ...(v || {}) })).sort((a, b) => a.name.localeCompare(b.name));
+    if (!rows.length) return ctx.ui.empty('No tiers yet. Every account counts as Other until it is classified; add entries here as { "Account name": { "tier": "GSI" } }.');
+    const counts = {}; for (const r of rows) counts[r.tier] = (counts[r.tier] || 0) + 1;
+    const GROUP = { GSI: 'Tier 1', 'Big Four': 'Tier 1', MBB: 'Tier 1' };
+    return `<p class="muted" style="font-size:13px;margin-bottom:8px">${fmt(rows.length)} accounts classified · ${Object.entries(counts).map(([t, n]) => `${esc(t)} ${fmt(n)}`).join(' · ')}.</p><div style="max-height:560px;overflow:auto">` + T({ cols: [{ h: 'Account', k: 'name', left: true }, { h: 'Tier', k: 'tier', left: true, f: r => `<b>${esc(r.tier || '')}</b>` }, { h: 'Group', k: 'group', left: true, f: r => esc(GROUP[r.tier] || 'Tier 2') }, { h: 'Confidence', k: 'conf', f: r => ctx.ui.pill(r.conf || 'Low', r.conf === 'High' || r.conf === 'Rule' ? 'p-high' : r.conf === 'Medium' ? 'p-med' : 'p-low') }, { h: 'Source', k: 'source', left: true, f: r => `<span class="muted">${esc(r.source || 'manual')}${r.model ? ` · ${esc(r.model)}` : ''}</span>` }, { h: 'Basis', k: 'basis', left: true, f: r => `<span style="font-size:12.5px">${esc(r.basis || '')}</span>` }, { h: 'When', k: 'at', left: true, f: r => esc(r.at ? ctx.fmt.istDateTime(r.at) : '') }], rows }) + '</div>';
   }
   if (key === 'editors') { const list = Array.isArray(value) ? value : []; return list.length ? `<ul>${list.map(e => `<li>${esc(e)}</li>`).join('')}</ul>` : ctx.ui.empty('No editors set. On the server, the ADMIN list in the Pages Function applies.'); }
   return `<pre class="mono">${esc(JSON.stringify(value, null, 1))}</pre>`;

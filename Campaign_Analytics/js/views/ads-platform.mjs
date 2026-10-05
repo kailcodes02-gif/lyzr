@@ -9,6 +9,7 @@ import { mountUploader } from '../uploader.mjs';
 import { isEditorOf } from './linkedin.mjs';
 import { PLATFORM_LABEL } from '../ads-csv.mjs';
 import { sectionCompare, memoGet, deltaText } from '../compare.mjs';
+import { NAVY, ORANGE } from '../palette.mjs';
 
 const HOWTO = {
   google: { export: 'Google Ads › Campaigns (or Ads) › Download › CSV, segmented by Day', api: 'Google Ads API' },
@@ -141,8 +142,8 @@ export async function render(el, ctx) {
   mountUploader(el.querySelector('#uploader'), ctx, { channel: 'linkedin', platform, isEditor: editor, onDone: () => render(el, ctx) });
 
   chart(el.querySelector('#dailyChart'), { type: 'bar', data: { labels: daily.map(d => F.dayLabel(d.key)), datasets: [
-    { type: 'bar', label: 'Spend', data: daily.map(d => d.spend), backgroundColor: '#043E77', yAxisID: 'y' },
-    { type: 'line', label: 'Leads', data: daily.map(d => d.leads), borderColor: '#FE4B1E', backgroundColor: '#FE4B1E', tension: 0.3, pointRadius: 2, yAxisID: 'y1' },
+    { type: 'bar', label: 'Spend', data: daily.map(d => d.spend), backgroundColor: NAVY, yAxisID: 'y' },
+    { type: 'line', label: 'Leads', data: daily.map(d => d.leads), borderColor: ORANGE, backgroundColor: ORANGE, tension: 0.3, pointRadius: 2, yAxisID: 'y1' },
   ] }, options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Spend (USD)' } }, y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Leads' } } } } });
 
   trendX = mountTrend(el.querySelector('#trendX'), ctx, { id: 'ads:' + platform, items: hist, dayOf: r => r.day, range: { from, to }, defaults: { gran: 'week', metrics: ['spend', 'leads', 'cpl'], compare: 'avg' }, metrics: [

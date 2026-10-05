@@ -4,12 +4,13 @@ import { mountTrend } from '../trend.mjs';
 import { mountUploader } from '../uploader.mjs';
 import { sectionCompare, memoGet, deltaText } from '../compare.mjs';
 import { guideHtml, monthGrid, monthsBetween, gridHtml } from '../export-guide.mjs';
+import { SERIES, NAVY, ORANGE, TEAL, VIOLET, withAlpha, personColor, LEAD_TYPE_COLORS } from '../palette.mjs';
 export const route = 'linkedin';
 export const title = 'Ads · LinkedIn';
 
 const C = { orange: '#FE4B1E', navy: '#043E77', forest: '#063B28', oxblood: '#593D3D', stone: '#A8A298', g300: '#CFCCC7' };
-const STAGE_COLOR = { ToFu: C.stone, MoFu: C.orange, BoFu: C.navy, Other: C.g300 };
-const APPROACH_COLOR = { 'Custom list': C.orange, Native: C.navy, Combined: '#1F2022', Retargeting: '#6B675F', Other: C.stone };
+const STAGE_COLOR = { ToFu: TEAL, MoFu: ORANGE, BoFu: NAVY, Other: C.g300 };
+const APPROACH_COLOR = { 'Custom list': ORANGE, Native: NAVY, Combined: VIOLET, Retargeting: TEAL, Other: C.stone };
 const METRIC_LABEL = { impressions: 'Impressions', clicks: 'Clicks', spend: 'Spend', sends: 'Sends', opens: 'Opens', leads: 'Leads' };
 let charts = [], trendX = null;
 export function destroy() { for (const c of charts) { try { c.destroy(); } catch { /* ignore */ } } charts = []; if (trendX) { trendX.destroy(); trendX = null; } }
@@ -128,7 +129,10 @@ export async function render(el, ctx) {
   h += ctx.ui.section('Reach: people by account, designation and region', `Estimated people reached, counting ${fmt(rf, 1)} impressions as one person (Admin › Targets). Columns are the demographics export windows in the selected dates; the last columns total them and compare with the period chosen here. A person seen in two windows counts twice. ${cmpReach.html()}`, `<div id="reachSeg"></div><div class="card"><div class="tblwrap" style="border:none" id="reachHeat"></div>${ctx.heat.legend('orange', 'square-root scale on the current windows')}</div>`, 'li-reach');
 
   // 3a. cumulative penetration cube: company x region x designation
-  h += ctx.ui.section('Penetration by company, region and designation', `Cumulative over every demographics window in the selected dates: for each company, how much of its MD, MD-1 and MD-2 pool in each region the ads reached. People reached = impressions ÷ ${fmt(frequency, 1)}, spread by the window's country share and job-title mix (LinkedIn exports no cross-tab); pool = Apollo headcount per company, country and band (Admin › Reach pools), countries rolled up with Admin › Regions. Company rows are the sum of their regions; click a company row to open or close its regions.`, `<div class="row" style="gap:16px;flex-wrap:wrap;align-items:center"><div id="cubeMetric"></div><div id="cubeRegion"></div><span id="cubeCount" class="muted" style="font-size:12.5px"></span></div><div class="card"><div class="tblwrap" style="border:none" id="cubeHeat"></div><div class="legend" id="cubeLegend"></div></div>`, 'li-cube');
+  h += ctx.ui.section('Penetration by company, region and designation', `Cumulative over every demographics window in the selected dates: for each company, how much of its MD, MD-1 and MD-2 pool in each region the ads reached, against the real pool. Impressions land in a company × country × band cell through the window's country share and job-title mix (LinkedIn exports no cross-tab); pool = Apollo headcount per company, country and band (Admin › Reach pools), countries rolled up with Admin › Regions. <b>People reached</b> comes from a reach curve, not a plain division: with λ exposures per person in the pool, the share reached is 1 − (1 + λ/k)<sup>−k</sup> (the negative-binomial reach model used in media planning), calibrated so that one window averages ${fmt(frequency, 1)} impressions per person reached (Admin › Targets). One window therefore equals impressions ÷ ${fmt(frequency, 1)}; further windows add fewer new people and the figure flattens towards the pool instead of passing it. <b>Exposure</b> = impressions per person in the pool; <b>Frequency</b> = impressions per person reached. Click a company row to open or close its regions.`, `<div class="row" style="gap:16px;flex-wrap:wrap;align-items:center"><div id="cubeMetric"></div><div id="cubeRegion"></div><span id="cubeCount" class="muted" style="font-size:12.5px"></span></div><div class="card"><div class="tblwrap" style="border:none" id="cubeHeat"></div><div class="legend" id="cubeLegend"></div></div>`, 'li-cube');
+
+  // 3a1. optional parts built in their own modules (js/views/parts/*): account tiers, exact designations.
+  h += `<div id="li-tiers"></div><div id="li-designations"></div>`;
 
   // 3a2. audiences by person or ad set: demographics exports tagged at upload (or carrying a campaign column)
   h += ctx.ui.section('Audiences by person or ad set', 'For boosted posts of a team member (Ani, Anju, Siva…) or any single ad set: which accounts, designation bands and regions that audience actually reached. Comes from demographics exports filtered to that person\'s campaigns before download and tagged with the name in the upload box (Company, Job Title and Country exports per month). Pick a name to see its penetration map.', `<div id="personSeg"></div><div id="personBody"></div>`, 'li-persons');
@@ -218,7 +222,6 @@ export async function render(el, ctx) {
     BPP = A.byPerson(prevRows); lastPeoplePrev = p;
     const prevOf = who => BPP.people.find(x => x.person === who) || null;
     if (!BP.people.length) { box.innerHTML = ctx.ui.empty('No ad set, program or ad name in this range carries a team member\'s name (Ani, Anju, Siva, Jessica…). Boosted posts are recognised by the name in the ad set name.'); return; }
-    const COLORS = ['#043E77', '#FE4B1E', '#1F2022', '#6B675F', '#A8A298', '#CFCCC7'];
     const tiles = BP.people.map((o, i) => { const q = prevOf(o.person); return { k: o.person, v: `${fmt(o.impressions)} <span class="muted" style="font-size:13px;font-weight:400">impressions</span>`, d: `${fmt(o.engagements)} engagements (${pct(o.eng_rate, 2)}) · ${fmt(o.clicks)} clicks · ${o.video_views ? fmt(o.video_views) + ' video views · ' : ''}${usd(o.spend)}<br>${deltaText(p, o.impressions, q ? q.impressions : null)} on impressions · ${deltaText(p, o.engagements, q ? q.engagements : null)} on engagements` }; });
     const gran = days > 70 ? 'month' : 'week';
     const buckets = [...new Set(perf.map(r => A.bucketKey(r.day, gran)))].sort();
@@ -235,14 +238,14 @@ export async function render(el, ctx) {
       </div>
       <p class="muted" style="font-size:12.5px;margin-top:8px">Not attributed to a person: ${fmt(BP.unattributed.impressions)} impressions, ${fmt(BP.unattributed.engagements)} engagements, ${fmt(BP.unattributed.leads)} leads (playbook, conversation and other ad sets with no name in them).</p>`;
     if (peopleChart) { try { peopleChart.destroy(); } catch { /* ignore */ } charts = charts.filter(c => c !== peopleChart); peopleChart = null; }
-    peopleChart = chart(el.querySelector('#peopleChart'), { type: 'bar', data: { labels: buckets.map(k => F.bucketLabel(k, gran)), datasets: BP.people.map((o, i) => ({ label: o.person, data: series[i], backgroundColor: COLORS[i % COLORS.length], stack: 'p' })) }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true } } } });
+    peopleChart = chart(el.querySelector('#peopleChart'), { type: 'bar', data: { labels: buckets.map(k => F.bucketLabel(k, gran)), datasets: BP.people.map((o, i) => ({ label: o.person, data: series[i], backgroundColor: personColor(o.person, i), stack: 'p' })) }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true } } } });
   }
   let leadChart = null, lastLeadPrev = null, LSP = null;
   async function drawLeadTypes(p) {
     const box = el.querySelector('#li-leadtypes-body'); if (!box) return;
     const prevRows = p ? (await prevBundle(p)).perf : []; if (!el.isConnected) return;
     LSP = A.leadSplit(prevRows, leadRules); lastLeadPrev = p;
-    const TYPE_COLOR = { mql: '#043E77', conversation: '#FE4B1E', playbook: '#1F2022', other: '#A8A298' };
+    const TYPE_COLOR = LEAD_TYPE_COLORS;
     const tiles = LS.types.map(t => { const q = LSP.byType[t.type]; return { k: t.label, v: `${fmt(t.leads)} <span class="muted" style="font-size:13px;font-weight:400">${t.share != null ? pct(t.share, 0) + ' of leads' : ''}</span>`, d: `${t.leads ? usd(t.cpl) + ' per lead · ' : ''}${t.campaigns.length} ad set${t.campaigns.length === 1 ? '' : 's'} · ${t.stage}<br>${deltaText(p, t.leads, q ? q.leads : null)}` }; });
     const gran = days > 70 ? 'month' : 'week';
     const trend = A.leadTrend(perf, gran, leadRules);
@@ -344,7 +347,7 @@ export async function render(el, ctx) {
     let keys = [...seriesMap.keys()].sort((a, b) => seriesMap.get(b).reduce((x, y) => x + y, 0) - seriesMap.get(a).reduce((x, y) => x + y, 0));
     if (qMode === 'seniority') keys = ['Director and above', ...keys.filter(k => k !== 'Director and above')].slice(0, 7);
     else keys = keys.slice(0, 8);
-    const palette = ['#043E77', '#FE4B1E', '#1F2022', '#A8A298', '#6B675F', '#CFCCC7', '#8A857C', '#B8B4AD'];
+    const palette = SERIES;
     const cv = el.querySelector('#qualChart'); const old = charts.find(c => c.canvas === cv); if (old) { old.destroy(); charts = charts.filter(c => c !== old); }
     if (!allWin.length) { el.querySelector('#qualTable').innerHTML = ctx.ui.empty('No demographics export uploaded yet.'); return; }
     { const need = qMode === 'seniority' ? ['Job Seniority'] : []; const allRows = allWin.flatMap(w => w.rows); const have = A.segmentsPresent(allRows); const miss = need.filter(k => !have.includes(k)); if (miss.length) { el.querySelector('#qualTable').innerHTML = ctx.ui.empty(`Needs the ${miss.map(k => NEED[k]).join(' and ')} demographics export (uploaded so far: ${have.join(', ') || 'none'}).`); { const cv = el.querySelector('#qualChart'); const old = charts.find(c => c.canvas === cv); if (old) { old.destroy(); charts = charts.filter(c => c !== old); } } return; } }
@@ -364,6 +367,7 @@ export async function render(el, ctx) {
     const put = (k, imp) => { if (imp) m.set(k, (m.get(k) || 0) + imp / rf); };
     if (dim === 'account') for (const r of A.segRows(w.rows, 'Company')) put(A.matchAccount(r.value, accounts) || 'Other pages', Number(r.impressions) || 0);
     else if (dim === 'band') { const b = A.bandSharesOrMix(w.rows, bands, mix); for (const k of A.BANDS) put(k, b.counts[k] || 0); }
+    else if (dim === 'title') for (const r of A.segRows(w.rows, 'Job Title')) put(String(r.value || '').trim(), Number(r.impressions) || 0);
     else { const g = A.countryShareOrMix(w.rows, mix); const compTot = g.estimated ? A.segRows(w.rows, 'Company').reduce((a, r) => a + (Number(r.impressions) || 0), 0) : 1; const byRegion = new Map(); for (const [ct, v] of g.values) { const k = A.regionOf(ct, regions); byRegion.set(k, (byRegion.get(k) || 0) + (g.estimated ? v * compTot : v)); } for (const [k, v] of byRegion) put(k, v); }
     return m;
   });
@@ -375,7 +379,7 @@ export async function render(el, ctx) {
     const box = el.querySelector('#reachHeat'); if (!box) return;
     reachPrev = p;
     if (!windows.length) { box.innerHTML = ctx.ui.empty('No demographics export covers this range. Upload one at the top of this page.'); return; }
-    const reachNote = reachDim === 'band' ? mixNote(['Job Title']) : reachDim === 'region' ? mixNote(['Country']) : '';
+    const reachNote = reachDim === 'band' ? mixNote(['Job Title']) : reachDim === 'region' ? mixNote(['Country']) : reachDim === 'title' && !segsPresent.includes('Job Title') ? '<p class="note" style="font-size:12.5px;margin:0 0 8px"><b>No Job Title breakdown in these dates.</b> Upload the Professional Demographics export for these dates again (it carries every breakdown) to see the exact titles reached.</p>' : '';
     const prevWindows = (await prevBundle(p)).demo; if (!el.isConnected || p !== reachPrev) return;
     const prev = p;
     const curMaps = reachMaps(windows, reachDim), curTot = sumMaps(curMaps);
@@ -384,12 +388,13 @@ export async function render(el, ctx) {
     let rows = keys.map(k => ({ key: k, label: k, sub: reachDim === 'account' ? ((accounts.find(a => a.name === k) || {}).category || (k === 'Other pages' ? 'pages matching no account' : '')) : '' }));
     if (reachDim === 'band') rows = A.BANDS.filter(b => keys.includes(b)).map(b => ({ key: b, label: b }));
     else rows.sort((a, b) => (curTot.get(b.key) || 0) - (curTot.get(a.key) || 0));
-    if (reachDim === 'account') rows = rows.slice(0, 40);
+    if (reachDim === 'account' || reachDim === 'title') rows = rows.slice(0, 40);
+    if (reachDim === 'title') for (const r of rows) { const w = A.bandWeights(r.key, bands); const top = Object.entries(w).sort((a, b) => b[1] - a[1])[0]; r.sub = top && top[0] !== 'Other' ? top[0] : ''; }
     const cols = windows.map((w, i) => ({ key: 'w' + i, label: winLabel(w) }));
     cols.push({ key: 'cur', label: 'Selected dates' });
     if (prev) { cols.push({ key: 'cmp', label: prev.label.replace(/^the /, '') }); cols.push({ key: 'chg', label: 'Change' }); }
     const maxCur = Math.max(1, ...curMaps.flatMap(m => [...m.values()]));
-    ctx.heat.renderHeat(box, { corner: reachDim === 'account' ? 'Account' : reachDim === 'band' ? 'Designation' : 'Region', rows, cols, sortRows: false, scale: 'sqrt', max: maxCur, cell: (r, c) => {
+    ctx.heat.renderHeat(box, { corner: reachDim === 'account' ? 'Account' : reachDim === 'band' ? 'Designation band' : reachDim === 'title' ? 'Exact title (as exported)' : 'Region', rows, cols, sortRows: false, scale: 'sqrt', max: maxCur, cell: (r, c) => {
       if (c.startsWith('w')) { const v = curMaps[+c.slice(1)].get(r) || 0; return { v, text: v ? fmt(v) : '–' }; }
       if (c === 'cur') { const v = curTot.get(r) || 0; return { v: null, text: fmt(v), title: `${r}: ${fmt(v)} people in the selected dates (${fmt(v * rf)} impressions ÷ ${rf})` }; }
       if (c === 'cmp') { const v = cmpTot.get(r) || 0; return { v: null, text: v ? fmt(v) : '–', title: `${r}: ${fmt(v)} people ${prev.label}` }; }
@@ -405,18 +410,19 @@ export async function render(el, ctx) {
     if (reachNote) box.insertAdjacentHTML('afterbegin', reachNote);
     box.querySelectorAll('td.c').forEach(td => { if (/^(cur|cmp|chg)$/.test(td.dataset.c)) { td.style.background = 'var(--offwhite)'; td.style.color = ''; if (td.dataset.c === 'chg') td.classList.add(/^\+/.test(td.textContent) ? 'up' : /^-/.test(td.textContent) ? 'down' : 'muted'); } });
   };
-  ctx.ui.seg(el.querySelector('#reachSeg'), [{ value: 'account', label: 'Accounts' }, { value: 'band', label: 'Designation bands' }, { value: 'region', label: 'Regions' }], v => { reachDim = v; drawReach(); }, reachDim);
+  ctx.ui.seg(el.querySelector('#reachSeg'), [{ value: 'account', label: 'Accounts' }, { value: 'title', label: 'Exact designations' }, { value: 'band', label: 'Designation bands' }, { value: 'region', label: 'Regions' }], v => { reachDim = v; drawReach(); }, reachDim);
   drawReach();
 
   // ---- penetration cube (company x region x band, cumulative) ----
   let cube = A.penetrationCube({ windows, accounts, icp_pool: poolAll, bands, frequency, regions, mix });
   let cubeMetric = 'pct', cubeRegion = 'all', cubeLimit = 25; const cubeOpen = new Set();
-  const cubeVal = (t, b) => cubeMetric === 'pct' ? t[b].pct : cubeMetric === 'reached' ? t[b].reached : t[b].pool;
+  const cubeVal = (t, b) => cubeMetric === 'pct' ? t[b].pct : cubeMetric === 'reached' ? t[b].reached : cubeMetric === 'exposure' ? t[b].exposure : cubeMetric === 'freq' ? t[b].freq : t[b].pool;
   const cubeCell = (t, b, who) => {
     if (!t) return { v: null, text: '·' };
     const x = t[b];
     const estTag = x.est_pool ? ' est.' : '';
-    if (cubeMetric === 'pct') { if (x.pct == null || !x.reached) return { v: null, text: x.reached ? '·' : '–', sub: x.reached ? `${fmt(x.reached)} reached, no pool` : '', title: `${who} · ${b}: ${x.reached ? 'no headcount for this pool yet (estimate it with Claude below)' : 'nobody reached'}` }; return { v: A.penLevel(x.pct), text: fmt(x.pct, x.pct < 10 ? 1 : 0) + '%', sub: `${fmt(x.reached)} / ${fmt(x.pool)}${estTag}`, title: `${who} · ${b}\nPeople reached (est.): ${fmt(x.reached)}\nPool: ${fmt(x.pool)}${x.est_pool ? ' (estimated: ' + (t.All.sources || []).join('; ') + ')' : ' (Apollo)'}\nPenetration: ${fmt(x.pct, 1)}%` }; }
+    if (cubeMetric === 'pct') { if (x.pct == null || !x.reached) return { v: null, text: x.reached ? '·' : '–', sub: x.reached ? `${fmt(x.reached)} reached, no pool` : '', title: `${who} · ${b}: ${x.reached ? 'no headcount for this pool yet (estimate it with Claude below)' : 'nobody reached'}` }; return { v: A.penLevel(x.pct), text: fmt(x.pct, x.pct < 10 ? 1 : 0) + '%', sub: `${fmt(x.reached_pooled)} / ${fmt(x.pool)}${estTag}`, title: `${who} · ${b}\nPeople reached: ${fmt(x.reached_pooled)} of ${fmt(x.pool)}${x.reached > x.reached_pooled + 0.5 ? ` (+${fmt(x.reached - x.reached_pooled)} in countries with no pool)` : ''}${x.est_pool ? ' (pool estimated: ' + (t.All.sources || []).join('; ') + ')' : ' (Apollo pool)'}\nImpressions: ${fmt(x.imp)} = ${fmt(x.exposure, 2)} per person in the pool, ${fmt(x.freq, 1)} per person reached\nPenetration: ${fmt(x.pct, 1)}%` }; }
+    if (cubeMetric === 'exposure' || cubeMetric === 'freq') { const v = cubeVal(t, b); if (v == null) return { v: null, text: x.imp ? '·' : '–', title: `${who} · ${b}: ${x.imp ? fmt(x.imp) + ' impressions, no pool' : 'nobody reached'}` }; return { v: cubeMetric === 'exposure' ? A.exposureLevel(v) : Math.min(5, Math.max(1, Math.ceil(v / 2))), text: fmt(v, v < 10 ? 1 : 0), sub: cubeMetric === 'exposure' ? `${fmt(x.imp)} imp` : `${fmt(x.reached)} people`, title: `${who} · ${b}\n${fmt(x.imp)} impressions on ${cubeMetric === 'exposure' ? fmt(x.pool) + ' people in the pool' : fmt(x.reached) + ' people reached'}: ${fmt(v, 2)} each` }; }
     const v = cubeVal(t, b); return { v: v || 0, text: v ? fmt(v) : '–', title: `${who} · ${b}: ${fmt(v)} ${cubeMetric === 'reached' ? 'people reached (est.)' : 'people in the ICP pool'}` };
   };
   const drawCube = () => {
@@ -433,7 +439,7 @@ export async function render(el, ctx) {
     }
     if (!rows.length) { box.innerHTML = ctx.ui.empty('No company page in these windows matches a target account with a reach pool.'); el.querySelector('#cubeCount').textContent = ''; return; }
     const cols = [...cube.bands, 'All'].map(b => ({ key: b, label: b === 'All' ? 'All bands' : b }));
-    ctx.heat.renderHeat(box, { corner: cubeRegion === 'all' ? 'Company / region' : `Company · ${cubeRegion}`, rows, cols, sortRows: false, scale: cubeMetric === 'pct' ? 'linear' : 'sqrt', max: cubeMetric === 'pct' ? 5 : undefined,
+    ctx.heat.renderHeat(box, { corner: cubeRegion === 'all' ? 'Company / region' : `Company · ${cubeRegion}`, rows, cols, sortRows: false, scale: /^(pct|exposure|freq)$/.test(cubeMetric) ? 'linear' : 'sqrt', max: /^(pct|exposure|freq)$/.test(cubeMetric) ? 5 : undefined,
       cell: (r, c) => { const [t, who] = src.get(r) || []; return cubeCell(t, c, who); },
       onClick: cubeRegion === 'all' ? (r) => { if (r.includes('\u0001')) return; if (cubeOpen.has(r)) cubeOpen.delete(r); else cubeOpen.add(r); drawCube(); } : undefined });
     box.querySelectorAll('td.c').forEach(td => { const [t] = src.get(td.dataset.r) || []; const x = t && t[td.dataset.c]; if (x && x.est_pool) td.classList.add('est'); });
@@ -456,11 +462,18 @@ export async function render(el, ctx) {
     el.querySelector('#cubeCount').innerHTML = `${fmt(shown.length)} of ${fmt(list.length)} companies${list.length > cubeLimit ? ` · <a href="#" data-more>show all</a>` : cubeLimit > 25 && list.length > 25 ? ` · <a href="#" data-less>show top 25</a>` : ''}`;
     const more = el.querySelector('#cubeCount [data-more]'); if (more) more.onclick = e => { e.preventDefault(); cubeLimit = 10000; drawCube(); };
     const less = el.querySelector('#cubeCount [data-less]'); if (less) less.onclick = e => { e.preventDefault(); cubeLimit = 25; drawCube(); };
-    el.querySelector('#cubeLegend').innerHTML = cubeMetric === 'pct' ? [['under 5%', 1], ['5 to 15%', 2], ['15 to 35%', 3], ['35 to 70%', 4], ['over 70%', 5]].map(([l, k]) => `<span><i style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px;background:${ctx.heat.cellColor(k, 5, { scale: 'linear' })}"></i>${l}</span>`).join('') + '<span><i style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px;border:1px dashed var(--ink2)"></i>dashed = estimated pool</span><span>· = reached but no pool</span><span>Over 100% = the same people were reached more than once across windows</span>' : ctx.heat.legend('orange');
+    el.querySelector('#cubeLegend').innerHTML = cubeMetric === 'pct' ? [['under 5%', 1], ['5 to 15%', 2], ['15 to 35%', 3], ['35 to 70%', 4], ['over 70%', 5]].map(([l, k]) => `<span><i style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px;background:${ctx.heat.cellColor(k, 5, { scale: 'linear' })}"></i>${l}</span>`).join('') + '<span><i style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px;border:1px dashed var(--ink2)"></i>dashed = estimated pool</span><span>· = reached but no pool</span><span>Never above 100%: repeated impressions raise frequency, not people</span>' : cubeMetric === 'exposure' ? [['under 0.5', 1], ['0.5 to 2', 2], ['2 to 5', 3], ['5 to 10', 4], ['10 and over', 5]].map(([l, k]) => `<span><i style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px;background:${ctx.heat.cellColor(k, 5, { scale: 'linear' })}"></i>${l}</span>`).join('') + '<span>impressions per person in the pool; above 5 the same people are seeing the ads again</span>' : cubeMetric === 'freq' ? '<span>impressions per person reached; one window averages ' + fmt(frequency, 1) + '</span>' : ctx.heat.legend('orange');
   };
-  ctx.ui.seg(el.querySelector('#cubeMetric'), [{ value: 'pct', label: 'Penetration %' }, { value: 'reached', label: 'People reached' }, { value: 'pool', label: 'ICP pool' }], v => { cubeMetric = v; drawCube(); }, cubeMetric);
+  ctx.ui.seg(el.querySelector('#cubeMetric'), [{ value: 'pct', label: 'Penetration %' }, { value: 'reached', label: 'People reached' }, { value: 'pool', label: 'ICP pool' }, { value: 'exposure', label: 'Exposure' }, { value: 'freq', label: 'Frequency' }], v => { cubeMetric = v; drawCube(); }, cubeMetric);
   ctx.ui.seg(el.querySelector('#cubeRegion'), [{ value: 'all', label: 'All regions' }, ...cube.regions.map(r => ({ value: r, label: r }))], v => { cubeRegion = v; drawCube(); }, cubeRegion);
   drawCube();
+
+  // ---- parts: tiers and designations (each in its own module; a missing or failing part never breaks the page) ----
+  const partData = { windows, allWindows: windows, perf, prevBundle, accounts, bands, icp_pool: poolAll, regions, frequency, rf, mix, from, to, prev: ctx.state.prev || null, segsPresent, cube, isEditor: isEditorOf(ctx), rerender: () => render(el, ctx) };
+  for (const [id, file] of [['li-tiers', 'tiers'], ['li-designations', 'designations']]) {
+    const slot = el.querySelector('#' + id); if (!slot) continue;
+    import(`./parts/${file}.mjs`).then(m => m.mount(slot, ctx, partData)).catch(e => { if (!/Failed to fetch|not found|404/i.test(String(e && e.message))) console.error(file, e); });
+  }
 
   // ---- audiences by person / ad set ----
   {
@@ -516,7 +529,7 @@ export async function render(el, ctx) {
   const effSets = sets.filter(s => s.impressions > 0 && s.cpm != null);
   if (effSets.length) {
     const maxSp = Math.max(1, ...effSets.map(s => s.spend));
-    chart(el.querySelector('#wpEff'), { type: 'bubble', data: { datasets: A.APPROACHES.filter(a => effSets.some(s => s.approach === a)).map(a => ({ label: a, data: effSets.filter(s => s.approach === a).map(s => ({ x: Math.round(s.cpm * 100) / 100, y: Math.round(s.ctr * 100) / 100, r: 5 + 22 * Math.sqrt(s.spend / maxSp), set: s })), backgroundColor: APPROACH_COLOR[a] + 'B3', borderColor: APPROACH_COLOR[a], borderWidth: 1 })) },
+    chart(el.querySelector('#wpEff'), { type: 'bubble', data: { datasets: A.APPROACHES.filter(a => effSets.some(s => s.approach === a)).map(a => ({ label: a, data: effSets.filter(s => s.approach === a).map(s => ({ x: Math.round(s.cpm * 100) / 100, y: Math.round(s.ctr * 100) / 100, r: 5 + 22 * Math.sqrt(s.spend / maxSp), set: s })), backgroundColor: withAlpha(APPROACH_COLOR[a], .7), borderColor: APPROACH_COLOR[a], borderWidth: 1 })) },
       options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { title: it => shortName(it[0].raw.set.name, 60), label: c => { const s = c.raw.set; return [`Spend ${usd(s.spend)}`, `Leads ${fmt(s.leads)}`, `CPM ${usd(s.cpm, 2)}`, `CTR ${pct(s.ctr, 2)}`, `Impressions ${fmt(s.impressions)}`]; } } } },
         scales: { x: { beginAtZero: true, title: { display: true, text: 'CPM ($ per 1,000 impressions)' }, ticks: { callback: v => '$' + v } }, y: { beginAtZero: true, title: { display: true, text: 'CTR' }, ticks: { callback: v => v + '%' } } } } });
   } else el.querySelector('#wpEffBox').innerHTML = ctx.ui.empty('No ad set with impressions in this range.');

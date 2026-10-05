@@ -10,6 +10,7 @@
 import { json, handle, HttpError } from '../_lib/http.js'
 import { requireUser, cronUser } from '../_lib/auth.js'
 import { db } from '../_lib/db.js'
+import { bumpCacheVersion } from '../_lib/cache.js'
 
 export { corsPreflight as onRequestOptions } from '../_lib/http.js'
 
@@ -137,5 +138,6 @@ export const onRequestPost = handle(async ({ request, env }) => {
     for (const c of batch) await d.update('ca_hs_contacts', { hs_id: `eq.${c.hs_id}` }, { ai_at: now, ai_model: model })
   }
   const left = await d.select('ca_hs_contacts', { params: todo, select: 'hs_id', limit: 1 })
+  if (batch.length) await bumpCacheVersion(d) // ai_* columns changed on contacts
   return json({ done: !left.length, classified, remaining: left.length ? 'more' : 0, model })
 })

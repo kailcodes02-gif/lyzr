@@ -9,6 +9,7 @@ import { buildEmailMock, emailPage } from './mock/email.mjs';
 import { countBy, sortedEntries, clusterLabel } from './lib/leads-agg.mjs';
 import { overlaps, fmt, usd, pct } from './fmt.mjs';
 import { activeWindows } from './lib/linkedin-agg.mjs';
+import { TIERS, ruleTier } from './lib/tiers.mjs';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 class MockError extends Error { constructor(status, message) { super(message); this.status = status; } }
@@ -36,7 +37,7 @@ export function createMockApi() {
   }
   async function settings() {
     const [bands, icp_pool, accounts, regions] = await Promise.all([seed('band_titles'), seed('icp_pool'), seed('accounts'), seed('regions')]);
-    return { bands, icp_pool, accounts, regions: (regions && regions.regions) || regions, targets: DEFAULT_TARGETS, mix_defaults: null, icp_estimates: overrides.icp_estimates || [], lead_rules: { conversation: ['conversation', 'message ad', 'inmail'], mql: ['book a demo', 'demo', 'meeting'], playbook: ['playbook', 'roadmap', 'guide', 'workshop', 'webinar'] }, contact_lists: { Accenture: 1200, TCS: 800, Infosys: 650, Wipro: 500, Capgemini: 420 }, editors: EDITORS, email_rules: { fast_click_seconds: 180, gsi_page_counts_as_demo: true, link_rules: [], domains: DEMO_DOMAINS }, gsi_companies: ['Accenture', 'TCS', 'Infosys', 'Wipro', 'HCL', 'Tech Mahindra', 'LTI Mindtree', 'Cognizant', 'Capgemini', 'Deloitte', 'KPMG', 'EY', 'PwC', 'McKinsey', 'BCG', 'Bain', 'Genpact', 'Firstsource'], ...overrides, updated_at: overrides.__updated_at || '2026-09-24T10:00:00.000Z' };
+    return { bands, icp_pool, accounts, regions: (regions && regions.regions) || regions, targets: DEFAULT_TARGETS, mix_defaults: null, icp_estimates: overrides.icp_estimates || [], account_tiers: overrides.account_tiers || {}, lead_rules: { conversation: ['conversation', 'message ad', 'inmail'], mql: ['book a demo', 'demo', 'meeting'], playbook: ['playbook', 'roadmap', 'guide', 'workshop', 'webinar'] }, contact_lists: { Accenture: 1200, TCS: 800, Infosys: 650, Wipro: 500, Capgemini: 420 }, editors: EDITORS, email_rules: { fast_click_seconds: 180, gsi_page_counts_as_demo: true, link_rules: [], domains: DEMO_DOMAINS }, gsi_companies: ['Accenture', 'TCS', 'Infosys', 'Wipro', 'HCL', 'Tech Mahindra', 'LTI Mindtree', 'Cognizant', 'Capgemini', 'Deloitte', 'KPMG', 'EY', 'PwC', 'McKinsey', 'BCG', 'Bain', 'Genpact', 'Firstsource'], ...overrides, updated_at: overrides.__updated_at || '2026-09-24T10:00:00.000Z' };
   }
 
   async function get(path, params = {}) {
@@ -114,6 +115,25 @@ export function createMockApi() {
       overrides.icp_estimates = [...(overrides.icp_estimates || []).filter(e => !estimates.some(x => x.company === e.company && x.country === e.country)), ...estimates];
       return { estimates, model: 'demo', skipped: [], total: overrides.icp_estimates.length };
     }
+    if (p === 'account-tiers') {
+      // Rules first; the rest get a deterministic pseudo-random tier in place of the Claude call.
+      await sleep(700);
+      const all = await seed('accounts'); const byName = new Map(all.map(a => [a.name, a]));
+      const asked = Array.isArray(body.accounts) ? [...new Set(body.accounts.map(x => String(x || '').trim()).filter(Boolean))] : all.map(a => a.name);
+      const have = overrides.account_tiers || {}; const todo = asked.filter(n => body.force || !have[n]);
+      const limit = Math.min(100, Math.max(1, Number(body.limit) || 80)); const at = new Date().toISOString();
+      const tiers = []; let rule = 0, claude = 0, seedN = 11;
+      for (const n of todo) {
+        const r = ruleTier(byName.get(n) || { name: n });
+        if (r) { tiers.push({ name: n, ...r, source: 'rule', at }); rule++; continue; }
+        if (claude >= limit) continue;
+        seedN = (seedN * 9301 + 49297) % 233280; const f = seedN / 233280;
+        tiers.push({ name: n, tier: f < 0.55 ? 'Other' : f < 0.9 ? 'SI' : TIERS[Math.floor(f * 10) % 5], conf: f < 0.3 ? 'Low' : 'Medium', basis: 'Demo tier from the account industry (no Claude call in sample data)', source: 'claude', model: 'demo (no Claude call)', at }); claude++;
+      }
+      const merged = { ...have }; for (const { name, ...v } of tiers) merged[name] = v;
+      overrides.account_tiers = merged;
+      return { tiers, rule, claude, remaining: todo.length - tiers.length, model: claude ? 'demo (no Claude call)' : null };
+    }
     if (p === 'hubspot/classify') { await sleep(300); return { done: true, classified: 0, remaining: 0, model: 'demo (no Claude call)' }; }
     if (p === 'hubspot/refresh') {
       const steps = { '': ['p2', 96, 41, []], p2: ['p3', 182, 98, ['3 contacts had no email and were skipped']], p3: [null, hubspotMock.contacts.length, Object.values(hubspotMock.notes_by_contact).flat().length, []] };
@@ -146,7 +166,7 @@ export function createMockApi() {
     if (path.replace(/^\//, '') === 'uploads') { const n = uploads.length; uploads = uploads.filter(u => u.id !== params.id); if (uploads.length === n) throw new MockError(404, 'Upload not found'); return { ok: true }; }
     throw new MockError(404, `Mock API: unknown DELETE ${path}`);
   }
-  return { get, post, put, del, isDemo: true };
+  return { get, post, put, del, refreshNext() {}, lastCachedAt: null, isDemo: true };
 }
 
 // ---- canned findings, built from the numbers the view sends -------------------------------------

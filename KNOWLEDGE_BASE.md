@@ -523,6 +523,29 @@ Access if the data ever becomes confidential.
   Lyzr board carry a vertical tag; owners/view without ?email= shows the signed-in user instead of a blank
   "Awaiting first sign-in" profile.
 
+### 2026-10-05 (later), Campaign Analytics: realistic penetration, account tiers, exact designations, shared cache, palette
+- **Penetration science.** `reachModel` in `js/lib/linkedin-agg.mjs`: negative-binomial (gamma-Poisson) reach curve,
+  share reached = 1 − (1 + λ/k)^−k with λ = impressions ÷ pool, k calibrated so one window averages
+  `targets.frequency` impressions per person reached. One window = impressions ÷ frequency (old numbers unchanged);
+  several windows flatten towards the pool, so 300 to 400% can no longer appear. Roll-ups divide only reach inside
+  pooled cells by the pool (`reached_pooled`). Cube gained Exposure and Frequency metrics; tests updated.
+- **Tiers.** `js/lib/tiers.mjs` (+ verbatim `functions/api/ca/_lib/tiers.js`, a test keeps them identical): rules
+  (named firms, category, industry + headcount) then `POST /api/ca/account-tiers` (Claude Sonnet, `output_config.effort
+  low`, retried without it on a 400, 80 accounts a call) into the `account_tiers` setting. LinkedIn part
+  `views/parts/tiers.mjs`: tier summary, Tier 1 vs Tier 2 maps, GSI/SI/Big Four/MBB maps, Classify button, and the
+  "What to do next" list (`penetrationActions`, Track button → ca_actions).
+- **Exact designations.** `views/parts/designations.mjs` + `js/lib/designations-agg.mjs`; reach heat maps gained an
+  "Exact designations" dimension. Company cohorts come from HubSpot leads (LinkedIn has no title × company cross-tab).
+- **Shared cache.** `functions/api/ca/_lib/cache.js` + `supabase/010_cache.sql` (`ca_cache`): 8-hour server cache for
+  linkedin / hubspot / deals / email / phantom / coverage GETs, same answer for every user; writes bump `_version`;
+  Refresh data sends `x-ca-refresh: 1` for 90 s; `x-ca-cached-at` feeds the "Data as of" label. Until 010 runs the
+  API behaves as before and warns.
+- **Palette.** `js/palette.mjs` vivid series (navy, orange, teal, violet, green, amber, magenta, sky, brown, black)
+  applied to every multi-series chart and the bubble map; bands, tiers, lead types and pipeline buckets have fixed
+  colours.
+- Tests 199 (was 169). Pending user steps: paste 008, 009 and 010 SQL; re-upload the Demographics files once; press
+  Classify with Claude on the LinkedIn page once.
+
 ### 2026-10-05, Campaign Analytics: the Demographics export holds ten tables (parser fix)
 - Kailash was right: one Professional Demographics CSV contains ten blank-line separated tables (Company Name,
   Company Industry, Company Size, Contextual Country/Region, Location, Job Seniority, Job Title, Job Function,

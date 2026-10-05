@@ -19,6 +19,7 @@
 import { json, handle } from './_lib/http.js'
 import { requireUser } from './_lib/auth.js'
 import { db, PAGE } from './_lib/db.js'
+import { cachedGet, cacheResponse } from './_lib/cache.js'
 
 export { corsPreflight as onRequestOptions } from './_lib/http.js'
 
@@ -39,11 +40,16 @@ export function workspaceTotals(campaigns) {
   return { sent: list.reduce((a, c) => a + n(c.sent), 0), contacted: list.reduce((a, c) => a + n(c.contacted), 0), campaigns: list.length, gsi_campaigns: list.filter((c) => c.gsi !== false).length }
 }
 
-export const onRequestGet = handle(async ({ request, env }) => {
+export const onRequestGet = handle(async ({ request, env, waitUntil }) => {
   const user = await requireUser(request, env)
   if (!user) return json({ error: 'Sign in required' }, 401)
   const url = new URL(request.url)
   const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10) || 0)
+  // Shared 8-hour cache, one entry per page (offset); uploads and the Instantly sync bump the version.
+  return cacheResponse(await cachedGet(env, request, { path: 'email', params: { offset }, waitUntil }, () => load(env, offset)))
+})
+
+async function load(env, offset) {
   const d = db(env)
 
   const rows = []
@@ -77,5 +83,5 @@ export const onRequestGet = handle(async ({ request, env }) => {
     out.uploads = uploads
     out.api = { campaigns, daily, workspace: workspaceTotals(campaigns), last_sync: syncs[0] || null, configured: Boolean(env.INSTANTLY_API_KEY) }
   }
-  return json(out)
-})
+  return out
+}

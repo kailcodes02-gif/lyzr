@@ -263,7 +263,8 @@ test('phantom GET: agents, runs in the IST range, all daily rows, last sync, con
   assert.equal(r.body.from, '2026-09-20')
   const q = w.calls.find((c) => c.url.includes('/ca_pb_runs'))
   assert.ok(decodeURIComponent(q.url).includes('gte.2026-09-20T00:00:00+05:30'), 'range applied as IST days')
-  const off = world({ tables, env: { PHANTOMBUSTER_API_KEY: '' } })
+  // A fresh shared-cache store: the first world's answer was cached in ca_cache (same key) and would be served again.
+  const off = world({ tables: { ...tables, ca_cache: [] }, env: { PHANTOMBUSTER_API_KEY: '' } })
   assert.equal((await run(phantom.onRequestGet, req('GET', 'phantom?from=2026-09-20&to=2026-09-30'), off)).body.configured, false)
   assert.equal((await run(phantom.onRequestGet, req('GET', 'phantom?from=bad&to=2026-09-30'), w)).body.from, '2026-01-01', 'a bad date falls back')
 })

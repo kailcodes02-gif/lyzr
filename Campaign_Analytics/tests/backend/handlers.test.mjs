@@ -189,7 +189,7 @@ test('settings GET: seeds merged under ca_settings rows', async () => {
   const r = await run(settings.onRequestGet, req('GET', 'settings', { token: 'tok-viewer' }), w)
   assert.equal(r.status, 200)
   const b = r.body
-  assert.deepEqual(Object.keys(b).sort(), ['accounts', 'bands', 'contact_lists', 'db', 'editors', 'email_rules', 'gsi_companies', 'icp_estimates', 'icp_pool', 'lead_rules', 'mix_defaults', 'regions', 'source', 'targets', 'updated_at'])
+  assert.deepEqual(Object.keys(b).sort(), ['account_tiers', 'accounts', 'bands', 'contact_lists', 'db', 'editors', 'email_rules', 'gsi_companies', 'icp_estimates', 'icp_pool', 'lead_rules', 'mix_defaults', 'regions', 'source', 'targets', 'updated_at'])
   assert.deepEqual(b.targets, { leads_per_month: 250, demo_mqls_per_month: 30, frequency: 3.5, reach_frequency: 3 })
   assert.equal(b.source.targets, 'db')
   assert.equal(b.source.accounts, 'seed')
@@ -289,7 +289,8 @@ test('uploads GET and DELETE', async () => {
   assert.equal(r.status, 400, 'id must look like a uuid')
   r = await run(uploads.onRequestDelete, req('DELETE', 'uploads?id=2f1c7a1e-1111-4222-8333-444455556666'), w)
   assert.equal(r.status, 200)
-  assert.ok(w.calls.at(-1).url.includes('id=eq.2f1c7a1e-1111-4222-8333-444455556666'))
+  assert.ok(w.calls.some((c) => c.method === 'DELETE' && c.url.includes('id=eq.2f1c7a1e-1111-4222-8333-444455556666')))
+  assert.ok(w.calls.at(-1).url.includes('/ca_cache') && w.calls.at(-1).body[0].key === '_version', 'a delete bumps the shared cache version')
 })
 
 // ---- linkedin --------------------------------------------------------------
