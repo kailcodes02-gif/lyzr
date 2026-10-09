@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useCategories, useChannels, useTasks, useBudgetPeriods, useChannelFields, useHubSpotSyncedContacts } from '@/lib/hooks/use-data'
 import { useSpaceHref } from '@/lib/hooks/use-space-href'
@@ -18,16 +18,25 @@ import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
 import { Plus, DollarSign, ListTodo, ChevronDown, ChevronRight, BarChart3, Calendar, Users, Lightbulb, Target } from 'lucide-react'
 import Link from 'next/link'
 import { TierBadge, ChannelOwnerChips, ChannelResourcesCard, ChannelLearningsCard, ChannelTargetsCard, ChannelTargetChips, ChannelDescription } from '@/components/channel/channel-meta'
-import { TIER_CONFIG } from '@/lib/types/database'
-import { taskInScope } from '@/lib/task-channels'
+import { TIER_CONFIG, type Channel } from '@/lib/types/database'
+import { taskInScope, mergeChannelsByName } from '@/lib/task-channels'
 
 function ChannelContent() {
   const channelId = useSearchParams().get('id') || ''
-  const { verticalId, vertical, flags } = useVertical()
+  const { verticalId, vertical, flags, taskScope } = useVertical()
   const href = useSpaceHref()
   const { data: categories, isLoading: catsLoading } = useCategories(verticalId)
-  const { data: allChannels, isLoading: channelsLoading } = useChannels(verticalId)
-  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId })
+  // The Lyzr board shows every vertical's tasks, and every vertical has its
+  // own copy of the seeded channels — so there, same-named channels merge
+  // into one and this page covers tasks from all of them.
+  const isLyzrBoard = vertical?.slug === 'lyzr'
+  const { data: rawChannels, isLoading: channelsLoading } = useChannels(isLyzrBoard ? 'all' : verticalId)
+  const merged = useMemo(
+    () => isLyzrBoard ? mergeChannelsByName(rawChannels || [], verticalId) : null,
+    [rawChannels, isLyzrBoard, verticalId])
+  const allChannels: Channel[] | undefined = merged ? merged.channels : rawChannels
+  const twinsOf = (id: string) => merged?.twins.get(id) || [id]
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: taskScope })
   const { data: budgets } = useBudgetPeriods(verticalId)
 
   const [createOpen, setCreateOpen] = useState(false)
@@ -56,7 +65,8 @@ function ChannelContent() {
     )
   }
 
-  const channel = allChannels?.find(c => c.id === channelId)
+  // A merged twin's id in the URL still resolves to the merged channel.
+  const channel = allChannels?.find(c => c.id === channelId || twinsOf(c.id).includes(channelId))
   if (!channel) {
     return (
       <div className="p-8 text-center text-zinc-600 bg-zinc-50 min-h-screen">
@@ -75,7 +85,7 @@ function ChannelContent() {
     const recursiveIds = directIds.flatMap(id => getChildChannelIds(id))
     return [...directIds, ...recursiveIds]
   }
-  const scopeChannelIds = [channel.id, ...getChildChannelIds(channel.id)]
+  const scopeChannelIds = [channel.id, ...getChildChannelIds(channel.id)].flatMap(twinsOf)
 
   // Filter tasks in scope
   // Includes multi-homed tasks whose "also in" list touches this scope

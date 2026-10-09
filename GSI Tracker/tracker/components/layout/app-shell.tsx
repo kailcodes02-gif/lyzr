@@ -29,6 +29,7 @@ import {
 import { TIER_CONFIG, type Channel } from '@/lib/types/database'
 import { purgePersisted, purgeLegacyKeys } from '@/lib/hooks/use-persisted'
 import { OPEN_STATUSES } from '@/lib/week-logic'
+import { mergeChannelsByName } from '@/lib/task-channels'
 
 const normalize = (p: string) => (p.replace(/\/$/, '') || '/')
 
@@ -235,15 +236,15 @@ export function AppSidebar() {
   const realAdmin = user?.role === 'admin'
   const { isLeadership } = useMyBadges()
   const { mode, slug, verticalId, vertical, flags, canManage } = useVertical()
-  // Channels are shared across the one board; a vertical view just lists its
-  // own ("primary") channels before the shared ones.
+  // Channels follow the board: a vertical board lists its own channels; the
+  // Lyzr board (every task) lists every channel, same names merged into one.
+  const isLyzrBoard = mode === 'space' && vertical?.slug === 'lyzr'
   const { data: allSpaceChannels } = useChannels(mode === 'space' ? 'all' : verticalId)
   const spaceChannels = useMemo(
-    () => (allSpaceChannels || []).filter(c => c.vertical_id === verticalId),
-    [allSpaceChannels, verticalId])
-  const sharedChannels = useMemo(
-    () => (allSpaceChannels || []).filter(c => c.vertical_id !== verticalId && c.slug !== 'no-channel'),
-    [allSpaceChannels, verticalId])
+    () => isLyzrBoard
+      ? mergeChannelsByName(allSpaceChannels || [], verticalId).channels
+      : (allSpaceChannels || []).filter(c => c.vertical_id === verticalId),
+    [allSpaceChannels, verticalId, isLyzrBoard])
   const [mobileOpen, setMobileOpen] = useState(false)
   const close = () => setMobileOpen(false)
 
@@ -344,16 +345,6 @@ export function AppSidebar() {
                   </p>
                 )}
               </div>
-              {sharedChannels.length > 0 && (
-                <>
-                  <p className="px-3 brand-label text-zinc-500 mt-4 mb-2" title="Channels made elsewhere on the Lyzr board — any task here can use them too">Shared channels</p>
-                  <div className="space-y-0.5">
-                    {buildChannelTree(sharedChannels).map(channel => (
-                      <ChannelItem key={channel.id} channel={channel} depth={0} slug={slug} />
-                    ))}
-                  </div>
-                </>
-              )}
             </div>
             <MyFunctionRows onNavigate={close} />
           </>

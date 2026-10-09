@@ -156,8 +156,8 @@ const INTROS: Intro[] = [
     lead: 'Lyzr is the one board where every task lives. A vertical’s dashboard is that board filtered to its tag — same tasks, just scoped.',
     features: [
       { name: 'KPIs', what: 'Your open tasks, going live this week, overdue and budget.' },
-      { name: 'Channels', what: 'Channels are shared: this view lists its own first, then everyone’s under “Shared channels”.' },
-      { name: 'New task', what: 'Created here, a task is tagged with this vertical automatically (Lyzr = not vertical-specific).' },
+      { name: 'Channels', what: 'The Lyzr board lists every channel once (same-named channels from each vertical merge into one); a vertical board lists only its own.' },
+      { name: 'New task', what: 'On a vertical board the task is tagged with that vertical automatically; on the Lyzr board you pick the vertical.' },
       { name: 'Recent activity', what: 'The latest changes, newest first.' },
     ],
   },
