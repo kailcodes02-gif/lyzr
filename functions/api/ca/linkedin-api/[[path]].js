@@ -9,7 +9,7 @@
 //   POST disconnect  editors    deletes the stored token (pulled data stays) -> { ok }
 //   POST sync        editors or X-CA-Cron  { cursor?, from?, to? } -> { done, cursor?, progress, perf_rows, demo_windows,
 //                               leads, warnings }; { done:true, skipped:'not connected' } (200) when nobody connected
-// Logic in ../_lib/linkedin-api.js. Secrets: LINKEDIN_CLIENT_SECRET (and LINKEDIN_CLIENT_ID, default 774euwn4y0mlz5).
+// Logic in ../_lib/linkedin-api.js. Secrets: LINKEDIN_CLIENT_SECRET (and LINKEDIN_CLIENT_ID, default 77yi254c3ocdlb).
 
 import { json, handle, readJson } from '../_lib/http.js'
 import { requireUser, cronUser } from '../_lib/auth.js'

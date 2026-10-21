@@ -29,7 +29,7 @@ export { API_FILE }
 export const LI_REST = 'https://api.linkedin.com/rest'
 export const LI_V2 = 'https://api.linkedin.com/v2'
 export const LI_OAUTH = 'https://www.linkedin.com/oauth/v2'
-export const DEFAULT_CLIENT_ID = '774euwn4y0mlz5'   // public: a client id is not a secret
+export const DEFAULT_CLIENT_ID = '77yi254c3ocdlb'   // public: a client id is not a secret
 export const DEFAULT_VERSION = '202609'             // LinkedIn-Version YYYYMM; override with LINKEDIN_API_VERSION
 export const DOC = '_li_oauth'
 export const META_DOC = '_li_meta'

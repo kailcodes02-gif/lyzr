@@ -210,7 +210,7 @@ test('POST connect: editors get the LinkedIn sign-in URL; leads scope only when 
     let b = await r.json()
     const u = new URL(b.url)
     assert.equal(u.origin + u.pathname, 'https://www.linkedin.com/oauth/v2/authorization')
-    assert.equal(u.searchParams.get('client_id'), '774euwn4y0mlz5')
+    assert.equal(u.searchParams.get('client_id'), '77yi254c3ocdlb')
     assert.equal(u.searchParams.get('redirect_uri'), `${ORIGIN}/api/ca/linkedin-api/callback`)
     assert.equal(u.searchParams.get('scope'), 'r_ads r_ads_reporting')
     assert.ok(await L.verifyState(SECRET, u.searchParams.get('state')))
@@ -234,7 +234,7 @@ test('GET callback: exchanges the code, lists ad accounts, saves _li_oauth, redi
     assert.equal(res.headers.get('Location'), `${ORIGIN}/Campaign_Analytics/#/admin?linkedin=connected`)
     const tokenCall = w.calls.find((c) => c.url.endsWith('/oauth/v2/accessToken'))
     const form = Object.fromEntries(new URLSearchParams(tokenCall.body))
-    assert.equal(form.grant_type, 'authorization_code'); assert.equal(form.client_id, '774euwn4y0mlz5'); assert.equal(form.redirect_uri, `${ORIGIN}/api/ca/linkedin-api/callback`)
+    assert.equal(form.grant_type, 'authorization_code'); assert.equal(form.client_id, '77yi254c3ocdlb'); assert.equal(form.redirect_uri, `${ORIGIN}/api/ca/linkedin-api/callback`)
     const doc = w.tables.ca_insights.find((r) => r.scope === '_li_oauth').content
     assert.equal(doc.access_token, ACCESS); assert.equal(doc.refresh_token, REFRESH); assert.equal(doc.connected_by, 'subs@lyzr.com')
     assert.deepEqual(doc.ad_accounts, [{ id: ACC, name: 'Lyzr Ad Account', currency: 'USD', status: 'ACTIVE' }])

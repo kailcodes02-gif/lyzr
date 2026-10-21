@@ -28,7 +28,7 @@ into the next read-out.
    npx wrangler pages secret put PHANTOMBUSTER_API_KEY --project-name lyzr-work-os # PhantomBuster › Org settings › API keys
    npx wrangler pages secret put CA_LOCAL_USERS --project-name lyzr-work-os        # "email:password, email:password" for email sign-in
    npx wrangler pages secret put CA_API_KEYS --project-name lyzr-work-os           # "label:key, label:key" read-only keys for the data API and MCP (make a key: openssl rand -hex 24)
-   npx wrangler pages secret put LINKEDIN_CLIENT_ID --project-name lyzr-work-os    # 774euwn4y0mlz5 (the LinkedIn app; the code falls back to it)
+   npx wrangler pages secret put LINKEDIN_CLIENT_ID --project-name lyzr-work-os    # 77yi254c3ocdlb (the LinkedIn app; the code falls back to it)
    npx wrangler pages secret put LINKEDIN_CLIENT_SECRET --project-name lyzr-work-os # the LinkedIn app's client secret (never in the repo)
    ```
    `HUBSPOT_ACCESS_TOKEN` and `INSTANTLY_API_KEY` are already set. Add the same `CA_CRON_SECRET` value as a
@@ -52,7 +52,7 @@ exports no longer have to be uploaded by hand (uploads still work and never doub
   tokens"), so one person with a role on the Lyzr ad account (Account manager, Campaign manager or Viewer) presses
   **Connect LinkedIn** once. The refresh token lasts about a year and renews the sign-in by itself; the card shows
   both dates. The token is stored server-side in the private document `_li_oauth` and is never sent to a browser.
-- **One-time setup on LinkedIn** (developer portal, the app with client id `774euwn4y0mlz5`):
+- **One-time setup on LinkedIn** (developer portal, the app with client id `77yi254c3ocdlb`):
   1. Auth › Authorized redirect URLs for your app › add `https://lyzr.kailash-gm.com/api/ca/linkedin-api/callback`.
   2. Products: the **Advertising API** must be approved (scopes `r_ads`, `r_ads_reporting`). For lead-form leads also
      the **Lead Sync API** (scope `r_marketing_leadgen_automation`). Only tick "Also pull lead-form leads" once

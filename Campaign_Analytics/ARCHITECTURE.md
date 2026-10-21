@@ -27,7 +27,7 @@ Folder: `Campaign_Analytics/` (static, no build step, served by the root Cloudfl
 | `CA_CRON_SECRET` | shared secret for the scheduled sync (`X-CA-Cron` header), same value as the GitHub Actions secret | set |
 | `CA_LOCAL_USERS` | `email:password, email:password` for the named outside accounts that sign in with email + password (POST login) | to set |
 | `PHANTOMBUSTER_API_KEY` | PhantomBuster org API key, read-only daily pull of the LinkedIn outreach phantoms (`X-Phantombuster-Key`) | to set |
-| `LINKEDIN_CLIENT_ID` | LinkedIn app client id for the Marketing API connection (public; the code falls back to `774euwn4y0mlz5`) | to set |
+| `LINKEDIN_CLIENT_ID` | LinkedIn app client id for the Marketing API connection (public; the code falls back to `77yi254c3ocdlb`) | to set |
 | `LINKEDIN_CLIENT_SECRET` | LinkedIn app client secret: token exchange, refresh, and the HMAC key that signs the OAuth `state` | to set |
 | `LINKEDIN_API_VERSION` | optional `LinkedIn-Version` header (YYYYMM), default `202609` in `_lib/linkedin-api.js` | optional |
 | `LINKEDIN_REDIRECT_URI` | optional override of the OAuth redirect, default `<origin>/api/ca/linkedin-api/callback` | optional |

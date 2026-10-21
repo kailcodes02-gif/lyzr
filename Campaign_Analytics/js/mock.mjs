@@ -33,7 +33,7 @@ export function createMockApi() {
   const DEFAULT_TARGETS = { leads_per_month: 200, demo_mqls_per_month: 30, frequency: 3.5, reach_frequency: 3, monthly_budget: 5588 };
   // LinkedIn Marketing API connection (Admin): starts disconnected; Connect flips it to a fake account.
   const LI_REDIRECT = 'https://lyzr.kailash-gm.com/api/ca/linkedin-api/callback';
-  let liApi = { configured: true, connected: false, connected_by: null, connected_at: null, expires_at: null, refresh_expires_at: null, has_refresh_token: false, scope: '', leads_enabled: false, member_name: null, ad_accounts: [], selected_accounts: [], last_sync: null, redirect_uri: LI_REDIRECT, client_id: '774euwn4y0mlz5' };
+  let liApi = { configured: true, connected: false, connected_by: null, connected_at: null, expires_at: null, refresh_expires_at: null, has_refresh_token: false, scope: '', leads_enabled: false, member_name: null, ad_accounts: [], selected_accounts: [], last_sync: null, redirect_uri: LI_REDIRECT, client_id: '77yi254c3ocdlb' };
   const liConnect = leads => { const now = Date.now(); liApi = { ...liApi, connected: true, connected_by: 'demo@lyzr.com', connected_at: new Date(now).toISOString(), expires_at: new Date(now + 60 * 864e5).toISOString(), refresh_expires_at: new Date(now + 365 * 864e5).toISOString(), has_refresh_token: true, scope: 'r_ads,r_ads_reporting' + (leads ? ',r_marketing_leadgen_automation' : ''), leads_enabled: !!leads, ad_accounts: [{ id: '513166301', name: 'Lyzr Ad Account (demo)', currency: 'USD', status: 'ACTIVE' }, { id: '508811234', name: 'Lyzr Events (demo)', currency: 'USD', status: 'CANCELED' }], selected_accounts: ['513166301'] }; };
   const EDITORS = ['demo@lyzr.com', 'kailash@lyzr.ai', 'subs@lyzr.ai', 'anju@lyzr.ai', 'siva@lyzr.ai'];
 
