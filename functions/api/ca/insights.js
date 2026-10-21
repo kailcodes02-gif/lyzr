@@ -21,6 +21,10 @@ export const MODEL_MAIN = 'claude-sonnet-5'
 export const MAX_INPUT_BYTES = 60 * 1024
 const SEVERITIES = ['win', 'watch', 'risk', 'info']
 
+// ca_insights doubles as a small document store: "leads:<id>" (lead files, API pulls), "screen:<id>"
+// (screenshot extractions) and "_<name>" (private server records such as the LinkedIn OAuth token).
+export const isPrivateScope = (scope) => String(scope || '').startsWith('_')
+
 export function pickModel() {
   return MODEL_MAIN
 }
@@ -121,6 +125,8 @@ export const onRequestGet = handle(async ({ request, env }) => {
   if (!user) return json({ error: 'Sign in required' }, 401)
   const scope = String(new URL(request.url).searchParams.get('scope') || '').trim()
   if (!scope) return json({ error: 'Missing ?scope=' }, 400)
+  // Scopes starting with "_" are private server records (the LinkedIn API token): never served.
+  if (isPrivateScope(scope)) return json({ error: 'No insights cached for this scope' }, 404)
   const rows = await db(env).select('ca_insights', { params: { scope: `eq.${scope}` }, limit: 1 })
   if (!rows.length) return json({ error: 'No insights cached for this scope' }, 404)
   const r = rows[0]
@@ -135,6 +141,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
   const kind = String(b.kind || '').trim()
   const force = Boolean(b.force)
   if (!scope) return json({ error: 'scope is required' }, 400)
+  if (isPrivateScope(scope) || /^(leads|screen):/.test(scope)) return json({ error: 'This scope is reserved' }, 400)
   if (!KINDS.includes(kind)) return json({ error: `kind must be one of ${KINDS.join(', ')}` }, 400)
   if (b.input === undefined || b.input === null) return json({ error: 'input is required' }, 400)
   if (force && !user.isEditor) return json({ error: 'Only editors can force a regeneration' }, 403)

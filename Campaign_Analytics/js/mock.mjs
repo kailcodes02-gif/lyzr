@@ -6,6 +6,7 @@ import { phantomGet, phantomSyncPost } from './mock/phantom.mjs';
 import { dealsGet, dealsSyncPost } from './mock/deals.mjs';
 import { hubspotMock } from './mock/hubspot.mjs';
 import { buildEmailMock, emailPage } from './mock/email.mjs';
+import { createLeadsMock } from './mock/leads.mjs';
 import { countBy, sortedEntries, clusterLabel } from './lib/leads-agg.mjs';
 import { overlaps, fmt, usd, pct } from './fmt.mjs';
 import { activeWindows } from './lib/linkedin-agg.mjs';
@@ -21,6 +22,7 @@ export function createMockApi() {
   let uploads = [...linkedinMock.uploads.map(u => ({ ...u, platform: 'linkedin' })), ...adsMock.uploads.map(u => ({ ...u }))];
   const insights = new Map();                              // scope -> {content, created_at, model}
   let lastSync = { ...hubspotMock.last_sync };
+  const leadsMock = createLeadsMock();                     // GET/POST/DELETE li-leads, POST screenshots
   let emailMock = null; const em = () => (emailMock = emailMock || buildEmailMock());
   let actions = [
     { id: 'a1', channel: 'email', title: 'Send the Book a Demo list from the GSI Sep sequences to the AEs with a 48 hour follow-up', owner: 'SDR', status: 'open', source: 'ai', created_at: '2026-09-22T06:00:00Z', created_by: 'demo@lyzr.com' },
@@ -29,6 +31,10 @@ export function createMockApi() {
   ];
   const DEMO_DOMAINS = { 'tcs.example': 'TCS', 'infosys.example': 'Infosys', 'wipro.example': 'Wipro', 'accenture.example': 'Accenture', 'deloitte.example': 'Deloitte', 'kpmg.example': 'KPMG', 'capgemini.example': 'Capgemini', 'hcltech.example': 'HCLTech', 'cognizant.example': 'Cognizant', 'ey.example': 'EY', 'pwc.example': 'PwC', 'techmahindra.example': 'Tech Mahindra', 'ltimindtree.example': 'LTIMindtree', 'mphasis.example': 'Mphasis', 'coforge.example': 'Coforge', 'firstsource.example': 'Firstsource', 'kearney.example': 'Kearney', 'oliverwyman.example': 'Oliver Wyman', 'boozallen.example': 'Booz Allen', 'rolandberger.example': 'Roland Berger', 'lek.example': 'L.E.K. Consulting' };
   const DEFAULT_TARGETS = { leads_per_month: 200, demo_mqls_per_month: 30, frequency: 3.5, reach_frequency: 3, monthly_budget: 5588 };
+  // LinkedIn Marketing API connection (Admin): starts disconnected; Connect flips it to a fake account.
+  const LI_REDIRECT = 'https://lyzr.kailash-gm.com/api/ca/linkedin-api/callback';
+  let liApi = { configured: true, connected: false, connected_by: null, connected_at: null, expires_at: null, refresh_expires_at: null, has_refresh_token: false, scope: '', leads_enabled: false, member_name: null, ad_accounts: [], selected_accounts: [], last_sync: null, redirect_uri: LI_REDIRECT, client_id: '774euwn4y0mlz5' };
+  const liConnect = leads => { const now = Date.now(); liApi = { ...liApi, connected: true, connected_by: 'demo@lyzr.com', connected_at: new Date(now).toISOString(), expires_at: new Date(now + 60 * 864e5).toISOString(), refresh_expires_at: new Date(now + 365 * 864e5).toISOString(), has_refresh_token: true, scope: 'r_ads,r_ads_reporting' + (leads ? ',r_marketing_leadgen_automation' : ''), leads_enabled: !!leads, ad_accounts: [{ id: '513166301', name: 'Lyzr Ad Account (demo)', currency: 'USD', status: 'ACTIVE' }, { id: '508811234', name: 'Lyzr Events (demo)', currency: 'USD', status: 'CANCELED' }], selected_accounts: ['513166301'] }; };
   const EDITORS = ['demo@lyzr.com', 'kailash@lyzr.ai', 'subs@lyzr.ai', 'anju@lyzr.ai', 'siva@lyzr.ai'];
 
   async function seed(name) {
@@ -43,10 +49,13 @@ export function createMockApi() {
   async function get(path, params = {}) {
     await sleep(60);
     const p = path.replace(/^\//, '');
-    if (p === 'health') return { ok: true, db: true, hubspot: true, claude: true, instantly: true, phantom: true, cron: true, user: { name: 'Demo viewer', email: 'demo@lyzr.com', isEditor: true } };
+    if (p === 'linkedin-api/status') return { ...liApi };
+    if (p === 'health') return { ok: true, db: true, hubspot: true, claude: true, instantly: true, phantom: true, cron: true, linkedin_api: { configured: true, connected: liApi.connected }, user: { name: 'Demo viewer', email: 'demo@lyzr.com', isEditor: true } };
     if (p === 'settings') return settings();
     if (p === 'uploads') return { uploads: [...uploads, ...em().uploads].filter(u => (!params.channel || u.channel === params.channel) && (!params.platform || (u.platform || 'linkedin') === params.platform)).sort((a, b) => a.uploaded_at < b.uploaded_at ? 1 : -1) };
     if (p === 'email') return emailPage(em(), Number(params.offset) || 0);
+    if (p === 'li-leads') return leadsMock.get();
+    if (p === 'screenshots') return { screens: leadsMock.get().screens };
     if (p === 'actions') return { actions: actions.filter(a => !params.channel || a.channel === params.channel).sort((a, b) => a.created_at < b.created_at ? 1 : -1) };
     if (p === 'linkedin') {
       const { from = '0000', to = '9999', platform = 'linkedin' } = params;
@@ -84,10 +93,11 @@ export function createMockApi() {
       for (const k of Object.keys(ads)) { const pf = ads[k].performance; if (pf.from) pf.days_covered = Math.round((Date.parse(pf.to) - Date.parse(pf.from)) / 864e5) + 1; ads[k].demographics.sort((a, b) => a.from < b.from ? -1 : 1); }
       const E = em();
       const days = (E.api.daily || []).map(r => r.day).sort();
-      return { ads, email: { events: { from: '2026-07-01', to: '2026-09-24' }, daily: { from: days[0] || null, to: days[days.length - 1] || null }, campaigns: E.api.campaigns.length, gsi_campaigns: E.api.campaigns.filter(c => c.gsi !== false).length, last_sync: E.api.last_sync }, hubspot: { contacts: { from: '2026-04-06', to: '2026-09-24' }, last_sync: lastSync }, deals: { count: 60, last_sync: { status: 'done', finished_at: '2026-09-30T01:40:00Z', started_by: 'daily job' } }, phantom: { daily: { from: '2026-07-06', to: '2026-09-30' }, last_sync: { status: 'done', finished_at: '2026-09-30T01:42:00Z', started_by: 'daily job' } }, actions: actions.reduce((o, a) => { o[a.status] = (o[a.status] || 0) + 1; return o; }, { open: 0, in_progress: 0, blocked: 0, done: 0, dropped: 0 }), generated_at: new Date().toISOString() };
+      return { ads, email: { events: { from: '2026-07-01', to: '2026-09-24' }, daily: { from: days[0] || null, to: days[days.length - 1] || null }, campaigns: E.api.campaigns.length, gsi_campaigns: E.api.campaigns.filter(c => c.gsi !== false).length, last_sync: E.api.last_sync }, hubspot: { contacts: { from: '2026-04-06', to: '2026-09-24' }, last_sync: lastSync }, deals: { count: 60, last_sync: { status: 'done', finished_at: '2026-09-30T01:40:00Z', started_by: 'daily job' } }, phantom: { daily: { from: '2026-07-06', to: '2026-09-30' }, last_sync: { status: 'done', finished_at: '2026-09-30T01:42:00Z', started_by: 'daily job' } }, actions: actions.reduce((o, a) => { o[a.status] = (o[a.status] || 0) + 1; return o; }, { open: 0, in_progress: 0, blocked: 0, done: 0, dropped: 0 }), linkedin_api: { connected: liApi.connected, last_sync: liApi.last_sync }, generated_at: new Date().toISOString() };
     }
     if (p === 'phantom') return phantomGet(params);
     if (p === 'hubspot/deals') return dealsGet(params);
+    if (p === 'penmap-ai') { const hit = insights.get(params.scope || 'penmap:main'); if (!hit) throw new MockError(404, 'No plan yet'); return { scope: params.scope || 'penmap:main', ...hit, cached: true }; }
     if (p === 'insights') { const hit = insights.get(params.scope); if (!hit) throw new MockError(404, 'No cached insight for this scope'); return { scope: params.scope, ...hit }; }
     throw new MockError(404, `Mock API: unknown GET ${p}`);
   }
@@ -102,9 +112,23 @@ export function createMockApi() {
       u.row_count += (body.rows || []).length;
       return { upload_id: id, inserted: (body.rows || []).length };
     }
+    if (p === 'li-leads') { await sleep(300); if (!Array.isArray(body.rows) || !body.rows.length) throw new MockError(400, 'rows must be a non-empty array of leads'); return leadsMock.post(body); }
+    if (p === 'screenshots') { await sleep(1200); if (!body.data) throw new MockError(400, 'data must be the image as base64'); return leadsMock.screenshot(body); }
     if (p === 'actions') { const a = { id: 'a' + Math.random().toString(36).slice(2, 8), channel: body.channel || 'overview', title: body.title, detail: body.detail || null, owner: body.owner || null, source: body.source || 'manual', scope: body.scope || null, status: 'open', created_at: new Date().toISOString(), created_by: 'demo@lyzr.com' }; actions.unshift(a); return { action: a }; }
     if (p === 'instantly/sync') { await sleep(500); if (!body.cursor) return { done: false, cursor: { step: 1 }, campaigns: em().api.campaigns.length, days: 0, warnings: [], progress: { phase: 'daily', done: 0, total: em().api.campaigns.length } }; em().api.last_sync = { status: 'done', started_at: new Date(Date.now() - 4000).toISOString(), finished_at: new Date().toISOString() }; return { done: true, campaigns: em().api.campaigns.length, days: em().api.daily.length, warnings: [], progress: { phase: 'done', done: em().api.campaigns.length, total: em().api.campaigns.length } }; }
     if (p === 'phantom/sync') { await sleep(400); return phantomSyncPost(body); }
+    if (p === 'linkedin-api/connect') { await sleep(200); liConnect(body.leads); return { url: '#/admin?linkedin=connected', scope: 'r_ads r_ads_reporting' + (body.leads ? ' r_marketing_leadgen_automation' : ''), redirect_uri: LI_REDIRECT }; }
+    if (p === 'linkedin-api/disconnect') { liApi = { ...liApi, connected: false, connected_by: null, connected_at: null, expires_at: null, refresh_expires_at: null, has_refresh_token: false, scope: '', leads_enabled: false, ad_accounts: [], selected_accounts: [] }; return { ok: true }; }
+    if (p === 'linkedin-api/accounts') { if (!liApi.connected) throw new MockError(409, 'LinkedIn is not connected'); if (Array.isArray(body.selected_accounts)) liApi.selected_accounts = body.selected_accounts.filter(id => liApi.ad_accounts.some(a => a.id === id)); return { ...liApi }; }
+    if (p === 'linkedin-api/sync') {
+      await sleep(350);
+      if (!liApi.connected) return { done: true, skipped: 'not connected', perf_rows: 0, demo_windows: 0, leads: 0, warnings: [] };
+      const step = (body.cursor && body.cursor.step) || 0, phases = ['meta', 'perf', 'demo', 'leads'];
+      if (step < 3) return { done: false, cursor: { v: 1, step: step + 1 }, progress: { phase: phases[step + 1], done: step, total: 3 }, perf_rows: step * 420, demo_windows: step > 1 ? 2 : 0, leads: 0, warnings: [] };
+      const warnings = ['Demographics 2026-09: the month comes from a CSV export, so the API only pulled the days it does not cover.'];
+      liApi.last_sync = { at: new Date().toISOString(), by: 'demo@lyzr.com', from: '2026-10-07', to: new Date().toISOString().slice(0, 10), perf_rows: 1260, demo_windows: 2, leads: liApi.leads_enabled ? 14 : null, warnings };
+      return { done: true, progress: { phase: 'done', done: 1, total: 1 }, perf_rows: 1260, demo_windows: 2, leads: liApi.leads_enabled ? 14 : 0, warnings };
+    }
     if (p === 'hubspot/deals-sync') { await sleep(500); try { return dealsSyncPost(body); } catch (e) { throw new MockError(e.status || 500, e.message); } }
     if (p === 'icp-estimate') {
       await sleep(900);
@@ -144,6 +168,7 @@ export function createMockApi() {
       if (!next) lastSync = { ...lastSync, started_at: new Date(Date.now() - 2100).toISOString(), finished_at: new Date().toISOString(), status: 'done', contacts, notes, started_by: 'demo@lyzr.com' };
       return { done: !next, cursor: next || undefined, contacts, notes, warnings };
     }
+    if (p === 'penmap-ai') { await sleep(900); const rec = { content: demoPenmapPlan(body.input || {}), created_at: new Date().toISOString(), model: 'demo (no Claude call)' }; insights.set(body.scope || 'penmap:main', rec); return { scope: body.scope || 'penmap:main', ...rec, cached: false }; }
     if (p === 'insights') {
       await sleep(600);
       const content = cannedInsight(body.kind, body.input || {}, body.scope);
@@ -163,6 +188,7 @@ export function createMockApi() {
   async function del(path, params = {}) {
     await sleep(120);
     if (path.replace(/^\//, '') === 'actions') { actions = actions.filter(a => a.id !== params.id); return { ok: true }; }
+    if (path.replace(/^\//, '') === 'li-leads') { try { return leadsMock.del(params.id); } catch (e) { throw new MockError(e.status || 500, e.message); } }
     if (path.replace(/^\//, '') === 'uploads') { const n = uploads.length; uploads = uploads.filter(u => u.id !== params.id); if (uploads.length === n) throw new MockError(404, 'Upload not found'); return { ok: true }; }
     throw new MockError(404, `Mock API: unknown DELETE ${path}`);
   }
@@ -187,6 +213,16 @@ function cannedInsight(kind, input, scope) {
     const vague = msgs.filter(m => (m.cluster === 'exploring' || m.cluster === 'demo')).length;
     if (vague) findings.push(F(`${vague} leads only asked for a demo or are exploring`, `${vague} of ${total} messages name no use case.`, 'They will not self-identify a use case; the first call has to find it.', 'Use the discovery call script (three questions: team, task, tool today) before booking a demo.', 'Bharath', 'watch'));
     return { headline: `${value}: ${n(total)} messages${top.length ? `, mostly about ${clusterLabel(top[0][0]).toLowerCase()}` : ''}.`, findings, summary: 'Demo mode: findings are computed from the numbers on this page, not by Claude. Set ANTHROPIC_API_KEY on the Pages site for real analysis.' };
+  }
+  if (kind === 'leads' && input.page === 'lead-analytics') {
+    const k = input.kpis || {}; const c = (input.campaigns || [])[0]; const co = (input.companies || [])[0]; const cheap = (input.campaigns || []).filter(x => x.cpl != null).sort((a, b) => a.cpl - b.cpl)[0];
+    const findings = [];
+    if (c) findings.push(F(`${c.campaign} brings the most leads`, `${n(c.leads_in_files)} leads in the files${c.linkedin_reported != null ? `, ${n(c.linkedin_reported)} reported by LinkedIn` : ''}${c.cpl != null ? ` at ${usd(c.cpl, 2)} each` : ''}.`, 'One ad set carries the lead volume, so its audience and creative set the quality of the pipeline.', 'Clone its audience into a second ad set with a fresh creative before it fatigues.', 'Kailash', 'win'));
+    if (cheap && cheap !== c) findings.push(F(`${cheap.campaign} has the lowest cost per lead`, `${usd(cheap.cpl, 2)} per lead on ${n(cheap.leads_in_files)} leads.`, 'Cheap leads only matter if they are senior and at target accounts.', 'Check its band mix before moving budget to it.', 'Kailash', 'watch'));
+    findings.push(F(`${pct(k.target_share_pct, 0)} of leads are at target accounts, ${pct(k.md_band_share_pct, 0)} in the MD bands`, `${n(k.target_leads)} of ${n(k.total)} leads at GSI / SI list accounts.`, 'This is the share sales can work as account-based pipeline.', 'Send the target-account leads to the account owners within one working day.', 'Anju', (k.target_share_pct || 0) >= 50 ? 'win' : 'watch'));
+    if (co) findings.push(F(`${co.company} is the most active company`, `${n(co.leads)} leads across ${n((co.campaigns || []).length)} campaigns.`, 'Several people at one firm is a buying-group signal.', `Ask the ${co.company} owner to multi-thread with these leads this week.`, `Owner of ${co.company}`, 'win'));
+    if (k.form_completion_pct != null) findings.push(F(`Form completion is ${pct(k.form_completion_pct, 0)}`, `${n(k.linkedin_reported_leads)} leads from ${n(k.form_opens)} form opens.`, 'Every point of completion lowers CPL without new spend.', 'Cut the form to five fields and pre-fill everything LinkedIn can.', 'marketing ops', k.form_completion_pct < 40 ? 'watch' : 'info'));
+    return { headline: `${n(k.total)} leads, ${pct(k.target_share_pct, 0)} at target accounts${k.blended_cpl != null ? `, ${usd(k.blended_cpl, 2)} blended CPL` : ''}.`, findings, summary: 'Demo mode: findings are computed from the aggregates on this page, not by Claude.' };
   }
   if (kind === 'leads') {
     const s = input.summary || {}; const bands = input.bands || {}; const src = input.sources || []; const owners = input.owners || []; const actions = input.actionCount || 0;
@@ -227,4 +263,35 @@ function cannedInsight(kind, input, scope) {
     return { headline: 'Paid ads read-out (demo).', findings: [F('One asset carries the channel', 'The Agentic AI Roadmap playbook brings most leads.', 'Concentration risk if the asset fatigues.', 'Ship a second playbook creative this month.', 'Kailash', 'watch')], summary: 'Demo mode: canned findings.' };
   }
   return { headline: `No canned analysis for kind "${kind}" (${scope}).`, findings: [], summary: 'Demo mode.' };
+}
+
+// Demo stand-in for /api/ca/penmap-ai: a plan shaped like Claude's, built from the page's own input.
+function demoPenmapPlan(input) {
+  const sets = (input.ad_sets || []).filter(a => a.spend > 0);
+  const lead = sets.filter(a => a.leads > 0 && a.cpl).sort((a, b) => a.cpl - b.cpl);
+  const zero = sets.filter(a => !a.leads && /lead/i.test(a.objective || '') && a.spend > 100);
+  const aw = sets.filter(a => !a.leads && a.cpm).sort((a, b) => a.cpm - b.cpm);
+  const home = (input.period && input.period.home_region) || 'India';
+  const best = lead[0], rt = lead.find(a => /retarget/i.test(a.name)) || lead[1], cheap = aw.slice(0, 2);
+  const gaps = (input.anti_heat_map || []).slice(0, 6);
+  const rows = [];
+  if (best) rows.push({ key: 'L1', objective: 'Lead gen', name: `Duplicate the best lead set outside ${home}`, targeting: `Copy "${best.name}": same form, one ad set across US, UK, UAE, KSA, Singapore and Australia, exclude ${home}. Director, VP, Partner and CXO.`, benchmark: `${best.name}: $${Math.round(best.cpl)} CPL`, share: 0.35, cpl_low: Math.round(best.cpl * 0.9), cpl_high: Math.round(best.cpl * 1.6) });
+  if (rt) rows.push({ key: 'L2', objective: 'Lead gen', name: 'Warm retargeting outside ' + home, targeting: 'Lead-form openers who did not submit, video viewers 50%+, company-page visitors. Exclude existing leads.', benchmark: `${rt.name}: $${Math.round(rt.cpl)} CPL`, share: 0.15, cpl_low: Math.round(rt.cpl * 0.9), cpl_high: Math.round(rt.cpl * 1.8) });
+  cheap.forEach((a, i) => rows.push({ key: 'T' + (i + 1), objective: i ? 'Brand awareness' : 'Video views', name: `Reach the anti heat map accounts${i ? ' (image)' : ' (video)'}`, targeting: `Company list: ${gaps.map(g => g.company).join(', ') || 'the anti heat map target list'}. Manager to CXO, outside ${home}.`, benchmark: `${a.name}: $${Math.round(a.cpm)} CPM`, share: 0.25, cpm_low: Math.max(5, Math.round(a.cpm * 0.9)), cpm_high: Math.round(a.cpm * 1.8) }));
+  return {
+    headlines: [
+      best ? { title: 'One ad set makes the cheap leads', body: `${best.name} made ${best.leads} leads at $${Math.round(best.cpl)} CPL. Sample read-out, no Claude call in demo mode.`, tone: 'good' } : null,
+      zero.length ? { title: 'Lead-gen sets with no leads', body: `${zero.length} lead-gen ad sets spent $${Math.round(zero.reduce((x, a) => x + a.spend, 0))} for 0 leads.`, tone: 'bad' } : null,
+      gaps[0] ? { title: `${gaps[0].company} is the biggest cold pool`, body: `${gaps[0].gap} MD to MD-2 people not reached recently.`, tone: 'info' } : null,
+    ].filter(Boolean),
+    worked: lead.slice(0, 4).map(a => ({ label: a.name, adsets: [a.name], mode: 'lead_gen', why: `$${Math.round(a.cpl)} CPL on ${a.leads} leads.` })),
+    did_not_work: zero.slice(0, 4).map(a => ({ label: a.name, adsets: [a.name], mode: 'lead_gen', why: `$${Math.round(a.spend)} for 0 leads.` })),
+    do: [best ? `Scale "${best.name}" outside ${home}.` : 'Find a lead set that works before scaling.', 'Load the anti heat map target list into a company-targeted ad set.'],
+    dont: [`Do not add ${home} budget at the saturated accounts.`, 'Do not split one audience into single-country ad sets.'],
+    plan: { title: `Non-${home}, half leads, half reach (sample)`, rows },
+    setup_steps: ['Pause the lead-gen sets with no leads.', 'Build the retargeting audiences now; they take 24 to 48 hours.', 'Upload the anti heat map list as a company list.'],
+    day3_rules: ['L1 CPL above the top of its range after $100: narrow to Director+.', 'Frequency above 4 in 5 days: rotate the creative.'],
+    target_accounts: gaps.map(g => ({ account: g.company, region: Object.keys(g.regions || {})[0] || '', why: `${g.gap} people not reached.` })),
+    summary: 'Sample read-out made in demo mode from the page numbers. In the live dashboard Claude Sonnet writes this.',
+  };
 }

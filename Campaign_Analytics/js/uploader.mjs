@@ -1,7 +1,8 @@
 // Upload box for a channel page (LinkedIn, Instantly). Any file can be dropped: each one is
 // read and recognised in the browser (js/upload-detect.mjs) and filed under the right
 // channel and campaign, even if it was dropped on another channel's page. "Upload all"
-// sends the queue two files at a time.
+// sends the queue two files at a time. Lead files (LinkedIn lead-gen form exports, lead spreadsheets) go to
+// POST li-leads, which keeps only the leads it does not hold yet.
 import { detectFile } from './upload-detect.mjs';
 import { campaignLabel } from './email-csv.mjs';
 import { PLATFORM_LABEL } from './ads-csv.mjs';
@@ -21,7 +22,9 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
   const pname = PLATFORM_LABEL[platform] || 'LinkedIn';
   const { esc, fmt } = ctx.fmt;
   const what = channel === 'all'
-    ? 'LinkedIn Ad Performance and Demographics exports, Google / Meta / Bing / Taboola / X daily reports, Instantly campaign exports. Overlapping days overwrite, repeated exports only add what is new.'
+    ? 'LinkedIn Ad Performance and Demographics exports, LinkedIn lead gen form leads, Google / Meta / Bing / Taboola / X daily reports, Instantly campaign exports. Overlapping days overwrite, repeated exports only add what is new.'
+    : channel === 'leads'
+    ? 'LinkedIn lead gen form leads (Campaign Manager › Account assets › Lead gen forms › Download leads), or any list of leads with names or emails and their company. Upload the newest export whenever you like: leads already held are skipped.'
     : channel === 'email'
     ? 'Instantly campaign exports (Campaign › Analytics › Export CSV). The campaign comes from the file name. Exports are cumulative, so upload the newest export whenever you like: nothing is double counted.'
     : platform && platform !== 'linkedin' ? `${pname} campaign or ad reports exported by day (one row per campaign or ad per day). Upload whenever you have them; overlapping days are overwritten, not added twice.`
@@ -58,7 +61,7 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
     const q = state.pending;
     if (!q.length && !(state.failed || []).length) { box.innerHTML = ''; return; }
     const by = {}; for (const p of q) by[p.label.startsWith('Email') ? 'Email' : p.label] = (by[p.label.startsWith('Email') ? 'Email' : p.label] || 0) + 1;
-    const kindPill = p => ctx.ui.pill(p.channel === 'email' ? 'Email' : p.kind === 'performance' ? `Ads · ${PLATFORM_LABEL[p.platform || 'linkedin'] || p.platform}` : 'Ads · LinkedIn demographics', p.channel === 'email' ? 'p-med' : p.kind === 'performance' ? 'p-high' : 'p-low');
+    const kindPill = p => p.channel === 'leads' ? ctx.ui.pill('Leads · lead form file', 'p-med') : ctx.ui.pill(p.channel === 'email' ? 'Email' : p.kind === 'performance' ? `Ads · ${PLATFORM_LABEL[p.platform || 'linkedin'] || p.platform}` : 'Ads · LinkedIn demographics', p.channel === 'email' ? 'p-med' : p.kind === 'performance' ? 'p-high' : 'p-low');
     const waiting = q.filter(p => p.status !== 'done' && p.status !== 'uploading');
     box.innerHTML = `<div class="card">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b>${fmt(q.length)} file${q.length === 1 ? '' : 's'} ready</b>${Object.entries(by).map(([k, n]) => `<span class="tag">${esc(k)}: ${n}</span>`).join('')}
@@ -68,10 +71,10 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
       ${q.map(p => { const r = p.parsed; const email = p.channel === 'email';
         return `<tr data-id="${p.id}"><td class="l mono" style="max-width:260px;word-break:break-all">${esc(p.file)}</td>
           <td class="l">${kindPill(p)}</td>
-          <td class="l">${email ? `<input type="text" data-k="campaign" value="${esc(r.campaign)}" style="width:100%;min-width:200px"><div class="muted" style="font-size:11.5px">${esc(r.stats.from || '')} to ${esc(r.stats.to || '')} · ${fmt(r.stats.contacts)} contacts</div>`
+          <td class="l">${p.channel === 'leads' ? `<span class="muted">${r.stats.from ? `${esc(r.stats.from)} to ${esc(r.stats.to)}` : 'no dates'} · ${fmt(r.stats.campaigns)} campaign${r.stats.campaigns === 1 ? '' : 's'} · ${fmt(r.stats.forms)} form${r.stats.forms === 1 ? '' : 's'}</span>` : email ? `<input type="text" data-k="campaign" value="${esc(r.campaign)}" style="width:100%;min-width:200px"><div class="muted" style="font-size:11.5px">${esc(r.stats.from || '')} to ${esc(r.stats.to || '')} · ${fmt(r.stats.contacts)} contacts</div>`
             : p.kind === 'demographics' ? `<input type="date" data-k="start" value="${esc(r.period_start || '')}"> <input type="date" data-k="end" value="${esc(r.period_end || '')}"><div class="muted" style="font-size:11.5px">${esc([...new Set(r.rows.map(x => x.segment))].filter(Boolean).sort().join(', ') || 'no segment found')}</div><input type="text" data-k="tag" value="${esc(p.tag || '')}" placeholder="Covers: all campaigns (leave empty) or a person / ad set" title="If this export was filtered to one person's boosted posts or one ad set before downloading, name it here (e.g. Anju). It then appears under Audiences by person or ad set." style="width:100%;min-width:200px;margin-top:4px;font-size:12px">`
             : `<span class="muted">per day in file${r.period_start ? `: ${esc(r.period_start)} to ${esc(r.period_end || '')}` : ''}</span>`}</td>
-          <td>${fmt(r.rows.length)}${email ? `<div class="muted" style="font-size:11.5px">${fmt(r.stats.sent)} sent · ${fmt(r.stats.opened)} opens · ${fmt(r.stats.clicked)} clicks</div>` : ''}</td>
+          <td>${fmt(r.rows.length)}${p.channel === 'leads' ? `<div class="muted" style="font-size:11.5px">${fmt(r.stats.companies)} companies</div>` : ''}${email ? `<div class="muted" style="font-size:11.5px">${fmt(r.stats.sent)} sent · ${fmt(r.stats.opened)} opens · ${fmt(r.stats.clicked)} clicks</div>` : ''}</td>
           <td class="l" style="font-size:12.5px;color:var(--warn)">${(r.warnings || []).map(esc).join('<br>')}${p.needs.includes('window') && !ready(p) ? '<span class="down">Enter the export window</span>' : ''}</td>
           <td class="l" style="font-size:12.5px">${p.status === 'done' ? '<span class="up">Uploaded</span>' : p.status === 'uploading' ? `<span class="spin"></span> ${esc(p.progress)}` : p.status === 'error' ? `<span class="down">${esc(p.progress)}</span>` : '<span class="muted">waiting</span>'}</td>
           <td><button class="btn tiny ghost" data-rm ${p.status === 'uploading' ? 'disabled' : ''}>Remove</button></td></tr>`; }).join('')}
@@ -91,6 +94,17 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
     const r = p.parsed;
     p.status = 'uploading'; p.progress = 'starting'; drawPending();
     try {
+      if (p.channel === 'leads') {
+        // One call per 20,000 leads; the server skips the ones it already holds.
+        let added = 0, held = 0;
+        for (let i = 0; i < r.rows.length; i += 20000) {
+          const res = await ctx.api.post('li-leads', { file_name: p.file, rows: r.rows.slice(i, i + 20000) });
+          added += res.inserted || 0; held += res.duplicates || 0;
+          p.progress = `${fmt(Math.min(r.rows.length, i + 20000))} of ${fmt(r.rows.length)} leads`; drawPending();
+        }
+        p.status = 'done'; p.progress = `${fmt(added)} new lead${added === 1 ? '' : 's'}${held ? `, ${fmt(held)} already held` : ''}`;
+        return;
+      }
       let upload_id = null, sent = 0;
       const period_start = p.channel === 'email' ? r.stats.from : r.period_start || null;
       const period_end = p.channel === 'email' ? r.stats.to : r.period_end || null;
@@ -122,6 +136,7 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
   }
   async function drawList() {
     const list = body.querySelector('#list'); if (!list) return;
+    if (channel === 'leads') return drawLeadDocs(list);
     try {
       const { uploads } = await ctx.api.get('uploads', { channel: channel === 'all' ? undefined : channel, platform: platform || undefined });
       if (!uploads || !uploads.length) { list.innerHTML = '<p class="muted" style="font-size:13px">Nothing uploaded yet.</p>'; return; }
@@ -161,6 +176,26 @@ export async function mountUploader(body, ctx, { channel, platform, isEditor, on
         await deleteIds([b.dataset.del]);
       });
     } catch (e) { list.innerHTML = ctx.ui.empty('Uploads could not be loaded: ' + (e.message || e)); }
+  }
+  // Lead files are documents, not ca_uploads rows: listed from GET li-leads, deleted with DELETE li-leads.
+  async function drawLeadDocs(list) {
+    try {
+      const { docs } = await ctx.api.get('li-leads');
+      if (!docs || !docs.length) { list.innerHTML = '<p class="muted" style="font-size:13px">No lead files yet.</p>'; return; }
+      list.innerHTML = ctx.ui.table({ cols: [
+        { h: 'File', k: 'file_name', left: true, f: d => `<span class="mono">${esc(d.file_name || d.id)}</span>${d.source === 'api' ? ' ' + ctx.ui.pill('LinkedIn API', 'p-high') : ''}` },
+        { h: 'Leads', k: 'count', f: d => fmt(d.count) + (d.kept < d.count ? `<div class="muted" style="font-size:11.5px">${fmt(d.count - d.kept)} also in another file</div>` : '') },
+        { h: 'Uploaded by', k: 'uploaded_by', left: true, f: d => esc(d.uploaded_by || '') },
+        { h: 'At', k: 'uploaded_at', left: true, f: d => esc(ctx.fmt.istDateTime(d.uploaded_at)) },
+        { h: '', k: 'x', f: d => isEditor && d.source !== 'api' ? `<button class="btn tiny ghost" data-deldoc="${esc(d.id)}" data-name="${esc(d.file_name || d.id)}">Delete</button>` : '' },
+      ], rows: docs.slice().sort((a, b) => (a.uploaded_at < b.uploaded_at ? 1 : -1)) });
+      list.querySelectorAll('[data-deldoc]').forEach(b => b.onclick = async () => {
+        if (!confirm(`Delete the leads of "${b.dataset.name}"? This cannot be undone.`)) return;
+        b.disabled = true;
+        try { await ctx.api.del('li-leads', { id: b.dataset.deldoc }); clearMemo(); ctx.toast('Lead file deleted.'); await drawLeadDocs(list); if (onDone) onDone(); }
+        catch (e) { b.disabled = false; ctx.toast('Could not delete: ' + (e.message || e), 'err'); }
+      });
+    } catch (e) { list.innerHTML = ctx.ui.empty('Lead files could not be loaded: ' + (e.message || e)); }
   }
 }
 

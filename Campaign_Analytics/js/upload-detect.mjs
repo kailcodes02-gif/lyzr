@@ -1,10 +1,12 @@
 // Bulk upload: read any dropped file (CSV, TSV, TXT, XLSX, XLS) and work out what it is and where it goes.
 //   detectFile(file) -> { id, file, channel:'linkedin'|'email', platform?, kind:'performance'|'demographics'|'events', parsed, label, needs:[...] }
 //   platform is the ad platform for channel 'linkedin' rows: linkedin, google, meta, bing, taboola, x or chatgpt.
+//   channel 'leads' (kind 'leads') = a LinkedIn lead-gen form export or any lead spreadsheet (js/lib/li-leads.mjs), sent to POST li-leads.
 //   or throws with a readable reason. Excel files are converted to CSV with SheetJS (loaded on first use).
 import { parseLinkedInCsv, decodeCsvBuffer, parseRows, detectDelimiter } from './csv.mjs';
 import { parseInstantlyCsv, isInstantlyHeader, campaignLabel } from './email-csv.mjs';
 import { parseAdsCsv, PLATFORM_LABEL } from './ads-csv.mjs';
+import { parseLeadCsv } from './lib/li-leads.mjs';
 
 const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
 let xlsxLoading = null;
@@ -36,12 +38,17 @@ export function detectText(text, fileName) {
     const parsed = parseInstantlyCsv(text, fileName);
     return { channel: 'email', kind: 'events', parsed, label: `Email · ${campaignLabel(parsed.campaign)}`, needs: parsed.campaign ? [] : ['campaign'] };
   }
+  // Lead files (LinkedIn Lead gen forms › Download leads, HubSpot or any list of people): names or emails plus
+  // company, title, form or date, and no ad metrics.
+  let leads = null;
+  try { leads = parseLeadCsv(text, fileName); } catch { leads = null; }
+  if (leads && leads.rows.length) return { channel: 'leads', kind: 'leads', parsed: leads, label: 'Leads · lead form file', needs: [] };
   // Other ad platforms (Google Ads, Meta, Bing, Taboola, X, ChatGPT): recognised from their
   // header row or the file name; anything else falls through to the LinkedIn parser.
   let ads = null;
   try { ads = parseAdsCsv(text, fileName); } catch { ads = null; }
   if (ads && ads.rows.length) return { channel: 'linkedin', platform: ads.platform, kind: 'performance', parsed: ads, label: `Ads · ${PLATFORM_LABEL[ads.platform] || ads.platform}`, needs: [] };
-  const NOT = 'Not recognised: expected an Instantly campaign export, a LinkedIn Campaign Manager export (ad performance or demographics), or a daily campaign export from Google Ads, Meta, Bing, Taboola or X.';
+  const NOT = 'Not recognised: expected an Instantly campaign export, a LinkedIn Campaign Manager export (ad performance, demographics or lead gen form leads), or a daily campaign export from Google Ads, Meta, Bing, Taboola or X.';
   let parsed;
   try { parsed = parseLinkedInCsv(text, fileName); } catch (e) { throw new Error(`${NOT} (${e.message})`); }
   const known = Object.values(parsed.columns || {}).filter(f => !String(f).startsWith('extra:')).length;

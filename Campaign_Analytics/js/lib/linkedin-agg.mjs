@@ -195,8 +195,14 @@ export function bandShares(titleRows, bands, metric = 'impressions') {
  * Demographics windows to count: newest upload wins where windows of the same breakdown (platform + notes)
  * overlap, uploads with no rows are skipped. Mirrors functions/api/ca/_lib/windows.js, used by the demo mode.
  */
+// LinkedIn API windows (file_name 'LinkedIn API') never sit on top of a CSV export: an API window that
+// overlaps an untagged CSV window of the same platform is dropped (same rule as functions/api/ca/_lib/windows.js).
+const isApiWin = w => !!(w && w.upload && w.upload.file_name === 'LinkedIn API');
+const isTaggedWin = w => /\(([^)]+)\)\s*$/.test(String((w && w.upload && w.upload.notes) || ''));
 export function activeWindows(wins) {
-  const list = (wins || []).filter(w => w && w.upload && w.upload.period_start && w.upload.period_end && (w.rows ? w.rows.length : (w.upload.row_count == null || w.upload.row_count > 0)));
+  const all = (wins || []).filter(w => w && w.upload && w.upload.period_start && w.upload.period_end && (w.rows ? w.rows.length : (w.upload.row_count == null || w.upload.row_count > 0)));
+  const csv = all.filter(w => !isApiWin(w) && !isTaggedWin(w));
+  const list = all.filter(w => !isApiWin(w) || !csv.some(c => (c.upload.platform || 'linkedin') === (w.upload.platform || 'linkedin') && c.upload.period_start <= w.upload.period_end && w.upload.period_start <= c.upload.period_end));
   const byGroup = new Map();
   for (const w of list) { const k = `${w.upload.platform || 'linkedin'}|${w.upload.notes || ''}`; if (!byGroup.has(k)) byGroup.set(k, []); byGroup.get(k).push(w); }
   const keep = new Set();

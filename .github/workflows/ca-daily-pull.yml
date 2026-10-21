@@ -1,10 +1,12 @@
 name: Campaign Analytics · daily pull
 
-# Every morning: Instantly (all GSI-tagged campaigns, full history), then HubSpot
+# Every morning: LinkedIn Ads (Marketing API: ad performance per ad per day, monthly
+# demographics, lead-form leads; skipped when nobody has connected LinkedIn in Admin),
+# Instantly (all GSI-tagged campaigns, full history), then HubSpot
 # (GSI leads: form submitters at companies on the GSI account list), HubSpot deals
 # (GSI pipeline with a weekly snapshot), PhantomBuster (LinkedIn outreach phantoms),
 # then Claude reads any lead message it has not read yet. All read-only against
-# Instantly, HubSpot and PhantomBuster. Each step is a resumable Pages Function:
+# LinkedIn, Instantly, HubSpot and PhantomBuster. Each step is a resumable Pages Function:
 # keep calling with the returned cursor until it answers done:true.
 #
 # Needs the same secret in two places:
@@ -17,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "all | instantly | hubspot | messages | phantom | deals"
+        description: "all | linkedin | instantly | hubspot | messages | phantom | deals"
         default: "all"
         required: false
 
@@ -45,8 +47,21 @@ jobs:
           chmod +x /tmp/call.sh
       - name: Check secret
         run: test -n "$CA_CRON_SECRET" || { echo "CA_CRON_SECRET is not set"; exit 1; }
+      - name: LinkedIn API
+        if: ${{ contains(fromJSON('["all","linkedin"]'), env.ONLY) }}
+        run: |
+          set -euo pipefail
+          body='{}'
+          for i in $(seq 1 120); do
+            res=$(/tmp/call.sh linkedin-api/sync "$body")
+            echo "$res" | jq -c '{done, skipped, perf_rows, demo_windows, leads, progress, warnings}'
+            if [ "$(echo "$res" | jq -r '.skipped // empty')" != "" ]; then echo "LinkedIn skipped: $(echo "$res" | jq -r '.skipped')"; exit 0; fi
+            [ "$(echo "$res" | jq -r '.done')" = "true" ] && exit 0
+            body=$(echo "$res" | jq -c '{cursor: .cursor}')
+          done
+          echo "LinkedIn pull did not finish"; exit 1
       - name: Instantly
-        if: ${{ contains(fromJSON('["all","instantly"]'), env.ONLY) }}
+        if: ${{ always() && contains(fromJSON('["all","instantly"]'), env.ONLY) }}
         run: |
           set -euo pipefail
           body='{}'

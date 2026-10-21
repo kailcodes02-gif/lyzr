@@ -27,6 +27,10 @@ Folder: `Campaign_Analytics/` (static, no build step, served by the root Cloudfl
 | `CA_CRON_SECRET` | shared secret for the scheduled sync (`X-CA-Cron` header), same value as the GitHub Actions secret | set |
 | `CA_LOCAL_USERS` | `email:password, email:password` for the named outside accounts that sign in with email + password (POST login) | to set |
 | `PHANTOMBUSTER_API_KEY` | PhantomBuster org API key, read-only daily pull of the LinkedIn outreach phantoms (`X-Phantombuster-Key`) | to set |
+| `LINKEDIN_CLIENT_ID` | LinkedIn app client id for the Marketing API connection (public; the code falls back to `774euwn4y0mlz5`) | to set |
+| `LINKEDIN_CLIENT_SECRET` | LinkedIn app client secret: token exchange, refresh, and the HMAC key that signs the OAuth `state` | to set |
+| `LINKEDIN_API_VERSION` | optional `LinkedIn-Version` header (YYYYMM), default `202609` in `_lib/linkedin-api.js` | optional |
+| `LINKEDIN_REDIRECT_URI` | optional override of the OAuth redirect, default `<origin>/api/ca/linkedin-api/callback` | optional |
 
 ## Frontend module contract
 `js/app.mjs` owns the shell: gate, nav, global date range, toast, and calls
@@ -49,7 +53,7 @@ data derived from the September 2026 reports so the UI can be exercised with no 
 | Method + path | Body / query | Returns |
 |---|---|---|
 | `POST login` | `{ email, password }` | `{ token, email, name, expires_at, isEditor }`; token used as `Bearer` like a Microsoft token (12 h) |
-| `GET health` | | `{ ok, db, hubspot, claude, instantly, phantom, cron, user }` (booleans = env var present) |
+| `GET health` | | `{ ok, db, hubspot, claude, instantly, phantom, cron, linkedin_api:{configured, connected}, user }` (booleans = env var present; `linkedin_api.connected` = a LinkedIn sign-in is stored) |
 | `GET settings` | | `{ bands, icp_pool, accounts, regions, targets, editors, updated_at }` (defaults from `seed/` when a key is unset) |
 | `PUT settings` | `{ key, value }` (editors only) | `{ ok }` |
 | `GET uploads` | `?channel=linkedin&platform=google` | `{ uploads:[{id, channel, kind, file_name, uploaded_by, uploaded_at, period_start, period_end, row_count}] }` |
@@ -70,6 +74,17 @@ data derived from the September 2026 reports so the UI can be exercised with no 
 | `GET email` | `?offset=` | `{ events:[[ci, contact, step, event, ts, si, link, lag_s]], campaigns:[], senders:[], next }`; first page adds `uploads` and `api:{campaigns, daily, last_sync, configured}`. Paged 15,000 rows per call; the view loads every page (whole history) and filters by range itself |
 | `POST uploads` (email) | `channel:'email', kind:'events'`, rows from `js/email-csv.mjs` `{campaign, contact, step, event, ts, sender, link, lag_s, raw_event}` | upsert on `(campaign, contact, step, event, ts, link)` so cumulative exports never double count |
 | `POST instantly/sync` | `{ cursor?, full? }` editors or `X-CA-Cron` | resumable: GSI-tagged campaigns (tag id, then tag label, then name), all-time totals, daily rows for 20 campaigns per call. Read-only against Instantly |
+| `GET li-leads` | | `{ leads:[lead + doc_id, source], docs:[{id, source, file_name, uploaded_by, uploaded_at, count, kept}], screens:[{id, file_name, uploaded_at, uploaded_by, kind, title, summary, period, metrics, tables, notes, leads_count, model}], duplicates, warnings }`: every `leads:` document and the leads inside every `screen:` document, the same lead counted once (API pull, then files oldest first, then screenshots). Shared cache path `li-leads` |
+| `POST li-leads` | `{ file_name, rows:[...] }` editors, at most 20,000 rows | rows normalised with `normaliseLead`; leads already held in any `leads:` document are skipped; writes `leads:<uuid>` only when something is new. `{ id \| null, inserted, skipped, duplicates, invalid }` (201 when written) |
+| `DELETE li-leads?id=` | `leads:<id>` or `screen:<id>`, editors | `{ ok, id }`; `leads:li-api` (the API pull) is refused with 400 |
+| `POST screenshots` | `{ file_name, media_type: image/png\|jpeg\|webp\|gif, data: base64, hint? }` signed in, 5 MB decoded at most | Claude `claude-sonnet-5`, image block + forced `extract` tool call; stored as `screen:<uuid>` `{ file_name, uploaded_by, uploaded_at, kind:'leads'\|'campaign_metrics'\|'lead_form_metrics'\|'demographics'\|'other', title, summary, period, leads, metrics:[{campaign, metric, value, unit, period}], tables:[{title, columns, rows}], notes, model }`; 201 with the document. 429 passes through, other model errors are 500 |
+| `GET screenshots` | | `{ screens }`, the same list as `GET li-leads` (one source of truth: `li-leads.js` `load`) |
+| `GET linkedin-api/status` | signed in | `{ configured, connected, connected_by, connected_at, expires_at, refresh_expires_at, has_refresh_token, scope, leads_enabled, ad_accounts:[{id, name, currency, status}], selected_accounts, last_sync:{at, by, from, to, perf_rows, demo_windows, leads, warnings}, redirect_uri, client_id }`. Never a token |
+| `POST linkedin-api/connect` | `{ leads?:boolean }` editors | `{ url, scope, redirect_uri }`: the LinkedIn authorize URL. Scopes `r_ads r_ads_reporting`, plus `r_marketing_leadgen_automation` when `leads` (opt-in: an unapproved scope fails the whole sign-in). `state` = base64url `{email, ts, leads, nonce}` + `.` + HMAC-SHA256 (key `LINKEDIN_CLIENT_SECRET`), valid 15 minutes. 503 without the secret |
+| `GET linkedin-api/callback` | `?code&state` or `?error&error_description` (LinkedIn redirects the browser; no bearer) | verifies `state`, exchanges the code at `oauth/v2/accessToken`, lists ad accounts (`adAccountUsers?q=authenticatedUser`, `adAccounts/{id}`), saves `_li_oauth`, 302 to `/Campaign_Analytics/#/admin?linkedin=connected` or `?linkedin=error&msg=` |
+| `POST linkedin-api/accounts` | `{ selected_accounts:[ids] }` or `{ refresh:true }` editors | status (ids not in `ad_accounts` are dropped) |
+| `POST linkedin-api/disconnect` | editors | `{ ok }`; deletes `_li_oauth`, `_li_meta`, `_li_leads_stage` (pulled rows stay) |
+| `POST linkedin-api/sync` | `{ cursor?, from?, to? }` editors or `X-CA-Cron` | resumable: `{ done, cursor?, progress:{phase:'meta'\|'perf'\|'demo'\|'leads'\|'done', done, total}, from, to, perf_rows, demo_windows, leads, warnings }`; `{ done:true, skipped:'not connected' }` (200) when nobody connected; 409 when the sign-in expired and cannot renew. Read-only against LinkedIn |
 | `GET/POST/PUT/DELETE actions` | `?channel` / `{channel, title, detail, owner, source, scope}` / `{id, status:open|in_progress|blocked|done|dropped, note, owner}` / `?id` | tracked suggestions; anyone signed in can add and tick off, editors delete |
 
 Error shape: `{ error: string }` with 401 (no/invalid token), 403 (not an editor), 503 (env var missing).
@@ -107,10 +122,60 @@ Implementation notes (backend, `functions/api/ca/`), where the built code adds t
   is `functions/api/_lib/target-companies.js`.
 - Timezone IST for display, dates stored as calendar days.
 
+## LinkedIn Marketing API rows (`_lib/linkedin-api.js`, `linkedin-api/[[path]].js`)
+- Sign-in is 3-legged OAuth only (client_credentials is refused for this app). The token lives in the private
+  document `_li_oauth` (`ca_insights`, scope starting with `_`, so `GET insights` refuses it and the data API never
+  reads `ca_insights`): `{ access_token, refresh_token, expires_at, refresh_expires_at, scope, connected_by,
+  connected_at, ad_accounts, selected_accounts, last_sync }`. No endpoint returns a token. The access token is
+  refreshed (`grant_type=refresh_token`) when it ends within 7 days.
+- Private helper documents: `_li_meta` (campaign groups, campaigns, creatives of the selected accounts: names,
+  objective, format), `_li_names` (cache of resolved demographic names), `_li_leads_stage` (leads collected
+  across sync calls, deleted at the end).
+- Sync phases: meta, perf, demo, leads, finish. Each call stays under 40 subrequests (Cloudflare allows 50) and
+  about 22 s and returns a cursor. Default range: first run 2026-04-01 to today; later runs from 14 days before
+  the newest day the API wrote (LinkedIn revises recent days). `bumpCacheVersion` at the end.
+- **Performance keys (checked against `js/csv.mjs` and the 2026 "Ad Performance Report" export):** the export's
+  "Campaign ID" is the campaign GROUP id (Campaign Name = the group, Ad Set Name = the campaign) and csv.mjs maps
+  it to `campaign_id`, with "Ad Set ID" in `extra`. API rows (`adAnalytics` pivot CREATIVE, DAILY, 31-day chunks)
+  therefore use `platform 'linkedin'`, `campaign_id` = campaign group id, `ad_id` = creative id, `campaign` = campaign
+  (ad set) name, `campaign_group` = group name, `ad_name` = creative name (else the name already stored for that ad
+  from a CSV), `objective`/`format` in the CSV wording ("Brand awareness", "Sponsored Update"), `spend` =
+  `costInLocalCurrency`, `leads` = `oneClickLeads`, `lead_forms_opened` = `oneClickLeadFormOpens`, `engagements` =
+  `totalEngagements`, `conversions` = `externalWebsiteConversions`, `reach` = `approximateMemberReach` (0 if LinkedIn
+  refuses it daily), `extra` = `{ 'Ad Set ID', 'Clicks to Landing Page', source:'api' }`. Same primary key as a CSV
+  row, so the two overwrite each other. Ad-level API rows also delete campaign-level rows (`ad_id ''`) of the same
+  days and campaign, like `uploads.js`. A creative that cannot be tied to its campaign is left out with a warning
+  rather than written under another key. All API perf rows belong to one `ca_uploads` row (`file_name 'LinkedIn
+  API'`, `notes 'api'`, `kind 'performance'`) whose period grows to cover every pull; CSV uploads whose days were
+  re-pulled keep their original `row_count`.
+- **Demographics, no double counting:** one window per calendar month (the current one to today), `adAnalytics`
+  `timeGranularity=ALL` with pivots MEMBER_COMPANY, MEMBER_COUNTRY_V2, MEMBER_SENIORITY, MEMBER_JOB_TITLE,
+  MEMBER_JOB_FUNCTION, MEMBER_INDUSTRY, MEMBER_COMPANY_SIZE, stored as segments `Company`, `Country`, `Job
+  Seniority`, `Job Title`, `Job Function`, `Industry`, `Company Size` (the names csv.mjs gives the CSV tables;
+  seniorities, functions and company sizes in the CSV wording) with `campaign ''`. Each window is a `ca_uploads` row
+  `kind 'demographics'`, `file_name 'LinkedIn API'`, `notes` = the seven segments sorted. Rule: **a CSV window always
+  wins.** (1) The sync subtracts every untagged CSV demographics window from each month and pulls only what is
+  left (a fully covered month is skipped, and the notes say so); partial months older than 180 days are skipped
+  because LinkedIn rounds them to whole months. (2) `activeWindows` (`_lib/windows.js` and the mirror in
+  `js/lib/linkedin-agg.mjs`) drops an API window that overlaps any untagged CSV window of the same platform,
+  whatever the upload times, so a CSV uploaded after the pull wins at once; the next pull deletes the API windows
+  of the months it covers and re-pulls only the uncovered days. Tagged CSV windows ("(Anju)") are subsets and do
+  not hide an API window. Coverage marks each window `source:'csv'|'api'` and `counted`.
+- Demographic names: Ad Targeting API `adTargetingEntities?q=urns` first (any Marketing API token), then the
+  batch-get endpoints (`organizationsLookup`, `geo`, `titles`, `industries`); cached in `_li_names`. Values LinkedIn
+  will not name are stored as the URN text (e.g. `urn:li:organization:123`) with a warning.
+- Lead-form leads (scope `r_marketing_leadgen_automation` only): `leadForms?q=owner` for form names and questions,
+  `leadFormResponses?q=owner&leadType=(leadType:SPONSORED)`, test leads skipped. Written to `leads:li-api` (replaced
+  each sync) as `{ source:'api', file_name:'LinkedIn API', uploaded_by:'linkedin-api', uploaded_at, rows:[{ submitted_at,
+  first_name, last_name, email, company, title, seniority, country, city, industry, company_size, campaign,
+  campaign_group, ad, form, lead_type:'', phone, linkedin_url, source:'api', extra:{ <other answers>, lead_id,
+  campaign_id, ad_id } }] }`.
+- Health: `linkedin_api:{ configured, connected }`. Daily job: the first step of `ca-daily-pull.yml` (`only=linkedin`).
+
 ## Layout and pages (Oct 2026 rebuild)
 - Lyzr brand build reference: light only, General Sans (closest free match to Aeonik) + JetBrains Mono uppercase
   labels, 210px sidebar, hairline cards radius 8, black buttons, one orange button per view, navy chart data.
-- Routes: `#/overview`, `#/uploads` (every CSV, export checklist, month grid), `#/ads/linkedin`, `#/ads/google|meta|taboola|chatgpt|x|bing` (one shared view
+- Routes: `#/overview`, `#/uploads` (every CSV, export checklist, month grid, screenshots), `#/lead-analytics` (every lead: files, API, screenshots, HubSpot), `#/ads/linkedin`, `#/ads/google|meta|taboola|chatgpt|x|bing` (one shared view
   `views/ads-platform.mjs`: uploads of daily exports parsed by `js/ads-csv.mjs`, stored in `ca_li_perf` with
   `platform`), `#/linkedin/phantom` (PhantomBuster outreach), `#/email/instantly`, `#/hubspot/leads`,
   `#/hubspot/messaging`, `#/hubspot/pipeline` (deals), `#/admin`. Old routes redirect.
@@ -147,7 +212,32 @@ Implementation notes (backend, `functions/api/ca/`), where the built code adds t
   `_lib/apikeys.js`: Pages secret `CA_API_KEYS` ("label:key, label:key"), or a dashboard session. The Function
   imports `Campaign_Analytics/js/lib/*.mjs` directly (wrangler bundles across the repo), so penetration and lead
   maths are the dashboard's. `table` is a guarded PostgREST passthrough (table whitelist, filter / select / order
-  syntax checks, limit ≤ 5000). Add a source by appending to `SOURCES` and a `case` in `runSource`.
+  syntax checks, limit ≤ 5000). `leads/linkedin` returns the merged lead-form leads (`li-leads.js` `load`) with `from`/`to` on `submitted_at`. Add a source by appending to `SOURCES` and a `case` in `runSource`.
+
+## Lead-form leads, screenshots (Lead analytics page)
+- Lead shape (`js/lib/li-leads.mjs`, imported by `li-leads.js`, `screenshots.js` and `_lib/query.js`, so server and
+  page agree): `{ submitted_at:'YYYY-MM-DD', first_name, last_name, email, company, title, seniority, country, city,
+  industry, company_size, campaign, campaign_group, ad, form, lead_type, phone, linkedin_url, source, extra:{} }`,
+  unknown = ''. `source` = `csv` (a file), `api` (the LinkedIn API pull), `screenshot`, or `hubspot` (HubSpot GSI
+  leads converted on the page with `fromHubspot`, never stored). Custom form questions go to `extra`.
+- Same lead = same email + submitted day + form, or name + company when there is no email (`leadKey`). POST keeps
+  only new leads (a cumulative re-export adds nothing twice); GET counts a lead held in two documents once.
+- Header mapping follows `js/csv.mjs`: "Ad Set Name" is the ad set (`campaign`) and "Campaign Name" then becomes the
+  group; without an ad set column "Campaign Name" is the ad set. `parseLeadCsv` finds the header in the first 20 lines,
+  `isLeadCsv` needs a person (email or names) plus company, title, form, date or campaign, and no ad metrics.
+  `js/upload-detect.mjs` checks lead files after Instantly and before the ad platforms (channel `leads`).
+- Join to ad spend: by normalised ad set name (lower case, punctuation and quote styles ignored) against `ca_li_perf`
+  `campaign`. CPL = spend ÷ LinkedIn-reported leads (÷ leads in the files when LinkedIn reports none); completion =
+  LinkedIn leads ÷ lead form opens. Ad sets with LinkedIn leads but none in the files are listed with the gap.
+- Companies: `matchAccount` on the company name, then the email domain against the accounts' websites; tiers from
+  `js/lib/tiers.mjs`; bands from the title with `bandWeights` (a plain Director is half MD-1, half MD-2 in the mix and
+  MD-1 for a single lead). Lead type from `leadTypeOf` over campaign, campaign group + form and ad.
+- Documents in `ca_insights` (`_lib/docs.js`): `leads:<uuid>` files, `leads:li-api` (written only by the LinkedIn
+  API sync), `screen:<uuid>` readings, `_<name>` private. Insight scopes must not start with `leads:`, `screen:` or
+  `_` (`insights.js` refuses them); the HubSpot Leads read-out uses `hs-leads:<from>:<to>` and the Lead analytics
+  read-out `lead-analytics:<from>:<to>:<source>`. GET li-leads ignores `leads:` rows without a `rows` array.
+- Screenshots: the browser shrinks to 1600 px on the long edge, JPEG 0.85 (`js/screenshots.mjs`), so requests stay
+  well under the 5 MB limit; paste works anywhere on the page while the box is visible.
 
 ## GSI leads and messages
 - Lead origin and activity: `js/lib/lead-origin.mjs` (`originOf`, `originForm/Source/Campaign/Traffic`, `groupRows`,
@@ -187,3 +277,18 @@ Implementation notes (backend, `functions/api/ca/`), where the built code adds t
   `progress` (per action: done / open / dropped and what the numbers say). Findings have a Track button.
 - Prompts live in `functions/api/ca/_lib/prompts.js` and always ask for: 3 to 6 findings, each with the
   evidence numbers, a plain-language "so what", and one concrete action with an owner suggestion.
+
+## Penetration map (Ads › Penetration map)
+- View `js/views/penmap.mjs` (route `ads/penetration`, own stylesheet `css/penmap.css` loaded by the view), model
+  `js/lib/penmap-agg.mjs` (pure: `buildModel`, `ipf`, `cellVal`, `cellDetail`, `kpis`, `workedSplit`, `gaps`, `antiHeat`,
+  `planNumbers`, `rulePlan`, `aiInput`). It reads `GET linkedin` (whole history by default), keeps `mainWindows(activeWindows())`
+  and folds per-campaign demographics rows like `aggregateRows`.
+- Regions on this page are fixed to the report's six columns: India, US, UK, Middle East (Admin › Regions minus Türkiye and
+  Cyprus), APAC, Europe & other. Pools come from `expandPool` rolled up by region; estimated pools are dashed.
+- People = impressions ÷ `targets.reach_frequency` (default 3), penetration uncapped (SAT at 100%+). The LinkedIn page's
+  penetration cube keeps the negative-binomial reach curve; the two are labelled differently on purpose.
+- `POST/GET /api/ca/penmap-ai` (`functions/api/ca/penmap-ai.js`): scope `penmap:<name>`, Sonnet 5 with a forced
+  `penmap_plan` tool, cached by sha256(input); `force` needs an editor. `cleanPlan` drops plan rows without a CPL or CPM
+  range and strips em dashes. All plan arithmetic stays in the browser.
+- `ca_insights` is also a small document store (`functions/api/ca/_lib/docs.js`): `leads:<id>`, `screen:<id>`, and private
+  `_<name>` rows (LinkedIn token) that `GET insights` never serves and `POST insights` refuses, along with `leads:` and `screen:`.

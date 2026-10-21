@@ -417,7 +417,7 @@ export async function render(el, ctx) {
     };
 
     // AI
-    ctx.mountInsights(el.querySelector('#leadsInsights'), ctx, { scope: `leads:${from}:${to}`, kind: 'leads', title: 'What the lead mix says', inputProvider: () => ({
+    ctx.mountInsights(el.querySelector('#leadsInsights'), ctx, { scope: `hs-leads:${from}:${to}`, kind: 'leads', title: 'What the lead mix says', inputProvider: () => ({
       range: { from, to, days }, summary: s, bands: { MD: s.md, 'MD-1': s.md1, 'MD-2': s.md2, Other: s.other, Unknown: s.unknown },
       trend: buckets.map(b => ({ period: b.key, total: b.total, MD: b.MD, 'MD-1': b['MD-1'], 'MD-2': b['MD-2'], growth: b.growth })),
       regions: [...byRegionBand.entries()].map(([k, m]) => ({ region: k, total: rowTotal(m), ...Object.fromEntries(m) })),

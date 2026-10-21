@@ -10,11 +10,19 @@ const REDIRECT_URI = 'https://lyzr.kailash-gm.com/Campaign_Analytics/';
 const state = { tab: 'gsi', health: null };
 
 export async function render(el, ctx) {
+  // Back from the LinkedIn sign-in: /api/ca/linkedin-api/callback redirects to #/admin?linkedin=connected|error&msg=...
+  const hq = new URLSearchParams(location.hash.split('?')[1] || '');
+  if (hq.get('linkedin')) {
+    state.tab = 'connection';
+    if (hq.get('linkedin') === 'connected') ctx.toast('LinkedIn is connected. Choose the ad accounts, then press Pull now.');
+    else ctx.toast('LinkedIn sign-in did not finish: ' + (hq.get('msg') || 'unknown error'), 'err');
+    try { history.replaceState(null, '', location.pathname + location.search + '#/admin'); } catch { /* keep the hash */ }
+  }
   if (!state.health) { try { state.health = await ctx.api.get('health'); } catch (e) { state.health = { ok: false, error: e.message }; } }
   if (!ctx.settings) { try { ctx.settings = await ctx.api.get('settings'); } catch { ctx.settings = {}; } }
   const isEditor = !!ctx.demo || !!(state.health && state.health.user && state.health.user.isEditor);
   el.innerHTML = `<div class="seghead">Admin</div><h1>Lists and connections</h1>
-  <div class="intro">The lists here decide how every page counts: <b>GSI accounts</b> decide which HubSpot leads are GSI leads and what MD, MD-1 and MD-2 mean at each firm; <b>regions</b> group countries; <b>targets</b> are the monthly goals on the Overview. <b>Connections and pulls</b> shows whether Instantly, HubSpot and Claude are connected, with buttons to pull now instead of waiting for the 07:00 IST daily pull. ${isEditor ? 'You can edit.' : 'You can view; ask an editor to change anything.'}</div>
+  <div class="intro">The lists here decide how every page counts: <b>GSI accounts</b> decide which HubSpot leads are GSI leads and what MD, MD-1 and MD-2 mean at each firm; <b>regions</b> group countries; <b>targets</b> are the monthly goals on the Overview. <b>Connections and pulls</b> shows whether LinkedIn, Instantly, HubSpot and Claude are connected, with buttons to pull now instead of waiting for the 07:00 IST daily pull. ${isEditor ? 'You can edit.' : 'You can view; ask an editor to change anything.'}</div>
   <div id="tabs" style="margin-top:16px"></div><div id="tabBody"></div>`;
   const body = el.querySelector('#tabBody');
   const draw = () => { body.innerHTML = ''; TAB_RENDER[state.tab](body, ctx, isEditor); };
@@ -125,10 +133,12 @@ async function connectionTab(body, ctx) {
     ${row('Claude (AI panels)', h.claude, 'Set ANTHROPIC_API_KEY on the Pages site. Until then the AI panels show "Generate" but return an error.')}
     ${row('Instantly API (daily campaign pull)', h.instantly, 'Set INSTANTLY_API_KEY on the Pages site (already used by the GSI Tracker weekly report).')}
     ${row('PhantomBuster API (LinkedIn automation pull)', h.phantom, 'Set PHANTOMBUSTER_API_KEY on the Pages site (Org settings › API keys in PhantomBuster). Read-only.')}
+    ${row('LinkedIn Ads API (daily ads, demographics and leads pull)', !!(h.linkedin_api && h.linkedin_api.connected), h.linkedin_api && h.linkedin_api.configured ? 'Press Connect LinkedIn in the LinkedIn API card below.' : 'Set LINKEDIN_CLIENT_SECRET (and LINKEDIN_CLIENT_ID) on the Pages site, then press Connect LinkedIn below.')}
     ${row('Daily schedule', h.cron, 'Set CA_CRON_SECRET on the Pages site and the same value as a GitHub Actions secret; .github/workflows/ca-daily-pull.yml runs the pull every morning at 07:00 IST.')}
     ${row(`Data API and MCP server (${h.api_keys || 0} key${h.api_keys === 1 ? '' : 's'})`, (h.api_keys || 0) > 0, 'Set CA_API_KEYS on the Pages site as "label:key, label:key" (make each key with: openssl rand -hex 24), then redeploy. Read-only.')}
     </tbody></table></div>
     ${h.error ? `<p class="err" style="margin-top:10px">Health check failed: ${esc(h.error)}</p>` : ''}
+    <div id="liApiCard" style="margin-top:18px"></div>
     <h3 style="margin:18px 0 6px">Pull data from outside (Claude, scripts, anyone with a key)</h3>
     <p class="muted" style="font-size:13px;margin:0 0 8px">Every number on this dashboard can be pulled as JSON or CSV, read-only, with an API key. The index needs no key and lists every source, its parameters and the raw tables.</p>
     <div class="tblwrap"><table><tbody>
@@ -151,6 +161,7 @@ async function connectionTab(body, ctx) {
       <div class="card"><h3>Microsoft sign-in</h3><p style="font-size:13.5px">The Entra app "Lyzr MS UI" must list this page as a redirect URI (single-page application):</p><p class="mono" style="margin-top:6px;word-break:break-all">${REDIRECT_URI}</p><p class="muted" style="font-size:13px;margin-top:6px">Without it, sign-in fails with a redirect URI mismatch. Demo mode does not need it.</p></div>
     </div>
     <p class="muted" style="font-size:12.5px;margin-top:14px">API base: <span class="mono">/api/ca/</span> · ${ctx.demo ? 'Sample data: nothing is saved.' : 'Live.'}</p>`);
+  linkedinApiCard(body.querySelector('#liApiCard'), ctx, !!ctx.demo || !!(h.user && h.user.isEditor));
   body.querySelectorAll('[data-pull]').forEach(b => b.onclick = async () => {
     const kind = b.dataset.pull, out = body.querySelector(`[data-out="${kind}"]`);
     b.disabled = true;
@@ -165,6 +176,90 @@ async function connectionTab(body, ctx) {
     } catch (e) { out.innerHTML = `<span class="err">${esc(e.message || e)}</span>`; }
     b.disabled = false;
   });
+}
+
+// ---------------- LinkedIn Marketing API ----------------
+// Status, ad account choice, Connect / Pull now / Disconnect. Tokens never reach the browser:
+// /api/ca/linkedin-api/status answers who connected, when, expiry, accounts and the last pull only.
+const LI_CALLBACK = 'https://lyzr.kailash-gm.com/api/ca/linkedin-api/callback';
+async function linkedinApiCard(box, ctx, isEditor) {
+  if (!box) return;
+  const { esc, fmt } = ctx.fmt;
+  const F = ctx.fmt;
+  box.innerHTML = `<div class="card">${ctx.ui.spinner('Reading the LinkedIn connection')}</div>`;
+  let s;
+  try { s = await ctx.api.get('linkedin-api/status'); } catch (e) { box.innerHTML = `<div class="card"><div class="ui-label">LinkedIn API</div><p class="err" style="margin-top:6px">${esc(e.message || e)}</p></div>`; return; }
+  const when = ts => ts ? esc(F.istDateTime(ts)) : '–';
+  const whenY = ts => ts ? esc(new Date(ts).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })) : '–';
+  const days = ts => { const d = Math.round((Date.parse(ts) - Date.now()) / 864e5); return Number.isFinite(d) ? (d >= 0 ? `in ${d} day${d === 1 ? '' : 's'}` : `${-d} day${d === -1 ? '' : 's'} ago`) : ''; };
+  const redirect = s.redirect_uri || LI_CALLBACK;
+  const ls = s.last_sync;
+  const accounts = (s.ad_accounts || []).map(a => `<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:4px 0"><input type="checkbox" data-li-acc="${esc(a.id)}" ${(s.selected_accounts || []).map(String).includes(String(a.id)) ? 'checked' : ''} ${isEditor ? '' : 'disabled'}> <b>${esc(a.name)}</b> <span class="muted">${esc(a.id)} · ${esc(a.currency || '')} · ${esc((a.status || '').toLowerCase())}</span></label>`).join('');
+  const status = !s.configured ? ctx.ui.pill('Not set up', 'p-low') : s.connected ? ctx.ui.pill('Connected', 'p-high') : ctx.ui.pill('Not connected', 'p-low');
+  box.innerHTML = `<div class="card">
+    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center"><div class="ui-label">LinkedIn API (Campaign Manager)</div>${status}</div>
+    <p style="margin:6px 0 10px;font-size:13px">Pulls ad performance per ad per day, monthly demographics (company, country, seniority, job title, job function, industry, company size) and, if you allow it, lead-form leads. It runs every morning at 07:00 IST and with Pull now. Read-only: nothing is changed in LinkedIn.</p>
+    ${s.connected ? `<div class="tblwrap"><table><tbody>
+      <tr><td class="l"><b>Connected by</b></td><td class="l">${esc(s.connected_by || '–')} · ${when(s.connected_at)}</td></tr>
+      <tr><td class="l"><b>Sign-in valid until</b></td><td class="l">${whenY(s.expires_at)} <span class="muted">(${esc(days(s.expires_at))}${s.has_refresh_token ? `; renews itself until ${whenY(s.refresh_expires_at)}` : '; no refresh token, so connect again before then'})</span></td></tr>
+      <tr><td class="l"><b>Access</b></td><td class="l">${esc((s.scope || '').split(/[\s,]+/).filter(Boolean).join(', ') || '–')}${s.leads_enabled ? '' : ' <span class="muted">(no lead-form leads)</span>'}</td></tr>
+      <tr><td class="l"><b>Last pull</b></td><td class="l">${ls ? `${when(ls.at)} · ${esc(ls.from)} to ${esc(ls.to)} · ${fmt(ls.perf_rows || 0)} ad-day rows, ${fmt(ls.demo_windows || 0)} demographics window${ls.demo_windows === 1 ? '' : 's'}${ls.leads != null ? `, ${fmt(ls.leads)} leads` : ''}` : '<span class="muted">not yet</span>'}</td></tr>
+    </tbody></table></div>
+    ${ls && ls.warnings && ls.warnings.length ? `<details style="margin-top:8px"><summary style="font-size:13px;cursor:pointer">${ls.warnings.length} note${ls.warnings.length === 1 ? '' : 's'} from the last pull</summary><ul style="font-size:12.5px;margin:6px 0 0 18px">${ls.warnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul></details>` : ''}
+    <h3 style="margin:14px 0 4px;font-size:14px">Ad accounts to pull</h3>
+    ${accounts || '<p class="muted" style="font-size:13px">No ad account found for this LinkedIn sign-in. The person who connects needs a role on the Lyzr ad account in Campaign Manager.</p>'}
+    ${isEditor && accounts ? '<button class="btn" data-li="save" style="margin-top:6px">Save account choice</button>' : ''}` : ''}
+    ${isEditor ? `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px">
+      ${s.connected ? '<button class="btn" data-li="pull">Pull LinkedIn now</button>' : ''}
+      <button class="btn" data-li="connect" ${s.configured ? '' : 'disabled'}>${s.connected ? 'Connect again' : 'Connect LinkedIn'}</button>
+      <label style="font-size:13px;display:flex;gap:6px;align-items:center"><input type="checkbox" data-li-leads ${s.leads_enabled ? 'checked' : ''}> Also pull lead-form leads (needs the Lead Sync API product on the LinkedIn app)</label>
+      ${s.connected ? '<button class="btn" data-li="disconnect">Disconnect</button>' : ''}
+    </div>` : '<p class="muted" style="font-size:13px;margin-top:10px">Only editors can connect LinkedIn or pull now.</p>'}
+    <p class="muted" data-li-out style="font-size:12.5px;margin-top:8px"></p>
+    <details style="margin-top:10px" ${s.connected ? '' : 'open'}><summary style="font-size:13px;cursor:pointer">One-time setup on LinkedIn</summary>
+      <p style="font-size:13px;margin:8px 0 4px">In the LinkedIn Developer portal, open the app (client id <span class="mono">${esc(s.client_id || '774euwn4y0mlz5')}</span>) › Auth › Authorized redirect URLs for your app, and add this URL exactly:</p>
+      <p class="mono" style="word-break:break-all;font-size:12.5px">${esc(redirect)}</p>
+      <p style="font-size:13px;margin:8px 0 0">On the Products tab the app needs the Advertising API. For lead-form leads it also needs the Lead Sync API; tick the box above only once that product is approved, because LinkedIn refuses the whole sign-in when it asks for access the app does not have. The person who presses Connect must have a role on the Lyzr ad account in Campaign Manager (Account manager, Campaign manager or Viewer). The sign-in renews itself for about a year. On the server, the Pages secrets LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET must be set${s.configured ? ' (they are)' : ' (the secret is missing)'}.</p>
+      <p class="muted" style="font-size:12.5px;margin-top:6px">No double counting: an API row and a CSV row for the same ad and day replace each other. For demographics a CSV export always wins: the API only fills months, or the days of a month, that no CSV demographics export covers.</p>
+    </details>
+  </div>`;
+  const out = box.querySelector('[data-li-out]');
+  const btn = k => box.querySelector(`[data-li="${k}"]`);
+  if (btn('connect')) btn('connect').onclick = async () => {
+    btn('connect').disabled = true; out.textContent = 'Opening LinkedIn…';
+    try {
+      const r = await ctx.api.post('linkedin-api/connect', { leads: !!box.querySelector('[data-li-leads]').checked });
+      if (String(r.url).startsWith('#')) { ctx.toast('LinkedIn is connected (demo). Choose the ad accounts, then press Pull now.'); linkedinApiCard(box, ctx, isEditor); return; }   // demo mode: no real sign-in
+      window.location.assign(r.url);
+    }
+    catch (e) { out.innerHTML = `<span class="err">${esc(e.message || e)}</span>`; btn('connect').disabled = false; }
+  };
+  if (btn('save')) btn('save').onclick = async () => {
+    const sel = [...box.querySelectorAll('[data-li-acc]')].filter(x => x.checked).map(x => x.dataset.liAcc);
+    try { await ctx.api.post('linkedin-api/accounts', { selected_accounts: sel }); ctx.toast(`${sel.length} ad account${sel.length === 1 ? '' : 's'} will be pulled.`); linkedinApiCard(box, ctx, isEditor); }
+    catch (e) { out.innerHTML = `<span class="err">${esc(e.message || e)}</span>`; }
+  };
+  if (btn('disconnect')) btn('disconnect').onclick = async () => {
+    if (!confirm('Disconnect LinkedIn? The data already pulled stays. The daily pull stops until someone connects again.')) return;
+    try { await ctx.api.post('linkedin-api/disconnect', {}); ctx.toast('LinkedIn disconnected.'); linkedinApiCard(box, ctx, isEditor); }
+    catch (e) { out.innerHTML = `<span class="err">${esc(e.message || e)}</span>`; }
+  };
+  if (btn('pull')) btn('pull').onclick = async () => {
+    const b = btn('pull'); b.disabled = true;
+    const P = { meta: 'campaigns and ads', perf: 'ad performance', demo: 'demographics', leads: 'lead-form leads', done: 'done' };
+    try {
+      let cursor = null, r = null;
+      for (let i = 0; i < 300; i++) {
+        r = await ctx.api.post('linkedin-api/sync', cursor ? { cursor } : {});
+        if (r.skipped) { out.textContent = `Skipped: ${r.skipped}.`; break; }
+        const pr = r.progress || {};
+        out.textContent = `LinkedIn: ${P[pr.phase] || pr.phase || ''} ${pr.total ? `${pr.done} of ${pr.total}` : ''} · ${fmt(r.perf_rows || 0)} ad-day rows, ${fmt(r.demo_windows || 0)} demographics windows${r.leads ? `, ${fmt(r.leads)} leads` : ''}`;
+        if (r.done) break;
+        cursor = r.cursor;
+      }
+      if (r && r.done && !r.skipped) { ctx.toast('LinkedIn pull finished.'); linkedinApiCard(box, ctx, isEditor); }
+    } catch (e) { out.innerHTML = `<span class="err">${esc(e.message || e)}</span>`; b.disabled = false; }
+  };
 }
 
 // ---------------- Email rules ----------------
@@ -229,7 +324,7 @@ async function coverageTab(body, ctx) {
   const sync = x => !x ? '<span class="muted">never</span>' : x.error ? `<span class="down">error: ${esc(x.error)}</span>` : `${esc(F.istDateTime(x.finished_at || x.started_at))} · ${esc(x.status)}${x.started_by ? ' · ' + esc(x.started_by) : ''}`;
   const errBox = (name, e) => `<p class="muted" style="font-size:13px">${esc(name)}: ${esc(e)} (run the matching SQL file from supabase/ if the table is missing).</p>`;
   const P = { linkedin: 'LinkedIn', google: 'Google Ads', meta: 'Meta', taboola: 'Taboola', chatgpt: 'ChatGPT', x: 'X (Twitter)', bing: 'Microsoft Bing' };
-  let h = `<div class="intro"><b>How saving works.</b> Ad exports are stored per day per ad the moment they are uploaded: upload a file once and every later date range reads from the store, no re-upload needed. Overlapping days from a newer export overwrite the older rows (never added twice). Demographics exports are stored per export window and a date range picks up every window that overlaps it. Instantly exports only add events not seen before; the Instantly API, HubSpot leads, deals and PhantomBuster are pulled every morning at 07:00 IST (and by the Pull now buttons) into the same store. Actions live in the database from the moment you press Track or Add, with their status and notes. Sample data mode saves nothing.</div>`;
+  let h = `<div class="intro"><b>How saving works.</b> Ad exports are stored per day per ad the moment they are uploaded: upload a file once and every later date range reads from the store, no re-upload needed. Overlapping days from a newer export overwrite the older rows (never added twice). Demographics exports are stored per export window and a date range picks up every window that overlaps it. Instantly exports only add events not seen before; the LinkedIn API, the Instantly API, HubSpot leads, deals and PhantomBuster are pulled every morning at 07:00 IST (and by the Pull now buttons) into the same store. Actions live in the database from the moment you press Track or Add, with their status and notes. Sample data mode saves nothing.</div>`;
 
   // ads
   h += '<h3 style="margin-top:18px">Ad platforms (uploads)</h3>';
@@ -237,16 +332,18 @@ async function coverageTab(body, ctx) {
   else if (!c.ads || !Object.keys(c.ads).length) h += '<p class="muted" style="font-size:13px">No ad exports uploaded yet.</p>';
   else h += ctx.ui.table({ cols: [
     { h: 'Platform', k: 'p', left: true, f: r => `<b>${esc(P[r.p] || r.p)}</b>` },
-    { h: 'Performance days stored', k: 'perf', left: true, f: r => r.perf ? `${span(r.perf)}<br><span class="muted" style="font-size:11.5px">${fmt(r.perf.days_covered)} days from ${fmt(r.perf.uploads)} upload${r.perf.uploads === 1 ? '' : 's'}</span>` : '–' },
+    { h: 'Performance days stored', k: 'perf', left: true, f: r => r.perf ? `${span(r.perf)}<br><span class="muted" style="font-size:11.5px">${fmt(r.perf.days_covered)} days from ${fmt(r.perf.uploads)} upload${r.perf.uploads === 1 ? '' : 's'}${r.perf.api ? `, LinkedIn API ${day(r.perf.api.from)} to ${day(r.perf.api.to)}` : ''}</span>` : '–' },
     { h: 'Missing days', k: 'gaps', left: true, f: r => !r.perf || !r.perf.gaps.length ? '<span class="up">none</span>' : `<span class="down">${fmt(r.perf.days_missing)}</span><br><span class="muted" style="font-size:11.5px">${r.perf.gaps.slice(0, 4).map(g => g.from === g.to ? day(g.from) : `${day(g.from)} to ${day(g.to)}`).join('; ')}${r.perf.gaps.length > 4 ? '…' : ''}</span>` },
-    { h: 'Demographics windows', k: 'demo', left: true, f: r => r.demo.length ? r.demo.map(w => `${day(w.from)} to ${day(w.to)} <span class="muted">(${fmt(w.rows)} rows)</span>`).join('<br>') : '<span class="muted">none</span>' },
+    { h: 'Demographics windows', k: 'demo', left: true, f: r => r.demo.length ? r.demo.map(w => `${day(w.from)} to ${day(w.to)} <span class="muted">(${fmt(w.rows)} rows${w.source === 'api' ? `, LinkedIn API${w.counted === false ? ', not counted: a CSV export covers these days' : ''}` : ''})</span>`).join('<br>') : '<span class="muted">none</span>' },
   ], rows: Object.entries(c.ads).map(([p, v]) => ({ p, perf: v.performance, demo: v.demographics || [] })) });
 
   // API sources
-  const em = c.email || {}, hs = c.hubspot || {}, dl = c.deals || {}, pb = c.phantom || {};
+  const em = c.email || {}, hs = c.hubspot || {}, dl = c.deals || {}, pb = c.phantom || {}, la = c.linkedin_api || {};
+  const liSync = x => !x ? '<span class="muted">never</span>' : `${esc(F.istDateTime(x.at))}${x.by ? ' · ' + esc(x.by) : ''}`;
   h += '<h3 style="margin-top:22px">Pulled sources</h3>' + ctx.ui.table({ cols: [
     { h: 'Source', k: 's', left: true, f: r => `<b>${esc(r.s)}</b>` }, { h: 'Stored', k: 'st', left: true, f: r => r.st }, { h: 'Last pull', k: 'ls', left: true, f: r => r.ls },
   ], rows: [
+    { s: 'LinkedIn API (ads, demographics, leads)', st: la.error ? errBox('LinkedIn API', la.error) : !la.connected ? '<span class="muted">not connected (Admin › Connections and pulls)</span>' : la.last_sync ? `${day(la.last_sync.from)} to ${day(la.last_sync.to)} last pulled<br><span class="muted" style="font-size:11.5px">${fmt(la.last_sync.perf_rows || 0)} ad-day rows, ${fmt(la.last_sync.demo_windows || 0)} demographics windows${la.last_sync.leads != null ? `, ${fmt(la.last_sync.leads)} leads` : ''}</span>` : '<span class="muted">connected, not pulled yet</span>', ls: liSync(la.last_sync) },
     { s: 'Instantly API (daily rows)', st: em.error ? errBox('Email', em.error) : `${span(em.daily)}<br><span class="muted" style="font-size:11.5px">${fmt(em.gsi_campaigns)} GSI campaigns of ${fmt(em.campaigns)} in the workspace</span>`, ls: sync(em.last_sync) },
     { s: 'Instantly exports (events)', st: em.error ? '–' : span(em.events), ls: '<span class="muted">on upload</span>' },
     { s: 'HubSpot leads', st: hs.error ? errBox('HubSpot', hs.error) : `${span(hs.contacts)} <span class="muted">(created dates)</span>`, ls: sync(hs.last_sync) },

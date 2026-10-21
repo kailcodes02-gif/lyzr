@@ -1,7 +1,8 @@
 // GET /api/ca/coverage -> what the database holds per source, so the Admin page can show
 // which dates are covered, where the gaps are and when each pull last ran.
 // {
-//   ads: { [platform]: { performance:{ from, to, days_covered, days_missing, gaps:[{from,to}], uploads }, demographics:[{from,to,rows,uploaded_at}] } },
+//   ads: { [platform]: { performance:{ from, to, days_covered, days_missing, gaps:[{from,to}], uploads, api:{from,to}|null }, demographics:[{from,to,rows,uploaded_at,file,source:'csv'|'api',counted}] } },
+//   linkedin_api: { connected, last_sync }   (the LinkedIn Marketing API pull; rows land in the same ca_uploads/ca_li_* tables, file_name 'LinkedIn API')
 //   email: { events:{from,to}, daily:{from,to}, campaigns, gsi_campaigns, last_sync },
 //   hubspot: { contacts:{from,to}, last_sync }, deals: { count, last_sync }, phantom: { daily:{from,to}, last_sync },
 //   actions: { open, in_progress, blocked, done, dropped }
@@ -11,6 +12,8 @@ import { json, handle } from './_lib/http.js'
 import { requireUser } from './_lib/auth.js'
 import { db } from './_lib/db.js'
 import { cachedGet, cacheResponse } from './_lib/cache.js'
+import { activeWindows, isApiUpload } from './_lib/windows.js'
+import { getDoc } from './_lib/docs.js'
 
 export { corsPreflight as onRequestOptions } from './_lib/http.js'
 
@@ -54,14 +57,18 @@ export async function load(env) {
   const d = db(env)
 
   const ads = await guard(async () => {
-    const uploads = await d.select('ca_uploads', { params: { channel: 'eq.linkedin' }, select: 'id,kind,platform,file_name,period_start,period_end,row_count,uploaded_at', order: 'uploaded_at.desc', limit: 1000 })
+    const uploads = await d.select('ca_uploads', { params: { channel: 'eq.linkedin' }, select: 'id,kind,platform,file_name,period_start,period_end,row_count,uploaded_at,notes', order: 'uploaded_at.desc', limit: 1000 })
     const out = {}
+    // which demographics windows the pages count (newest wins; a CSV window beats an overlapping API window)
+    const counted = new Set(activeWindows(uploads).map((u) => u.id))
     for (const u of uploads) {
       const p = u.platform || 'linkedin'
-      if (!out[p]) out[p] = { performance: null, demographics: [], _perf: [], uploads: 0 }
+      if (!out[p]) out[p] = { performance: null, demographics: [], _perf: [], _api: null, uploads: 0 }
       out[p].uploads++
-      if (u.kind === 'performance') out[p]._perf.push({ from: u.period_start, to: u.period_end })
-      else out[p].demographics.push({ from: u.period_start, to: u.period_end, rows: u.row_count, uploaded_at: u.uploaded_at, file: u.file_name })
+      if (u.kind === 'performance') {
+        out[p]._perf.push({ from: u.period_start, to: u.period_end })
+        if (isApiUpload(u) && u.period_start) out[p]._api = { from: u.period_start, to: u.period_end, rows: u.row_count, at: u.uploaded_at }
+      } else out[p].demographics.push({ from: u.period_start, to: u.period_end, rows: u.row_count, uploaded_at: u.uploaded_at, file: u.file_name, source: isApiUpload(u) ? 'api' : 'csv', counted: counted.has(u.id) })
     }
     for (const p of Object.keys(out)) {
       const perf = coverageOf(out[p]._perf)
@@ -71,9 +78,10 @@ export async function load(env) {
         if (lo && (!perf.from || lo < perf.from)) perf.from = lo
         if (hi && (!perf.to || hi > perf.to)) perf.to = hi
       } catch { /* platform column missing until 007 runs; the upload periods still tell the story */ }
-      out[p].performance = { ...perf, uploads: out[p]._perf.length }
+      out[p].performance = { ...perf, uploads: out[p]._perf.length, api: out[p]._api }
       out[p].demographics.sort((a, b) => a.from < b.from ? -1 : 1)
       delete out[p]._perf
+      delete out[p]._api
     }
     return out
   })
@@ -109,5 +117,11 @@ export async function load(env) {
     return out
   })
 
-  return { ads, email, hubspot, deals, phantom, actions, generated_at: new Date().toISOString() }
+  const linkedin_api = await guard(async () => {
+    const doc = await getDoc(env, '_li_oauth')
+    const o = doc && doc.content
+    return { connected: !!(o && o.access_token), last_sync: (o && o.last_sync) || null }
+  })
+
+  return { ads, email, hubspot, deals, phantom, actions, linkedin_api, generated_at: new Date().toISOString() }
 }

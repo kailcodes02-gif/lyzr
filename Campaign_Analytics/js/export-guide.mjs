@@ -8,17 +8,21 @@ export const LINKEDIN_FILES = [
   { key: 'perf', label: 'Ad Performance', where: 'Reporting › Export › Ad performance', how: 'Time breakdown: Daily · Level: Ads · the whole month', feeds: 'spend, impressions, clicks, leads, engagement, ad sets, creatives, trends', kind: 'performance' },
   { key: 'demo', label: 'Professional Demographics', where: 'Reporting › Export › Professional Demographics', how: 'Same date range. One file: it holds every breakdown (company, country, job title, seniority, function, location...)', feeds: 'accounts reached, MD / MD-1 / MD-2, regions, exact designations, penetration', kind: 'demographics' },
 ];
-export const OPTIONAL_FILES = [];
+// Any time, not tied to the fortnight: the people behind the lead-gen form numbers. Not part of the month grid.
+export const OPTIONAL_FILES = [
+  { key: 'leads', label: 'Lead gen form leads', where: 'Campaign Manager › Account assets › Lead gen forms › Download leads', how: 'Any time, all forms, the whole period. Excel or CSV. Re-uploads only add new leads', feeds: 'Lead analytics: which campaigns bring leads, which companies and who, CPL per ad set' },
+];
 export const DEMO_SEGMENTS = ['Company', 'Job Title', 'Country', 'Job Seniority', 'Job Function'];
 
 export function guideHtml({ compact = false } = {}) {
-  const rows = LINKEDIN_FILES.map((f, i) => `<tr><td class="l"><b>${i + 1}. ${esc(f.label)}</b></td><td class="l">${esc(f.where)}</td><td class="l">${esc(f.how)}</td><td class="l muted" style="font-size:12.5px">${esc(f.feeds)}</td></tr>`).join('');
+  const rows = LINKEDIN_FILES.map((f, i) => `<tr><td class="l"><b>${i + 1}. ${esc(f.label)}</b></td><td class="l">${esc(f.where)}</td><td class="l">${esc(f.how)}</td><td class="l muted" style="font-size:12.5px">${esc(f.feeds)}</td></tr>`).join('') +
+    OPTIONAL_FILES.map(f => `<tr><td class="l"><b>${esc(f.label)}</b><br><span class="muted" style="font-size:11.5px">any time</span></td><td class="l">${esc(f.where)}</td><td class="l">${esc(f.how)}</td><td class="l muted" style="font-size:12.5px">${esc(f.feeds)}</td></tr>`).join('');
   return `<div class="guide">
     <div class="ui-label" style="color:var(--accent)">LinkedIn · what to export every 2 weeks</div>
     <h3 style="margin:6px 0 4px">2 files from Campaign Manager › Analyze › Reporting, account level, same date range on both</h3>
     <p class="muted" style="font-size:13px;margin:0 0 10px">Set the dates to the fortnight (1st to 14th, then 15th to month end) or the whole month, export the two reports below and drop both in the box${compact ? ' on the Upload CSVs page or below' : ' below'}. Files are recognised by their columns; a month uploaded again replaces the earlier copy, so nothing is counted twice.</p>
     <div class="tblwrap" style="border:none"><table><thead><tr><th class="l">File</th><th class="l">Where</th><th class="l">How</th><th class="l">Feeds</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <p class="muted" style="font-size:12.5px;margin:10px 0 0">For a person's boosted posts (Ani, Anju, Siva): select only their campaigns in the campaign list, export the same Demographics file and type the name in the "Covers" box when uploading. Instantly: Campaign › Analytics › Export CSV per campaign, any time. Google, Meta, Bing, Taboola, X: a daily campaign report CSV; they file themselves under their platform.</p>
+    <p class="muted" style="font-size:12.5px;margin:10px 0 0">For a person's boosted posts (Ani, Anju, Siva): select only their campaigns in the campaign list, export the same Demographics file and type the name in the "Covers" box when uploading. Lead files and screenshots of lead lists or campaign numbers can also go on the <a href="#/lead-analytics">Lead analytics</a> page. Instantly: Campaign › Analytics › Export CSV per campaign, any time. Google, Meta, Bing, Taboola, X: a daily campaign report CSV; they file themselves under their platform.</p>
   </div>`;
 }
 

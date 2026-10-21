@@ -1,10 +1,12 @@
-// GET /api/ca/health -> { ok, db, hubspot, claude, instantly, phantom, cron, user }
+// GET /api/ca/health -> { ok, db, hubspot, claude, instantly, phantom, cron, linkedin_api:{configured, connected}, user }
 // db = env present and one cheap select works; hubspot / claude = env present only.
 
 import { json, handle } from './_lib/http.js'
 import { apiKeys } from './_lib/apikeys.js'
 import { requireUser } from './_lib/auth.js'
 import { db, dbConfigured } from './_lib/db.js'
+import { getDoc } from './_lib/docs.js'
+import { DOC as LI_DOC, configured as liConfigured } from './_lib/linkedin-api.js'
 
 export { corsPreflight as onRequestOptions } from './_lib/http.js'
 
@@ -26,6 +28,9 @@ export const onRequestGet = handle(async ({ request, env }) => {
   const claude = Boolean(env.ANTHROPIC_API_KEY)
   const instantly = Boolean(env.INSTANTLY_API_KEY)
   const phantom = Boolean(env.PHANTOMBUSTER_API_KEY)
+  // LinkedIn API: configured = the client secret is set; connected = someone signed in (token stored, never returned)
+  let liConnected = false
+  if (dbOk) { try { const d = await getDoc(env, LI_DOC); liConnected = !!(d && d.content && d.content.access_token) } catch { /* table or row missing */ } }
   return json({
     ok: dbOk && hubspot && claude,
     db: dbOk,
@@ -35,6 +40,7 @@ export const onRequestGet = handle(async ({ request, env }) => {
     instantly,
     phantom,
     cron: Boolean(env.CA_CRON_SECRET),
+    linkedin_api: { configured: liConfigured(env), connected: liConnected },
     api_keys: apiKeys(env).size,   // data API / MCP keys in CA_API_KEYS (count only)
     user,
   })

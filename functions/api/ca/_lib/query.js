@@ -8,6 +8,7 @@ import { loadSettings } from './settings.js'
 import { load as loadLinkedin } from '../linkedin.js'
 import { load as loadDeals, kpisOf } from '../hubspot/deals.js'
 import { load as loadCoverage } from '../coverage.js'
+import { load as loadLiLeads } from '../li-leads.js'
 import { TIER_LABEL, TIER_GROUP, tierOf } from './tiers.js'
 import * as A from '../../../../Campaign_Analytics/js/lib/linkedin-agg.mjs'
 import { enrich, funnelCounts, isFormLead } from '../../../../Campaign_Analytics/js/lib/leads-agg.mjs'
@@ -55,6 +56,7 @@ export const SOURCES = [
   { name: 'linkedin/penetration', title: 'Penetration by company, region and band', description: 'The cumulative penetration cube: per target account, people reached against the MD / MD-1 / MD-2 pool per region, with exposure and frequency, from the same reach model as the dashboard (negative binomial, never above 100%). Includes the account tier and the "what to do next" items.', params: { from: 'YYYY-MM-DD', to: 'YYYY-MM-DD', account: 'substring filter on the account name', tier: 'GSI | SI | Big Four | MBB | Other | Tier 1 | Tier 2', region: 'one region name (India, United States, Middle East, Europe, APAC...)', band: 'MD | MD-1 | MD-2 | All (default)', limit: 'accounts (default 100, max 2000)' } },
   { name: 'linkedin/windows', title: 'Uploads on file', description: 'Every upload on file: channel, platform, kind, dates it covers, rows, breakdowns and tag. Use it to see which dates have data before asking for them.', params: { channel: 'linkedin | email | all (default)' } },
   { name: 'hubspot/leads', title: 'GSI leads', description: 'HubSpot form leads at target accounts (the Leads page): one row per lead with account, exact job title, band, region, origin (form, lead source, campaign, UTM, traffic source), lifecycle, lead status, owner, dates, the activity checklist (what was done, with the date, and what is missing), plus counts by band, account, region, form, lead source and campaign and the sales funnel for the same rows.', params: { from: 'YYYY-MM-DD (created_at)', to: 'YYYY-MM-DD', account: 'substring filter', band: 'MD | MD-1 | MD-2 | Other | Unknown', region: 'region name', form: 'substring filter on the form name', campaign: 'substring filter on the campaign', q: 'substring over name, title, company, email', fields: 'comma list of columns to return (default a useful subset; "all" for everything)', limit: 'rows (default 500, max 5000)', offset: 'skip rows' } },
+  { name: 'leads/linkedin', title: 'LinkedIn lead-form leads', description: 'Every lead from the uploaded LinkedIn lead-gen form exports, the LinkedIn API pull and the screenshots Claude read: one row per lead (submitted_at, name, email, company, title, seniority, country, campaign, campaign group, ad, form, source, doc_id), the same lead held twice counted once, plus counts by campaign, company, form and source. from / to filter on submitted_at (leads with no date are left out when a range is given).', params: { from: 'YYYY-MM-DD (submitted_at)', to: 'YYYY-MM-DD', source: 'csv | api | screenshot', campaign: 'substring filter on the campaign or campaign group', company: 'substring filter on the company', form: 'substring filter on the form name', q: 'substring over name, email, title, company', limit: 'rows (default 500, max 20000)', offset: 'skip rows' } },
   { name: 'hubspot/deals', title: 'Deals pipeline', description: 'HubSpot deals with the dashboard buckets (conversation, demo, won, lost) and the KPIs the Pipeline page shows.', params: { from: 'YYYY-MM-DD (created)', to: 'YYYY-MM-DD', bucket: 'conversation | demo | won | lost', partner: 'substring filter', limit: 'rows (default 500, max 5000)' } },
   { name: 'email/summary', title: 'Instantly email campaigns', description: 'Per campaign: sent, contacted, opens, replies and leads with the daily totals in range, GSI-tagged campaigns by default.', params: { from: 'YYYY-MM-DD', to: 'YYYY-MM-DD', campaign: 'substring filter', all: '1 to include campaigns not tagged GSI' } },
   { name: 'phantom/summary', title: 'PhantomBuster outreach', description: 'Per agent: profiles, invites, accepted, messages and replies summed over the days in range.', params: { from: 'YYYY-MM-DD', to: 'YYYY-MM-DD' } },
@@ -147,6 +149,19 @@ export async function runSource(env, request, name, q = {}) {
       const limit = clamp(q.limit, 500, 5000), offset = Math.max(0, num(q.offset, 0))
       const groupCount = (fn) => { const o = {}; for (const r of rows) { const v = fn(r); o[v] = (o[v] || 0) + 1 } return Object.fromEntries(Object.entries(o).sort((a, b) => b[1] - a[1])) }
       return { source: name, from: from || null, to: to || null, total: rows.length, by_band: count('band'), by_account: count('account'), by_region: count('region'), by_form: groupCount(originForm), by_lead_source: groupCount(originSource), by_campaign: groupCount(originCampaign), missing_work: groupCount((r) => (r.missing_work || []).join(', ') || 'nothing missing'), funnel: funnelCounts(rows), rows: rows.slice(offset, offset + limit).map(fields ? pick : pick), row_count: rows.length, offset, note: 'Only form leads at target accounts (the dashboard definition of a GSI lead). fields=all returns every column.' }
+    }
+    case 'leads/linkedin': {
+      const data = await loadLiLeads(env)
+      let rows = data.leads || []
+      if (from || to) rows = rows.filter((r) => { const dd = String(r.submitted_at || '').slice(0, 10); return !!dd && (!from || dd >= from) && (!to || dd <= to) })
+      if (q.source) rows = rows.filter((r) => lower(r.source) === lower(q.source))
+      if (q.campaign) rows = rows.filter((r) => like(r.campaign, q.campaign) || like(r.campaign_group, q.campaign))
+      if (q.company) rows = rows.filter((r) => like(r.company, q.company))
+      if (q.form) rows = rows.filter((r) => like(r.form, q.form))
+      if (q.q) rows = rows.filter((r) => like([r.first_name, r.last_name, r.email, r.title, r.company].join(' '), q.q))
+      const count = (k) => { const o = {}; for (const r of rows) { const v = r[k] || '(not given)'; o[v] = (o[v] || 0) + 1 } return Object.fromEntries(Object.entries(o).sort((a, b) => b[1] - a[1])) }
+      const limit = clamp(q.limit, 500, 20000), offset = Math.max(0, num(q.offset, 0))
+      return { source: name, from: from || null, to: to || null, total: rows.length, by_campaign: count('campaign'), by_company: count('company'), by_form: count('form'), by_source: count('source'), duplicates_left_out: data.duplicates || 0, files: (data.docs || []).length, screenshots: (data.screens || []).length, rows: rows.slice(offset, offset + limit), row_count: rows.length, offset, note: 'source: csv = an uploaded lead file, api = the LinkedIn API pull, screenshot = read by Claude from an uploaded image. Leads from screenshots are only as complete as the image.' }
     }
     case 'hubspot/deals': {
       const data = await loadDeals(env, { from, to })

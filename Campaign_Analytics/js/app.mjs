@@ -14,8 +14,10 @@ import { mountInsights } from './insights.mjs';
 const ROUTES = [
   { route: 'overview', title: 'Overview', file: 'overview' },
   { route: 'uploads', title: 'Upload CSVs', file: 'uploads' },
+  { route: 'lead-analytics', title: 'Lead analytics', file: 'lead-analytics' },
   { grp: 'Ads' },
   { route: 'ads/linkedin', title: 'LinkedIn', group: 'Ads', file: 'linkedin' },
+  { route: 'ads/penetration', title: 'Penetration map', group: 'Ads', file: 'penmap' },
   { route: 'ads/google', title: 'Google Ads', group: 'Ads', file: 'ads-platform' },
   { route: 'ads/meta', title: 'Meta', group: 'Ads', file: 'ads-platform' },
   { route: 'ads/taboola', title: 'Taboola', group: 'Ads', file: 'ads-platform' },
