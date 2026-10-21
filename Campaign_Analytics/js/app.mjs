@@ -7,6 +7,7 @@ import { COMPARE, compareRange, clearMemo } from './compare.mjs';
 import { withGetCache, TTL_MS, cachedSince } from './pagecache.mjs';
 import * as ui from './ui.mjs';
 import { mountInsights } from './insights.mjs';
+import { mountTidy } from './tidy.mjs';
 
 
 // Sidebar: channels grouped by type. `file` is the view module; every ad platform other than
@@ -97,6 +98,7 @@ async function enter(user, demo) {
   $('gate').classList.add('hidden'); $('app').classList.remove('hidden');
   $('uname').textContent = user.name || user.email; $('uav').textContent = (user.name || user.email || '?')[0].toUpperCase();
   $('signout').onclick = () => { localStorage.removeItem('ca.demo'); if (demo) location.reload(); else signOut(); };
+  mountTidy($('main'));
   $('nav').innerHTML = ROUTES.map(r => r.grp ? `<div class="grp">${fmt.esc(r.grp)}</div>` : `<a href="#/${r.route}" data-r="${r.route}" class="${r.sub ? 'sub' : ''}">${fmt.esc(r.title)}${r.soon ? '<span class="soon">soon</span>' : ''}</a>`).join('');
   $('rangePreset').innerHTML = PRESETS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
   $('cmpMode').innerHTML = COMPARE.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');

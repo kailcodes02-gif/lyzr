@@ -290,3 +290,105 @@ a.pick:hover{color:var(--accent);text-decoration-style:solid}
 tr.lead{cursor:pointer}tr.lead:hover td{background:var(--offwhite)}
 .ok{color:#1FA64A}.miss{color:#B3261E}
 table.kv{width:100%;border-collapse:collapse;font-size:13px}table.kv td{padding:4px 8px 4px 0;vertical-align:top;border:none}
+
+/* ===================== Usability pass (Oct 2026) =====================
+   Same brand (colours, type, layout); controls now look and feel like controls:
+   raised buttons with hover lift and a press-down state, segmented tabs on a track,
+   real input fields, cards with a soft edge, quieter tables, shorter copy (js/tidy.mjs). */
+:root{--r:10px;--edge:0 0 0 1px var(--line);--lift:0 1px 2px rgba(31,32,34,.06),0 1px 1px rgba(31,32,34,.03);--lift2:0 4px 14px rgba(31,32,34,.10),0 1px 3px rgba(31,32,34,.06)}
+
+/* buttons */
+.btn{height:36px;padding:0 16px;border-radius:8px;font-weight:500;background:#fff;color:var(--ink);
+  box-shadow:inset 0 0 0 1px var(--g300),0 1px 2px rgba(31,32,34,.08),inset 0 -1px 0 rgba(31,32,34,.04);
+  transition:transform .08s ease,box-shadow .15s ease,background-color .15s ease;-webkit-tap-highlight-color:transparent;user-select:none}
+.btn:hover{background:#fff;box-shadow:inset 0 0 0 1px var(--g400),var(--lift2);transform:translateY(-1px)}
+.btn:active{transform:translateY(0) scale(.97);box-shadow:inset 0 0 0 1px var(--g400),inset 0 2px 4px rgba(31,32,34,.14)}
+.btn.primary{background:var(--black);color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.14)}
+.btn.primary:hover{background:#000;box-shadow:0 6px 16px rgba(0,0,0,.22)}
+.btn.primary:active{box-shadow:inset 0 2px 5px rgba(0,0,0,.5)}
+.btn.accent{background:var(--orange);color:#fff;box-shadow:0 1px 2px rgba(254,75,30,.35),inset 0 1px 0 rgba(255,255,255,.2)}
+.btn.accent:hover{background:#ec3f13;box-shadow:0 6px 16px rgba(254,75,30,.3)}
+.btn.ghost{background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
+.btn.ghost:hover{background:#fff;box-shadow:inset 0 0 0 1px var(--g300),var(--lift)}
+.btn.tiny{height:30px;padding:0 12px;font-size:12.5px;border-radius:7px}
+.btn:disabled,.btn:disabled:hover,.btn:disabled:active{opacity:.45;transform:none;box-shadow:inset 0 0 0 1px var(--line)}
+.btn:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(4,62,119,.25),inset 0 0 0 1px var(--navy)}
+
+/* segmented tabs: a grey track with the active option raised */
+.seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;margin-bottom:14px;background:var(--fill);border:none;border-radius:var(--r);box-shadow:inset 0 0 0 1px var(--hair)}
+.seg button{padding:6px 14px;border-radius:7px;color:var(--ink2);font-size:13px;transition:background-color .15s,color .15s,box-shadow .15s,transform .08s}
+.seg button:hover{color:var(--ink);background:rgba(255,255,255,.6)}
+.seg button:active{transform:scale(.97)}
+.seg button[aria-pressed="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(31,32,34,.12),0 0 0 1px var(--hair)}
+.chip{transition:box-shadow .15s,transform .08s}.chip:hover{box-shadow:inset 0 0 0 1px var(--g400)}.chip:active{transform:scale(.96)}
+
+/* inputs look like inputs */
+select,input[type=date],input[type=text],input[type=number],input[type=search],input[type=email],input[type=password],textarea{background:#fff;box-shadow:inset 0 0 0 1px var(--g300),inset 0 1px 2px rgba(31,32,34,.05);border-radius:8px;min-height:34px;transition:box-shadow .15s}
+select:hover,input:hover,textarea:hover{box-shadow:inset 0 0 0 1px var(--g400),inset 0 1px 2px rgba(31,32,34,.05)}
+select:focus-visible,input:focus-visible,textarea:focus-visible{outline:none;box-shadow:inset 0 0 0 1.5px var(--navy),0 0 0 3px rgba(4,62,119,.15)}
+select{cursor:pointer}
+
+/* surfaces */
+.card,.panel,.tile,.tblwrap,.insights,.actions,.step,.bcol,.cg,.tcard,.intro,.empty,.placeholder,.guide{border-radius:var(--r)}
+.card,.panel,.tile,.tblwrap,.insights,.actions,.step,.bcol,.cg,.intro{box-shadow:var(--edge),var(--lift)}
+.tcard{box-shadow:var(--edge),inset 3px 0 0 var(--c),var(--lift)}
+.tile{padding:16px 18px 14px}
+.tile .v{font-size:30px;line-height:36px}
+.big{border-radius:var(--r);box-shadow:var(--lift2)}
+
+/* sections: more air, smaller print kept short */
+.section{margin-top:48px}
+.section>h2{font-size:22px;line-height:28px}
+.sub{margin:4px 0 14px}
+.subwrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 14px;color:var(--ink2);font-size:13.5px}
+.subwrap+.sub-more{margin-top:-6px}
+.sub-more{background:var(--surface);box-shadow:var(--edge);border-radius:var(--r);padding:12px 14px;font-size:13px}
+.infobtn{font:inherit;font-size:12px;display:inline-flex;align-items:center;gap:6px;border:none;background:var(--fill);color:var(--ink2);border-radius:999px;padding:4px 10px 4px 4px;cursor:pointer;transition:background-color .15s,color .15s,transform .08s}
+.infobtn span{width:16px;height:16px;border-radius:50%;background:#fff;color:var(--navy);display:inline-grid;place-items:center;font-family:var(--mono);font-size:10px;font-weight:600;box-shadow:0 0 0 1px var(--line)}
+.infobtn:hover{background:var(--g200);color:var(--ink)}
+.infobtn:active{transform:scale(.96)}
+.infobtn[aria-expanded="true"]{background:var(--black);color:#fff}
+.sec-tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:-4px 0 14px}
+.sec-tools .cmpbox{margin-left:0}
+.intro{padding:12px 16px}
+.intro .infobtn{margin-left:4px;vertical-align:1px}
+.intro-full{margin-top:2px}
+
+/* tables: quiet header band, row hover */
+th{background:var(--offwhite);border-bottom:1px solid var(--line)}
+tbody tr:hover td{background:rgba(241,240,238,.55)}
+
+/* details used as collapsible cards: the summary reads as a control */
+details>summary{list-style:none;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:1.5px solid var(--ink2);border-bottom:1.5px solid var(--ink2);transform:rotate(-45deg);transition:transform .15s;flex:none;margin:0 4px 0 2px}
+details[open]>summary::before{transform:rotate(45deg)}
+details.card>summary{margin:-16px -20px;padding:14px 20px;border-radius:var(--r)}
+details.card[open]>summary{margin-bottom:0}
+details.card>summary:hover{background:var(--offwhite)}
+
+/* sidebar: clear active state */
+.side a{position:relative;transition:background-color .15s,color .15s}
+.side a.on{background:#fff;box-shadow:var(--edge),var(--lift);color:var(--ink);font-weight:500}
+.side a.on::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--orange)}
+.side a:active{transform:scale(.98)}
+
+/* top bar: date controls grouped */
+.range{background:#fff;box-shadow:var(--edge),var(--lift);border-radius:var(--r);padding:5px 6px 5px 12px}
+.range select,.range input{min-height:30px;box-shadow:inset 0 0 0 1px var(--hair)}
+
+/* links that open drill-downs */
+a.pick{border-radius:3px;transition:background-color .15s}
+a.pick:hover{background:rgba(254,75,30,.08)}
+
+/* toasts and the drawer feel lighter */
+.toast{border-radius:var(--r);animation:toastIn .18s ease-out}
+@keyframes toastIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.drawer{box-shadow:-1px 0 0 var(--line),-16px 0 48px rgba(0,0,0,.12)}
+@media (max-width:860px){.range{flex-wrap:wrap;margin-left:0;max-width:100%}.range input[type=date]{width:130px}}
+.side a.sub{margin:0;max-width:none;color:var(--ink2)}.side a.sub.on{color:var(--ink)}
+.topline{flex-wrap:nowrap}
+.range{flex-wrap:nowrap;padding:4px 5px 4px 10px;gap:5px}
+.range .ui-label{white-space:nowrap}
+@media (max-width:1520px){#dataAt{display:none}.range input[type=date]{width:128px}}
+@media (max-width:1200px){.topline{flex-wrap:wrap}.range{flex-wrap:wrap}}

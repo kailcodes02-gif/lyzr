@@ -362,7 +362,7 @@ export async function render(el, ctx) {
   let aiState = { loading: false, err: null, meta: null };
   function drawAiBar() {
     const m = aiState.meta;
-    $('pm-ai').innerHTML = `<span class="tag orange">AI</span><span>${m ? `Claude read-out ${m.cached ? 'cached' : 'generated'} ${esc(F.timeAgo(m.created_at))}${m.model ? ' · ' + esc(m.model) : ''}. It writes the headlines, the do and do-not lists, the spend plan and the rules below.` : 'Rule-based headlines and plan shown. Generate the Claude read-out for the written headlines, what to do and not do, and a spend plan grounded in this account\'s ad sets.'}</span>
+    $('pm-ai').innerHTML = `<span class="tag orange">AI</span><span>${m ? `Written by Claude ${esc(F.timeAgo(m.created_at))}${m.model ? ' · ' + esc(m.model) : ''}.` : 'Headlines and plan below come from rules. Claude writes a sharper version from these numbers.'}</span>
       <button class="btn tiny${m ? '' : ' primary'}" id="pm-gen" ${aiState.loading ? 'disabled' : ''}>${aiState.loading ? '<span class="spin"></span> Thinking' : m ? 'Regenerate' : 'Generate with Claude'}</button>${aiState.err ? `<span class="err">${esc(aiState.err)}</span>` : ''}${AI && AI.summary ? `<span class="pm-note" style="flex-basis:100%">${esc(AI.summary)}</span>` : ''}`;
     $('pm-gen').onclick = () => runAi(!!m);
   }
