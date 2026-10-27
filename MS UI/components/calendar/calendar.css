@@ -75,8 +75,9 @@
   background-color: var(--background) !important;
   border-color: var(--fc-event-color, #1a73e8) !important;
 }
+/* `color` itself, not the variable: grid.tsx sets --msui-ev-text inline, which a stylesheet can't override. */
 .msui-cal .msui-ev-invite .msui-ev-inner {
-  --msui-ev-text: color-mix(in oklab, var(--fc-event-color, #1a73e8) 85%, var(--foreground));
+  color: color-mix(in oklab, var(--fc-event-color, #1a73e8) 85%, var(--foreground));
 }
 .msui-cal .msui-ev-cancelled {
   text-decoration: line-through;
@@ -185,8 +186,13 @@
 .msui-ev-inner.msui-ev-block.msui-ev-oneline .msui-ev-time {
   display: inline;
 }
-/* Short (<= 15 min) blocks: one 11 px line, clipped. */
+/* Short (<= 15 min) blocks: one 11 px line, clipped. The theme insets a
+   15-minute block to 8 px, too short for any text, so it gets a line's height. */
+.msui-cal .msui-ev-short {
+  min-height: 15px;
+}
 .msui-cal .msui-ev-short .msui-ev-inner.msui-ev-block {
+  height: auto;
   padding: 0 4px;
   font-size: 11px;
   line-height: 1.15;
