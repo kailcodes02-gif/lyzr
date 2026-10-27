@@ -126,6 +126,7 @@ export function CalendarApp() {
   const colleagues = useColleagues();
   const overlays = useColleagueSchedules(tz, events.range, colleagues.people, viewLoaded);
   const colleagueByCal = useMemo(() => new Map(colleagues.people.map((p) => [`people:${p.email.toLowerCase()}`, p])), [colleagues.people]);
+  const subscribedEmails = useMemo(() => new Set(colleagues.people.map((p) => p.email.toLowerCase())), [colleagues.people]);
   // Own calendars blue, everything else a distinct palette colour (kept per calendar / person).
   const otherCals = useMemo(() => otherCalendars.map((o) => o.cal), [otherCalendars]);
   const colleagueColors = useMemo(() => colleagues.people.map((p) => p.color), [colleagues.people]);
@@ -588,6 +589,11 @@ export function CalendarApp() {
         tz={tz}
         body={selectedBody.data}
         bodyLoading={selectedBody.isFetching}
+        onViewCalendar={(p) => {
+          colleagues.add(p);
+          toast.success(`Showing ${p.name}'s calendar`);
+        }}
+        subscribed={subscribedEmails}
       />
       <SettingsDialog
         open={settingsOpen}

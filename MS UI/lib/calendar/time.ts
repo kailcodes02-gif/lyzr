@@ -151,6 +151,35 @@ export function formatTimeRange(startWall: string, endWall: string, allDay: bool
   return sameDay ? `${format(s, "EEEE, MMMM d")} ${t(s)} to ${t(e)}` : `${format(s, "MMM d, h:mm a")} to ${format(e, "MMM d, h:mm a")}`;
 }
 
+// Google Calendar's chip times: "8 – 9:30am", "11:30am – 12pm" (the start keeps
+// its am/pm only when it differs from the end's), and "1pm" for one-line chips.
+const gClock = (d: Date) => format(d, d.getMinutes() ? "h:mm" : "h");
+const gSuffix = (d: Date) => format(d, "aaa");
+export function chipStartTime(wall: string): string {
+  const d = parseWall(wall);
+  return gClock(d) + gSuffix(d);
+}
+export function chipTimeRange(startWall: string, endWall: string): string {
+  const s = parseWall(startWall);
+  const e = parseWall(endWall);
+  const start = gSuffix(s) === gSuffix(e) && differenceInCalendarDays(e, s) === 0 ? gClock(s) : gClock(s) + gSuffix(s);
+  return `${start} – ${gClock(e)}${gSuffix(e)}`;
+}
+
+// The detail popover's date line, as Google writes it:
+// "Wednesday, October 21 · 11:30am – 12:00pm", or the dates alone for all-day events.
+export function detailWhen(startWall: string, endWall: string, allDay: boolean): string {
+  const s = parseWall(startWall);
+  if (allDay) {
+    const e = parseWall(allDayInclusiveEnd(endWall));
+    return differenceInCalendarDays(e, s) <= 0 ? format(s, "EEEE, MMMM d") : `${format(s, "MMMM d")} – ${format(e, "MMMM d, yyyy")}`;
+  }
+  const e = parseWall(endWall);
+  const t = (d: Date) => format(d, "h:mmaaa");
+  if (differenceInCalendarDays(e, s) === 0) return `${format(s, "EEEE, MMMM d")} · ${t(s)} – ${t(e)}`;
+  return `${format(s, "MMMM d")}, ${t(s)} – ${format(e, "MMMM d")}, ${t(e)}`;
+}
+
 export function shortTime(wall: string): string {
   const d = parseWall(wall);
   return format(d, d.getMinutes() ? "h:mm a" : "h a").toLowerCase();

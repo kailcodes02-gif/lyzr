@@ -10,9 +10,10 @@ import dayGridPlugin from "@fullcalendar/react/daygrid";
 import interactionPlugin from "@fullcalendar/react/interaction";
 import breezyTheme from "@fullcalendar/react/themes/breezy";
 import timeGridPlugin from "@fullcalendar/react/timegrid";
-import { Lock, Repeat, Video } from "lucide-react";
+import { Lock } from "lucide-react";
 import { useEffect, useRef, type CSSProperties } from "react";
-import { chipKind, chipOuterClass, type FcEventInput, type FcPerson, type WallEvent } from "@/lib/calendar/events";
+import { chipKind, chipOuterClass, durationMinutes, type FcEventInput, type WallEvent } from "@/lib/calendar/events";
+import { chipStartTime, chipTimeRange } from "@/lib/calendar/time";
 import type { ViewKind } from "@/lib/calendar/types";
 
 export type GridSelection = { start: string; end: string; allDay: boolean; x: number; y: number };
@@ -27,32 +28,33 @@ export function fcWall(s: string): string {
 }
 
 // The outer element's class: solid chips get the event colour as background,
-// dot chips stay transparent (the dot carries the colour).
+// dot chips stay transparent (the dot carries the colour). Time-grid blocks
+// also get msui-ev-tg: the page-coloured outline that separates overlaps.
 function chipClass(info: Pick<EventDisplayInfo, "view" | "event">): string {
-  return chipOuterClass(chipKind(info.view.type, info.event.allDay));
+  const kind = chipKind(info.view.type, info.event.allDay);
+  return kind === "block" ? `${chipOuterClass(kind)} msui-ev-tg` : chipOuterClass(kind);
 }
+
+// Blocks shorter than this get Google's single line "Title, 1pm"; longer
+// ones the title (wrapping) with the time range on the line below.
+const ONE_LINE_MINUTES = 45;
 
 function EventContent(info: EventDisplayInfo) {
   const ev = info.event.extendedProps.ev as WallEvent | undefined;
-  const person = info.event.extendedProps.person as FcPerson | undefined;
   const kind = chipKind(info.view.type, info.event.allDay);
   // The text colour is computed for the chip colour (dark on light, white on
   // dark); a CSS variable so the invite / dot variants can override it.
   const style = { "--msui-ev-text": info.contrastColor } as CSSProperties;
+  const oneLine = kind === "block" && !!ev && durationMinutes(ev) < ONE_LINE_MINUTES;
   return (
-    <div className={`msui-ev-inner msui-ev-${kind}`} style={style} title={info.event.title}>
+    <div className={`msui-ev-inner msui-ev-${kind}${oneLine ? " msui-ev-oneline" : ""}`} style={style} title={info.event.title}>
       {kind === "dot" && <span className="msui-ev-bullet" style={{ background: info.color }} aria-hidden />}
       <span className="msui-ev-title">
-        {person && (
-          <span className="msui-ev-avatar" title={`${person.name} <${person.email}>`} aria-label={person.name}>
-            {person.initials}
-          </span>
-        )}
         {ev?.sensitivity === "private" && <Lock className="msui-ev-icon" aria-label="Private" />}
         {info.event.title}
-        {ev?.isOnlineMeeting && kind === "block" && <Video className="msui-ev-icon msui-ev-icon-after" aria-label="Teams meeting" />}
-        {ev?.seriesMasterId && kind === "block" && <Repeat className="msui-ev-icon msui-ev-icon-after" aria-label="Repeats" />}
+        {oneLine && <span className="msui-ev-time">, {chipStartTime(ev!.startWall)}</span>}
       </span>
+      {kind === "block" && ev && !oneLine && <span className="msui-ev-time">{chipTimeRange(ev.startWall, ev.endWall)}</span>}
     </div>
   );
 }

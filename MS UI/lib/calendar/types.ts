@@ -83,7 +83,7 @@ export type GraphEvent = {
   sensitivity?: Sensitivity;
   categories?: string[];
   isOnlineMeeting?: boolean;
-  onlineMeeting?: { joinUrl?: string } | null;
+  onlineMeeting?: { joinUrl?: string; conferenceId?: string; tollNumber?: string; tollFreeNumbers?: string[] } | null;
   onlineMeetingProvider?: OnlineMeetingProvider;
   seriesMasterId?: string | null;
   type?: EventType;
