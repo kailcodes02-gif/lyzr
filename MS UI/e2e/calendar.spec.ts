@@ -14,6 +14,19 @@ test.describe("Calendar (Google Calendar layout) in demo mode", () => {
     expect(errors.filter((e) => !/hydrat/i.test(e))).toEqual([]);
   });
 
+  test("Meet now starts a Teams meeting this minute and opens its join link", async ({ page }) => {
+    // Teams itself is stubbed: the test checks the link the tab is sent to, not Microsoft's launcher redirects.
+    await page.context().route("https://teams.microsoft.com/**", (r) => r.fulfill({ contentType: "text/html", body: "Teams" }));
+    await openDemo(page, "/MS/calendar/?view=week");
+    await expect(page.getByText("GSI Events")).toBeVisible();
+    const popup = page.waitForEvent("popup");
+    await page.getByTestId("meet-now").click();
+    const tab = await popup;
+    await tab.waitForURL(/^https:\/\/teams\.microsoft\.com\/l\/meetup-join\//, { timeout: 15_000 });
+    await expect(page.getByTestId("event-detail")).toContainText("Instant meeting");
+    await expect(page.getByTestId("event-detail").getByRole("link", { name: "Join with Microsoft Teams" })).toBeVisible();
+  });
+
   test("creates an event from the Create button", async ({ page }) => {
     await openDemo(page, "/MS/calendar/?view=week");
     await expect(page.getByText("GSI Events")).toBeVisible();

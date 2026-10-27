@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, HelpCircle, Menu, Plus, RefreshCw, Search, Settings, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, HelpCircle, Loader2, Menu, Plus, RefreshCw, Search, Settings, Video, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -53,6 +53,8 @@ export function TopBar({
   updatedAt = null,
   onRefresh,
   refreshing = false,
+  onMeetNow,
+  meetingNow = false,
 }: {
   title: string;
   view: ViewKind;
@@ -73,6 +75,9 @@ export function TopBar({
   updatedAt?: number | null;
   onRefresh?: () => void;
   refreshing?: boolean;
+  // Teams "Meet now": an online meeting starting this minute, opened in Teams.
+  onMeetNow?: () => void;
+  meetingNow?: boolean;
 }) {
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-3">
@@ -114,6 +119,12 @@ export function TopBar({
           </button>
         )}
       </div>
+      {onMeetNow && (
+        <Button variant="outline" size="sm" className="rounded-full px-3" onClick={onMeetNow} disabled={meetingNow} aria-label="Meet now" title="Start a Teams meeting now" data-testid="meet-now">
+          {meetingNow ? <Loader2 className="animate-spin" /> : <Video />}
+          <span className="hidden md:inline">Meet now</span>
+        </Button>
+      )}
       {onCreate && (
         <Button variant="ghost" size="icon-sm" aria-label="Create event" onClick={onCreate} className="min-[901px]:hidden">
           <Plus />

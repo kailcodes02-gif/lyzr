@@ -382,6 +382,46 @@ export function CalendarApp() {
     );
   };
 
+  // Teams "Meet now": a 30-minute online meeting from this minute on the default
+  // calendar, then straight into Teams. The tab opens on the click (one opened
+  // after the await is a blocked pop-up) and goes to the join link once
+  // Outlook has provisioned it, which is usually a moment after the POST.
+  const [meetingNow, setMeetingNow] = useState(false);
+  const meetNow = async () => {
+    if (!defaultCalendarId) {
+      toast.error("Your calendars are still loading. Try again in a moment.");
+      return;
+    }
+    const tab = window.open("", "_blank");
+    setMeetingNow(true);
+    try {
+      const start = nowWall(tz);
+      const draft = { ...newDraft(start, addMinutesWall(start, 30)), subject: "Instant meeting", teams: true };
+      const created = await create.mutateAsync({ calendarId: defaultCalendarId, body: draftToGraph(draft, tz, settings.defaultReminder) });
+      let joinUrl = created.onlineMeeting?.joinUrl;
+      for (let i = 0; !joinUrl && i < 6; i++) {
+        await new Promise((r) => setTimeout(r, 1500));
+        joinUrl = (await fetchEventWithBody(instance, created.id, tz).catch(() => null))?.onlineMeeting?.joinUrl;
+      }
+      if (joinUrl) {
+        if (tab) {
+          tab.opener = null;
+          tab.location.href = joinUrl;
+        } else window.open(joinUrl, "_blank", "noreferrer");
+      } else {
+        tab?.close();
+        toast("Meeting created; its Teams link is still being set up", { description: "Open the meeting from your calendar in a moment to join." });
+      }
+      // Show it on today's grid with its details open, so the link can be shared.
+      setUrl({ date: today, eventId: created.id });
+    } catch {
+      // create's onError has already explained the failure.
+      tab?.close();
+    } finally {
+      setMeetingNow(false);
+    }
+  };
+
   const onRsvp = (action: "accept" | "tentativelyAccept" | "decline") => {
     if (!selected) return;
     rsvp.mutate({ id: selected.id, action });
@@ -480,6 +520,8 @@ export function CalendarApp() {
         updatedAt={updatedAt}
         onRefresh={live.refresh}
         refreshing={live.refreshing || events.isFetching}
+        onMeetNow={() => void meetNow()}
+        meetingNow={meetingNow}
       />
       <div className="flex min-h-0 flex-1">
         <LeftPanel
