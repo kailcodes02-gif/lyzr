@@ -1,4 +1,7 @@
-import { expect, test } from "@playwright/test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { expect, test, type Page } from "@playwright/test";
 import { openDemo } from "./helpers";
 
 test.describe("OneDrive (Google Drive layout) in demo mode", () => {
@@ -95,4 +98,95 @@ test("New > Excel workbook from the Docs type view lands in My files and says so
   await expect(page.getByText(/would open "Book\.xlsx" in Excel/i)).toBeVisible();
   await page.getByRole("button", { name: /^my files$/i }).click();
   await expect(page.getByText("Book.xlsx").first()).toBeVisible();
+});
+
+// Folder upload: the whole tree lands, nested folders included, whatever
+// OneDrive would refuse is cleaned, OS clutter is left out, and a file over
+// the 4 MB simple-upload limit goes through an upload session.
+test.describe("folder upload keeps the whole folder", () => {
+  let dir = "";
+  test.beforeAll(() => {
+    dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "msui-")), "Quarterly pack");
+    const put = (rel: string, bytes: number | string = "hello") => {
+      fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+      fs.writeFileSync(path.join(dir, rel), typeof bytes === "number" ? Buffer.alloc(bytes) : bytes);
+    };
+    put("summary.txt");
+    put("Decks/Q3 review.pptx");
+    put("Decks/Archive/2025/old.pptx");
+    put("What? notes/idea.txt");
+    put(".DS_Store");
+    put("big/video.bin", 5 * 1024 * 1024);
+  });
+
+  const openTree = async (page: Page, ...names: string[]) => {
+    for (const n of names) await page.getByText(n, { exact: true }).first().dblclick();
+  };
+
+  test("the Folder upload input (Safari/Firefox path) uploads every file into its folders", async ({ page }) => {
+    await page.addInitScript(() => { delete (window as { showDirectoryPicker?: unknown }).showDirectoryPicker; });
+    await openDemo(page, "/MS/onedrive/");
+    await page.getByRole("button", { name: /^new$/i }).click();
+    const chooser = page.waitForEvent("filechooser");
+    await page.getByRole("menuitem", { name: /folder upload/i }).click();
+    await (await chooser).setFiles(dir);
+    await expect(page.getByTestId("upload-tray-status")).toHaveText("5 uploads complete", { timeout: 30_000 });
+    await expect(page.getByText(/Uploaded "Quarterly pack" to My files/)).toBeVisible();
+    await openTree(page, "Quarterly pack");
+    for (const n of ["summary.txt", "Decks", "What_ notes", "big"]) await expect(page.getByText(n, { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(".DS_Store")).toHaveCount(0);
+    await openTree(page, "Decks", "Archive", "2025");
+    await expect(page.getByText("old.pptx", { exact: true }).first()).toBeVisible();
+  });
+
+  test("the directory picker (Chrome/Edge path) also creates empty folders", async ({ page }) => {
+    await page.addInitScript(() => {
+      const f = (name: string) => ({ kind: "file", name, getFile: async () => new File(["x"], name) });
+      const d = (name: string, kids: unknown[]) => ({ kind: "directory", name, values: async function* () { yield* kids; } });
+      (window as unknown as { showDirectoryPicker: () => Promise<unknown> }).showDirectoryPicker = async () =>
+        d("Picked tree", [f("readme.md"), d("Empty one", []), d("src", [f("a.ts"), d("lib", [f("b.ts")])])]);
+    });
+    await openDemo(page, "/MS/onedrive/");
+    await page.getByRole("button", { name: /^new$/i }).click();
+    await page.getByRole("menuitem", { name: /folder upload/i }).click();
+    await expect(page.getByTestId("upload-tray-status")).toHaveText("3 uploads complete", { timeout: 30_000 });
+    await openTree(page, "Picked tree");
+    await expect(page.getByText("Empty one", { exact: true }).first()).toBeVisible();
+    await openTree(page, "src", "lib");
+    await expect(page.getByText("b.ts", { exact: true }).first()).toBeVisible();
+  });
+
+  test("dropping a folder on the page keeps its structure instead of flattening it", async ({ page }) => {
+    await openDemo(page, "/MS/onedrive/");
+    await expect(page.getByText(/GSI Program/).first()).toBeVisible();
+    await page.evaluate(() => {
+      const fe = (name: string) => ({ isFile: true, isDirectory: false, name, fullPath: `/${name}`, file: (ok: (f: File) => void) => ok(new File(["x"], name)) });
+      const de = (name: string, kids: unknown[]) => ({
+        isFile: false, isDirectory: true, name, fullPath: `/${name}`,
+        createReader: () => { let done = false; return { readEntries: (ok: (e: unknown[]) => void) => { ok(done ? [] : kids); done = true; } }; },
+      });
+      const root = de("Dropped", [fe("top.txt"), de("inner", [fe("deep.txt")]), de("blank", [])]);
+      const loose = new File(["x"], "loose.txt");
+      const items = [
+        { kind: "file", type: "", getAsFile: () => null, webkitGetAsEntry: () => root },
+        { kind: "file", type: "text/plain", getAsFile: () => loose, webkitGetAsEntry: () => fe("loose.txt") },
+      ];
+      const dt = { items, files: [loose], types: ["Files"], dropEffect: "copy", effectAllowed: "all" };
+      // Any element inside the dropzone root; the events bubble to it.
+      const target = Array.from(document.querySelectorAll("span, div")).find((el) => el.textContent === "GSI Program") ?? document.body;
+      for (const type of ["dragenter", "dragover", "drop"]) {
+        const ev = new Event(type, { bubbles: true, cancelable: true });
+        Object.defineProperty(ev, "dataTransfer", { value: dt });
+        target.dispatchEvent(ev);
+      }
+    });
+    await expect(page.getByTestId("upload-tray-status")).toHaveText("3 uploads complete", { timeout: 30_000 });
+    await page.getByRole("button", { name: "Close upload tray" }).click(); // the tray lists every name
+    await expect(page.getByText("loose.txt", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("deep.txt")).toHaveCount(0); // not flattened into My files
+    await openTree(page, "Dropped");
+    await expect(page.getByText("blank", { exact: true }).first()).toBeVisible();
+    await openTree(page, "inner");
+    await expect(page.getByText("deep.txt", { exact: true }).first()).toBeVisible();
+  });
 });

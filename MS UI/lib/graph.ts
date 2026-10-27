@@ -137,6 +137,18 @@ export async function getToken(instance: IPublicClientApplication, scopes: strin
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Retry-After is seconds or an HTTP date; null when absent or unusable.
+export function retryAfterMs(h: string | null, now = Date.now()): number | null {
+  if (!h) return null;
+  const secs = Number(h);
+  if (Number.isFinite(secs) && secs > 0) return Math.min(secs, 120) * 1000;
+  const at = Date.parse(h);
+  if (Number.isFinite(at) && at > now) return Math.min(at - now, 120_000);
+  return null;
+}
+// 1 s, 2 s, 4 s ... capped at 30 s, with jitter so parallel uploads spread out.
+export const backoffMs = (attempt: number) => Math.min(30_000, 2 ** attempt * 1000) * (0.75 + Math.random() * 0.5);
+
 export type GraphInit = {
   method?: string;
   body?: unknown; // objects are JSON-encoded; strings/Blobs/ArrayBuffers sent as-is
@@ -144,6 +156,11 @@ export type GraphInit = {
   // Outlook: immutable ids survive moves between folders. Off automatically
   // on $search (a Microsoft-reproduced bug returns ErrorInvalidIdMalformed).
   immutableIds?: boolean;
+  // Also retry network failures and 500/502, and wait out longer throttling
+  // (up to 7 attempts). Only for requests that are safe to repeat: GETs and
+  // POST/PUT with conflictBehavior=fail or replace, never =rename (a repeat
+  // after a lost response would add a "name 1" copy).
+  retryTransient?: boolean;
 };
 
 const IMMUTABLE_ID_PREFER = 'IdType="ImmutableId"';
@@ -179,15 +196,27 @@ async function graphRaw(instance: IPublicClientApplication, scopes: string[], pa
       ? (init.body as BodyInit | undefined)
       : JSON.stringify(init.body);
   let token = await getToken(instance, scopes);
-  for (let attempt = 0; attempt < 4; attempt++) {
-    const res = await fetch(url, { method, body, headers: buildHeaders(url, init, token) });
+  const transient = !!init.retryTransient;
+  const maxAttempts = transient ? 7 : 4;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(url, { method, body, headers: buildHeaders(url, init, token) });
+    } catch (e) {
+      // TypeError: the connection dropped or the request never left.
+      if (transient && e instanceof TypeError && attempt < maxAttempts - 1) {
+        await sleep(backoffMs(attempt));
+        continue;
+      }
+      throw e;
+    }
     if (res.status === 401 && attempt === 0) {
       token = (await instance.acquireTokenSilent({ scopes, account: account(instance), forceRefresh: true })).accessToken;
       continue;
     }
-    if ((res.status === 429 || res.status === 503 || res.status === 504) && attempt < 3) {
-      const retry = Number(res.headers.get("Retry-After") ?? "0");
-      await sleep((retry > 0 ? retry : 2 ** attempt) * 1000);
+    const retryable = res.status === 429 || res.status === 503 || res.status === 504 || (transient && (res.status === 500 || res.status === 502));
+    if (retryable && attempt < maxAttempts - 1) {
+      await sleep(retryAfterMs(res.headers.get("Retry-After")) ?? (transient ? backoffMs(attempt) : 2 ** attempt * 1000));
       continue;
     }
     if (!res.ok) {

@@ -111,6 +111,40 @@ export async function createFolder(instance: Msal, parentId: string, name: strin
     body: { name, folder: {}, "@microsoft.graph.conflictBehavior": "rename" },
   });
 }
+// Folder uploads: the subfolder `name` under `parentId`, created if missing
+// and reused if it is already there (conflictBehavior=fail, then a lookup on
+// 409). Safe to repeat, so network errors and 5xx are retried; names that
+// differ only by case or Unicode form land in the one OneDrive folder.
+export async function ensureChildFolder(instance: Msal, parentId: string, name: string): Promise<DriveItem> {
+  try {
+    return await graphFetch<DriveItem>(instance, S, `${itemPath(parentId)}/children`, {
+      method: "POST",
+      body: { name, folder: {}, "@microsoft.graph.conflictBehavior": "fail" },
+      retryTransient: true,
+    });
+  } catch (e) {
+    if (!(e instanceof GraphError && e.status === 409)) throw e;
+    const existing = await graphFetch<DriveItem>(instance, S, `${itemPath(parentId)}:/${enc(name)}`, { retryTransient: true });
+    // A file holds the name: make the folder beside it as "name 1".
+    if (!existing?.folder) return createFolder(instance, parentId, name);
+    return existing;
+  }
+}
+// The top folder of a folder upload: new beside anything already there
+// ("Reports 1"), as on Google Drive. conflictBehavior=fail first, so network
+// errors and 5xx can be retried without leaving copies; rename on a clash.
+export async function createTopFolder(instance: Msal, parentId: string, name: string): Promise<DriveItem> {
+  try {
+    return await graphFetch<DriveItem>(instance, S, `${itemPath(parentId)}/children`, {
+      method: "POST",
+      body: { name, folder: {}, "@microsoft.graph.conflictBehavior": "fail" },
+      retryTransient: true,
+    });
+  } catch (e) {
+    if (!(e instanceof GraphError && e.status === 409)) throw e;
+    return createFolder(instance, parentId, name);
+  }
+}
 // A blank Office file: PUT of the generated OOXML bytes by path, renamed on
 // conflict like uploads. Graph answers with the new driveItem (webUrl included).
 export async function createOfficeFile(instance: Msal, parentId: string, name: string, bytes: Uint8Array, mimeType: string) {

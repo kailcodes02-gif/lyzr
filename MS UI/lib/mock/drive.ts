@@ -1,5 +1,6 @@
 import type { MockHandler } from "./index";
 import type { DriveItem, Permission } from "@/lib/drive/types";
+import { GraphError } from "@/lib/graph";
 
 // Mock Graph data for OneDrive: a realistic tree for a Lyzr marketer running
 // the GSI partner program. In-memory state, so create / rename / move /
@@ -241,6 +242,18 @@ function uniqueName(parentId: string, name: string): string {
   return `${base} ${n}${e}`;
 }
 
+// Like OneDrive for Business: names with " * : < > ? / \ |, leading or
+// trailing spaces, or a trailing period are refused with 400.
+function validName(name: string): string {
+  if (!name || /["*:<>?/\\|]/.test(name) || /^\s|\s$|\.$/.test(name)) {
+    throw new GraphError(400, "invalidRequest", `The provided name '${name}' contains invalid characters.`, "/me/drive");
+  }
+  return name;
+}
+function requireFolder(id: string) {
+  if (id !== ROOT_ID && !items.get(id)?.folder) throw new GraphError(404, "itemNotFound", "The resource could not be found.", `/me/drive/items/${id}`);
+}
+
 function pathFor(parentId: string): string {
   if (parentId === ROOT_ID) return "/drive/root:";
   const p = items.get(parentId);
@@ -346,9 +359,28 @@ export const handleDrive: MockHandler = (method, url, body) => {
   const upload = p.match(/^\/me\/drive\/items\/([^/:]+):\/(.+):\/content$/);
   if (upload && method === "PUT") {
     const parentId = resolveId(upload[1]);
-    const name = uniqueName(parentId, upload[2]);
+    requireFolder(parentId);
+    const name = uniqueName(parentId, validName(upload[2]));
     const size = body instanceof Blob ? body.size : typeof body === "string" ? body.length : 0;
     return addItem(parentId, name, { size, file: { mimeType: (body instanceof Blob && body.type) || MIME[ext(name)] || "application/octet-stream" } });
+  }
+
+  // Large upload by path: POST /me/drive/items/{parent}:/{name}:/createUploadSession.
+  // The session URL points back at the PUT-by-path route above.
+  const session = p.match(/^\/me\/drive\/items\/([^/:]+):\/(.+):\/createUploadSession$/);
+  if (session && method === "POST") {
+    const parentId = resolveId(session[1]);
+    requireFolder(parentId);
+    const name = validName(session[2]);
+    return { uploadUrl: `https://graph.microsoft.com/v1.0/me/drive/items/${parentId}:/${encodeURIComponent(name)}:/content`, expirationDateTime: new Date(Date.now() + 3_600_000).toISOString(), nextExpectedRanges: ["0-"] };
+  }
+  // Child by path: GET /me/drive/items/{parent}:/{name}
+  const byPath = p.match(/^\/me\/drive\/items\/([^/:]+):\/([^:]+)$/);
+  if (byPath && method === "GET") {
+    const parentId = resolveId(byPath[1]);
+    const hit = Array.from(items.values()).find((i) => i.parentReference?.id === parentId && i.name.toLowerCase() === byPath[2].toLowerCase());
+    if (!hit) throw new GraphError(404, "itemNotFound", "The resource could not be found.", p);
+    return withDownload(hit);
   }
 
   const m = p.match(/^\/me\/drive\/items\/([^/:]+)(?:\/(.*))?$/);
@@ -361,7 +393,11 @@ export const handleDrive: MockHandler = (method, url, body) => {
   if (rest === "" && method === "GET") return withDownload(it);
   if (rest === "children" && method === "GET") return { value: Array.from(items.values()).filter((i) => i.parentReference?.id === id) };
   if (rest === "children" && method === "POST") {
-    const name = uniqueName(id, String(b.name ?? "New folder"));
+    const asked = validName(String(b.name ?? "New folder"));
+    if (b["@microsoft.graph.conflictBehavior"] === "fail" && uniqueName(id, asked) !== asked) {
+      throw new GraphError(409, "nameAlreadyExists", "The specified item name already exists.", p);
+    }
+    const name = uniqueName(id, asked);
     return addItem(id, name, b.folder ? { folder: { childCount: 0 }, size: 0 } : { size: 0, file: { mimeType: MIME[ext(name)] ?? "application/octet-stream" } });
   }
   if (rest === "" && method === "PATCH") {

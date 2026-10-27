@@ -9,15 +9,16 @@ import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { ConsentStatus } from "@/components/consent-status";
 import { Button } from "@/components/ui/button";
-import { copyItem, createFolder, createOfficeFile, deleteItem, downloadItem, followItem, moveItem, renameItem, resolveTarget, useDriveSearch, useQuota, useSharedWithMe, useStarred } from "@/lib/drive/api";
+import { copyItem, createFolder, createOfficeFile, createTopFolder, ensureChildFolder, deleteItem, downloadItem, followItem, moveItem, renameItem, resolveTarget, useDriveSearch, useQuota, useSharedWithMe, useStarred } from "@/lib/drive/api";
 import { SETTLE_REFRESH_MS, settleRefresh } from "@/lib/drive/freshness";
 import { isConsentError, useDriveIndex } from "@/lib/drive/index";
 import { reconcile, type Expectation } from "@/lib/drive/reconcile";
-import { applyChips, canMutate, childrenOf, filterItems, folderTree, isFolder, isWithin, moveIndex, nextSelection, parseUrlState, recentItems, recycleBinUrl, ROOT, serializeUrlState, sortItems, ownersIn, type DriveUrlState, type SortKey } from "@/lib/drive/logic";
+import { applyChips, canMutate, childrenOf, planFolderUpload, relPathOf, filterItems, folderTree, isFolder, isWithin, moveIndex, nextSelection, parseUrlState, recentItems, recycleBinUrl, ROOT, serializeUrlState, sortItems, ownersIn, type DriveUrlState, type SortKey } from "@/lib/drive/logic";
 import type { DriveItem } from "@/lib/drive/types";
 import { defaultOfficeName, officeAppFor, officeDesktopUrl, officeTypeFor, withOfficeExtension } from "@/lib/drive/office";
 import { blankOfficeFile, type OfficeKind } from "@/lib/drive/ooxml";
-import { enqueueUploads } from "@/lib/drive/upload";
+import { addFailedUploads, enqueueUploads, type UploadJob } from "@/lib/drive/upload";
+import { filesFromDropEvent, hasDirectoryPicker, isNested, pickDirectory, takeDropExtras, type PickedEntry, type PickedFolder } from "@/lib/drive/folder-pick";
 import { isMockMode } from "@/lib/mock";
 import { Breadcrumb } from "./breadcrumb";
 import { ContextMenu, type MenuAction } from "./context-menu";
@@ -442,39 +443,150 @@ export function DriveApp() {
     afterMutation(created.map((it) => ({ kind: "exists", id: it.id, action: "upload", label: it.name })));
   };
 
-  const uploadFolder = async (files: File[]) => {
-    // Create the folder skeleton first (cached by path), then upload files.
-    const cache = new Map<string, string>([["", currentApiFolder]]);
-    const t = toast.loading("Creating folders...");
-    try {
-      const ensure = async (dir: string): Promise<string> => {
-        if (cache.has(dir)) return cache.get(dir)!;
-        const parts = dir.split("/");
-        const parent = await ensure(parts.slice(0, -1).join("/"));
-        const made = await createFolder(instance, parent, parts[parts.length - 1]);
-        index.patchLocal(made.id, made);
-        cache.set(dir, made.id);
-        return made.id;
-      };
-      const jobs: { file: File; parentId: string }[] = [];
-      for (const f of files) {
-        const rel = (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name;
-        const dir = rel.split("/").slice(0, -1).join("/");
-        jobs.push({ file: f, parentId: await ensure(dir) });
-      }
-      toast.dismiss(t);
-      const created = await enqueueUploads(instance, jobs);
-      for (const it of created) index.patchLocal(it.id, it);
-      afterMutation([
-        ...Array.from(cache.entries()).filter(([dir]) => dir).map(([dir, id]) => ({ kind: "exists", id, action: "new folder", label: dir.split("/").pop() ?? dir }) as Expectation),
-        ...created.map((it) => ({ kind: "exists", id: it.id, action: "upload", label: it.name }) as Expectation),
-      ]);
-    } catch (e) {
-      toast.error("Folder upload failed", { id: t, description: (e as Error).message });
+  // Folder upload (button, picker or drop). Folders are created parents
+  // first, a level at a time; a folder OneDrive refuses only costs the files
+  // under it (they show as failed in the tray with the reason), every other
+  // file still uploads. Names OneDrive would reject are cleaned first, OS
+  // clutter (.DS_Store, Thumbs.db, ~$ lock files) is left out, and empty
+  // subfolders are created when the browser lets us see them.
+  const uploadFolder = async (entries: PickedEntry[], extraDirs: string[] = [], unreadable: PickedFolder["failed"] = []) => {
+    const plan = planFolderUpload(entries, extraDirs);
+    const tops = Array.from(new Set(plan.dirs.filter((d) => !d.includes("/"))));
+    const label = tops.length === 1 ? `"${tops[0]}"` : `${tops.length} folders`;
+    addFailedUploads(unreadable.map((u) => ({ name: u.path.split("/").pop() ?? u.path, folder: u.path.split("/").slice(0, -1).join("/") || undefined, error: `Could not be read from this computer: ${u.error}` })));
+    if (!plan.files.length && !plan.dirs.length) {
+      if (unreadable.length) return;
+      toast.info(plan.skipped.length ? "Nothing to upload" : "This folder is empty", { description: plan.skipped.length ? `Only system files (${plan.skipped.length}) were in it.` : "Empty folders can be uploaded from Chrome or Edge, or by dragging them here." });
+      return;
     }
+    const target = currentApiFolder;
+    const where = inFolderView ? (url.folder === ROOT ? "My files" : crumbs[crumbs.length - 1]?.name ?? "this folder") : "My files";
+    const ids = new Map<string, string>([["", target]]);
+    const failedDirs = new Map<string, string>();
+    const made: DriveItem[] = [];
+    const t = toast.loading(`Creating folders for ${label}...`);
+    const byDepth = new Map<number, string[]>();
+    for (const d of plan.dirs) byDepth.set(d.split("/").length, [...(byDepth.get(d.split("/").length) ?? []), d]);
+    let doneDirs = 0;
+    for (const depth of Array.from(byDepth.keys()).sort((a, b) => a - b)) {
+      const level = byDepth.get(depth)!;
+      let next = 0;
+      const worker = async () => {
+        while (next < level.length) {
+          const dir = level[next++];
+          const cut = dir.lastIndexOf("/");
+          const parent = cut < 0 ? "" : dir.slice(0, cut);
+          const name = dir.slice(cut + 1);
+          const parentFailure = failedDirs.get(parent);
+          if (parentFailure !== undefined) {
+            failedDirs.set(dir, parentFailure);
+            continue;
+          }
+          try {
+            // The picked folder itself is new beside anything already there
+            // ("Reports 1"), as on Google Drive; inside it, get-or-create.
+            const item = parent ? await ensureChildFolder(instance, ids.get(parent)!, name) : await createTopFolder(instance, target, name);
+            ids.set(dir, item.id);
+            made.push(item);
+            index.patchLocal(item.id, { ...item, parentReference: { ...item.parentReference, id: item.parentReference?.id ?? (parent ? ids.get(parent)! : currentParentId) } });
+          } catch (e) {
+            failedDirs.set(dir, `Folder "${dir}" could not be created: ${(e as Error).message}`);
+          }
+          doneDirs++;
+          if (plan.dirs.length > 3) toast.loading(`Creating folders for ${label} (${doneDirs}/${plan.dirs.length})...`, { id: t });
+        }
+      };
+      await Promise.all([worker(), worker(), worker(), worker()]);
+    }
+    // Retry of a file whose folder failed: make the missing folders (once,
+    // shared by every file waiting on them), then upload.
+    const pending = new Map<string, Promise<string>>();
+    const resolveDir = (dir: string): Promise<string> => {
+      const known = ids.get(dir);
+      if (known) return Promise.resolve(known);
+      if (!pending.has(dir)) {
+        const cut = dir.lastIndexOf("/");
+        const parent = cut < 0 ? "" : dir.slice(0, cut);
+        const p = resolveDir(parent).then(async (pid) => {
+          const item = parent ? await ensureChildFolder(instance, pid, dir.slice(cut + 1)) : await createTopFolder(instance, pid, dir);
+          ids.set(dir, item.id);
+          index.patchLocal(item.id, { ...item, parentReference: { ...item.parentReference, id: item.parentReference?.id ?? (parent ? pid : currentParentId) } });
+          return item.id;
+        });
+        p.catch(() => pending.delete(dir)); // a later Retry tries again
+        pending.set(dir, p);
+      }
+      return pending.get(dir)!;
+    };
+    const jobs: UploadJob[] = [];
+    const blocked: Parameters<typeof addFailedUploads>[0] = [];
+    for (const f of plan.files) {
+      const parentId = ids.get(f.dir);
+      if (parentId) jobs.push({ file: f.file, parentId, name: f.name, folder: f.dir || undefined });
+      else blocked.push({ file: f.file, name: f.name, error: failedDirs.get(f.dir) ?? "Its folder could not be created", folder: f.dir || undefined, resolveParent: () => resolveDir(f.dir) });
+    }
+    addFailedUploads(blocked);
+    if (failedDirs.size && !made.length && !jobs.length) {
+      toast.error(`Could not upload ${label}`, { id: t, description: Array.from(failedDirs.values())[0] });
+      return;
+    }
+    toast.loading(`Uploading ${jobs.length} ${jobs.length === 1 ? "file" : "files"} from ${label}...`, { id: t });
+    const created = await enqueueUploads(instance, jobs);
+    for (const it of created) index.patchLocal(it.id, it);
+    const total = plan.files.length + unreadable.length;
+    const skippedNote = plan.skipped.length ? ` ${plan.skipped.length} system ${plan.skipped.length === 1 ? "file was" : "files were"} left out.` : "";
+    if (created.length === total && !failedDirs.size) {
+      toast.success(`Uploaded ${label} to ${where}`, { id: t, description: `${total} ${total === 1 ? "file" : "files"}${made.length > tops.length ? ` in ${made.length} folders` : ""}.${skippedNote}`.trim() });
+    } else {
+      toast.error(`Uploaded ${created.length} of ${total} files from ${label}`, { id: t, description: `${failedDirs.size ? `${failedDirs.size} ${failedDirs.size === 1 ? "folder" : "folders"} could not be created. ` : ""}${unreadable.length ? `${unreadable.length} could not be read from this computer. ` : ""}The upload panel lists what failed and why${created.length + unreadable.length < total ? "; use Retry there" : ""}.${skippedNote}` });
+    }
+    // Verify against OneDrive: every folder, and the files up to a sane cap
+    // (the delta refresh shows the rest).
+    afterMutation([
+      ...made.map((it) => ({ kind: "exists", id: it.id, action: "new folder", label: it.name }) as Expectation),
+      ...created.slice(0, 200).map((it) => ({ kind: "exists", id: it.id, action: "upload", label: it.name }) as Expectation),
+    ]);
   };
 
-  const dropzone = useDropzone({ noClick: true, noKeyboard: true, onDrop: (accepted) => void uploadFiles(accepted) });
+  const uploadFolderFromInput = (files: File[]) => {
+    if (!files.length) {
+      toast.info("This folder is empty", { description: "Empty folders can be uploaded from Chrome or Edge, or by dragging them here." });
+      return;
+    }
+    void uploadFolder(files.map((file) => ({ file, path: relPathOf(file) })));
+  };
+
+  // Chrome/Edge: the directory picker sees empty folders too. Elsewhere, or
+  // if it is refused, the webkitdirectory input.
+  const startFolderUpload = () => {
+    if (!hasDirectoryPicker()) {
+      folderInput.current?.click();
+      return;
+    }
+    void pickDirectory().then(
+      (picked) => {
+        if (picked) void uploadFolder(picked.entries, picked.dirs, picked.failed);
+      },
+      // The picker used up the click's user activation, so the input needs
+      // a fresh one: offer it as a button rather than clicking it here.
+      (e: unknown) =>
+        toast.error("Could not open that folder", {
+          description: (e as Error)?.message,
+          action: { label: "Choose another way", onClick: () => folderInput.current?.click() },
+        })
+    );
+  };
+
+  // Dropped folders keep their structure; loose files dropped beside them go
+  // straight into the current folder.
+  const onDropFiles = (accepted: File[]) => {
+    const { dirs, failed } = takeDropExtras();
+    const nested = accepted.filter(isNested);
+    const loose = accepted.filter((f) => !isNested(f));
+    if (loose.length) void uploadFiles(loose);
+    if (nested.length || dirs.length) void uploadFolder(nested.map((file) => ({ file, path: relPathOf(file) })), dirs, failed);
+  };
+  const dropzone = useDropzone({ noClick: true, noKeyboard: true, getFilesFromEvent: filesFromDropEvent, onDrop: onDropFiles, onError: (e) => toast.error("Could not read what was dropped", { description: e.message }) });
 
   // Keyboard shortcuts. Mutating shortcuts go through the same eligibility
   // rule as the context menu (no remote / foreign-drive items).
@@ -554,7 +666,7 @@ export function DriveApp() {
   const newMenu: MenuAction[] = [
     { label: "New folder", icon: FolderPlus, onSelect: () => setNewFolderOpen(true), shortcut: "n" },
     { label: "File upload", icon: Upload, onSelect: () => fileInput.current?.click(), separator: true },
-    { label: "Folder upload", icon: FolderUp, onSelect: () => folderInput.current?.click() },
+    { label: "Folder upload", icon: FolderUp, onSelect: startFolderUpload },
     ...NEW_OFFICE_TYPES.map((t, i) => ({ label: t.label, icon: OFFICE_ICON[t.kind], onSelect: () => setNewOffice(t.kind), separator: i === 0 }) as MenuAction),
   ];
 
@@ -581,9 +693,9 @@ export function DriveApp() {
 
   return (
     <div className="flex h-screen min-w-0 bg-background">
-      <LeftPanel active={activeNav} onNav={nav} onNewFolder={() => setNewFolderOpen(true)} onNewOffice={setNewOffice} onUploadFiles={() => fileInput.current?.click()} onUploadFolder={() => folderInput.current?.click()} quota={quota.data?.quota} trashUrl={recycleBinUrl(quota.data)} indexing={index.status.indexing} count={index.status.count} lastSync={index.status.lastSync} />
+      <LeftPanel active={activeNav} onNav={nav} onNewFolder={() => setNewFolderOpen(true)} onNewOffice={setNewOffice} onUploadFiles={() => fileInput.current?.click()} onUploadFolder={startFolderUpload} quota={quota.data?.quota} trashUrl={recycleBinUrl(quota.data)} indexing={index.status.indexing} count={index.status.count} lastSync={index.status.lastSync} />
       <input ref={fileInput} type="file" multiple hidden onChange={(e) => { void uploadFiles(Array.from(e.target.files ?? [])); e.target.value = ""; }} aria-label="Upload files" />
-      <input ref={folderInput} type="file" hidden {...({ webkitdirectory: "", directory: "" } as Record<string, string>)} onChange={(e) => { void uploadFolder(Array.from(e.target.files ?? [])); e.target.value = ""; }} aria-label="Upload folder" />
+      <input ref={folderInput} type="file" hidden {...({ webkitdirectory: "", directory: "" } as Record<string, string>)} onChange={(e) => { uploadFolderFromInput(Array.from(e.target.files ?? [])); e.target.value = ""; }} aria-label="Upload folder" />
 
       <div {...dropzone.getRootProps({ className: "relative flex min-w-0 flex-1 flex-col" })}>
         <input {...dropzone.getInputProps()} />
@@ -678,7 +790,7 @@ export function DriveApp() {
       {previewItem && (
         <PreviewModal item={previewItem} hasPrev={previewIdx > 0} hasNext={previewIdx >= 0 && previewIdx < previewList.length - 1} onPrev={() => setUrl({ item: previewList[previewIdx - 1]?.id ?? null })} onNext={() => setUrl({ item: previewList[previewIdx + 1]?.id ?? null })} onClose={() => setUrl({ item: null })} onShare={setShareTarget} />
       )}
-      <UploadTray />
+      <UploadTray onRetried={(items) => { for (const it of items) index.patchLocal(it.id, it); afterMutation(items.slice(0, 200).map((it) => ({ kind: "exists", id: it.id, action: "upload", label: it.name }))); }} />
     </div>
   );
 }

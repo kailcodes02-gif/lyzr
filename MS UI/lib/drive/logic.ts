@@ -228,6 +228,76 @@ export function isWithin(store: IndexStore, candidate: string, folderId: string)
 export const CHUNK_SIZE = 32 * 320 * 1024; // 10485760
 export const SIMPLE_UPLOAD_LIMIT = 4 * 1024 * 1024;
 
+// ---------- folder uploads ----------
+
+// OneDrive for Business rejects names that macOS and Linux allow: the
+// characters " * : < > ? / \ |, leading/trailing spaces, a trailing period,
+// names containing _vti_, and the reserved device names (learn:
+// "Restrictions and limitations in OneDrive and SharePoint", invalid file
+// names and characters). Uploads keep the name but swap what Graph would
+// refuse, so the file lands instead of failing with 400.
+const BAD_CHARS = /["*:<>?/\\|\u0000-\u001f\u007f]/g;
+const RESERVED = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?$/i;
+export function driveSafeName(name: string): string {
+  let n = name.normalize("NFC").replace(BAD_CHARS, "_").replace(/^\s+/, "").replace(/[\s.]+$/, "");
+  n = n.replace(/_vti_/gi, "_vti-");
+  if (RESERVED.test(n) || /^(\.lock|desktop\.ini)$/i.test(n)) n = `_${n}`;
+  return n || "_";
+}
+
+// OS clutter a folder pick drags along (Finder, Explorer, Office lock files).
+// file-selector already drops .DS_Store / Thumbs.db on drag-and-drop; this
+// applies the same rule to every path.
+export function isJunkFile(name: string): boolean {
+  return /^(\.DS_Store|Thumbs\.db|desktop\.ini|\._.*|~\$.*)$/i.test(name);
+}
+
+// A file's path inside the picked or dropped folder, "Folder/sub/file.txt".
+// The folder picker sets webkitRelativePath; react-dropzone (file-selector)
+// sets relativePath/path to "/Folder/sub/file.txt" for drops and "./x" for
+// loose files; uploads that walk directory handles pass it explicitly.
+export function relPathOf(f: File): string {
+  const x = f as File & { webkitRelativePath?: string; relativePath?: string; path?: string };
+  const raw = x.webkitRelativePath || x.relativePath || x.path || f.name;
+  return raw.replace(/\\/g, "/").split("/").filter((s) => s && s !== ".").join("/") || f.name;
+}
+
+export type FolderUploadPlan = {
+  dirs: string[]; // every folder to create, parents before children, by relative path
+  files: { file: File; dir: string; name: string }[]; // dir "" = the upload target itself
+  skipped: string[]; // junk files left out
+};
+
+// Turns picked files (plus any directories seen while walking, so empty
+// folders are kept) into the folders to create and the files to upload.
+// Paths are compared after cleaning, so "a?" and "a_" end up in one folder
+// rather than in a failed create.
+export function planFolderUpload(entries: { file: File; path: string }[], extraDirs: string[] = []): FolderUploadPlan {
+  const clean = (p: string) => p.split("/").filter((s) => s && s !== ".").map(driveSafeName).join("/");
+  const dirSet = new Set<string>();
+  const addDir = (d: string) => {
+    const parts = d.split("/").filter(Boolean);
+    for (let i = 1; i <= parts.length; i++) dirSet.add(parts.slice(0, i).join("/"));
+  };
+  for (const d of extraDirs) addDir(clean(d));
+  const files: FolderUploadPlan["files"] = [];
+  const skipped: string[] = [];
+  for (const { file, path } of entries) {
+    const parts = path.split("/").filter((s) => s && s !== ".");
+    const base = parts.pop() ?? file.name;
+    if (isJunkFile(base)) {
+      skipped.push(path);
+      continue;
+    }
+    const dir = clean(parts.join("/"));
+    if (dir) addDir(dir);
+    files.push({ file, dir, name: driveSafeName(base) });
+  }
+  const depth = (d: string) => d.split("/").length;
+  const dirs = Array.from(dirSet).sort((a, b) => depth(a) - depth(b) || a.localeCompare(b));
+  return { dirs, files, skipped };
+}
+
 export type Range = { start: number; end: number; length: number };
 export function chunkRanges(size: number, from = 0, chunk = CHUNK_SIZE): Range[] {
   const out: Range[] = [];
