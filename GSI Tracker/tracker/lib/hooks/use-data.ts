@@ -704,14 +704,22 @@ export function useBudgetPeriods(verticalId: VerticalScope = 'all') {
   return useQuery({
     queryKey: ['budgetPeriods', verticalId],
     queryFn: async () => {
-      let query = supabase
-        .from('budget_period_summary')
-        .select('*')
-        .order('starts_on', { ascending: false })
-      if (verticalId !== 'all') query = query.or(`vertical_id.eq.${verticalId},vertical_id.is.null`)
-      const { data, error } = await query
-      if (error) throw error
-      return data as BudgetPeriodSummary[]
+      // The view only carries totals (no id / dates), so merge it onto the
+      // period rows. Ordering by the view's missing starts_on used to 400.
+      let periods = supabase.from('budget_periods').select('*').order('starts_on', { ascending: false })
+      let totals = supabase.from('budget_period_summary').select('*')
+      if (verticalId !== 'all') {
+        periods = periods.or(`vertical_id.eq.${verticalId},vertical_id.is.null`)
+        totals = totals.or(`vertical_id.eq.${verticalId},vertical_id.is.null`)
+      }
+      const [p, s] = await Promise.all([periods, totals])
+      if (p.error) throw p.error
+      if (s.error) throw s.error
+      const byId = new Map((s.data || []).map(r => [r.budget_period_id, r]))
+      return (p.data || []).map(bp => ({
+        allocated: 0, remaining: bp.total_budget, task_count: 0,
+        ...bp, ...byId.get(bp.id), budget_period_id: bp.id,
+      })) as BudgetPeriodSummary[]
     },
   })
 }

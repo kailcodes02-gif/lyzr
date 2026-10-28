@@ -134,6 +134,8 @@ export async function createTask(data: {
     .from('tasks')
     .insert({
       channel_id: data.channel_id,
+      // Empty leaves it to the trigger (parent's tags for a sub-task, else Lyzr).
+      ...(data.vertical_ids?.length ? { vertical_ids: data.vertical_ids } : {}),
       title: data.title,
       description: data.description || null,
       priority: data.priority,

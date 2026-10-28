@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { format, isBefore, isToday, parseISO, startOfDay } from 'date-fns'
 import { toZonedTime } from 'date-fns-tz'
-import { Plus, CheckSquare, AlertCircle, Radio, CalendarRange, Activity, Calendar, Building2, Table2 } from 'lucide-react'
+import { Plus, CheckSquare, AlertCircle, Radio, CalendarRange, Activity, Calendar, Building2, Table2, ClipboardCheck } from 'lucide-react'
 import {
   useCurrentUser, useTasks, useVerticals, useAllVerticalOwners, useUsers, useChannels, useRecentActivity, useMentionsForUser, useMyBadges,
 } from '@/lib/hooks/use-data'
@@ -19,7 +19,10 @@ import { InboxCard } from '@/components/workspace/inbox-card'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
+import { QuickAdd } from '@/components/tasks/quick-add'
+import { CheckInDialog } from '@/components/tasks/check-in'
+import { useMyTasks } from '@/lib/hooks/use-my-tasks'
+import { checkInQueue } from '@/lib/check-in'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { bucketWeek, currentWeek, OPEN_STATUSES } from '@/lib/week-logic'
 import { STATUS_CONFIG, type Task } from '@/lib/types/database'
@@ -49,7 +52,9 @@ function WorkspaceHomePage() {
   const { data: activities } = useRecentActivity(15, 'all')
   useVerticals()
 
-  const [createOpen, setCreateOpen] = useState(false)
+  const [checkInOpen, setCheckInOpen] = useState(false)
+  const { myTasks } = useMyTasks()
+  const toCheck = checkInQueue(myTasks).length
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
 
   const chVertical = useMemo(() => new Map((channels || []).map(c => [c.id, c.vertical_id])), [channels])
@@ -122,14 +127,14 @@ function WorkspaceHomePage() {
               <Calendar className="w-4 h-4 mr-2" /> Calendar
             </Button>
           </Link>
-          <Button
-            onClick={() => setCreateOpen(true)}
-            className="bg-orange-500 hover:bg-orange-600 text-white border-0"
-          >
-            <Plus className="w-4 h-4 mr-2" /> New Task
+          <Button variant="outline" onClick={() => setCheckInOpen(true)} className="border-zinc-300 hover:bg-zinc-100 text-zinc-700">
+            <ClipboardCheck className="w-4 h-4 mr-2" /> Check in
+            {toCheck > 0 && <span className="ml-1.5 rounded-full bg-orange-500 px-1.5 text-[10px] font-semibold text-white">{toCheck}</span>}
           </Button>
         </div>
       </div>
+
+      <QuickAdd onCreated={setSelectedTaskId} />
 
 
       {/* Workspace KPIs */}
@@ -255,9 +260,7 @@ function WorkspaceHomePage() {
         </Card>
       </div>
 
-      {createOpen && (
-        <CreateTaskDialog open={createOpen} onOpenChange={setCreateOpen} onSuccess={() => setCreateOpen(false)} />
-      )}
+      <CheckInDialog open={checkInOpen} onOpenChange={setCheckInOpen} tasks={myTasks} name={user?.display_name || user?.email || ''} />
       {selectedTaskId && (
         <TaskDetailDrawer taskId={selectedTaskId} open={!!selectedTaskId}
           onOpenChange={open => { if (!open) setSelectedTaskId(null) }} onTaskIdChange={setSelectedTaskId} />

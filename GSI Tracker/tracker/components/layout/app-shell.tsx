@@ -2,11 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import {
   Calendar, LayoutDashboard, ListTodo, ChevronDown, ChevronRight, ChevronsUpDown,
   Bell, LogOut, Zap, Sparkles, Link2, GitBranch, DollarSign, Upload, Menu, X, Settings, LineChart, UserCircle,
   CalendarRange, History, BookOpen, Layers, Building2, Crown, Table2, Workflow, Home, Eye, FolderOpen, FolderKanban,
+  MoreHorizontal, Plus, Search,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -19,6 +20,8 @@ import { AssistantDialog } from '@/components/assistant/assistant-dialog'
 import { LyzrSail } from '@/components/ui/lyzr-logo'
 import { setViewAs, useViewAs, viewAsLabel, VIEW_AS_OPTIONS } from '@/lib/hooks/use-view-as'
 import { startTour } from '@/components/workspace/welcome-tour'
+import { QuickAddDialog, isTypingTarget } from '@/components/tasks/quick-add'
+import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -33,10 +36,11 @@ import { mergeChannelsByName } from '@/lib/task-channels'
 
 const normalize = (p: string) => (p.replace(/\/$/, '') || '/')
 
-function ChannelItem({ channel, depth, slug }: { channel: Channel; depth: number; slug: string }) {
+function ChannelItem({ channel, depth, slug, forceOpen }: { channel: Channel; depth: number; slug: string; forceOpen?: boolean }) {
   const pathname = usePathname()
   const activeId = useSearchParams().get('id')
-  const [expanded, setExpanded] = useState(false)
+  const [expandedState, setExpanded] = useState(false)
+  const expanded = expandedState || !!forceOpen
   const hasChildren = channel.children && channel.children.length > 0
   const isActive = normalize(pathname) === '/channel' && activeId === channel.id
 
@@ -72,7 +76,7 @@ function ChannelItem({ channel, depth, slug }: { channel: Channel; depth: number
       {expanded && hasChildren && (
         <div className="ml-3 space-y-0.5">
           {channel.children!.map(child => (
-            <ChannelItem key={child.id} channel={child} depth={depth + 1} slug={slug} />
+            <ChannelItem key={child.id} channel={child} depth={depth + 1} slug={slug} forceOpen={forceOpen} />
           ))}
         </div>
       )}
@@ -82,11 +86,39 @@ function ChannelItem({ channel, depth, slug }: { channel: Channel; depth: number
 
 type NavItem = { href: string; icon: React.ComponentType<{ className?: string }>; label: string; match: string }
 
-function NavList({ items, onNavigate }: { items: NavItem[]; onNavigate: () => void }) {
+// Sidebar state that survives reloads. Storage can be missing (private
+// windows, blocked site data), so every access is guarded.
+// The in-memory copy keeps toggles working when storage throws.
+const flagMemory = new Map<string, boolean>()
+const flagListeners = new Set<() => void>()
+function readFlag(key: string, initial: boolean) {
+  if (flagMemory.has(key)) return flagMemory.get(key)!
+  try { const v = localStorage.getItem(key); return v === null ? initial : v === '1' } catch { return initial }
+}
+function useStoredFlag(key: string, initial: boolean): [boolean, (v: boolean) => void] {
+  const value = useSyncExternalStore(
+    cb => { flagListeners.add(cb); return () => { flagListeners.delete(cb) } },
+    () => readFlag(key, initial),
+    () => initial,
+  )
+  const set = (v: boolean) => {
+    flagMemory.set(key, v)
+    try { localStorage.setItem(key, v ? '1' : '0') } catch {}
+    flagListeners.forEach(l => l())
+  }
+  return [value, set]
+}
+
+// Everyday pages first; the rest fold under "More" (opened automatically
+// when you are on one of them). Nothing is removed, only tucked away.
+function NavList({ items, more = [], onNavigate }: { items: NavItem[]; more?: NavItem[]; onNavigate: () => void }) {
   const pathname = usePathname()
+  const [open, setOpen] = useStoredFlag('nav-more-open', false)
+  const onMorePage = more.some(i => normalize(pathname) === i.match)
+  const showMore = open || onMorePage
   return (
     <div className="space-y-1">
-      {items.map(item => {
+      {[...items, ...(showMore ? more : [])].map(item => {
         const isActive = normalize(pathname) === item.match
         return (
           <Link
@@ -103,6 +135,47 @@ function NavList({ items, onNavigate }: { items: NavItem[]; onNavigate: () => vo
           </Link>
         )
       })}
+      {more.length > 0 && !onMorePage && (
+        <button onClick={() => setOpen(!open)}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100">
+          <MoreHorizontal className="w-4 h-4" />
+          {open ? 'Less' : `More (${more.length})`}
+        </button>
+      )}
+    </div>
+  )
+}
+
+// Channel list with a filter once it gets long, and a fold.
+function ChannelList({ channels, slug, empty }: { channels: Channel[]; slug: string; empty: React.ReactNode }) {
+  const [open, setOpen] = useStoredFlag('nav-channels-open', true)
+  const [q, setQ] = useState('')
+  const tree = buildChannelTree(channels)
+  const query = q.trim().toLowerCase()
+  const matches = (c: Channel): boolean => c.name.toLowerCase().includes(query) || (c.children || []).some(matches)
+  const shown = query ? tree.filter(matches) : tree
+  return (
+    <div>
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-3 mb-2 brand-label text-zinc-600 hover:text-zinc-900">
+        <span>Channels{channels.length ? ` (${tree.length})` : ''}</span>
+        {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+      </button>
+      {open && (
+        <div className="space-y-0.5">
+          {tree.length > 8 && (
+            <div className="relative mx-1 mb-1.5">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-400" />
+              <input value={q} onChange={e => setQ(e.target.value)} placeholder="Find a channel" aria-label="Find a channel"
+                className="w-full h-7 rounded-md border border-zinc-200 bg-white pl-6 pr-2 text-xs outline-none focus:border-zinc-400" />
+            </div>
+          )}
+          {shown.map(channel => (
+            <ChannelItem key={channel.id} channel={channel} depth={0} slug={slug} forceOpen={!!query} />
+          ))}
+          {channels.length === 0 && empty}
+          {channels.length > 0 && shown.length === 0 && <p className="px-3 text-xs text-zinc-400">No channel matches “{q}”.</p>}
+        </div>
+      )}
     </div>
   )
 }
@@ -252,15 +325,17 @@ export function AppSidebar() {
   // a short list built around their own work (Home shows them My Board).
   const companyNav: NavItem[] = [
     { href: '/', icon: Home, label: 'Company home', match: '/' },
-    { href: '/projects/', icon: FolderKanban, label: 'Projects', match: '/projects' },
     { href: '/my-board/', icon: Sparkles, label: 'My Board', match: '/my-board' },
+    { href: withVertical('/my-tasks/', 'all'), icon: ListTodo, label: 'My Tasks', match: '/my-tasks' },
+    { href: '/projects/', icon: FolderKanban, label: 'Projects', match: '/projects' },
+    { href: withVertical('/calendar/', 'all'), icon: Calendar, label: 'Calendar', match: '/calendar' },
+    { href: '/workspace/weekly/', icon: CalendarRange, label: 'Weekly', match: '/workspace/weekly' },
+  ]
+  const companyMore: NavItem[] = [
     { href: '/workspace/tasks/', icon: Table2, label: 'All Tasks', match: '/workspace/tasks' },
     { href: withVertical('/overview/', 'all'), icon: GitBranch, label: 'Overview', match: '/overview' },
-    { href: '/workspace/weekly/', icon: CalendarRange, label: 'Weekly', match: '/workspace/weekly' },
     { href: withVertical('/owners/', 'all'), icon: UserCircle, label: 'Owners', match: '/owners' },
     { href: '/campaigns/', icon: Zap, label: 'Campaigns', match: '/campaigns' },
-    { href: withVertical('/calendar/', 'all'), icon: Calendar, label: 'Calendar', match: '/calendar' },
-    { href: withVertical('/my-tasks/', 'all'), icon: ListTodo, label: 'My Tasks', match: '/my-tasks' },
     { href: '/functions/', icon: Workflow, label: 'Domains', match: '/functions' },
     { href: '/members/', icon: UserCircle, label: 'Members', match: '/members' },
     { href: withVertical('/history/', 'all'), icon: History, label: 'History', match: '/history' },
@@ -275,17 +350,20 @@ export function AppSidebar() {
     { href: '/guide/', icon: BookOpen, label: 'Guide', match: '/guide' },
   ]
   const workspaceNav = isLeadership ? companyNav : personalNav
+  const workspaceMore = isLeadership ? companyMore : []
 
   const spaceNav: NavItem[] = [
     { href: withVertical('/dashboard/', slug), icon: LayoutDashboard, label: 'Dashboard', match: '/dashboard' },
+    { href: withVertical('/my-tasks/', slug), icon: ListTodo, label: 'My Tasks', match: '/my-tasks' },
     { href: '/projects/', icon: FolderKanban, label: 'Projects', match: '/projects' },
+    { href: withVertical('/calendar/', slug), icon: Calendar, label: 'Calendar', match: '/calendar' },
+    { href: withVertical('/weekly/', slug), icon: CalendarRange, label: 'Weekly Review', match: '/weekly' },
+  ]
+  const spaceMore: NavItem[] = [
     { href: '/campaigns/', icon: Zap, label: 'Campaigns', match: '/campaigns' },
     { href: withVertical('/overview/', slug), icon: GitBranch, label: 'Overview', match: '/overview' },
-    { href: withVertical('/calendar/', slug), icon: Calendar, label: 'Calendar', match: '/calendar' },
-    { href: withVertical('/my-tasks/', slug), icon: ListTodo, label: 'My Tasks', match: '/my-tasks' },
     { href: withVertical('/tracker/', slug), icon: LineChart, label: 'Tracker', match: '/tracker' },
     { href: withVertical('/owners/', slug), icon: UserCircle, label: 'Owners', match: '/owners' },
-    { href: withVertical('/weekly/', slug), icon: CalendarRange, label: 'Weekly Review', match: '/weekly' },
     { href: withVertical('/budgets/', slug), icon: DollarSign, label: 'Budgets', match: '/budgets' },
     ...(flags.leads_pipeline ? [{ href: withVertical('/leads/', slug), icon: Upload, label: 'Leads Pipeline', match: '/leads' }] : []),
     { href: withVertical('/history/', slug), icon: History, label: 'History', match: '/history' },
@@ -323,7 +401,7 @@ export function AppSidebar() {
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
         {mode === 'workspace' ? (
           <>
-            <NavList items={workspaceNav} onNavigate={close} />
+            <NavList items={workspaceNav} more={workspaceMore} onNavigate={close} />
             <div>
               <p className="px-3 brand-label text-zinc-600 mb-2">Boards</p>
               <VerticalRows onNavigate={close} />
@@ -332,20 +410,12 @@ export function AppSidebar() {
           </>
         ) : (
           <>
-            <NavList items={spaceNav} onNavigate={close} />
-            <div>
-              <p className="px-3 brand-label text-zinc-600 mb-2">Channels</p>
-              <div className="space-y-0.5">
-                {buildChannelTree(spaceChannels || []).map(channel => (
-                  <ChannelItem key={channel.id} channel={channel} depth={0} slug={slug} />
-                ))}
-                {(spaceChannels || []).length === 0 && (
-                  <p className="px-3 text-xs text-zinc-400">
-                    No channels yet.{canManage ? ' Add them in Vertical Settings.' : ''}
-                  </p>
-                )}
-              </div>
-            </div>
+            <NavList items={spaceNav} more={spaceMore} onNavigate={close} />
+            <ChannelList channels={spaceChannels || []} slug={slug} empty={
+              <p className="px-3 text-xs text-zinc-400">
+                No channels yet.{canManage ? ' Add them in Vertical Settings.' : ''}
+              </p>
+            } />
             <MyFunctionRows onNavigate={close} />
           </>
         )}
@@ -456,7 +526,21 @@ export function AppSidebar() {
 export function AppHeader() {
   const router = useRouter()
   const [assistantOpen, setAssistantOpen] = useState(false)
+  const [quickOpen, setQuickOpen] = useState(false)
+  const [openedTaskId, setOpenedTaskId] = useState<string | null>(null)
   const { data: notifications } = useNotifications()
+
+  // N opens quick add from anywhere, unless you are typing or a dialog is up.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== 'n' || e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return
+      if (document.querySelector('[role="dialog"]')) return
+      e.preventDefault()
+      setQuickOpen(true)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
   const { data: user } = useCurrentUser()
   const { mode, vertical } = useVertical()
   const viewAs = useViewAs()
@@ -488,6 +572,14 @@ export function AppHeader() {
         )}
       </div>
       <div className="flex items-center gap-2">
+        <Button size="sm" className="h-8 bg-orange-500 hover:bg-orange-600 text-white border-0" onClick={() => setQuickOpen(true)} aria-label="New task" title="New task (N)">
+          <Plus className="w-4 h-4 sm:mr-1" /><span className="hidden sm:inline text-xs">New task</span>
+          <kbd className="hidden md:inline ml-1.5 text-[10px] rounded bg-white/20 px-1">N</kbd>
+        </Button>
+        <QuickAddDialog open={quickOpen} onOpenChange={setQuickOpen} onCreated={setOpenedTaskId} />
+        {openedTaskId && (
+          <TaskDetailDrawer taskId={openedTaskId} open onOpenChange={o => { if (!o) setOpenedTaskId(null) }} onTaskIdChange={setOpenedTaskId} />
+        )}
         <Button variant="outline" size="sm" className="h-8 border-violet-200 text-violet-700 hover:bg-violet-50" onClick={() => setAssistantOpen(true)} aria-label="Assistant">
           <Sparkles className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline text-xs">Assistant</span>
         </Button>
