@@ -2,24 +2,26 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { format } from 'date-fns'
 import {
-  BookOpen, FolderKanban, ListTodo, Table2, Users, X, Zap,
+  BookOpen, FolderKanban, ListTodo, RotateCcw, Table2, Users, X, Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { LyzrSail } from '@/components/ui/lyzr-logo'
 import { useCurrentUser } from '@/lib/hooks/use-data'
 import { markIntroSeen } from '@/components/workspace/page-intro'
-import { useOnboardingFlags, useMarkOnboardingFlag } from '@/lib/onboarding-flags'
+import { useOnboardingFlags, useMarkOnboardingFlag, useSetOnboardingValues } from '@/lib/onboarding-flags'
+import { shouldAutoStartTour, tourShownFlags } from '@/lib/tour-logic'
 import { cn } from '@/lib/utils'
 
 // Guided walkthrough. A centered modal over a dimmed page: each step
 // NAVIGATES to the page it explains (visible behind the dim), and the modal
-// survives navigation and reloads until Done or Close. Opens automatically on
-// first sign-in on this browser; restarts from the account menu ("Replay the
-// welcome tour") or the Guide page's "Guide walkthrough" button. Pure
-// explanation — it never writes anything.
+// survives navigation and reloads until Done or Close. Opens by itself twice
+// in a person's lifetime (first visit, then once on a later day; rules in
+// lib/tour-logic.ts); replays any time from the account menu ("Replay the
+// welcome tour") or the Guide page's "Guide walkthrough" button, which the
+// last step points at. Pure explanation: it never writes task data.
 
-const DONE_KEY = 'gsi:tour:v3'
 const STEP_KEY = 'gsi:tour:v3:step' // present = walkthrough in progress (survives reloads)
 
 let openFn: (() => void) | null = null
@@ -153,13 +155,31 @@ const STEPS: Step[] = [
     introKey: 'people_map',
   },
   {
-    icon: <BookOpen className="w-6 h-6 text-violet-600" />,
-    title: 'The Guide — and seeing it as anyone',
+    icon: <RotateCcw className="w-6 h-6 text-orange-500" />,
+    title: 'Watch this again whenever you need it',
     body: (
-      <>This <strong>Guide</strong> covers everything in five minutes, and its “Guide walkthrough”
-      button restarts this tour. Admins can switch <strong>“View as”</strong> in the account menu
-      (bottom left) to see the tracker exactly as leadership, a vertical owner, a channel owner or a
-      member does. That’s everything — enjoy!</>
+      <div className="space-y-3">
+        <p>This walkthrough comes back by itself <strong>once more</strong> on a later day. After that it
+        only opens when you ask. Two places replay it:</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[12px]">
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-2.5 space-y-1.5">
+            <p className="font-semibold text-zinc-900">1. This page: Guide</p>
+            <p className="text-zinc-600">Sidebar › <strong>Guide</strong>, then the button at the top right:</p>
+            <span className="inline-flex items-center gap-1 rounded-md bg-orange-500 px-2 py-1 text-[11px] font-medium text-white">
+              <BookOpen className="w-3 h-3" /> Guide walkthrough
+            </span>
+          </div>
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-2.5 space-y-1.5">
+            <p className="font-semibold text-zinc-900">2. Your account menu</p>
+            <p className="text-zinc-600">Click your name at the <strong>bottom left</strong> of the sidebar, then:</p>
+            <span className="inline-flex items-center gap-1 rounded-md border border-zinc-300 bg-white px-2 py-1 text-[11px] text-zinc-700">
+              <BookOpen className="w-3 h-3" /> Replay the welcome tour
+            </span>
+          </div>
+        </div>
+        <p className="text-[12px] text-zinc-500">The Guide below covers everything in five minutes. Admins can also
+        use <strong>View as</strong> in the account menu to see the tracker as any role.</p>
+      </div>
     ),
     href: '/guide/',
     place: 'Guide',
@@ -174,6 +194,7 @@ export function WelcomeTour() {
   const { data: user } = useCurrentUser()
   const { flags, ready } = useOnboardingFlags()
   const markFlag = useMarkOnboardingFlag()
+  const setValues = useSetOnboardingValues()
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState(0)
@@ -211,11 +232,12 @@ export function WelcomeTour() {
         goTo(i, false) // stay on whatever page they are on until they press Next
         return
       }
-      // Auto-start only on a person's FIRST ever sign-in: the account-level
-      // flag decides; localStorage is just this browser's cache of it. Until
-      // the account flags have loaded, show nothing — never guess and replay.
+      // Auto-start twice per lifetime, decided by the account flags (any
+      // device). Until they have loaded, show nothing: never guess.
       if (!ready) return
-      if (flags?.['tour:v3'] || load(DONE_KEY) === '1') return
+      const today = format(new Date(), 'yyyy-MM-dd') // local day (IST for the team)
+      if (!shouldAutoStartTour(flags, today)) return
+      void setValues(tourShownFlags(flags, today)) // counts on opening, not on finishing
       begin()
     }, 0)
     return () => window.clearTimeout(t)
@@ -225,7 +247,6 @@ export function WelcomeTour() {
   const finish = () => {
     setOpen(false)
     setActive(false)
-    save(DONE_KEY, '1')
     drop(STEP_KEY)
     void markFlag('tour:v3') // remembered on the account: no replay on the next sign-in or device
   }

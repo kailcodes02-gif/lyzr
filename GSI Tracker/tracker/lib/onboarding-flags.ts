@@ -8,7 +8,8 @@ import { useCurrentUser } from '@/lib/hooks/use-data'
 // alone kept replaying the tour: inside the lyzr.ai frame (and on any new
 // device) the browser store comes back empty on the next sign-in. The flags
 // live in one saved_views row per user (page 'onboarding', name 'flags'),
-// whose config is { "tour:v3": true, "intro:space_dashboard": true, … }.
+// whose config is { "tour:auto": 1, "tour:auto:last": "2026-10-29",
+// "intro:space_dashboard": true, … }.
 // localStorage stays as a same-session cache so nothing flashes twice while
 // the query is in flight.
 
@@ -30,7 +31,7 @@ export function useOnboardingFlags() {
         .eq('user_id', user!.id).eq('page', PAGE).eq('name', NAME)
         .order('updated_at', { ascending: false }).limit(1)
       if (error) throw error
-      return (data?.[0]?.config ?? {}) as Record<string, boolean>
+      return (data?.[0]?.config ?? {}) as Record<string, unknown>
     },
   })
   // Until the row is confirmed absent, callers must not auto-open anything.
@@ -38,13 +39,19 @@ export function useOnboardingFlags() {
 }
 
 export function useMarkOnboardingFlag() {
+  const set = useSetOnboardingValues()
+  return (...keys: string[]) => set(Object.fromEntries(keys.map(k => [k, true])))
+}
+
+// Saves any values (counts, dates) next to the boolean flags.
+export function useSetOnboardingValues() {
   const supabase = createClient()
   const qc = useQueryClient()
   const { data: user } = useCurrentUser()
-  return async (...keys: string[]) => {
-    if (!user || !keys.length) return
-    const prev = qc.getQueryData<Record<string, boolean>>(['onboardingFlags', user.id]) ?? {}
-    const config = { ...prev, ...Object.fromEntries(keys.map(k => [k, true])) }
+  return async (values: Record<string, unknown>) => {
+    if (!user || !Object.keys(values).length) return
+    const prev = qc.getQueryData<Record<string, unknown>>(['onboardingFlags', user.id]) ?? {}
+    const config = { ...prev, ...values }
     qc.setQueryData(['onboardingFlags', user.id], config)
     try {
       // Update-then-insert instead of upsert: it works with or without the
