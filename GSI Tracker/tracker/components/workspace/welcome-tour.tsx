@@ -159,8 +159,8 @@ const STEPS: Step[] = [
     title: 'Watch this again whenever you need it',
     body: (
       <div className="space-y-3">
-        <p>This walkthrough comes back by itself <strong>once more</strong> on a later day. After that it
-        only opens when you ask. Two places replay it:</p>
+        <p>This walkthrough opens by itself <strong>twice</strong> in total: on your first visit and once
+        more on a later day. After that it only opens when you ask, from either of these:</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[12px]">
           <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-2.5 space-y-1.5">
             <p className="font-semibold text-zinc-900">1. This page: Guide</p>
