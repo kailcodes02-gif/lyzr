@@ -91,21 +91,23 @@ const STEPS: Step[] = [
   },
   {
     icon: <ListTodo className="w-6 h-6 text-emerald-600" />,
-    title: 'Adding a task',
+    title: 'Adding a task: one line, Enter',
     body: (
-      <>Type what needs doing in <strong>+ Add task</strong> at the top and press Enter — that’s it.
-      For more detail use <strong>New task</strong>: pick the vertical and channel (or leave it on
-      <strong> No channel</strong>), the owner (you by default), due date and priority. Sub-tasks get
-      their own owner, starting with the parent task’s.</>
+      <>Press <strong>N</strong> on any page (or <strong>New task</strong> at the top) and type what needs
+      doing. Add details inline if you like: <strong>@priya</strong> for the owner,
+      <strong> #content</strong> for the channel, <strong>!p1</strong> for priority and a date at the end
+      such as <strong>fri</strong> or <strong>12 nov</strong>. Leave them out and it is yours, Medium,
+      in <strong>No channel</strong>. <strong>More options</strong> opens the full form.</>
     ),
   },
   {
     icon: <ListTodo className="w-6 h-6 text-emerald-600" />,
     title: 'My Board: your own page',
     body: (
-      <><strong>My Board</strong> is your personal home — just the tasks assigned to you, grouped by
-      when they’re due. <strong>My Tasks</strong> is the full list of everything with your name on it.
-      Most people start their day here.</>
+      <><strong>My Board</strong> is your personal home: what is due or overdue this week, with a circle
+      to tick each one done. Once a week press <strong>Check in</strong>: two minutes, one key per task
+      (done, started, move the date, blocked), and you get a summary to paste in Slack.
+      <strong> My Tasks</strong> is the full list of everything with your name on it.</>
     ),
     href: '/my-board/',
     place: 'My Board',
@@ -130,8 +132,9 @@ const STEPS: Step[] = [
     body: (
       <>Admins and leadership start on <strong>Company home</strong> and get the company pages.
       <strong> All Tasks</strong> is the leadership view: every task in every vertical in one table;
-      the tiles on top (Done, Not done, Live, Blocked, Overdue, Critical) filter it. Everyone else
-      starts on My Board with a shorter sidebar.</>
+      the tiles on top (Done, Not done, Live, Blocked, Overdue, Critical) filter it. The company pages
+      sit under <strong>More</strong> in the sidebar. Everyone else starts on My Board with a shorter
+      sidebar.</>
     ),
     href: '/workspace/tasks/',
     place: 'All Tasks',

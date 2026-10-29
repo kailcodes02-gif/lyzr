@@ -43,6 +43,7 @@ const INTROS: Intro[] = [
     title: 'Company home — for admins and leadership',
     lead: 'The whole company at a glance. Everyone else starts on My Board instead.',
     features: [
+      { name: 'Add a task', what: 'The one-line box under the title (or N anywhere). Check in walks through your own week.' },
       { name: 'KPI tiles', what: 'Open, overdue, live and this-week counts across every vertical.' },
       { name: 'Campaign banner', what: 'Running and upcoming campaigns and thunderclaps.' },
       { name: 'Domains grid', what: 'Each discipline (Content, Social, Paid…) with its load, across verticals.' },
@@ -67,10 +68,10 @@ const INTROS: Intro[] = [
     title: 'My Board — your personal home',
     lead: 'Just your work, nothing else. If you mainly execute tasks, this page is home.',
     features: [
-      { name: 'Due buckets', what: 'Your tasks grouped by overdue, today, this week and later.' },
-      { name: 'My channels', what: 'Every channel you own or belong to, across all verticals.' },
-      { name: 'Inbox', what: 'Mentions, assignments and asks waiting on you.' },
-      { name: 'New task', what: 'The orange button creates a task in any of your channels.' },
+      { name: 'Add a task', what: 'Type one line and press Enter: @name, #channel, !p1 and a date like fri are optional. N opens it from any page.' },
+      { name: 'Due this week', what: 'Overdue first, then the rest of the week. Tick the circle to finish one; Undo if you slipped.' },
+      { name: 'Check in', what: 'Once a week, two minutes: done, started, move or blocked for each task, then a summary for Slack.' },
+      { name: 'Inbox and channels', what: 'Mentions and asks waiting on you, and every channel you own across verticals.' },
     ],
   },
   {

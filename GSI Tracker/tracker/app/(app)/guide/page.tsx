@@ -5,6 +5,7 @@ import {
   BookOpen, Building2, Folder, Layers, GitBranch, ListTodo, CheckSquare, Home, LayoutDashboard, Calendar,
   LineChart, UserCircle, CalendarRange, DollarSign, Upload, History, Workflow, Settings, Crown, ShieldCheck,
   Users, Table2, Filter, Repeat, ArrowRight, Sparkles, Eye, FolderKanban, Columns3, List, Inbox, Rocket, Zap, Target,
+  Plus, Check, ClipboardCheck, MoreHorizontal,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { InfoTip } from '@/components/ui/info-tip'
@@ -39,7 +40,7 @@ const ROLES = [
 type View = { icon: React.ComponentType<{ className?: string }>; name: string; k: string; href: string; mode: 'company' | 'vertical' | 'everyone'; text?: string }
 const VIEWS: View[] = [
   { icon: FolderKanban, name: 'Projects', k: 'projects', href: '/projects/', mode: 'everyone', text: 'Where work happens: every channel as a project on a Board, Table or List. Opens on Everything — the Lyzr board.' },
-  { icon: Sparkles, name: 'My Board', k: 'my_board', href: '/my-board/', mode: 'everyone' },
+  { icon: Sparkles, name: 'My Board', k: 'my_board', href: '/my-board/', mode: 'everyone', text: 'Your home: add a task in one line, what is due this week (tick to finish), the weekly check-in, then your inbox and channels.' },
   { icon: ListTodo, name: 'My Tasks', k: 'member', href: '/my-tasks/', mode: 'everyone', text: 'Everything with your name on it: assigned to you, inherited through your channels, or mentioning you.' },
   { icon: Zap, name: 'Campaigns', k: 'campaign', href: '/campaigns/', mode: 'everyone', text: 'Launches, thunderclaps and big pushes, each with its banner and its tasks.' },
   { icon: Calendar, name: 'Calendar', k: 'calendar', href: '/calendar/', mode: 'everyone' },
@@ -98,7 +99,40 @@ export default function GuidePage() {
       </div>
 
       {/* 1 */}
-      <Section n={1} title="One board. Verticals are tags.">
+      <Section n={1} title="Your week in three moves">
+        <Card className="bg-white border-zinc-200">
+          <CardContent className="p-5 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-600">
+              <div className="space-y-1.5">
+                <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center">1</span> <Plus className="w-4 h-4 text-orange-500" /> Add it the moment it comes up</p>
+                <p>Press <Kbd>N</Kbd> anywhere, or <strong>New task</strong> at the top, or the box on your home page. Type one line and press Enter. Only the title is needed: no owner means you, no channel means &ldquo;No channel&rdquo;, no priority means Medium.</p>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center">2</span> <Check className="w-4 h-4 text-emerald-600" /> Tick it off where you see it</p>
+                <p>On My Board, the round circle next to a task marks it done in one click, with <strong>Undo</strong> on the toast. Open the task only when you need to add results, a comment or a sub-task.</p>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center">3</span> <ClipboardCheck className="w-4 h-4 text-blue-600" /> Check in once a week</p>
+                <p><strong>Check in</strong> on your home page walks you through what is overdue, due this week, or stuck without a date: <Kbd>D</Kbd> done, <Kbd>S</Kbd> started, <Kbd>M</Kbd> move the date, <Kbd>B</Kbd> blocked, <Kbd>→</Kbd> skip. About two minutes. It ends with a summary to paste in Slack, so your status update and the tracker are the same thing.</p>
+              </div>
+            </div>
+            <div className="rounded-lg bg-zinc-50 p-3 text-xs text-zinc-600 space-y-1.5">
+              <p className="font-semibold text-zinc-800">The one-line shortcuts (all optional)</p>
+              <p className="font-mono text-[12px] text-zinc-800">Draft webinar invite @priya #content !p1 fri</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                <p><strong className="text-zinc-800">@name</strong> owner, by email name or first name. Two or more: the first is the main owner.</p>
+                <p><strong className="text-zinc-800">#channel</strong> channel or sub-channel, by name; the start of the name is enough if only one matches.</p>
+                <p><strong className="text-zinc-800">!p0 to !p4</strong> priority. Also <em>!urgent</em>, <em>!high</em>, <em>!low</em>.</p>
+                <p><strong className="text-zinc-800">A date at the end</strong>: <em>today, tomorrow, fri, next week, in 3 days, 12 nov</em>. Mid-sentence, write <em>by fri</em>.</p>
+              </div>
+              <p>Chips under the box show what it understood; red means a name or channel it could not match. <strong>More options</strong> opens the full form with everything filled in.</p>
+            </div>
+          </CardContent>
+        </Card>
+      </Section>
+
+      {/* 2 */}
+      <Section n={2} title="One board. Verticals are tags.">
         <Card className="bg-white border-zinc-200">
           <CardContent className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-600">
             <div className="space-y-1.5">
@@ -119,8 +153,8 @@ export default function GuidePage() {
         </Card>
       </Section>
 
-      {/* 2 */}
-      <Section n={2} title="How work is organised">
+      {/* 3 */}
+      <Section n={3} title="How work is organised">
         <Card className="bg-white border-zinc-200">
           <CardContent className="p-5">
             <div className="flex flex-wrap items-stretch gap-2">
@@ -143,8 +177,8 @@ export default function GuidePage() {
         </Card>
       </Section>
 
-      {/* 3 */}
-      <Section n={3} title="Projects: Board, Table and List">
+      {/* 4 */}
+      <Section n={4} title="Projects: Board, Table and List">
         <Card className="bg-white border-zinc-200">
           <CardContent className="p-5 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-zinc-600">
@@ -166,8 +200,8 @@ export default function GuidePage() {
         </Card>
       </Section>
 
-      {/* 4 */}
-      <Section n={4} title="A task's life" tip="status">
+      {/* 5 */}
+      <Section n={5} title="A task's life" tip="status">
         <Card className="bg-white border-zinc-200">
           <CardContent className="p-5 space-y-4">
             <div className="flex flex-wrap items-center gap-2">
@@ -197,12 +231,12 @@ export default function GuidePage() {
         </Card>
       </Section>
 
-      {/* 5 */}
-      <Section n={5} title="Who sees what">
+      {/* 6 */}
+      <Section n={6} title="Who sees what">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Card className="bg-white border-zinc-200"><CardContent className="p-4 space-y-2">
             <div className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="w-4 h-4 text-violet-600" /> Admins and leadership</div>
-            <p className="text-xs text-zinc-600">Start on <strong>Company home</strong> — the across-company view — and get the company pages: All Tasks (the leadership view), Overview, Weekly, Owners, Domains, Members, History.</p>
+            <p className="text-xs text-zinc-600">Start on <strong>Company home</strong> — the across-company view. The sidebar shows the everyday pages (My Board, My Tasks, Projects, Calendar, Weekly); the company pages — All Tasks (the leadership view), Overview, Owners, Campaigns, Domains, Members, History, Guide — sit under <strong className="inline-flex items-center gap-0.5"><MoreHorizontal className="w-3 h-3" /> More</strong>, which opens by itself when you are on one of them.</p>
           </CardContent></Card>
           <Card className="bg-white border-zinc-200"><CardContent className="p-4 space-y-2">
             <div className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="w-4 h-4 text-emerald-600" /> Everyone else, vertical owners included</div>
@@ -212,8 +246,8 @@ export default function GuidePage() {
         <p className="text-[11px] text-zinc-500">Admins can preview any role with <strong>View as</strong> in the account menu at the bottom of the sidebar.</p>
       </Section>
 
-      {/* 6 */}
-      <Section n={6} title="Every screen, in one line">
+      {/* 7 */}
+      <Section n={7} title="Every screen, in one line">
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {VIEWS.map(v => (
             <Link key={v.name} href={linkFor(v)} className="block group">
@@ -233,8 +267,8 @@ export default function GuidePage() {
         </div>
       </Section>
 
-      {/* 7 */}
-      <Section n={7} title="Roles: who can change what">
+      {/* 8 */}
+      <Section n={8} title="Roles: who can change what">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {ROLES.map(r => (
             <Card key={r.name} className="bg-white border-zinc-200">
@@ -255,8 +289,8 @@ export default function GuidePage() {
         </div>
       </Section>
 
-      {/* 8 */}
-      <Section n={8} title="Campaigns: launches and thunderclaps" tip="campaign">
+      {/* 9 */}
+      <Section n={9} title="Campaigns: launches and thunderclaps" tip="campaign">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {[
             { icon: Rocket, n: 'Launch', d: 'A product or feature release everyone rallies behind. Its tasks, from any channel, show one progress bar.' },
@@ -276,8 +310,8 @@ export default function GuidePage() {
         </div>
       </Section>
 
-      {/* 9 */}
-      <Section n={9} title="Filters and dates, the same everywhere">
+      {/* 10 */}
+      <Section n={10} title="Filters and dates, the same everywhere">
         <Card className="bg-white border-zinc-200">
           <CardContent className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-600">
             <div className="space-y-1"><p className="text-sm font-semibold text-zinc-900 inline-flex items-center gap-1"><Calendar className="w-4 h-4 text-blue-600" /> Date range <InfoTip k="date_range" /></p><p>Presets (this week, last month, quarter, last 30 days) or two days on the calendar. The arrows step by the same length.</p></div>
@@ -287,8 +321,8 @@ export default function GuidePage() {
         </Card>
       </Section>
 
-      {/* 10 */}
-      <Section n={10} title="Setting things up (admins)">
+      {/* 11 */}
+      <Section n={11} title="Setting things up (admins)">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           {[
             { n: 1, t: 'Verticals', d: 'Workspace settings › Verticals. Clone a template for the full channel tree, or start empty. Lyzr is permanent and always first.', k: 'template' },
@@ -307,8 +341,8 @@ export default function GuidePage() {
         <Link href="/admin/" className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1">Open Workspace settings <ArrowRight className="w-3 h-3" /></Link>
       </Section>
 
-      {/* 11 */}
-      <Section n={11} title="The assistant (top right)" tip="assistant">
+      {/* 12 */}
+      <Section n={12} title="The assistant (top right)" tip="assistant">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Card className="bg-white border-zinc-200"><CardContent className="p-4 space-y-1">
             <div className="text-sm font-semibold">“Assign the Q4 ABM email on GSI Email to Anju, due Friday”</div>
@@ -324,3 +358,7 @@ export default function GuidePage() {
     </div>
   )
 }
+
+const Kbd = ({ children }: { children: React.ReactNode }) => (
+  <kbd className="inline-block rounded border border-zinc-300 bg-white px-1 text-[10px] font-medium text-zinc-700 align-middle">{children}</kbd>
+)
