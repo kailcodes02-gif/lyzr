@@ -458,6 +458,22 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-11-01, opencontroller demo: landing, access gate and interactive prototype at /opencontroller_demo/
+- New `opencontroller_demo/` (static ES modules, no build): landing page in the Lyzr dark brand
+  (`index.html`, `shared/landing.*`) with Explore the demo / Book a demo (`https://www.lyzr.ai/book-demo/`),
+  an access gate, the prototype at `app/` (every opencontroller screen from the PRD on seeded synthetic data,
+  per-screen explainer cards, a 15-stop guided tour, Ask Ctrl, role switch, light theme) and a sign-ins
+  viewer at `admin/`.
+- Gate: Lyzr people sign in with Microsoft (same "Lyzr MS UI" app; needs SPA redirect URI
+  `https://lyzr.kailash-gm.com/opencontroller_demo/`); others give a work email, checked for format,
+  personal/throwaway providers and MX records; optional emailed code with `RESEND_API_KEY` + `OCDEMO_MAIL_FROM`.
+- API: `functions/api/ocdemo/{start,verify,microsoft,track,admin}.js`, storing in `ocdemo_leads` /
+  `ocdemo_events` in the Campaign Analytics Supabase (`opencontroller_demo/supabase/001_ocdemo_leads.sql`,
+  to be run by the user). Admin reads need a CA editor (Microsoft or CA email/password).
+- The source PRD and screenshots (`Open controller UI/`) are not committed (public repo).
+- Tests: Playwright end-to-end, 109 checks (all routes, register/approve/reject/revoke, scan discovery,
+  policy toggle, guardrail Try it, keys, skills scan, Ask Ctrl, roles, persistence, reset, mobile widths).
+
 ### 2026-10-05, GSI Tracker: tour/intros remembered per ACCOUNT, not per browser (+ migration 033)
 - Complaint: the walkthrough replayed every login. Cause: "seen" lived only in localStorage, which the
   lyzr.ai iframe/partitioned storage resets. Now the flags live per user in saved_views (page 'onboarding',

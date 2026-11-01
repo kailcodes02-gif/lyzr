@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>opencontroller · Interactive demo</title>
+<meta name="description" content="opencontroller is an open-source control plane for enterprise AI: find every agent, model, MCP server and API key across your clouds, govern it, secure it and see what it costs. Try the interactive demo.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231E1610'/%3E%3Ctext x='16' y='21' font-family='monospace' font-size='12' font-weight='700' fill='%23F9F5F1' text-anchor='middle'%3Eoc%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@300;400&family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./shared/landing.css">
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@5/lib/msal-browser.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@5/lib/redirect-bridge/msal-redirect-bridge.min.js"></script>
+</head>
+<body>
+<header class="nav" id="top">
+  <div class="nav-in">
+    <a class="brand" href="#top" aria-label="opencontroller home"><span class="mark">oc</span><span>opencontroller</span><span class="by">by Lyzr</span></a>
+    <nav class="links" aria-label="Sections">
+      <a href="#problem">Why</a><a href="#how">How it works</a><a href="#modules">Modules</a><a href="#faq">FAQ</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn btn-ghost" data-book href="https://www.lyzr.ai/book-demo/" target="_blank" rel="noopener">Book a demo</a>
+      <button class="btn btn-primary" data-explore type="button">Explore the demo</button>
+    </div>
+  </div>
+</header>
+
+<main>
+<section class="hero">
+  <div class="grid-bg" aria-hidden="true"></div>
+  <div class="wrap hero-in">
+    <p class="eyebrow" data-reveal>Open source · AI governance control plane</p>
+    <h1 data-reveal>See every AI agent your company runs. <span class="grad">Then govern it.</span></h1>
+    <p class="lead" data-reveal>opencontroller connects to Microsoft, AWS, Google Cloud, Databricks, Anthropic and Snowflake, finds every agent, model, MCP server and API key, and shows which ones are governed, what they cost and where they are exposed.</p>
+    <div class="cta-row" data-reveal>
+      <button class="btn btn-primary btn-lg" data-explore type="button">Explore the demo <span aria-hidden="true">→</span></button>
+      <a class="btn btn-ghost btn-lg" data-book href="https://www.lyzr.ai/book-demo/" target="_blank" rel="noopener">Book a demo</a>
+    </div>
+    <p class="note" data-reveal>Interactive, on synthetic data. No setup. About ten minutes end to end.</p>
+
+    <div class="window" data-reveal aria-label="Preview of the opencontroller overview">
+      <div class="win-bar"><i></i><i></i><i></i><span>opencontroller · Overview</span></div>
+      <div class="win-body">
+        <aside class="win-side">
+          <b class="on">Overview</b><b>Spend</b><b>Ask Ctrl</b><em>Discover</em><b>AI Inventory</b><b>Shadow AI <s>227</s></b><em>Govern</em><b>Approvals <s class="amb">2</s></b><b>Registry</b><em>Posture</em><b>Findings</b>
+        </aside>
+        <div class="win-main">
+          <div class="win-alert">24 assets' spend need attention, 21 critical <span>lyzr-studio-prod: spent $12,115.20 in 30 days, and no one registered it</span></div>
+          <div class="win-stats">
+            <div><small>Assets</small><strong>483</strong><span>15 kinds</span></div>
+            <div><small>Agents</small><strong>126</strong><span>6 MCP servers</span></div>
+            <div><small>Registered</small><strong>22%</strong><span>63 of 292 governed</span></div>
+            <div><small>Shadow</small><strong>227</strong><span>never registered</span></div>
+          </div>
+          <div class="win-bars">
+            <div><span>Agents</span><i style="--g:39%;--r:61%"></i><em>126</em></div>
+            <div><span>Models</span><i style="--g:12%;--a:2%;--r:86%"></i><em>49</em></div>
+            <div><span>API keys</span><i style="--g:8%;--r:92%"></i><em>61</em></div>
+            <div><span>MCP servers</span><i style="--g:17%;--r:83%"></i><em>6</em></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="marquee" aria-label="Clouds and platforms it discovers from">
+    <div class="marquee-track">
+      <span>Microsoft Azure AI Foundry</span><span>Copilot Studio</span><span>Agent 365</span><span>AWS Bedrock AgentCore</span><span>Google Agent Registry</span><span>Vertex Agent Runtime</span><span>Databricks Agent Bricks</span><span>Anthropic Claude Platform</span><span>Snowflake Cortex Agents</span><span>Remote MCP servers</span>
+      <span>Microsoft Azure AI Foundry</span><span>Copilot Studio</span><span>Agent 365</span><span>AWS Bedrock AgentCore</span><span>Google Agent Registry</span><span>Vertex Agent Runtime</span><span>Databricks Agent Bricks</span><span>Anthropic Claude Platform</span><span>Snowflake Cortex Agents</span><span>Remote MCP servers</span>
+      <span>Microsoft Azure AI Foundry</span><span>Copilot Studio</span><span>Agent 365</span><span>AWS Bedrock AgentCore</span><span>Google Agent Registry</span><span>Vertex Agent Runtime</span><span>Databricks Agent Bricks</span><span>Anthropic Claude Platform</span><span>Snowflake Cortex Agents</span><span>Remote MCP servers</span>
+    </div>
+  </div>
+</section>
+
+<section class="light" id="problem">
+  <div class="wrap two-col">
+    <div>
+      <p class="eyebrow">01 / Why it exists</p>
+      <h2 data-reveal>Most of the AI inside a company was never registered.</h2>
+    </div>
+    <div class="body" data-reveal>
+      <p>Teams build agents in Copilot Studio, spin up models in Foundry and Bedrock, and hand out Claude API keys. Each cloud shows its own slice. Nobody sees the whole estate, who answers for each piece, or what it spends.</p>
+      <p>opencontroller reads every connected cloud every five minutes, puts it all in one inventory, and splits it into what is governed and what is shadow. Then it checks the estate against 36 security policies mapped to OWASP, MITRE ATLAS, NIST AI RMF, ISO/IEC 42001 and the EU AI Act, and joins the cloud bills to the assets that ran them up.</p>
+    </div>
+  </div>
+</section>
+
+<section class="dark" id="how">
+  <div class="wrap">
+    <p class="eyebrow">02 / How it works</p>
+    <h2 data-reveal>One loop, from discovery to runtime.</h2>
+    <div class="hub">
+      <div class="hub-core" aria-hidden="true"><span>oc</span></div>
+      <ol class="hub-steps">
+        <li data-step><b>01</b><h3>Connect</h3><p>Add a cloud in Integrations with a read-only role. Scans run every five minutes.</p></li>
+        <li data-step><b>02</b><h3>Discover</h3><p>Agents, models, MCP servers, tools, identities and API keys land in one inventory and one map.</p></li>
+        <li data-step><b>03</b><h3>Govern</h3><p>Shadow assets get an owner and a purpose, an admin approves them, and everything is written to the audit log.</p></li>
+        <li data-step><b>04</b><h3>Run safely</h3><p>Route model calls through the LLM gateway, screen them with guardrails, trace them and score them with evals.</p></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section class="dark alt" id="modules">
+  <div class="wrap">
+    <p class="eyebrow">03 / What is inside</p>
+    <h2 data-reveal>Every module is live in the demo.</h2>
+    <div class="cards">
+      <article class="card"><p class="tag">Discover</p><h3>AI Inventory and Shadow AI</h3><p>A map of accounts, products, agents and what they use. Filter to the non-compliant, then register shadow assets one at a time or a whole connection at once.</p></article>
+      <article class="card"><p class="tag">Govern</p><h3>Approvals and Registry</h3><p>Registration requests wait for an administrator. Approve and the asset joins the registry with an accountable owner. Reject and it stays shadow.</p></article>
+      <article class="card"><p class="tag">Posture</p><h3>Findings and security policies</h3><p>665 open findings by cloud, category and framework. Turn a policy off and watch the findings follow.</p></article>
+      <article class="card"><p class="tag">Spend</p><h3>What AI costs, and who owns it</h3><p>Cloud bills, licences and traced model calls in one place, with spikes and unregistered spend flagged for a look.</p></article>
+      <article class="card"><p class="tag">Runtime</p><h3>LLM Gateway</h3><p>Virtual keys with budgets and allowed models, every call logged with latency and cost, MCP servers and providers watched for health.</p></article>
+      <article class="card"><p class="tag">Runtime</p><h3>Guardrails</h3><p>Personal data, secrets, prompt injection and unsafe content, checked on the way to the model and back. Try a guardrail on sample text.</p></article>
+      <article class="card"><p class="tag">Monitor</p><h3>Observability and Evals</h3><p>Traces, latency heat maps, top issues and cost per project, with LLM-as-a-judge evaluators scoring production traffic.</p></article>
+      <article class="card"><p class="tag">Govern</p><h3>Skills marketplace</h3><p>Versioned skills, scanned with your guardrails before they go live, then served to Claude Code as a plugin marketplace.</p></article>
+    </div>
+  </div>
+</section>
+
+<section class="stats">
+  <div class="wrap">
+    <p class="eyebrow">Inside the demo estate</p>
+    <div class="stat-grid">
+      <div><strong data-count="483">483</strong><span>AI assets discovered</span></div>
+      <div><strong data-count="6">6</strong><span>clouds connected</span></div>
+      <div><strong data-count="36">36</strong><span>security policies</span></div>
+      <div><strong data-count="7">7</strong><span>frameworks mapped</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="dark">
+  <div class="wrap">
+    <div class="cta-band" data-reveal>
+      <div>
+        <h2>Walk through it yourself.</h2>
+        <p>Register a shadow agent, approve it, run a scan, try a guardrail. Every screen explains itself as you go.</p>
+      </div>
+      <div class="cta-row">
+        <button class="btn btn-primary btn-lg" data-explore type="button">Explore the demo <span aria-hidden="true">→</span></button>
+        <a class="btn btn-ghost btn-lg" data-book href="https://www.lyzr.ai/book-demo/" target="_blank" rel="noopener">Book a demo</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="dark" id="faq">
+  <div class="wrap faq-wrap">
+    <div><p class="eyebrow">04 / FAQ</p><h2>Questions people ask first.</h2></div>
+    <div class="faq">
+      <details><summary>Is the data in the demo real?</summary><p>No. Every agent, bill, finding and trace in the demo is synthetic. It is shaped like a real enterprise estate so the numbers behave the way they would on your clouds.</p></details>
+      <details><summary>Why do you ask for a work email?</summary><p>So we know which teams are looking and can follow up with something useful. We only accept company addresses. Lyzr people sign in with their Microsoft account.</p></details>
+      <details><summary>Can I change things in the demo?</summary><p>Yes. Register, approve, revoke, scan, turn policies off, make virtual keys and try guardrails. Changes stay in your browser, and Reset demo data puts everything back.</p></details>
+      <details><summary>Which clouds does opencontroller read?</summary><p>Microsoft (Azure AI Foundry, Copilot Studio, Agent 365, Entra ID), AWS (Bedrock AgentCore, IAM), Google Cloud (Agent Registry, Agent Runtime, CX Agent Studio), Databricks, Anthropic and Snowflake, plus remote MCP servers and external endpoints you register by hand.</p></details>
+      <details><summary>How do I run it on my own estate?</summary><p>Book a demo and we will walk through connecting your clouds with read-only access, and what each role can see and change.</p></details>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <a class="brand" href="#top"><span class="mark">oc</span><span>opencontroller</span><span class="by">by Lyzr</span></a>
+    <div class="foot-links"><button data-explore type="button">Explore the demo</button><a data-book href="https://www.lyzr.ai/book-demo/" target="_blank" rel="noopener">Book a demo</a><a href="https://www.lyzr.ai/" target="_blank" rel="noopener">lyzr.ai</a></div>
+    <p class="copy">Demo on synthetic data. © 2026 Lyzr.</p>
+  </div>
+</footer>
+
+<!-- Access gate -->
+<div class="gate" id="gate" hidden>
+  <div class="gate-backdrop" data-close></div>
+  <div class="gate-card" role="dialog" aria-modal="true" aria-labelledby="gate-title">
+    <button class="gate-x" data-close type="button" aria-label="Close">×</button>
+
+    <div class="step" data-step-id="choose">
+      <p class="eyebrow">Before you go in</p>
+      <h2 id="gate-title">Are you from Lyzr?</h2>
+      <p class="muted">Lyzr people sign in with Microsoft. Everyone else tells us who they are with a work email.</p>
+      <div class="choices">
+        <button class="choice" data-go="lyzr" type="button"><b>I work at Lyzr</b><span>Sign in with your Lyzr Microsoft account</span></button>
+        <button class="choice" data-go="external" type="button"><b>I am outside Lyzr</b><span>Continue with your work email</span></button>
+      </div>
+    </div>
+
+    <div class="step" data-step-id="lyzr" hidden>
+      <button class="back" data-go="choose" type="button">← Back</button>
+      <h2>Sign in with Microsoft</h2>
+      <p class="muted">Use your @lyzr.com or @lyzr.ai account. A Microsoft window opens and closes by itself.</p>
+      <button class="btn btn-primary btn-lg ms-btn" id="ms-signin" type="button"><svg viewBox="0 0 21 21" width="16" height="16" aria-hidden="true"><path fill="#f25022" d="M0 0h10v10H0z"/><path fill="#7fba00" d="M11 0h10v10H11z"/><path fill="#00a4ef" d="M0 11h10v10H0z"/><path fill="#ffb900" d="M11 11h10v10H11z"/></svg>Sign in with Microsoft</button>
+      <p class="err" id="ms-err" role="alert"></p>
+    </div>
+
+    <form class="step" data-step-id="external" id="ext-form" novalidate hidden>
+      <button class="back" data-go="choose" type="button">← Back</button>
+      <h2>Tell us who you are</h2>
+      <p class="muted">Work email only: personal providers like Gmail or Outlook.com are not accepted.</p>
+      <label>Full name<input name="name" autocomplete="name" required maxlength="120"></label>
+      <label>Work email<input name="email" type="email" autocomplete="email" required maxlength="254" placeholder="you@company.com"></label>
+      <div class="row2">
+        <label>Company<input name="company" autocomplete="organization" required maxlength="160"></label>
+        <label><span class="lbl">Role<span class="opt">optional</span></span><input name="title" autocomplete="organization-title" maxlength="120"></label>
+      </div>
+      <p class="err" id="ext-err" role="alert"></p>
+      <button class="btn btn-primary btn-lg" type="submit" id="ext-submit">Continue</button>
+      <p class="fine">We use these details to follow up about opencontroller. Nothing else.</p>
+    </form>
+
+    <form class="step" data-step-id="code" id="code-form" novalidate hidden>
+      <button class="back" data-go="external" type="button">← Back</button>
+      <h2>Check your inbox</h2>
+      <p class="muted">We sent a 6-digit code to <b id="code-to"></b>. It works for 10 minutes.</p>
+      <label>Code<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{6}" required class="code-in"></label>
+      <p class="err" id="code-err" role="alert"></p>
+      <button class="btn btn-primary btn-lg" type="submit">Verify and continue</button>
+      <button class="linkish" type="button" id="code-resend">Send a new code</button>
+    </form>
+
+    <div class="step" data-step-id="done" hidden>
+      <p class="eyebrow">You are in</p>
+      <h2 id="done-title">Opening the demo…</h2>
+      <p class="muted">Every screen has a short explainer card. Start on the Overview and follow the "Next" links.</p>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./shared/landing.mjs"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js" defer></script>
+<script src="https://unpkg.com/lenis@1.1.16/dist/lenis.min.js" defer></script>
+</body>
+</html>

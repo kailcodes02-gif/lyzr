@@ -7,3 +7,10 @@
   X-Frame-Options: ALLOWALL
   Content-Security-Policy: frame-ancestors *
   Cache-Control: no-store
+
+/opencontroller_demo/app/*
+  X-Robots-Tag: noindex
+
+/opencontroller_demo/admin/*
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store

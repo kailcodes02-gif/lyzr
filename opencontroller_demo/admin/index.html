@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo sign-ins · opencontroller</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231c1d20'/%3E%3Ctext x='16' y='21' font-family='monospace' font-size='12' font-weight='700' fill='%23ededed' text-anchor='middle'%3Eoc%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../app/app.css">
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@5/lib/msal-browser.min.js" defer></script>
+<style>
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 24px 80px; }
+  .top { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; flex-wrap: wrap; }
+  .gate { max-width: 420px; margin: 12vh auto; }
+  .gate .panel { padding: 26px; }
+  .gate input { width: 100%; font: inherit; color: var(--c-text); background: var(--c-panel2); border: 1px solid var(--c-line2); border-radius: 7px; padding: 9px 11px; margin-bottom: 10px; }
+  .or { text-align: center; color: var(--c-muted); font-size: 12.5px; margin: 14px 0; }
+  .err { color: var(--c-red); font-size: 13px; min-height: 1em; margin: 6px 0 0; }
+  .ms { width: 100%; justify-content: center; }
+  .screens .bl-row { grid-template-columns: minmax(140px, 1fr) 2fr auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a class="brand" href="../"><span class="mark">oc</span><span>opencontroller demo</span></a><span class="pill pill-grey">Sign-ins</span><span class="grow"></span><span id="who" class="muted small"></span><button class="btn btn-sm" id="out" hidden>Sign out</button></div>
+
+  <section class="gate" id="gate">
+    <div class="panel">
+      <h2>Who has seen the demo</h2>
+      <p class="muted">For Campaign Analytics editors. Sign in the same way you sign in there.</p>
+      <button class="btn btn-primary ms" id="ms" type="button">Sign in with Microsoft</button>
+      <p class="or">or with the email and password you use for Campaign Analytics</p>
+      <form id="pw"><input name="email" type="email" placeholder="Email" autocomplete="username" required><input name="password" type="password" placeholder="Password" autocomplete="current-password" required><button class="btn ms" type="submit">Sign in</button></form>
+      <p class="err" id="err" role="alert"></p>
+    </div>
+  </section>
+
+  <section id="data" hidden>
+    <div class="stats cols-4" id="kpis"></div>
+    <div class="toolbar">
+      <label class="search"><svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input id="q" type="search" placeholder="Search name, email or company" aria-label="Search"></label>
+      <span class="sel"><select id="aud" aria-label="Audience"><option value="">Everyone</option><option value="external">Outside Lyzr</option><option value="lyzr">Lyzr</option></select></span>
+      <span class="grow"></span><button class="btn" id="csv" type="button">Download CSV</button><button class="btn" id="reload" type="button">Refresh</button>
+    </div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Person</th><th>Company</th><th>Audience</th><th>Signed in by</th><th class="r">Visits</th><th class="r">Screens</th><th>Top screens</th><th>First seen</th><th>Last seen</th></tr></thead><tbody id="rows"></tbody></table></div>
+    <div class="grid-2">
+      <section class="panel"><div class="panel-head"><div><h2>Most opened screens</h2><p class="desc">From the latest 1,000 events.</p></div></div><div class="barlist screens" id="screens"></div></section>
+      <section class="panel"><div class="panel-head"><div><h2>Latest activity</h2></div></div><div class="rows" id="recent"></div></section>
+    </div>
+  </section>
+</div>
+<script type="module" src="./admin.mjs"></script>
+</body>
+</html>
