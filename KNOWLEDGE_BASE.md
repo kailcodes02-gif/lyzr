@@ -458,6 +458,17 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-11-01 (later), opencontroller demo: landing page moved to Lyzr brand v2 ("the sailing system")
+- `opencontroller_demo/index.html` + `shared/landing.css` rebuilt on the v2 tokens (`shared/brand/brand.css`):
+  Off-white canvas, Black text, Aeonik Regular (Inter fallback until the licensed Aeonik is self-hosted),
+  JetBrains Mono uppercase labels (self-hosted), hairline Grey 200 edges, 4px buttons, 6px cards, no shadows,
+  one orange button per view. Copy unchanged.
+- Imagery from the brand kit only: Sail 02 "opening" behind the hero headline (white field), Wave 01 behind the
+  closing band (type in the sky), blue glass icons on the navy "How it works" panel, the real Lyzr lockup
+  (black-orange on off-white, orange-white on the black footer). The HTML product mock was replaced by a real
+  screenshot of the prototype on a white hairline card. GSAP/Lenis removed.
+- `lint_web.py` (brand-v2 skill): 0 errors. e2e: 109/109. Needs design-team approval before wider sharing.
+
 ### 2026-11-01, opencontroller demo: landing, access gate and interactive prototype at /opencontroller_demo/
 - New `opencontroller_demo/` (static ES modules, no build): landing page in the Lyzr dark brand
   (`index.html`, `shared/landing.*`) with Explore the demo / Book a demo (`https://www.lyzr.ai/book-demo/`),

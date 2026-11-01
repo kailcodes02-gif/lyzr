@@ -1,5 +1,5 @@
 // Landing page: the access gate (Lyzr people with Microsoft, everyone else with a work email),
-// then the demo at ./app/. Also the Microsoft popup bridge, and the page's scroll motion.
+// then the demo at ./app/. Also the Microsoft popup bridge.
 import { isBridging, signIn, takeRedirectToken } from './msauth.mjs';
 import { getSession, setSession, track, BOOK_DEMO_URL } from './session.mjs';
 
@@ -30,7 +30,6 @@ function init() {
     const token = await takeRedirectToken().catch(() => null);
     if (token) { openGate(); show('lyzr'); finishMicrosoft(token); }
   });
-  addEventListener('load', motion);
 }
 
 function explore() {
@@ -162,28 +161,4 @@ async function verifyCode(e) {
     const r = await post('/api/ocdemo/verify', { ...pending.fields, ...context(), challenge: pending.challenge, code });
     enter(r.lead);
   } catch (ex) { err.textContent = ex.message; }
-}
-
-// ---- motion (GSAP + Lenis, loaded after this module; the page works without them) ----
-function motion() {
-  if (!window.gsap || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const { gsap } = window;
-  if (window.ScrollTrigger) gsap.registerPlugin(window.ScrollTrigger);
-  if (window.Lenis) {
-    const lenis = new window.Lenis({ lerp: 0.1 });
-    const raf = (t) => { lenis.raf(t); requestAnimationFrame(raf); };
-    requestAnimationFrame(raf);
-    if (window.ScrollTrigger) lenis.on('scroll', window.ScrollTrigger.update);
-    document.querySelectorAll('a[href^="#"]').forEach((a) => a.addEventListener('click', (ev) => {
-      const t = document.querySelector(a.getAttribute('href'));
-      if (t) { ev.preventDefault(); lenis.scrollTo(t, { offset: -88 }); }
-    }));
-  }
-  if (!window.ScrollTrigger) return;
-  document.querySelectorAll('[data-reveal]').forEach((el) => gsap.from(el, { y: 40, opacity: 0, duration: 0.8, ease: 'power2.out', scrollTrigger: { trigger: el, start: 'top 85%' } }));
-  for (const sel of ['.cards', '.hub']) {
-    const box = document.querySelector(sel);
-    if (box) gsap.from(box.querySelectorAll('.card, [data-step]'), { y: 40, opacity: 0, duration: 0.8, ease: 'power2.out', stagger: 0.1, scrollTrigger: { trigger: box, start: 'top 80%' } });
-  }
-  document.querySelectorAll('[data-count]').forEach((el) => gsap.from(el, { innerText: 0, duration: 1.6, snap: { innerText: 1 }, ease: 'power1.out', scrollTrigger: { trigger: el, start: 'top 85%' } }));
 }
