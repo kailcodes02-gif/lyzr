@@ -85,15 +85,14 @@ img { display: block; max-width: 100%; }
 .body-copy p + p { margin-top: 20px; }
 .sect h2 { max-width: 16em; }
 
-/* How it works: a navy panel, off-white type, blue glass icons */
-.navy { background: var(--navy); color: var(--off-white); }
-.navy .eyebrow { color: var(--orange); }
+/* How it works: off-white, blue glass icons (blue glass is permitted on off-white) */
+.how { border-top: 1px solid var(--line); }
 .steps { list-style: none; margin: 56px 0 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: 40px 24px; }
-.steps li { display: flex; flex-direction: column; gap: 10px; }
+.steps li { display: flex; flex-direction: column; gap: 10px; padding-top: 24px; border-top: 1px solid var(--line); }
 .steps img { width: 96px; height: 96px; margin-bottom: 8px; }
 .steps .label { color: var(--orange); }
 .steps h3 { font-size: 24px; line-height: 26px; }
-.steps p { font-size: 16px; line-height: 1.55; color: var(--off-white); }
+.steps p { font-size: 16px; line-height: 1.55; color: var(--text-soft); }
 @media (min-width: 700px) { .steps { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1100px) { .steps { grid-template-columns: repeat(4, 1fr); } }
 
@@ -135,20 +134,19 @@ img { display: block; max-width: 100%; }
 .faq details[open] summary::after { transform: rotate(45deg); }
 .faq p { margin-top: 12px; color: var(--text-soft); font-size: 16px; line-height: 1.55; }
 
-/* footer: black ground, orange and off-white lockup */
-.foot { background: var(--black); color: var(--off-white); padding: 56px 0; }
+/* footer: off-white, black and orange lockup */
+.foot { background: var(--bg); color: var(--text); padding: 56px 0; border-top: 1px solid var(--line); }
 .foot-in { display: flex; align-items: center; gap: 32px; flex-wrap: wrap; }
-.foot .product { border-left-color: var(--grey-800); }
 .foot-links { display: flex; gap: 28px; flex-wrap: wrap; }
 @media (min-width: 900px) { .foot-links { margin-left: auto; } }
-.foot-links a, .foot-links button { font: 12px/1.4 var(--font-mono); text-transform: uppercase; letter-spacing: .06em; color: var(--off-white); text-decoration: none; background: none; border: 0; cursor: pointer; padding: 0; }
+.foot-links a, .foot-links button { font: 12px/1.4 var(--font-mono); text-transform: uppercase; letter-spacing: .06em; color: var(--text-soft); text-decoration: none; background: none; border: 0; cursor: pointer; padding: 0; }
 .foot-links a:hover, .foot-links button:hover { color: var(--orange); }
-.copy { width: 100%; color: var(--stone); }
+.copy { width: 100%; color: var(--text-muted); }
 
 /* access gate: a white card with a hairline edge */
 .gate { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; }
 .gate[hidden] { display: none; }
-.gate-backdrop { position: absolute; inset: 0; background: rgba(31,32,34,.6); }
+.gate-backdrop { position: absolute; inset: 0; background: var(--bg); }  /* solid off-white: no tints */
 .gate-card { position: relative; width: min(520px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 36px 32px; border-radius: var(--radius-card); background: var(--surface); border: 1px solid var(--line); }
 .gate-card h2 { font-size: 36px; line-height: 38px; letter-spacing: -0.02em; margin-bottom: 10px; }
 .gate-x { position: absolute; top: 12px; right: 14px; width: 32px; height: 32px; background: none; border: 0; color: var(--text-muted); font-size: 24px; cursor: pointer; border-radius: var(--radius-button); }

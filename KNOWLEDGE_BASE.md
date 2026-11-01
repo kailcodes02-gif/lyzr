@@ -458,6 +458,11 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-11-01 (latest), opencontroller demo: landing page light only
+- Navy "How it works" panel and black footer replaced with off-white (hairline rules; blue glass icons are
+  permitted on off-white); footer lockup is now black-orange; the gate's scrim is solid off-white (no tints);
+  product screenshot retaken in the demo's light theme. Landing CSS uses brand tokens only (no raw colours).
+
 ### 2026-11-01 (later), opencontroller demo: landing page moved to Lyzr brand v2 ("the sailing system")
 - `opencontroller_demo/index.html` + `shared/landing.css` rebuilt on the v2 tokens (`shared/brand/brand.css`):
   Off-white canvas, Black text, Aeonik Regular (Inter fallback until the licensed Aeonik is self-hosted),
