@@ -458,7 +458,20 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
-### 2026-11-01 (latest), opencontroller demo: landing page light only
+### 2026-11-03, opencontroller demo: Microsoft sign-in works inside the lyzr.ai iframe
+- Problem: the demo is embedded on `https://www.lyzr.ai/opencontroller-demo/` (iframe of `/opencontroller_demo/app/`).
+  After Microsoft sign-in the popup closed but the page never continued. Cause: MSAL v5's redirect bridge
+  hands the response back only over a BroadcastChannel, and a cross-site iframe's channels are partitioned
+  (top-level popup and framed page never hear each other).
+- Fix (`opencontroller_demo/shared/msauth.mjs`): the popup also `postMessage`s the response to its opener,
+  and a framed page replays it on the BroadcastChannel MSAL is listening to. When framed and the popup is
+  blocked it asks to allow pop-ups instead of a full-page redirect (Microsoft refuses to load in a frame).
+- Entra needs no change: the redirect URI stays `https://lyzr.kailash-gm.com/opencontroller_demo/` (the
+  lyzr.ai URL there is unused). Relies on login.microsoftonline.com keeping COOP report-only.
+- Tests: framed test in real Chrome with partitioning on (Playwright turns it off by default): MSAL-only
+  path receives nothing, relay delivers. e2e 109/109.
+
+### 2026-11-01, opencontroller demo: landing page light only
 - Navy "How it works" panel and black footer replaced with off-white (hairline rules; blue glass icons are
   permitted on off-white); footer lockup is now black-orange; the gate's scrim is solid off-white (no tints);
   product screenshot retaken in the demo's light theme. Landing CSS uses brand tokens only (no raw colours).

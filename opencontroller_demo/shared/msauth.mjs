@@ -27,6 +27,7 @@ export function isBridging() {
     return false;
   }
   document.body.innerHTML = '<p style="font-family:system-ui;padding:24px;color:#C4B8AE;background:#160F0B">Completing sign-in… this window closes by itself.</p>';
+  relayToOpener();
   if (window.msalRedirectBridge) {
     window.msalRedirectBridge.broadcastResponseToMainFrame().catch(() => {
       document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Sign-in could not be passed back. Close this window and try again.</p>';
@@ -34,6 +35,33 @@ export function isBridging() {
   }
   return true;
 }
+
+// MSAL's bridge hands the response back on a BroadcastChannel. When the demo is embedded (the iframe
+// on www.lyzr.ai/opencontroller-demo/), the iframe's channels are partitioned under lyzr.ai and the
+// top-level popup's message never reaches it. So the popup also posts the response to its opener,
+// and the framed page replays it on the channel MSAL is listening to.
+function relayToOpener() {
+  try {
+    if (!window.opener) return;
+    const q = location.search.replace(/^\?/, ''), h = location.hash.replace(/^#/, '');
+    const hasQ = /(^|&)state=/.test(q), hasH = /(^|&)state=/.test(h);
+    const payload = hasQ && hasH ? q + h : hasH ? h : q;
+    const raw = decodeURIComponent(/(?:^|&)state=([^&]+)/.exec(payload)[1]).split('|')[0];
+    const { id } = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(raw.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))));
+    if (id) window.opener.postMessage({ ocMsal: 1, id, payload }, location.origin);
+  } catch { /* opener gone or cross-origin: the BroadcastChannel path still runs */ }
+}
+
+if (typeof window !== 'undefined' && window.top !== window) {
+  addEventListener('message', (e) => {
+    if (e.origin !== location.origin || !e.data || e.data.ocMsal !== 1 || typeof e.data.id !== 'string') return;
+    const ch = new BroadcastChannel(e.data.id);
+    ch.postMessage({ v: 1, payload: e.data.payload });
+    ch.close();
+  });
+}
+
+export const isFramed = () => { try { return window.top !== window; } catch { return true; } };
 
 let appPromise = null;
 let redirectResult = null;
@@ -77,6 +105,8 @@ export async function signIn() {
   let res;
   try { res = await app.loginPopup({ scopes: SCOPES, prompt: 'select_account' }); }
   catch (e) {
+    // Microsoft's page refuses to load inside a frame, so an embedded page cannot fall back to a redirect.
+    if (e && POPUP_BLOCKED.has(e.errorCode) && isFramed()) throw new Error('Your browser blocked the Microsoft sign-in window. Allow pop-ups for this page and try again.');
     if (e && POPUP_BLOCKED.has(e.errorCode)) { await app.loginRedirect({ scopes: SCOPES, prompt: 'select_account' }); return new Promise(() => {}); }
     if (e && e.errorCode === 'user_cancelled') throw new Error('Sign-in was closed before it finished.');
     throw new Error((e && (e.errorMessage || e.message)) ? String(e.errorMessage || e.message).split('\n')[0].slice(0, 220) : 'Microsoft sign-in failed.');
