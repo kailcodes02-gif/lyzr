@@ -458,6 +458,17 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
+### 2026-11-03 (later), opencontroller demo: embedded Microsoft sign-in runs in its own window
+- User still saw the gate sit on the Microsoft step after signing in inside the lyzr.ai iframe (now framing
+  `/opencontroller_demo/`). The folder layout was not the cause. Replaced the opener relay with a sturdier flow: when framed,
+  "Sign in with Microsoft" opens `/opencontroller_demo/?ms=window` in a window of its own (first-party, so
+  nothing is partitioned). That window signs in full-page (MSAL `loginRedirect`), calls `/api/ocdemo/microsoft`,
+  posts the lead to the iframe and closes; the iframe opens the dashboard. If the window has lost its opener
+  it continues into the demo itself; cancel closes it and the iframe says so. Not framed: popup flow as before.
+- Same Entra redirect URI. Files: `opencontroller_demo/shared/{landing,msauth}.mjs`.
+- Tests (real MSAL, real Chrome with partitioning on; Microsoft login/token and our API faked): live lyzr.ai embed
+  and a cross-site test embed reach the dashboard; cancel and lost-opener cases; direct (not framed). e2e 109/109.
+
 ### 2026-11-03, opencontroller demo: Microsoft sign-in works inside the lyzr.ai iframe
 - Problem: the demo is embedded on `https://www.lyzr.ai/opencontroller-demo/` (iframe of `/opencontroller_demo/app/`).
   After Microsoft sign-in the popup closed but the page never continued. Cause: MSAL v5's redirect bridge

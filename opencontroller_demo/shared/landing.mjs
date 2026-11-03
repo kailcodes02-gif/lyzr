@@ -1,9 +1,13 @@
 // Landing page: the access gate (Lyzr people with Microsoft, everyone else with a work email),
 // then the demo at ./app/. Also the Microsoft popup bridge.
-import { isBridging, signIn, takeRedirectToken } from './msauth.mjs';
+import { isBridging, isFramed, signIn, signInRedirect, takeRedirectToken } from './msauth.mjs';
 import { getSession, setSession, track, BOOK_DEMO_URL } from './session.mjs';
 
 const APP = './app/';
+// Embedded (the iframe on www.lyzr.ai/opencontroller-demo/), Microsoft sign-in runs in a window of its own:
+// this page opened at ?ms=window signs in full-page there, then hands the lead to the iframe and closes.
+// Browsers partition a cross-site iframe's storage, so MSAL's own popup cannot report back to it.
+const MS_WINDOW = 'ocdemo.mswindow';
 const PERSONAL = /@(gmail|googlemail|yahoo|ymail|hotmail|outlook|live|msn|icloud|me|mac|aol|proton|protonmail|pm|gmx|zoho|zohomail|yandex|mail|rediffmail|qq|163|126|tutanota|fastmail|hey)\.[a-z.]+$/i;
 
 if (!isBridging()) init();
@@ -24,11 +28,13 @@ function init() {
   document.getElementById('code-resend').addEventListener('click', () => external(null, true));
 
   const params = new URLSearchParams(location.search);
+  if (params.get('ms') === 'window') { startMsWindow(); return; }
   if (params.has('gate')) { history.replaceState(null, '', location.pathname + location.hash); openGate(); }
   // A full-page Microsoft sign-in (the fallback when the popup was blocked) comes back here.
   addEventListener('load', async () => {
     const token = await takeRedirectToken().catch(() => null);
     if (token) { openGate(); show('lyzr'); finishMicrosoft(token); }
+    else if (inMsWindow()) failMsWindow('Sign-in was closed before it finished.');
   });
 }
 
@@ -77,6 +83,7 @@ async function post(path, body, headers = {}) {
 
 function enter(lead) {
   setSession(lead);
+  if (inMsWindow() && handBack({ lead })) return;
   show('done');
   document.getElementById('done-title').textContent = `Welcome, ${String(lead.name || '').split(' ')[0] || 'there'}. Opening the demo…`;
   setTimeout(() => { location.href = APP; }, 900);
@@ -87,6 +94,7 @@ async function microsoft() {
   const btn = document.getElementById('ms-signin');
   const err = document.getElementById('ms-err');
   err.textContent = '';
+  if (isFramed()) { microsoftInWindow(btn, err); return; }
   btn.disabled = true;
   try { await finishMicrosoft(await signIn()); }
   catch (e) { err.textContent = e.message || 'Microsoft sign-in failed.'; }
@@ -98,7 +106,63 @@ async function finishMicrosoft(token) {
   try {
     const r = await post('/api/ocdemo/microsoft', context(), { Authorization: 'Bearer ' + token });
     enter(r.lead);
-  } catch (e) { err.textContent = e.message; }
+  } catch (e) {
+    if (inMsWindow()) failMsWindow(e.message);
+    else err.textContent = e.message;
+  }
+}
+
+// In the iframe: open the sign-in window and wait for it to send the lead back.
+let msWin = null;
+function microsoftInWindow(btn, err) {
+  const w = 520, h = 640;
+  msWin = window.open(location.origin + location.pathname + '?ms=window', 'ocdemo-ms',
+    `popup,width=${w},height=${h},left=${Math.max(0, (screen.width - w) / 2)},top=${Math.max(0, (screen.height - h) / 2)}`);
+  if (!msWin) { err.textContent = 'Your browser blocked the sign-in window. Allow pop-ups for this page and try again.'; return; }
+  btn.disabled = true;
+  err.textContent = 'Finish signing in in the Microsoft window. If the demo opens there instead, carry on in that window.';
+  const watch = setInterval(() => {
+    if (!msWin || !msWin.closed) return;
+    clearInterval(watch);
+    // the window posts before it closes; give that message a moment to land
+    setTimeout(() => { if (msWin) { msWin = null; btn.disabled = false; err.textContent = 'The sign-in window closed before it finished.'; } }, 1500);
+  }, 500);
+}
+
+addEventListener('message', (e) => {
+  if (e.origin !== location.origin || !msWin || e.source !== msWin || !e.data || e.data.ocdemoMs !== 1) return;
+  msWin = null;
+  document.getElementById('ms-signin').disabled = false;
+  if (e.data.lead && e.data.lead.email) enter(e.data.lead);
+  else document.getElementById('ms-err').textContent = e.data.error || 'Microsoft sign-in failed.';
+});
+
+// In the sign-in window.
+function inMsWindow() { try { return sessionStorage.getItem(MS_WINDOW) === '1'; } catch { return false; } }
+
+async function startMsWindow() {
+  try { sessionStorage.setItem(MS_WINDOW, '1'); } catch { /* storage blocked: falls back to a normal sign-in here */ }
+  history.replaceState(null, '', location.pathname);
+  openGate(); show('done');
+  document.getElementById('done-title').textContent = 'Opening Microsoft sign-in…';
+  try { await signInRedirect(); }
+  catch (e) { failMsWindow(e.message || 'Microsoft sign-in failed.'); }
+}
+
+// -> true when the iframe got it and this window is closing; false means carry on here.
+function handBack(msg) {
+  try { sessionStorage.removeItem(MS_WINDOW); } catch { /* ignore */ }
+  if (!window.opener || window.opener.closed) return false;
+  try { window.opener.postMessage({ ocdemoMs: 1, ...msg }, location.origin); } catch { return false; }
+  document.getElementById('done-title').textContent = 'Signed in. You can close this window.';
+  setTimeout(() => window.close(), 300);
+  return true;
+}
+
+function failMsWindow(message) {
+  if (handBack({ error: message })) return;
+  show('lyzr');
+  document.getElementById('ms-err').textContent = message;
 }
 
 // ---- outside Lyzr: work email ----
