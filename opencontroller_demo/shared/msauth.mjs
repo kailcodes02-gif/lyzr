@@ -40,6 +40,14 @@ export function isBridging() {
       document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Sign-in could not be passed back. Close this window and try again.</p>';
     });
   }
+  // Framed in the lyzr.ai page, the bridge's window.close() only reaches this frame. The demo closes the
+  // window once it has the response; if it has stopped waiting, close it from here and say what to do.
+  if (isFramed()) {
+    setTimeout(() => {
+      try { window.top.close(); } catch { /* not closable */ }
+      document.body.firstElementChild.textContent = 'Signed in with Microsoft. Close this window and go back to the opencontroller demo; if it is still on the sign-in step, click "Sign in with Microsoft" once more.';
+    }, 4000);
+  }
   return true;
 }
 
@@ -72,6 +80,8 @@ function getMsal() {
           ...(embed ? { OIDCOptions: { responseMode: 'query', defaultScopes: ['openid', 'profile', 'offline_access'] } } : {}),
         },
         cache: { cacheLocation: 'localStorage' },
+        // MSAL stops listening for the popup after 60 s by default, shorter than a real sign-in with MFA
+        system: { popupBridgeTimeout: 15 * 60 * 1000 },
       });
       await app.initialize();
       // the bridge's own window.close() only reaches its frame when the window is the lyzr.ai page
@@ -112,6 +122,7 @@ export async function signIn() {
     if (e && POPUP_BLOCKED.has(e.errorCode) && isFramed()) throw new Error('Your browser blocked the sign-in window. Allow pop-ups for this page and try again.');
     if (e && POPUP_BLOCKED.has(e.errorCode)) { await app.loginRedirect({ scopes: SCOPES, prompt: 'select_account' }); return new Promise(() => {}); }
     if (e && e.errorCode === 'user_cancelled') throw new Error('Sign-in was closed before it finished.');
+    if (e && /timeout|timed_out/i.test(e.errorCode || '')) throw new Error('Sign-in took too long to come back. Try again.');
     throw new Error((e && (e.errorMessage || e.message)) ? String(e.errorMessage || e.message).split('\n')[0].slice(0, 220) : 'Microsoft sign-in failed.');
   }
   finally { try { if (popupWindow && !popupWindow.closed) popupWindow.close(); } catch { /* ignore */ } popupWindow = null; }

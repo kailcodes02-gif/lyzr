@@ -458,7 +458,17 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
-### 2026-11-03 (latest), opencontroller demo: sign-in window never shows lyzr.kailash-gm.com
+### 2026-11-03 (final), opencontroller demo: real Microsoft sign-ins no longer time out
+- User's real test: the sign-in window sat on "Completing sign-in…" at www.lyzr.ai/opencontroller-demo/?code=…
+  Cause: MSAL v5 stops listening for the popup after 60 s (`system.popupBridgeTimeout`); a real sign-in
+  (account picker, MFA) took longer, so the response arrived after the demo had given up. Mocked tests were instant.
+- Fix (`opencontroller_demo/shared/msauth.mjs`): popupBridgeTimeout 15 min; a timeout now reads "Sign-in took too
+  long to come back. Try again."; the framed bridge tries to close the window after 4 s, and otherwise says to close
+  it and click "Sign in with Microsoft" once more (Chrome will not let a cross-site frame close its top window).
+- Tests: 70 s sign-in on the real lyzr.ai page: live code stuck with `timed_out` (the bug reproduced), fixed code
+  reached the dashboard; orphaned window shows the message. e2e 109/109.
+
+### 2026-11-03 (later), opencontroller demo: sign-in window never shows lyzr.kailash-gm.com
 - User: the sign-in window showed `lyzr.kailash-gm.com/opencontroller_demo/`, which reads as a trust/fraud problem
   for external visitors. `www.lyzr.ai/opencontroller-demo/` is a WordPress BetterLinks cloaked link that frames
   the landing page and forwards its query string into the frame (verified with a realistic code/state).
