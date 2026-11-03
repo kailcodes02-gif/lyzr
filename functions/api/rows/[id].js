@@ -2,15 +2,18 @@
 // Cloudflare Pages Function: PUT /api/rows/[id] + DELETE /api/rows/[id]
 // =============================================================================
 // Edits an existing row in data.json by:
-//  1. Verifying @lyzr.ai Google OAuth token
+//  1. Verifying the caller is a Lyzr account (Google @lyzr.ai or Microsoft @lyzr.com, see _lib/lyzr-auth.js)
 //  2. Fetching data.json from GitHub
 //  3. Patching the row + recording edit history (last 3 edits)
 //  4. Recomputing aggregates
 //  5. Committing updated data.json back to GitHub
 // =============================================================================
 
+import { verifyLyzrToken, sameLyzrPerson } from '../_lib/lyzr-auth.js';
+
 const ALLOWED_SEGMENTS = ['Internal', 'Accenture', 'GSI-SI', 'Enterprises'];
-// Only these accounts may DELETE rows. Add/edit stays open to all @lyzr.ai.
+// Only these people may DELETE rows (matched on either their @lyzr.ai or @lyzr.com address).
+// Add/edit stays open to every Lyzr account.
 const DELETE_ALLOWED_EMAILS = ['kailash.gm@lyzr.ai', 'monisha.anandaraj@lyzr.ai'];
 // Sentinel returned by a mutate() callback to tell commitWithRetry to skip the
 // commit entirely (e.g. the target row was not found).
@@ -99,26 +102,6 @@ function recomputeAggregates(data) {
   return data;
 }
 
-async function verifyGoogleToken(accessToken) {
-  try {
-    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!res.ok) return null;
-    const payload = await res.json();
-    const email = payload.email || '';
-    const emailVerified = payload.email_verified === true || payload.email_verified === 'true';
-    const isLyzrOrDev = emailVerified && (
-      email.endsWith('@lyzr.ai') ||
-      payload.hd === 'lyzr.ai' ||
-      email === 'kailcodes02@gmail.com'
-    );
-    if (isLyzrOrDev) return payload;
-    return null;
-  } catch {
-    return null;
-  }
-}
 
 async function fetchDataFromGitHub(env) {
   const url = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/${env.GITHUB_PATH}`;
@@ -258,9 +241,9 @@ export async function onRequestPut(context) {
     return json({ error: 'Missing Authorization header' }, 401);
   }
   const token = authHeader.slice(7);
-  const user = await verifyGoogleToken(token);
+  const user = await verifyLyzrToken(token);
   if (!user) {
-    return json({ error: 'Invalid token or not a @lyzr.ai account' }, 403);
+    return json({ error: 'Invalid token or not a Lyzr account' }, 403);
   }
 
   // Parse body
@@ -314,11 +297,11 @@ export async function onRequestDelete(context) {
     return json({ error: 'Missing Authorization header' }, 401);
   }
   const token = authHeader.slice(7);
-  const user = await verifyGoogleToken(token);
+  const user = await verifyLyzrToken(token);
   if (!user) {
-    return json({ error: 'Invalid token or not a @lyzr.ai account' }, 403);
+    return json({ error: 'Invalid token or not a Lyzr account' }, 403);
   }
-  if (!DELETE_ALLOWED_EMAILS.includes((user.email || '').toLowerCase())) {
+  if (!DELETE_ALLOWED_EMAILS.some((e) => sameLyzrPerson(e, user.email))) {
     return json({ error: 'Your account is not authorized to delete prototypes' }, 403);
   }
 

@@ -11,8 +11,9 @@
   <link rel="stylesheet" href="styles.css" />
   <link rel="icon" type="image/png" href="logo.png" />
   <link rel="apple-touch-icon" href="logo.png" />
-  <!-- Google Identity Services (for @lyzr.ai OAuth) -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- Microsoft sign-in (MSAL.js v5, popup) + the bridge the popup uses to hand the result back -->
+  <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@5/lib/msal-browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@5/lib/redirect-bridge/msal-redirect-bridge.min.js"></script>
 </head>
 <body>
   <!-- Background layers -->
@@ -141,18 +142,17 @@
         </div>
       </div>
       <h1 class="auth-title">Sign in to view <em>the prototypes</em>.</h1>
-      <p class="auth-desc">Restricted to Lyzr employees. Use your <span>@lyzr.ai</span> Google account.</p>
-      <button class="btn-google" id="btn-google-login">
-        <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-          <g fill="none" fill-rule="evenodd">
-            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
-            <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
-            <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-            <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-          </g>
+      <p class="auth-desc">Restricted to Lyzr employees. Use your <span>@lyzr.com</span> Microsoft account.</p>
+      <button class="btn-ms" id="btn-ms-login" type="button">
+        <svg width="18" height="18" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
+          <rect x="11" y="1" width="9" height="9" fill="#7FBA00"/>
+          <rect x="1" y="11" width="9" height="9" fill="#00A4EF"/>
+          <rect x="11" y="11" width="9" height="9" fill="#FFB900"/>
         </svg>
-        <span>Continue with Google</span>
+        <span>Sign in with Microsoft</span>
       </button>
+      <p class="auth-error" id="auth-error" role="alert"></p>
     </div>
   </div>
 
@@ -296,7 +296,66 @@
     // ============================================================
     // Authentication State & Config
     // ============================================================
-    const LYZR_OAUTH_CLIENT_ID = '393767244875-e2n5j0jr90g0a8asp4ti9akmlern6enb.apps.googleusercontent.com';
+    // Microsoft sign-in: the "Lyzr MS UI" Entra app (single tenant, Lyzr only), the same app as
+    // GSIEvents, Campaign Analytics, MS UI and the opencontroller demo. One SPA redirect URI on it:
+    //   https://lyzr.kailash-gm.com/demo_pipeline/
+    //
+    // Opened directly: MSAL popup, the popup lands back on this page and relays the result.
+    // Framed (the team uses it inside https://www.lyzr.ai/prototype/): browsers keep a framed site's
+    // storage and BroadcastChannel apart from the same site opened on its own, so MSAL's popup
+    // could never report back to the iframe. Instead the button opens this page at ?ms=window in a
+    // window of its own (first-party, nothing partitioned). That window signs in full-page, sends
+    // the token to the iframe with postMessage and closes. If it lost its link to the iframe, the
+    // dashboard simply opens in that window.
+    const MS_CLIENT_ID = 'cd569c2f-9121-4a99-8ba0-691c6df81cbd';
+    const MS_TENANT_ID = '4b1018eb-9480-4542-89d0-4e6233aba226';
+    const MS_SCOPES = ['User.Read'];
+    const MS_REDIRECT_PATH = '/demo_pipeline/';
+    // @lyzr.com is the Lyzr tenant's sign-in domain; @lyzr.ai kept for accounts whose mail is set there
+    const LYZR_DOMAINS = ['lyzr.com', 'lyzr.ai'];
+    const DEV_EMAILS = ['kailcodes02@gmail.com'];
+    const SESSION_KEY = 'proto.ms.session';   // { token, user, exp } in localStorage
+    const MS_WINDOW_KEY = 'proto.mswindow';   // sessionStorage flag: this tab is the sign-in window
+
+    function isFramed() { try { return window.top !== window; } catch (e) { return true; } }
+    function inMsWindow() { try { return sessionStorage.getItem(MS_WINDOW_KEY) === '1'; } catch (e) { return false; } }
+
+    function stateMeta(url) {
+      const m = /[#?&]state=([^&]+)/.exec(url); if (!m) return null;
+      try {
+        const raw = decodeURIComponent(m[1]).split('|')[0];
+        return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(raw.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)))).meta || null;
+      } catch (e) { return null; }
+    }
+
+    // MSAL v5: the sign-in popup lands back on this page with the response in the URL and has to
+    // broadcast it to the page that opened it. Then show a short note and do not start the dashboard.
+    // A full-page sign-in coming back (the ?ms=window flow) is handled by MSAL itself, not here.
+    let msalBridging = false;
+    (function () {
+      const url = location.hash + location.search;
+      const hasResponse = /[#?&](code|error)=/.test(url) && /[#?&]state=/.test(url);
+      const meta = hasResponse ? stateMeta(url) : null;
+      const isRedirectReturn = inMsWindow() || (meta && meta.interactionType === 'redirect');
+      if (hasResponse && !isRedirectReturn && (!!window.opener || isFramed())) {
+        msalBridging = true;
+        document.body.innerHTML = '<p style="font-family:system-ui;margin:0;padding:24px">Completing sign-in… this window closes by itself.</p>';
+        if (!window.msalRedirectBridge) {
+          document.body.innerHTML = '<p style="font-family:system-ui;margin:0;padding:24px">Sign-in relay failed to load. Close this window and try again.</p>';
+          return;
+        }
+        window.msalRedirectBridge.broadcastResponseToMainFrame().catch((e) => {
+          document.body.innerHTML = '<p style="font-family:system-ui;margin:0;padding:24px">Sign-in could not be passed back (' + String((e && (e.errorCode || e.message)) || e) + '). Close this window and try again.</p>';
+        });
+      } else if (hasResponse && !isRedirectReturn) {
+        // a stale response in a normal tab (e.g. a sign-in window left open): drop it
+        history.replaceState(null, '', location.pathname);
+      }
+      if (!msalBridging && typeof window.name === 'string' && window.name.startsWith('msal.')) {
+        try { window.name = ''; } catch (e) { /* ignore */ }
+      }
+    })();
+
     let authed = false;
     let accessToken = null;
     let user = null;
@@ -711,7 +770,7 @@
     // ============================================================
     const searchInput = document.getElementById('global-search');
     let searchDebounce;
-    searchInput.addEventListener('input', () => {
+    if (searchInput) searchInput.addEventListener('input', () => {
       clearTimeout(searchDebounce);
       searchDebounce = setTimeout(() => { searchQuery = searchInput.value; render(); }, 220);
     });
@@ -737,16 +796,16 @@
     // allowlist, so hiding it here is convenience, not security.
     const DELETE_ALLOWED_EMAILS = ['kailash.gm@lyzr.ai', 'monisha.anandaraj@lyzr.ai'];
     function canDelete() {
-      return !!(user && user.email && DELETE_ALLOWED_EMAILS.includes(user.email.toLowerCase()));
+      return !!(user && user.email && DELETE_ALLOWED_EMAILS.some(e => sameLyzrPerson(e, user.email)));
     }
     let confirmYesCallback = null;
     let confirmNoCallback = null;
 
     function initAuth() {
-      // Bind Google Sign-In button
-      const loginBtn = document.getElementById('btn-google-login');
+      // Bind Microsoft Sign-In button
+      const loginBtn = document.getElementById('btn-ms-login');
       if (loginBtn) {
-        loginBtn.addEventListener('click', googleSignIn);
+        loginBtn.addEventListener('click', msSignIn);
       }
 
       // Bind Sign-Out button
@@ -812,25 +871,24 @@
         successOkBtn.addEventListener('click', hideSuccess);
       }
 
-      // Restore auth from sessionStorage if present
-      const storedUser = sessionStorage.getItem('proto.user');
-      const storedToken = sessionStorage.getItem('proto.token');
+      // The sign-in window (opened by the framed dashboard): sign in here, hand the token back.
+      if (new URLSearchParams(location.search).get('ms') === 'window') { startMsWindow(); return; }
+      if (inMsWindow()) { finishMsWindow(); return; }
 
-      if (storedUser && storedToken) {
-        try {
-          user = JSON.parse(storedUser);
-          accessToken = storedToken;
-          authed = true;
-        } catch (e) {
-          sessionStorage.removeItem('proto.user');
-          sessionStorage.removeItem('proto.token');
-        }
-      }
+      // Restore a saved Microsoft session (and drop any old Google one)
+      try {
+        sessionStorage.removeItem('proto.user'); sessionStorage.removeItem('proto.token');
+        sessionStorage.removeItem('proto.ms.user'); sessionStorage.removeItem('proto.ms.token');
+      } catch (e) { /* storage blocked */ }
+      const saved = readSession();
+      if (saved) { user = saved.user; accessToken = saved.token; authed = true; }
 
       updateVisibility();
 
       if (authed) {
         loadData();
+      } else {
+        restoreSilently();
       }
     }
 
@@ -875,80 +933,252 @@
       }
     }
 
-    function googleSignIn() {
-      if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
-        alert('Google sign-in is still loading. Wait a second and try again.');
-        return;
-      }
-
-      if (!LYZR_OAUTH_CLIENT_ID || LYZR_OAUTH_CLIENT_ID.startsWith('REPLACE_')) {
-        alert('OAuth Client ID is not configured.');
-        return;
-      }
-
-      const client = google.accounts.oauth2.initTokenClient({
-        client_id: LYZR_OAUTH_CLIENT_ID,
-        scope: 'email profile',
-        hd: 'lyzr.ai',
-        callback: async (response) => {
-          if (response.error) {
-            console.error('OAuth error:', response);
-            return;
-          }
-
-          try {
-            const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-              headers: { Authorization: `Bearer ${response.access_token}` }
-            });
-            const payload = await res.json();
-
-            const email = payload.email || '';
-            const emailVerified = payload.email_verified === true || payload.email_verified === 'true';
-            const isLyzrOrDev = emailVerified && (
-              email.endsWith('@lyzr.ai') ||
-              payload.hd === 'lyzr.ai' ||
-              email === 'kailcodes02@gmail.com'
-            );
-
-            if (!isLyzrOrDev) {
-              alert(
-                'Access restricted to verified @lyzr.ai accounts.\n\n' +
-                (payload.email
-                  ? `You signed in with: ${payload.email}`
-                  : 'No verified Lyzr Workspace account was found on the token.')
-              );
-              return;
-            }
-
-            user = {
-              name: payload.name,
-              email: payload.email,
-              picture: payload.picture,
-            };
-            accessToken = response.access_token;
-            sessionStorage.setItem('proto.token', accessToken);
-            sessionStorage.setItem('proto.user', JSON.stringify(user));
-            authed = true;
-
-            updateVisibility();
-            loadData();
-          } catch (err) {
-            console.error('Auth error:', err);
-            alert('Sign-in failed. Open DevTools console for details.');
-          }
-        }
-      });
-
-      client.requestAccessToken();
+    function isLyzrEmail(email) {
+      const e = String(email || '').toLowerCase();
+      return DEV_EMAILS.includes(e) || LYZR_DOMAINS.some(d => e.endsWith('@' + d));
     }
 
-    function signOut() {
-      sessionStorage.removeItem('proto.user');
-      sessionStorage.removeItem('proto.token');
+    // one person, two addresses: name@lyzr.ai and name@lyzr.com
+    function sameLyzrPerson(a, b) {
+      const split = e => { const v = String(e || '').toLowerCase().trim(); const i = v.lastIndexOf('@'); return i > 0 ? [v.slice(0, i), v.slice(i + 1)] : [v, '']; };
+      const [la, da] = split(a), [lb, db] = split(b);
+      if (!la || !lb) return false;
+      return la === lb && (da === db || (LYZR_DOMAINS.includes(da) && LYZR_DOMAINS.includes(db)));
+    }
+
+    let msalAppPromise = null;
+    let redirectResult = null;
+    // msal-browser v3+ needs an async initialize() before any other call
+    function getMsal() {
+      if (!msalAppPromise) {
+        msalAppPromise = (async () => {
+          const app = new msal.PublicClientApplication({
+            auth: {
+              clientId: MS_CLIENT_ID,
+              authority: 'https://login.microsoftonline.com/' + MS_TENANT_ID,
+              redirectUri: location.origin + MS_REDIRECT_PATH,
+            },
+            // localStorage: next time the sign-in is silent (no Microsoft screen)
+            cache: { cacheLocation: 'localStorage' },
+            // MSAL stops waiting for the popup after 60 s by default, too short for a sign-in with MFA
+            system: { popupBridgeTimeout: 15 * 60 * 1000 },
+          });
+          await app.initialize();
+          try { redirectResult = await app.handleRedirectPromise(); }
+          catch (e) { redirectResult = { error: e }; }
+          if (redirectResult && redirectResult.account) app.setActiveAccount(redirectResult.account);
+          return app;
+        })();
+      }
+      return msalAppPromise;
+    }
+
+    function setAuthError(msg) {
+      const el = document.getElementById('auth-error');
+      if (el) el.textContent = msg || '';
+    }
+
+    function clearStaleInteraction() {
+      for (const store of [sessionStorage, localStorage]) {
+        try { for (const k of Object.keys(store)) if (/interaction[._-]?status/i.test(k)) store.removeItem(k); } catch (e) { /* storage blocked */ }
+      }
+    }
+
+    function msErrorText(e) {
+      const code = (e && e.errorCode) || '';
+      if (code === 'user_cancelled') return 'Sign-in was closed before it finished.';
+      if (code === 'access_denied' || /AADSTS65004/.test(String((e && e.errorMessage) || ''))) return 'Sign-in was cancelled. Click "Sign in with Microsoft" to try again.';
+      if (['popup_window_error', 'empty_window_error', 'block_nested_popups'].includes(code)) return 'Your browser blocked the sign-in window. Allow pop-ups for this page and try again.';
+      if (/timeout|timed_out/i.test(code)) return 'Sign-in took too long to come back. Try again.';
+      return 'Microsoft sign-in failed. ' + String((e && (e.errorMessage || e.message)) || '').split('\n')[0].slice(0, 200);
+    }
+
+    function tokenExp(token) {
+      try {
+        const b = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        return (JSON.parse(atob(b + '='.repeat((4 - b.length % 4) % 4))).exp || 0) * 1000;
+      } catch (e) { return Date.now() + 50 * 60 * 1000; }
+    }
+
+    function readSession() {
+      try {
+        const v = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+        if (v && v.token && v.user && isLyzrEmail(v.user.email) && v.exp > Date.now() + 60 * 1000) return v;
+        localStorage.removeItem(SESSION_KEY);
+      } catch (e) { /* storage blocked or bad value */ }
+      return null;
+    }
+
+    // Graph profile -> { user } for a Lyzr account, or { error }.
+    async function profileFor(token) {
+      try {
+        const p = await (await fetch('https://graph.microsoft.com/v1.0/me?$select=displayName,mail,userPrincipalName', {
+          headers: { Authorization: `Bearer ${token}` }
+        })).json();
+        const email = String(p.mail || p.userPrincipalName || '').toLowerCase();
+        if (!email) return { error: 'Could not read your Microsoft profile. Try again.' };
+        if (!isLyzrEmail(email)) return { error: `Access is restricted to Lyzr accounts. You signed in as ${email}.` };
+        return { user: { name: p.displayName || email, email } };
+      } catch (e) { return { error: 'Could not reach Microsoft to read your profile. Try again.' }; }
+    }
+
+    // Signed-in dashboard for a checked token + user.
+    function enterDashboard(token, u) {
+      user = u; accessToken = token; authed = true;
+      try { localStorage.setItem(SESSION_KEY, JSON.stringify({ token, user: u, exp: tokenExp(token) })); } catch (e) { /* stays signed in until reload */ }
+      setAuthError('');
+      updateVisibility();
+      loadData();
+    }
+
+    async function msSignIn() {
+      setAuthError('');
+      if (isFramed()) { signInViaWindow(); return; }
+      if (!window.msal) { setAuthError('Microsoft sign-in is still loading. Try again in a second.'); return; }
+      // The button stays clickable: MSAL v5 cannot see the sign-in window being closed, so a person
+      // who closes it simply clicks again (clearStaleInteraction lets the new attempt start).
+      try {
+        const app = await getMsal();
+        clearStaleInteraction();
+        const res = await app.loginPopup({ scopes: MS_SCOPES, prompt: 'select_account' });
+        app.setActiveAccount(res.account);
+        const r = await profileFor(res.accessToken);
+        if (r.error) { setAuthError(r.error); return; }
+        enterDashboard(res.accessToken, r.user);
+      } catch (e) {
+        if (!e || e.errorCode !== 'user_cancelled') console.error('Microsoft sign-in failed:', e);
+        setAuthError(msErrorText(e));
+      }
+    }
+
+    // ---- framed: sign in in a window of our own ----
+    let msWin = null;
+    function signInViaWindow() {
+      const w = 520, h = 660;
+      const left = Math.max(0, (screen.width - w) / 2), top = Math.max(0, (screen.height - h) / 2);
+      msWin = window.open(location.origin + MS_REDIRECT_PATH + '?ms=window', 'proto-ms-signin', `popup,width=${w},height=${h},left=${left},top=${top}`);
+      if (!msWin) { setAuthError('Your browser blocked the sign-in window. Allow pop-ups for this page and try again.'); return; }
+      setAuthError('Finish signing in in the Microsoft window. If the prototypes open there instead, carry on in that window.');
+      const watch = setInterval(() => {
+        if (!msWin) { clearInterval(watch); return; }
+        if (!msWin.closed) return;
+        clearInterval(watch);
+        // the window posts before it closes; give that message a moment to land
+        setTimeout(() => { if (msWin) { msWin = null; if (!authed) setAuthError('The sign-in window closed before it finished.'); } }, 1500);
+      }, 500);
+    }
+
+    window.addEventListener('message', async (e) => {
+      if (e.origin !== location.origin || !msWin || e.source !== msWin || !e.data || e.data.protoMs !== 1) return;
+      msWin = null;
+      if (!e.data.token) { setAuthError(e.data.error || 'Microsoft sign-in failed.'); return; }
+      const r = await profileFor(e.data.token);   // check it here too, not only in the window
+      if (r.error) { setAuthError(r.error); return; }
+      enterDashboard(e.data.token, r.user);
+    });
+
+    // In the sign-in window: first visit at ?ms=window.
+    async function startMsWindow() {
+      try { sessionStorage.setItem(MS_WINDOW_KEY, '1'); } catch (e) { /* storage blocked */ }
+      history.replaceState(null, '', location.pathname);
+      setAuthError('Opening Microsoft sign-in…');
+      if (!window.msal) { failMsWindow('Microsoft sign-in did not load. Close this window and try again.'); return; }
+      try {
+        const app = await getMsal();
+        const account = app.getActiveAccount() || app.getAllAccounts()[0];
+        if (account) {
+          // signed in here before: no Microsoft screen needed
+          try { const res = await app.acquireTokenSilent({ scopes: MS_SCOPES, account }); await handBackOrEnter(res.accessToken); return; }
+          catch (e) { /* needs a fresh sign-in */ }
+        }
+        clearStaleInteraction();
+        await app.loginRedirect({ scopes: MS_SCOPES, prompt: 'select_account', redirectStartPage: location.origin + MS_REDIRECT_PATH });
+      } catch (e) { failMsWindow(msErrorText(e)); }
+    }
+
+    // In the sign-in window: back from Microsoft.
+    async function finishMsWindow() {
+      setAuthError('Completing sign-in…');
+      if (!window.msal) { failMsWindow('Microsoft sign-in did not load. Close this window and try again.'); return; }
+      try {
+        await getMsal();
+        if (redirectResult && redirectResult.accessToken) { await handBackOrEnter(redirectResult.accessToken); return; }
+        failMsWindow(redirectResult && redirectResult.error ? msErrorText(redirectResult.error) : 'Sign-in was closed before it finished.');
+      } catch (e) { failMsWindow(msErrorText(e)); }
+    }
+
+    function endMsWindow() { try { sessionStorage.removeItem(MS_WINDOW_KEY); } catch (e) { /* ignore */ } }
+
+    // -> true when the iframe got the message and this window is closing
+    function handBack(msg) {
+      if (!window.opener || window.opener.closed) return false;
+      try { window.opener.postMessage({ protoMs: 1, ...msg }, location.origin); } catch (e) { return false; }
+      setAuthError('Signed in. This window closes by itself.');
+      setTimeout(() => window.close(), 300);
+      return true;
+    }
+
+    async function handBackOrEnter(token) {
+      endMsWindow();
+      const r = await profileFor(token);
+      if (r.error) { if (!handBack({ error: r.error })) setAuthError(r.error); return; }
+      if (handBack({ token })) return;
+      enterDashboard(token, r.user);   // lost the link to the iframe: carry on in this window
+    }
+
+    function failMsWindow(message) {
+      endMsWindow();
+      if (handBack({ error: message })) return;
+      setAuthError(message);
+    }
+
+    // Signed in here before (MSAL keeps the account in localStorage): get back in without a prompt.
+    // Only works when not framed; the framed copy relies on the saved session instead.
+    async function restoreSilently() {
+      if (!window.msal || isFramed()) return;
+      try {
+        const app = await getMsal();
+        const account = app.getActiveAccount() || app.getAllAccounts()[0];
+        if (!account || authed) return;
+        const res = await app.acquireTokenSilent({ scopes: MS_SCOPES, account });
+        if (authed) return;
+        app.setActiveAccount(res.account || account);
+        const r = await profileFor(res.accessToken);
+        if (!r.error) enterDashboard(res.accessToken, r.user);
+      } catch (e) { /* stays on the sign-in screen */ }
+    }
+
+    // A live token for the API. Not framed, MSAL renews it silently; framed, the token from the
+    // sign-in window lasts about an hour, after which a save asks to sign in again.
+    async function freshToken() {
+      if (window.msal && !isFramed()) {
+        try {
+          const app = await getMsal();
+          const account = app.getActiveAccount() || app.getAllAccounts()[0];
+          if (account) {
+            const res = await app.acquireTokenSilent({ scopes: MS_SCOPES, account });
+            accessToken = res.accessToken;
+            try { localStorage.setItem(SESSION_KEY, JSON.stringify({ token: accessToken, user, exp: tokenExp(accessToken) })); } catch (e) { /* ignore */ }
+          }
+        } catch (e) { /* keep the current token */ }
+      }
+      return accessToken;
+    }
+
+    // A save came back 401/403 because the sign-in ran out: back to the sign-in screen.
+    function signInExpired() {
+      signOut(true);
+      setAuthError('Your sign-in expired. Sign in with Microsoft again, then redo the change.');
+    }
+
+    async function signOut(keepMicrosoftAccount) {
+      try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
       authed = false;
       accessToken = null;
       user = null;
       updateVisibility();
+      // forget the Microsoft account in this browser only (no Microsoft-wide sign-out)
+      if (keepMicrosoftAccount !== true && window.msal && !isFramed()) { try { const app = await getMsal(); await app.clearCache(); } catch (e) { /* ignore */ } }
     }
 
     // --- Card Edit Flow ---
@@ -1082,17 +1312,21 @@
             const url = editMode ? `/api/rows/${currentEditId}` : `/api/rows`;
             const method = editMode ? 'PUT' : 'POST';
 
+            const token = await freshToken();
             const response = await fetch(url, {
               method: method,
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`
+                'Authorization': `Bearer ${token}`
               },
               body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
               const errJson = await response.json().catch(() => ({}));
+              if (response.status === 401 || (response.status === 403 && /token/i.test(errJson.error || ''))) {
+                closeFormModal(); signInExpired(); return;
+              }
               throw new Error(errJson.error || `HTTP ${response.status}`);
             }
 
@@ -1133,13 +1367,17 @@
           deleteBtn.textContent = "Deleting...";
 
           try {
+            const token = await freshToken();
             const response = await fetch(`/api/rows/${currentEditId}`, {
               method: 'DELETE',
-              headers: { 'Authorization': `Bearer ${accessToken}` }
+              headers: { 'Authorization': `Bearer ${token}` }
             });
 
             if (!response.ok) {
               const errJson = await response.json().catch(() => ({}));
+              if (response.status === 401 || (response.status === 403 && /token/i.test(errJson.error || ''))) {
+                closeFormModal(); signInExpired(); return;
+              }
               throw new Error(errJson.error || `HTTP ${response.status}`);
             }
 
@@ -1204,7 +1442,7 @@
     // ============================================================
     // Boot
     // ============================================================
-    initAuth();
+    if (!msalBridging) initAuth();
   </script>
 </body>
 </html>

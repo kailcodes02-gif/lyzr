@@ -50,7 +50,7 @@ under one Cloudflare Pages site at `lyzr.kailash-gm.com`. The pieces:
 | Work OS landing/hub | `index.html`, `control/`, `tasks/` | `/` | Live |
 | Weekly GSI Reports | `reports/` | `/reports/` | Live, active |
 | Pipeline dashboard | `pipeline/` + root `functions/api/` | `/pipeline/` | Live, actively edited |
-| Prototypes (public demos) | `prototypes/` | `/demo_pipeline/` | Live |
+| Prototypes (demos showcase) | `prototypes/` | `/demo_pipeline/` | Live, Microsoft sign-in (from 2026-11-03) |
 | GSI/SI Marketing Tracker | `GSI Tracker/tracker/` (source) + root `GSI_Tracker/` (built export) | `/GSI_Tracker/` | Live, active |
 | Comms Tracker (ABM) | `comms-tracker/` (separate Worker `abm-tracker`) | `/abm-tracker/` | Live (deployed 2026-09-08) |
 | Sales Copilot | `sales-copilot/` (separate Worker `content-maker`) | `/content_maker/` | Live |
@@ -281,7 +281,7 @@ Per `pipeline/README.md`: drop a new `tracker.xlsx` into the pipeline folder and
 
 ## 7. Component: Prototypes / demo_pipeline
 
-- **`prototypes/`** is a public, no-auth dashboard of live demos, served at `/demo_pipeline/` (via `_redirects`) and embeddable (framing allowed via `_headers`).
+- **`prototypes/`** is the dashboard of live demos, served at `/demo_pipeline/` (via `_redirects`) and embeddable (framing allowed via `_headers`). Viewing needs a **Microsoft** sign-in (MSAL v5 popup, the "Lyzr MS UI" Entra app, Lyzr tenant only; `@lyzr.com` / `@lyzr.ai` mail). Google sign-in was removed 2026-11-03. The team uses it framed at `https://www.lyzr.ai/prototype/` (a plain WordPress iframe; nothing on lyzr.ai is needed). Framed, "Sign in with Microsoft" opens `/demo_pipeline/?ms=window` in a window of its own (first-party, so nothing is partitioned); it signs in full-page, `postMessage`s the token to the iframe and closes; if it lost its opener the dashboard opens in that window. The framed copy keeps the session in its (partitioned) localStorage until the token expires (~1 h), then a save asks to sign in again (the window is silent then). Entra SPA redirect URI: `https://lyzr.kailash-gm.com/demo_pipeline/` (`https://www.lyzr.ai/prototypes/` was also added but is unused). Add/edit/delete go through the root `/api/rows` functions, which accept Microsoft or Google tokens (`functions/api/_lib/lyzr-auth.js`).
 - Reads the **same** `pipeline/data.json`, but shows only rows with a `prototype_link`, grouped by company then category, with search + company filter. Dark glassmorphism theme (`styles.css`).
 - Has both a Vercel serverless function (`api/data.js`) and a Cloudflare Pages function (`functions/api/data.js`) so it can host on either platform. `vercel.json` present for the Vercel option.
 
@@ -410,7 +410,9 @@ Three distinct auth layers (do not conflate them):
 
 | Surface | Mechanism | Restriction |
 |---|---|---|
-| Pipeline dashboard + write API (`functions/api/rows.js`, `rows/[id].js`, `snapshot.js`) | Google Identity Services, client-side; Bearer token verified server-side against Google userinfo | `hd === 'lyzr.ai'` (or `@lyzr.ai` email), `email_verified`; plus one allowlisted gmail in code |
+| Pipeline dashboard (`/pipeline/`) + `snapshot.js` | Google Identity Services, client-side; Bearer token verified server-side against Google userinfo | `hd === 'lyzr.ai'` (or `@lyzr.ai` email), `email_verified`; plus one allowlisted gmail in code |
+| Prototypes (`/demo_pipeline/`) | **Microsoft (MSAL.js v5, popup)**, "Lyzr MS UI" Entra app. Switched from Google 2026-11-03 | Lyzr tenant only, `@lyzr.com` / `@lyzr.ai` mail |
+| Shared write API `functions/api/rows.js`, `rows/[id].js` | `functions/api/_lib/lyzr-auth.js`: a JWT is checked as Microsoft (tenant claim must be Lyzr, then Graph `/me`), an opaque token as Google userinfo | Lyzr accounts only; delete allowlist matches a person on either `@lyzr.ai` or `@lyzr.com` |
 | GSIEvents tracker + write API (`GSIEvents/index.html`, `functions/api/events.js`) | **Microsoft (MSAL.js v5, popup login)**, client-side; Bearer token verified server-side against Microsoft Graph `/me`. Reuses the MS UI project's Entra app registration ("Lyzr MS UI", client `cd569c2f-...`, tenant `4b1018eb-...`, single-tenant). Switched from Google 2026-09-22 | Tenant itself restricts sign-in to Lyzr; editor allowlist is `@lyzr.com` (the Microsoft UPN domain, not `@lyzr.ai`) |
 | Work OS `/control/` | username/password modal -> `sessionStorage.wos_auth` | `kailash` / `Kail@lyzr` (test-grade; lockout disabled for testing) |
 | GSI Tracker app | Supabase Auth (Google SSO) | domain-restricted to `@lyzr.ai`; roles admin/member |
@@ -454,6 +456,37 @@ Access if the data ever becomes confidential.
 ---
 
 ## 14. Build Log & Corrections
+
+### 2026-11-03, Prototypes (/demo_pipeline/): Microsoft sign-in replaces Google
+- `prototypes/index.html`: Google Identity Services removed; MSAL v5 popup sign-in with the "Lyzr MS UI"
+  Entra app (client `cd569c2f-…`, tenant `4b1018eb-…`), redirect URI fixed to `/demo_pipeline/` (that
+  page doubles as the popup bridge). Profile from Graph `/me`; only `@lyzr.com` / `@lyzr.ai` mail (plus the
+  dev gmail) gets in. Token renewed silently before each add/edit/delete. Old Google sessions
+  (`proto.user` / `proto.token`) are dropped; the new keys are `proto.ms.user` / `proto.ms.token`.
+  The button stays clickable because MSAL v5 cannot see the sign-in window being closed.
+- `functions/api/_lib/lyzr-auth.js` (new): `verifyLyzrToken` accepts Microsoft (JWT, Lyzr tenant claim, then
+  Graph `/me`) or Google (userinfo) tokens, because `/pipeline/` still signs in with Google through the same
+  `/api/rows` endpoints. `sameLyzrPerson` lets the delete allowlist match `name@lyzr.ai` and `name@lyzr.com`.
+- **Framed on lyzr.ai** (the team uses `https://www.lyzr.ai/prototype/`, a WordPress page with a plain iframe):
+  MSAL's popup cannot report back to a cross-site iframe (partitioned BroadcastChannel), so when framed the button
+  opens `/demo_pipeline/?ms=window` in its own window (same approach as the opencontroller demo before BetterLinks).
+  That window signs in with `loginRedirect` (or silently when the browser already has the account), checks the
+  profile, `postMessage`s the token to the iframe (origin and source checked; the iframe checks the profile again)
+  and closes. Lost opener: the dashboard opens in the window. Cancel: the iframe says so. Session saved as
+  `proto.ms.session` in localStorage until the token expires; a save that gets 401/403 sends people back to sign in.
+  The user did not want BetterLinks or any change on lyzr.ai. A BetterLinks-return version was built and
+  dropped the same day.
+- **One-time Entra step (done by the user):** SPA redirect URI `https://lyzr.kailash-gm.com/demo_pipeline/`.
+- `prototypes/api/` and `prototypes/functions/` (the Vercel-option copies) are not served by Cloudflare and still
+  hold the old Google check.
+- Verified: server checks with stubbed Graph/Google replies; Playwright (Chrome) on a local copy: gate, popup
+  opens at Microsoft with the right client, tenant and redirect URI, retry after closing the popup, old Google
+  session ignored, signed-in dashboard renders 90 cards, sign-out, popup bridge page, phone width. Framed tests with
+  Chrome storage partitioning ON (Playwright disables it by default; re-enable by dropping ThirdPartyStoragePartitioning
+  from its --disable-features): stand-in lyzr.ai/prototype/ plain iframe, Microsoft authorize/token and Graph faked,
+  real MSAL: first sign-in reaches the dashboard in the iframe and the window closes; new tab signed in without a click;
+  sign-out then sign-in again needs no Microsoft screen; cancel shows a message; lost opener opens the dashboard in
+  the window. Control: MSAL's plain popup returning to lyzr.kailash-gm.com leaves the iframe on the sign-in screen.
 
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.

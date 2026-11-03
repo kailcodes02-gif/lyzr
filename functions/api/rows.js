@@ -2,7 +2,7 @@
 // Cloudflare Pages Function: POST /api/rows
 // =============================================================================
 // Adds a new row to data.json by:
-//  1. Verifying the caller has a valid @lyzr.ai Google OAuth token
+//  1. Verifying the caller is a Lyzr account (Google @lyzr.ai or Microsoft @lyzr.com, see _lib/lyzr-auth.js)
 //  2. Fetching the current data.json from GitHub (Contents API)
 //  3. Adding the new row + recomputing all aggregates
 //  4. Committing the updated data.json back to GitHub
@@ -14,6 +14,8 @@
 //   GITHUB_PATH   — Path inside the repo, e.g. "pipeline/data.json"
 //   GITHUB_BRANCH — Branch to commit to, e.g. "main"
 // =============================================================================
+
+import { verifyLyzrToken } from './_lib/lyzr-auth.js';
 
 // ---- helpers ----------------------------------------------------------------
 
@@ -126,26 +128,6 @@ function recomputeAggregates(data) {
   return data;
 }
 
-async function verifyGoogleToken(accessToken) {
-  try {
-    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!res.ok) return null;
-    const payload = await res.json();
-    const email = payload.email || '';
-    const emailVerified = payload.email_verified === true || payload.email_verified === 'true';
-    const isLyzrOrDev = emailVerified && (
-      email.endsWith('@lyzr.ai') ||
-      payload.hd === 'lyzr.ai' ||
-      email === 'kailcodes02@gmail.com'
-    );
-    if (isLyzrOrDev) return payload;
-    return null;
-  } catch {
-    return null;
-  }
-}
 
 async function fetchDataFromGitHub(env) {
   const url = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/${env.GITHUB_PATH}`;
@@ -252,9 +234,9 @@ export async function onRequestPost(context) {
     return json({ error: 'Missing Authorization header' }, 401);
   }
   const token = authHeader.slice(7);
-  const user = await verifyGoogleToken(token);
+  const user = await verifyLyzrToken(token);
   if (!user) {
-    return json({ error: 'Invalid token or not a @lyzr.ai account' }, 403);
+    return json({ error: 'Invalid token or not a Lyzr account' }, 403);
   }
 
   // Parse body
@@ -344,9 +326,9 @@ export async function onRequestPut(context) {
     return json({ error: 'Missing Authorization header' }, 401);
   }
   const token = authHeader.slice(7);
-  const user = await verifyGoogleToken(token);
+  const user = await verifyLyzrToken(token);
   if (!user) {
-    return json({ error: 'Invalid token or not a @lyzr.ai account' }, 403);
+    return json({ error: 'Invalid token or not a Lyzr account' }, 403);
   }
 
   // Parse body

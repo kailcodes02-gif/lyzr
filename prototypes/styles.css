@@ -573,7 +573,7 @@ body {
   font-weight: 500;
 }
 
-.btn-google {
+.btn-ms {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -591,17 +591,30 @@ body {
   transition: background-color 0.15s, transform 0.1s;
 }
 
-.btn-google:hover {
+.btn-ms:hover {
   background-color: #f7f7f7;
   transform: translateY(-1px);
 }
 
-.btn-google:active {
+.btn-ms:active {
   transform: translateY(0);
 }
 
-.btn-google svg {
+.btn-ms svg {
   flex-shrink: 0;
+}
+
+.btn-ms:disabled {
+  opacity: 0.6;
+  cursor: wait;
+  transform: none;
+}
+
+.auth-error {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #b42318;
+  min-height: 1em;
 }
 
 /* --- User Profile in Header ------------------------------- */
