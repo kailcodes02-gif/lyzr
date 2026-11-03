@@ -1,10 +1,10 @@
 // Landing page: the access gate (Lyzr people with Microsoft, everyone else with a work email),
 // then the demo at ./app/. Also the Microsoft popup bridge.
-import { isBridging, isFramed, signIn, signInRedirect, takeRedirectToken } from './msauth.mjs';
+import { isBridging, isFramed, onLyzrEmbed, signIn, signInRedirect, takeRedirectToken } from './msauth.mjs';
 import { getSession, setSession, track, BOOK_DEMO_URL } from './session.mjs';
 
 const APP = './app/';
-// Embedded (the iframe on www.lyzr.ai/opencontroller-demo/), Microsoft sign-in runs in a window of its own:
+// Framed by any site other than lyzr.ai (which msauth handles), Microsoft sign-in runs in a window of its own:
 // this page opened at ?ms=window signs in full-page there, then hands the lead to the iframe and closes.
 // Browsers partition a cross-site iframe's storage, so MSAL's own popup cannot report back to it.
 const MS_WINDOW = 'ocdemo.mswindow';
@@ -94,7 +94,7 @@ async function microsoft() {
   const btn = document.getElementById('ms-signin');
   const err = document.getElementById('ms-err');
   err.textContent = '';
-  if (isFramed()) { microsoftInWindow(btn, err); return; }
+  if (isFramed() && !onLyzrEmbed()) { microsoftInWindow(btn, err); return; }
   btn.disabled = true;
   try { await finishMicrosoft(await signIn()); }
   catch (e) { err.textContent = e.message || 'Microsoft sign-in failed.'; }

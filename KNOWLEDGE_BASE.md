@@ -458,7 +458,20 @@ Access if the data ever becomes confidential.
 > **Append a dated entry here on every push.** Note what was built/changed, which
 > files, the commit(s), and any correction to earlier behavior. Newest first.
 
-### 2026-11-03 (later), opencontroller demo: embedded Microsoft sign-in runs in its own window
+### 2026-11-03 (latest), opencontroller demo: sign-in window never shows lyzr.kailash-gm.com
+- User: the sign-in window showed `lyzr.kailash-gm.com/opencontroller_demo/`, which reads as a trust/fraud problem
+  for external visitors. `www.lyzr.ai/opencontroller-demo/` is a WordPress BetterLinks cloaked link that frames
+  the landing page and forwards its query string into the frame (verified with a realistic code/state).
+- Framed by www.lyzr.ai (`onLyzrEmbed`, via ancestorOrigins/referrer, remembered per tab), MSAL now uses
+  redirect URI `https://www.lyzr.ai/opencontroller-demo/` with `responseMode: 'query'`. The popup goes Microsoft ->
+  lyzr.ai; the landing copy framed there is the bridge, and it shares the embedded page's storage partition
+  (same top-level site), so MSAL's BroadcastChannel reaches it. The demo closes the popup itself afterwards.
+  Framed elsewhere: the own-window flow; direct visits: unchanged.
+- Needs the lyzr.ai URL as an SPA redirect URI on "Lyzr MS UI" (user says added; not verifiable from outside).
+- Tests: real lyzr.ai page with the local code routed in, real MSAL, partitioned Chrome: sign-in reaches the
+  dashboard, the window's address bar only ever showed www.lyzr.ai, the window closes; cancel too. e2e 109/109.
+
+### 2026-11-03 (earlier), opencontroller demo: embedded Microsoft sign-in runs in its own window
 - User still saw the gate sit on the Microsoft step after signing in inside the lyzr.ai iframe (now framing
   `/opencontroller_demo/`). The folder layout was not the cause. Replaced the opener relay with a sturdier flow: when framed,
   "Sign in with Microsoft" opens `/opencontroller_demo/?ms=window` in a window of its own (first-party, so

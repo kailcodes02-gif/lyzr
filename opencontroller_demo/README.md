@@ -24,8 +24,11 @@ the root Cloudflare Pages site; the sign-in API is Pages Functions in `functions
    Supabase project behind the Pages secret `CA_SUPABASE_URL` (the Campaign Analytics project). Until then
    visitors still get in, and the function log says `lead not stored`.
 2. **Microsoft sign-in**: in Entra ID › App registrations › "Lyzr MS UI" (client `cd569c2f-…`) ›
-   Authentication › Single-page application, add the redirect URI
-   `https://lyzr.kailash-gm.com/opencontroller_demo/`.
+   Authentication › Single-page application, add both redirect URIs:
+   `https://lyzr.kailash-gm.com/opencontroller_demo/` (direct visits) and
+   `https://www.lyzr.ai/opencontroller-demo/` (the public page, a WordPress BetterLinks cloaked link that frames
+   this landing page and forwards its query string; embedded there, Microsoft returns to lyzr.ai so the sign-in
+   window never shows this domain).
 3. **Email codes** (optional): set Pages secrets `RESEND_API_KEY` and `OCDEMO_MAIL_FROM`
    (e.g. `opencontroller <demo@lyzr.ai>`, on a domain verified in Resend). Without them the gate verifies
    the domain only.
