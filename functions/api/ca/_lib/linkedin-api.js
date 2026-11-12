@@ -442,7 +442,16 @@ function progressOf(c, accounts) {
   if (c.phase === 'leads') return { phase: 'leads', done: c.li.ai, total: accounts.length }
   return { phase: 'done', done: 1, total: 1 }
 }
-const reply = (c, accounts, done) => ({ done, cursor: done ? undefined : c, progress: progressOf(c, accounts), from: c.from, to: c.to, perf_rows: c.perf_rows, demo_windows: c.demo_windows, leads: c.leads, warnings: c.warnings })
+const reply = (c, accounts, done) => ({ done, cursor: done ? undefined : c, progress: progressOf(c, accounts), from: c.from, to: c.to, perf_rows: c.perf_rows, demo_windows: c.demo_windows, leads: c.leads, scope: c.scope || '', warnings: c.warnings })
+/** Why lead-form leads were not pulled, in words an editor can act on; null when the scope is there. */
+export function leadsSkipNote(o) {
+  if (hasLeadsScope(o)) return null
+  const granted = String((o && o.scope) || '').split(/[\s,]+/).filter(Boolean).join(', ') || 'nothing'
+  return `Lead-form leads were not pulled: LinkedIn granted this sign-in only ${granted}. ` +
+    (o && o.asked_leads
+      ? 'The box was ticked but LinkedIn did not grant r_marketing_leadgen_automation, so the Lead Sync API product is not approved on this LinkedIn app yet.'
+      : 'Tick "Also pull lead-form leads" in Admin › Connections and pulls › LinkedIn API and press Connect again.')
+}
 
 /**
  * One invocation of POST /api/ca/linkedin-api/sync. body = { cursor?, from?, to? }.
@@ -478,6 +487,7 @@ export async function runSync(env, user, body = {}, { now = Date.now() } = {}) {
     c = { v: 1, from, to, phase: 'meta', ai: 0, mk: 'groups', page: null, perf_i: 0, perf_upload: up[0] ? up[0].id : null, no_reach: false, demo: null, li: { ai: 0, stage: 'forms', start: 0 }, unresolved: {}, perf_rows: 0, demo_windows: 0, leads: 0, warnings: [], started_at: new Date(now).toISOString() }
   }
 
+  c.scope = o.scope || ''
   // documents shared across invocations
   let meta = null, metaDirty = false
   let names = null, namesDirty = false
@@ -670,7 +680,11 @@ export async function runSync(env, user, body = {}, { now = Date.now() } = {}) {
         c.demo.di++
         c.demo.pi = 0
       }
-      if (c.demo.di >= c.demo.wins.length) c.phase = hasLeadsScope(o) ? 'leads' : 'finish'
+      if (c.demo.di >= c.demo.wins.length) {
+        c.phase = hasLeadsScope(o) ? 'leads' : 'finish'
+        const note = leadsSkipNote(o)
+        if (note) warn(c, note)
+      }
     }
 
     // ---- d. lead-form leads (needs r_marketing_leadgen_automation) ----
