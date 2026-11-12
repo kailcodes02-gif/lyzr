@@ -141,13 +141,14 @@ function unionLinks(oldV: string, newV: string): string {
   return [...map.values()].join('; ')
 }
 
-export function EmailInteractions() {
+export function EmailInteractions({ scopeId }: { scopeId?: string } = {}) {
   const supabase = createClient()
   const queryClient = useQueryClient()
   const { data: me } = useCurrentUser()
   const { byRef, save } = useLeadTracking()
   const { verticalId } = useVertical()
-  const k = (name: string) => keyForVertical(me?.id, verticalId, name)
+  // The standalone Sales pipeline passes GSI's id, so saved filters carry over.
+  const k = (name: string) => keyForVertical(me?.id, scopeId || verticalId, name)
   const fileRef = useRef<HTMLInputElement>(null)
   const [importing, setImporting] = useState(false)
 

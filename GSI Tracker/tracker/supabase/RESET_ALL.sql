@@ -3888,6 +3888,395 @@ SELECT
   (SELECT count(*) FROM pg_constraint WHERE conrelid = 'public.saved_views'::regclass AND conname = 'saved_views_user_page_name_key') AS constraint_present, -- 1
   (SELECT count(*) FROM (SELECT user_id, page, name FROM public.saved_views GROUP BY 1, 2, 3 HAVING count(*) > 1) d) AS remaining_duplicates;               -- 0
 
+-- ############################################################
+-- 034_product_tags.sql
+-- ############################################################
+-- 034: Product tags on tasks. Idempotent. Run after 033.
+--
+--  * products: the Lyzr product catalogue, taken from the lyzr.ai navbar
+--    (Nov 2026): the "Products" menu, the agents under "Solutions", plus the
+--    extra values HubSpot's "Product track" property uses. Admins add /
+--    rename / switch off products; everyone signed in can read them.
+--  * "Lyzr" is the brand-level product: a task about Lyzr as a whole, not one
+--    product. Every task has at least one product: Lyzr when nothing else is
+--    given, and Lyzr is dropped as soon as a real product is tagged (the same
+--    rule as verticals in 032). Sub-tasks created without tags take their
+--    parent's.
+--  * products.hubspot_tracks: the HubSpot contact "Product track" values that
+--    belong to the product. The Sales pipeline pulls leads by these.
+--  * Tags never affect permissions; History records tag changes.
+
+-- ---------- 1. catalogue ----------
+CREATE TABLE IF NOT EXISTS public.products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  group_name TEXT NOT NULL DEFAULT 'Other',
+  description TEXT,
+  url TEXT,
+  sort_order INT NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS hubspot_tracks TEXT[] NOT NULL DEFAULT '{}';
+
+DROP TRIGGER IF EXISTS products_updated_at ON public.products;
+CREATE TRIGGER products_updated_at BEFORE UPDATE ON public.products
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "products_read"  ON public.products;
+DROP POLICY IF EXISTS "products_write" ON public.products;
+CREATE POLICY "products_read"  ON public.products FOR SELECT TO authenticated USING (true);
+CREATE POLICY "products_write" ON public.products FOR ALL TO authenticated
+  USING (is_admin()) WITH CHECK (is_admin());
+GRANT SELECT ON public.products TO authenticated;
+GRANT ALL ON public.products TO service_role;
+
+INSERT INTO public.products (name, slug, group_name, description, url, sort_order, hubspot_tracks) VALUES
+  ('Lyzr',           'lyzr',           'Lyzr',      'Brand-level: Lyzr as a whole, not one product',            'https://www.lyzr.ai/',                         0,   '{}'),
+  -- navbar › Products
+  ('Agent Studio',   'agent-studio',   'Products',  'Build and run agents',                                     'https://www.lyzr.ai/lyzr-agent-studio/',       10,  '{"Agent Studio"}'),
+  ('Architect',      'architect',      'Products',  'Build without code (architect.new)',                       'https://architect.new/',                       20,  '{}'),
+  ('Reimaginer',     'reimaginer',     'Products',  'Start with workflows; AI FDE test drive',                  'https://www.lyzr.ai/reimaginer/',              30,  '{"Reimaginer"}'),
+  ('Openfinetuner',  'openfinetuner',  'Products',  'Fine-tune open models',                                    'https://www.lyzr.ai/open-finetuner/',          40,  '{"Open Finetuner"}'),
+  ('Optimus',        'optimus',        'Products',  'On-prem AI hardware',                                      'https://www.lyzr.ai/optimus/',                 50,  '{"Optimus"}'),
+  ('Sovereign AI',   'sovereign-ai',   'Products',  'Own your stack',                                           'https://www.lyzr.ai/sovereign-ai/',            60,  '{}'),
+  ('Open Cowork',    'open-cowork',    'Products',  'AI for every employee',                                    'https://www.lyzr.ai/open-cowork/',             70,  '{"Open Cowork"}'),
+  ('Opencontroller', 'opencontroller', 'Products',  'Govern all your AI agents',                                'https://www.lyzr.ai/opencontroller/',          80,  '{"Opencontroller"}'),
+  -- navbar › Solutions (the named agents)
+  ('Madison',        'madison',        'Agents',    'Banking: lending, onboarding and compliance',              'https://www.lyzr.ai/banking-agents/',          110, '{"Madison"}'),
+  ('Benjie',         'benjie',         'Agents',    'Insurance: claims, underwriting and policy',               'https://www.lyzr.ai/insurance-ai-agent-benjie/', 120, '{}'),
+  ('Jazon',          'jazon',          'Agents',    'Revenue: pipeline generation and sales (AI SDR)',          'https://www.lyzr.ai/jazon/',                   130, '{}'),
+  ('Skott',          'skott',          'Agents',    'Marketing: content, campaigns and demand',                 'https://www.lyzr.ai/skott/',                   140, '{}'),
+  ('Jeff',           'jeff',           'Agents',    'Customer service: resolution and ticket deflection',       'https://www.lyzr.ai/jeff/',                    150, '{}'),
+  ('Diane',          'diane',          'Agents',    'Human resources: hiring, onboarding and people ops',       'https://www.lyzr.ai/diane/',                   160, '{}'),
+  -- HubSpot "Product track" values that are not in the navbar
+  ('AgentBlocks',    'agentblocks',    'Other',     'White-label agent platform and embeddable SDKs',           'https://www.lyzr.ai/agentblocks/',             210, '{"Agent Blocks"}'),
+  ('Spotlight',      'spotlight',      'Other',     'Spotlight (HubSpot product track)',                        NULL,                                           220, '{"Spotlight"}'),
+  ('Alpha',          'alpha',          'Other',     'Alpha (HubSpot product track)',                            NULL,                                           230, '{"Alpha"}')
+ON CONFLICT (slug) DO UPDATE SET
+  group_name     = EXCLUDED.group_name,
+  sort_order     = EXCLUDED.sort_order,
+  hubspot_tracks = CASE WHEN products.hubspot_tracks = '{}' THEN EXCLUDED.hubspot_tracks ELSE products.hubspot_tracks END;
+
+-- An earlier draft of this migration seeded a wider list from the whole site.
+-- Those are switched off, not deleted, so any tag on a task survives.
+UPDATE public.products SET is_active = false
+ WHERE slug IN ('agentic-os','cognis','lyzrgpt','dwight','kathy','gitagent','opengap') AND is_active;
+
+CREATE OR REPLACE FUNCTION public.lyzr_product_id()
+RETURNS UUID LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT id FROM products WHERE slug = 'lyzr' LIMIT 1;
+$$;
+GRANT EXECUTE ON FUNCTION public.lyzr_product_id() TO authenticated, anon, service_role;
+
+-- Lyzr is the default product: it can't be deleted, switched off or re-slugged.
+CREATE OR REPLACE FUNCTION public.protect_lyzr_product()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    IF OLD.slug = 'lyzr' THEN RAISE EXCEPTION 'Lyzr is the default product and cannot be deleted'; END IF;
+    RETURN OLD;
+  END IF;
+  IF OLD.slug = 'lyzr' AND (NEW.is_active = false OR NEW.slug IS DISTINCT FROM 'lyzr') THEN
+    RAISE EXCEPTION 'Lyzr is the default product: it stays active and keeps its slug';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS trg_protect_lyzr_product ON public.products;
+CREATE TRIGGER trg_protect_lyzr_product BEFORE UPDATE OR DELETE ON public.products
+  FOR EACH ROW EXECUTE FUNCTION public.protect_lyzr_product();
+
+-- ---------- 2. column + backfill ----------
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS product_ids UUID[] NOT NULL DEFAULT '{}';
+CREATE INDEX IF NOT EXISTS tasks_product_ids_idx ON public.tasks USING GIN (product_ids);
+
+-- Every existing task becomes a Lyzr (brand-level) task. Triggers are paused
+-- so this doesn't write a History entry or notify owners for every task.
+ALTER TABLE public.tasks DISABLE TRIGGER USER;
+UPDATE public.tasks SET product_ids = ARRAY[lyzr_product_id()]
+ WHERE product_ids = '{}' AND lyzr_product_id() IS NOT NULL;
+UPDATE public.tasks SET product_ids = array_remove(product_ids, lyzr_product_id())
+ WHERE cardinality(product_ids) > 1 AND lyzr_product_id() = ANY(product_ids);
+ALTER TABLE public.tasks ENABLE TRIGGER USER;
+
+-- ---------- 3. keep tags valid on every write ----------
+CREATE OR REPLACE FUNCTION public.normalise_task_products()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  lyzr UUID := lyzr_product_id();
+  bad UUID;
+BEGIN
+  NEW.product_ids := COALESCE(NEW.product_ids, '{}');
+  IF TG_OP = 'INSERT' AND cardinality(NEW.product_ids) = 0 AND NEW.parent_task_id IS NOT NULL THEN
+    SELECT product_ids INTO NEW.product_ids FROM tasks WHERE id = NEW.parent_task_id;
+    NEW.product_ids := COALESCE(NEW.product_ids, '{}');
+  END IF;
+  -- de-duplicate, keep order
+  NEW.product_ids := ARRAY(SELECT p FROM unnest(NEW.product_ids) WITH ORDINALITY AS u(p, i) GROUP BY p ORDER BY min(i));
+  IF cardinality(NEW.product_ids) > 1 AND lyzr IS NOT NULL THEN
+    NEW.product_ids := array_remove(NEW.product_ids, lyzr);
+  END IF;
+  IF cardinality(NEW.product_ids) = 0 AND lyzr IS NOT NULL THEN
+    NEW.product_ids := ARRAY[lyzr];
+  END IF;
+  SELECT p INTO bad FROM unnest(NEW.product_ids) p WHERE NOT EXISTS (SELECT 1 FROM products x WHERE x.id = p) LIMIT 1;
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'Unknown product %', bad USING ERRCODE = '23503';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS tasks_normalise_products ON public.tasks;
+CREATE TRIGGER tasks_normalise_products BEFORE INSERT OR UPDATE OF product_ids ON public.tasks
+  FOR EACH ROW EXECUTE FUNCTION public.normalise_task_products();
+
+-- A deleted product is removed from its tasks (they fall back to Lyzr).
+CREATE OR REPLACE FUNCTION public.untag_deleted_product()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  UPDATE tasks SET product_ids = array_remove(product_ids, OLD.id) WHERE OLD.id = ANY(product_ids);
+  RETURN OLD;
+END;
+$$;
+DROP TRIGGER IF EXISTS products_untag_tasks ON public.products;
+CREATE TRIGGER products_untag_tasks BEFORE DELETE ON public.products
+  FOR EACH ROW EXECUTE FUNCTION public.untag_deleted_product();
+
+-- ---------- 4. History records product tag changes (032's function + product_ids) ----------
+CREATE OR REPLACE FUNCTION public.log_task_edit()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  f TEXT; changed TEXT[] := '{}';
+  fields TEXT[] := ARRAY['title','description','priority','status','due_date','channel_id','parent_task_id',
+                         'budget_allocated','budget_period_id','campaign_id','result_url','blocked_reason','blocked_by_email',
+                         'planning_fields','tracker_fields','vertical_ids','product_ids'];
+  o JSONB := to_jsonb(OLD); n JSONB := to_jsonb(NEW);
+BEGIN
+  FOREACH f IN ARRAY fields LOOP
+    IF (o -> f) IS DISTINCT FROM (n -> f) THEN
+      IF f = 'status' THEN CONTINUE; END IF;
+      INSERT INTO activity_log (task_id, actor_id, action, from_value, to_value)
+      VALUES (NEW.id, auth.uid(), 'edited', jsonb_build_object('field', f, 'value', o -> f), jsonb_build_object('field', f, 'value', n -> f));
+      changed := changed || f;
+    END IF;
+  END LOOP;
+  IF array_length(changed, 1) > 0 THEN
+    PERFORM notify_task(NEW.id, 'task_edited', jsonb_build_object('fields', to_jsonb(changed)), auth.uid());
+  END IF;
+  RETURN NEW;
+END; $$;
+
+-- Verify: 18 active products (Lyzr + 17), no task without a product.
+SELECT
+  (SELECT count(*) FROM public.products WHERE is_active) AS active_products,                     -- 18
+  (SELECT count(*) FROM public.tasks WHERE product_ids = '{}') AS tasks_without_product;          -- 0
+
+-- ############################################################
+-- 035_verticals_and_playbook_channels.sql
+-- ############################################################
+-- 035: The vertical list, HubSpot mapping for verticals, and the channels from
+-- the Opencontroller GTM playbook. Idempotent. Run after 034.
+--
+--  * Verticals: Lyzr (default, not vertical-specific), GSI, Emerging Partner,
+--    Hyperscalers, FDE Collective. Nothing is renamed or removed; a vertical
+--    is only added when no vertical with that name or slug exists.
+--  * verticals.hubspot_tracks: the HubSpot contact "Product track" values that
+--    belong to the vertical (Emerging Partner, AI-FDE). The Sales pipeline
+--    pulls leads by these. GSI keeps its own built-in pull rule.
+--  * Channels: the playbook's channels (sections 10 to 30) are added to the
+--    Lyzr board, which every vertical and product view shares. A channel that
+--    already exists on Lyzr under the same slug (singular or plural) is kept
+--    and not duplicated. Nothing existing is renamed, moved or deleted.
+
+-- ---------- 1. verticals ----------
+ALTER TABLE public.verticals ADD COLUMN IF NOT EXISTS hubspot_tracks TEXT[] NOT NULL DEFAULT '{}';
+
+INSERT INTO public.verticals (name, slug, description, sort_order)
+SELECT x.name, x.slug, x.description, x.sort_order
+FROM (VALUES
+  ('Lyzr',             'lyzr',             'Not vertical-specific: work for Lyzr as a whole', -10),
+  ('GSI',              'gsi',              'Global system integrators', 10),
+  ('Emerging Partner', 'emerging-partner', 'Boutiques, vCISOs, distributors and resellers', 20),
+  ('Hyperscalers',     'hyperscalers',     'AWS, Microsoft and Google: marketplace and co-sell', 30),
+  ('FDE Collective',   'fde-collective',   'Forward-deployed engineers', 40)
+) AS x(name, slug, description, sort_order)
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.verticals v
+  WHERE v.slug IN (x.slug, x.slug || 's', rtrim(x.slug, 's'))
+     OR lower(v.name) IN (lower(x.name), lower(x.name) || 's', lower(rtrim(x.name, 's')))
+);
+
+-- Order: Lyzr, GSI, then the rest as listed.
+UPDATE public.verticals SET sort_order = CASE
+    WHEN slug = 'lyzr' THEN -10
+    WHEN slug = 'gsi' THEN 10
+    WHEN slug IN ('emerging-partner', 'emerging-partners') THEN 20
+    WHEN slug = 'hyperscalers' THEN 30
+    WHEN slug = 'fde-collective' THEN 40
+    ELSE sort_order END
+ WHERE slug IN ('lyzr', 'gsi', 'emerging-partner', 'emerging-partners', 'hyperscalers', 'fde-collective');
+
+UPDATE public.verticals SET hubspot_tracks = '{"Emerging Partner"}'
+ WHERE slug IN ('emerging-partner', 'emerging-partners') AND hubspot_tracks = '{}';
+UPDATE public.verticals SET hubspot_tracks = '{"AI-FDE"}'
+ WHERE slug = 'fde-collective' AND hubspot_tracks = '{}';
+
+-- ---------- 2. playbook channels on the Lyzr board ----------
+CREATE TEMP TABLE IF NOT EXISTS _playbook_channels (name TEXT, parent TEXT, result TEXT, ord SERIAL);
+TRUNCATE _playbook_channels;
+
+-- Find-or-create one channel on the Lyzr board; returns its id.
+CREATE OR REPLACE FUNCTION pg_temp.playbook_channel(
+  p_cat_slug TEXT, p_cat_name TEXT, p_cat_icon TEXT, p_cat_sort INT,
+  p_parent UUID, p_name TEXT, p_sort INT, p_goal TEXT
+) RETURNS UUID LANGUAGE plpgsql AS $$
+DECLARE
+  lyzr UUID := (SELECT id FROM verticals WHERE slug = 'lyzr' LIMIT 1);
+  s TEXT := public.slugify(p_name);
+  cat UUID;
+  ch UUID;
+  parent_name TEXT := (SELECT name FROM channels WHERE id = p_parent);
+BEGIN
+  IF lyzr IS NULL THEN RAISE EXCEPTION 'The Lyzr vertical is missing; run 026/027 first'; END IF;
+
+  -- Already on the Lyzr board? (same slug, or its singular / plural)
+  SELECT c.id INTO ch FROM channels c
+   WHERE c.vertical_id = lyzr
+     AND c.parent_channel_id IS NOT DISTINCT FROM p_parent
+     AND c.slug IN (s, s || 's', rtrim(s, 's'))
+   ORDER BY (c.slug = s) DESC, c.is_active DESC
+   LIMIT 1;
+  IF ch IS NOT NULL THEN
+    INSERT INTO _playbook_channels (name, parent, result) VALUES (p_name, parent_name, 'already there');
+    RETURN ch;
+  END IF;
+
+  IF p_parent IS NOT NULL THEN
+    SELECT category_id INTO cat FROM channels WHERE id = p_parent;
+  ELSE
+    SELECT id INTO cat FROM categories WHERE vertical_id = lyzr AND slug = p_cat_slug LIMIT 1;
+    IF cat IS NULL THEN
+      INSERT INTO categories (vertical_id, name, slug, icon, sort_order)
+      VALUES (lyzr, p_cat_name, p_cat_slug, p_cat_icon, p_cat_sort) RETURNING id INTO cat;
+    END IF;
+  END IF;
+
+  INSERT INTO channels (category_id, vertical_id, parent_channel_id, name, slug, sort_order, goal, extra)
+  VALUES (cat, lyzr, p_parent, p_name, s, p_sort, p_goal, jsonb_build_object('source', 'Opencontroller GTM playbook'))
+  RETURNING id INTO ch;
+  INSERT INTO _playbook_channels (name, parent, result) VALUES (p_name, parent_name, 'added');
+  RETURN ch;
+END;
+$$;
+
+DO $$
+DECLARE
+  p UUID;
+BEGIN
+  -- Always in the news (§10, §11)
+  PERFORM pg_temp.playbook_channel('always-in-the-news', 'Always in the news', 'zap', 10, NULL, 'Monthly thunderclaps', 1,
+    'One campaign and one two-week thunderclap every month: PR, founder post, employee reshares, ads at 2x, webinar on day 7, recap on day 14');
+  PERFORM pg_temp.playbook_channel('always-in-the-news', 'Always in the news', 'zap', 10, NULL, 'PR and press releases', 2,
+    'A PR headline every two weeks; customer launches (PepsiCo, March 2027)');
+
+  -- LinkedIn (§12)
+  PERFORM pg_temp.playbook_channel('linkedin', 'LinkedIn', 'share-2', 20, NULL, 'Lyzr company page', 1,
+    'The company story: customer stories, PR, partner news, hiring. 3 posts a week');
+  PERFORM pg_temp.playbook_channel('linkedin', 'LinkedIn', 'share-2', 20, NULL, 'Product showcase pages', 2,
+    'Each product''s own voice (e.g. Opencontroller): number of the week, product GIFs, comparisons. 5 posts a week');
+  p := pg_temp.playbook_channel('linkedin', 'LinkedIn', 'share-2', 20, NULL, 'Founder and leader voices', 3,
+    'Point of view from Siva, Akshay and Ani; thought-leader ads run on these posts');
+  PERFORM pg_temp.playbook_channel('linkedin', 'LinkedIn', 'share-2', 20, p, 'Siva (CEO)', 1, 'Vision and contrarian views. 4 posts a week');
+  PERFORM pg_temp.playbook_channel('linkedin', 'LinkedIn', 'share-2', 20, p, 'Akshay (Head of Revenue)', 2, 'What buyers are doing. 3 posts a week');
+  PERFORM pg_temp.playbook_channel('linkedin', 'LinkedIn', 'share-2', 20, p, 'Ani (CGO)', 3, 'Field notes and partner voice. 3 posts a week');
+  PERFORM pg_temp.playbook_channel('linkedin', 'LinkedIn', 'share-2', 20, NULL, 'Product managers', 4,
+    'Product truth: screenshot stories, build logs, integration launches. 2 posts a week each');
+  PERFORM pg_temp.playbook_channel('linkedin', 'LinkedIn', 'share-2', 20, NULL, 'Employee advocacy', 5,
+    'SDRs, AEs and FDEs: field notes, event clips, reshares within 60 minutes. 1 post a week each');
+  PERFORM pg_temp.playbook_channel('linkedin', 'LinkedIn', 'share-2', 20, NULL, 'LinkedIn newsletters', 6,
+    'Run our own (fortnightly / monthly) and get featured in 20 others');
+  PERFORM pg_temp.playbook_channel('linkedin', 'LinkedIn', 'share-2', 20, NULL, 'Commenting playbook', 7,
+    '10 comments a day each on a 200-person target list. One fact or one question; never pitch');
+  PERFORM pg_temp.playbook_channel('linkedin', 'LinkedIn', 'share-2', 20, NULL, 'LinkedIn outreach (1st and 2nd degree)', 8,
+    'Founder messages to 1st-degree contacts; connection note then day-3 follow-up for 2nd degree');
+
+  -- Paid media (§13, §14, §16)
+  PERFORM pg_temp.playbook_channel('paid-media', 'Paid media', 'zap', 30, NULL, 'LinkedIn ads', 1,
+    'Ad creatives and thought-leader ads; four at a time, rotate every three weeks; kill any ad set with no MQL after $3K');
+  PERFORM pg_temp.playbook_channel('paid-media', 'Paid media', 'zap', 30, NULL, 'YouTube and 60-second films', 2,
+    'One search query per video; shorts that work without sound');
+  PERFORM pg_temp.playbook_channel('paid-media', 'Paid media', 'zap', 30, NULL, 'Paid search', 3,
+    'Bottom-of-funnel only: competitor alternatives and tool searches');
+
+  -- Content (§15, §17, §18, §20, §21)
+  PERFORM pg_temp.playbook_channel('content', 'Content', 'file-text', 40, NULL, 'SEO and AEO', 1,
+    'Pillar pages, article clusters and comparison pages built around the buyer agenda');
+  PERFORM pg_temp.playbook_channel('content', 'Content', 'file-text', 40, NULL, 'White papers and research', 2,
+    'Flagship reports (State of the AI Estate) and lead magnets, refreshed quarterly');
+  PERFORM pg_temp.playbook_channel('content', 'Content', 'file-text', 40, NULL, 'Forbes and trade press', 3,
+    'A founder byline a month, then trade press by buyer');
+  PERFORM pg_temp.playbook_channel('content', 'Content', 'file-text', 40, NULL, 'Email nurture', 4,
+    'Nurture tracks and a fortnightly newsletter: one number, one link, one CTA');
+  PERFORM pg_temp.playbook_channel('content', 'Content', 'file-text', 40, NULL, 'Newsletter sponsorships', 5,
+    'Sponsor two a month by theme; pitch data to the rest for free');
+  PERFORM pg_temp.playbook_channel('content', 'Content', 'file-text', 40, NULL, 'Podcasts', 6,
+    'Founders and product lead as guests, plus our own show');
+
+  -- Events and community (§19, §27, §28)
+  PERFORM pg_temp.playbook_channel('events', 'Events', 'calendar', 50, NULL, 'Masterclasses', 1,
+    '60-minute, certificate-backed sessions co-hosted with a partner');
+  PERFORM pg_temp.playbook_channel('events', 'Events', 'calendar', 50, NULL, 'Webinars', 2,
+    'Launch webinars on day 7 of each thunderclap');
+  p := pg_temp.playbook_channel('events', 'Events', 'calendar', 50, NULL, 'Events by city', 3,
+    'Big shows for meetings, small owned rooms for pipeline');
+  PERFORM pg_temp.playbook_channel('events', 'Events', 'calendar', 50, p, 'Owned nights', 1, '30-person evenings on Luma with a live demo; monthly');
+  PERFORM pg_temp.playbook_channel('events', 'Events', 'calendar', 50, p, 'Executive dinners', 2, '12-seat CISO / CIO dinners; quarterly');
+  PERFORM pg_temp.playbook_channel('events', 'Events', 'calendar', 50, p, 'Trade shows', 3, 'RSAC, Black Hat, GISEC and similar');
+  PERFORM pg_temp.playbook_channel('events', 'Events', 'calendar', 50, NULL, 'Hackathons', 4,
+    'Virtual first, one live edition a year; create research, community and pipeline');
+
+  -- Influence (§22, §23)
+  PERFORM pg_temp.playbook_channel('influence', 'Influence', 'users', 60, NULL, 'Analysts', 1,
+    'Quarterly briefings with data analysts don''t have; get named where buyers shortlist');
+  PERFORM pg_temp.playbook_channel('influence', 'Influence', 'users', 60, NULL, 'Investor and peer networks', 2,
+    'Ask every investor and community for ten warm intros; investor-hosted dinners');
+
+  -- Partners (§24, §25, §26)
+  PERFORM pg_temp.playbook_channel('partners', 'Partners', 'handshake', 70, NULL, 'GSIs', 1,
+    'Accenture, KPMG, PwC, Deloitte, EY, BCG: co-branded assessment that converts into resale');
+  p := pg_temp.playbook_channel('partners', 'Partners', 'handshake', 70, NULL, 'Hyperscalers', 2,
+    'Marketplace private offers and co-sell');
+  PERFORM pg_temp.playbook_channel('partners', 'Partners', 'handshake', 70, p, 'AWS', 1, 'Marketplace private offer; co-sell registration on every deal');
+  PERFORM pg_temp.playbook_channel('partners', 'Partners', 'handshake', 70, p, 'Microsoft', 2, 'Azure Marketplace and co-sell');
+  PERFORM pg_temp.playbook_channel('partners', 'Partners', 'handshake', 70, p, 'Google Cloud', 3, 'Google Cloud Marketplace and co-sell');
+  PERFORM pg_temp.playbook_channel('partners', 'Partners', 'handshake', 70, NULL, 'ISV and hardware OEMs', 3,
+    'Platform partners: governance unblocks production, production drives their revenue');
+  PERFORM pg_temp.playbook_channel('partners', 'Partners', 'handshake', 70, NULL, 'Resellers, distributors and credit unions', 4,
+    'TD SYNNEX first, security VARs, and the organisations credit unions buy through');
+
+  -- Sales enablement (§29, §30)
+  PERFORM pg_temp.playbook_channel('sales-enablement', 'Sales enablement', 'send', 80, NULL, 'SDR enablement', 1,
+    'Video library, live intent signals and one offer for the SDR team');
+  p := pg_temp.playbook_channel('sales-enablement', 'Sales enablement', 'send', 80, NULL, 'ABM', 2,
+    'Named-account programmes in three tiers');
+  PERFORM pg_temp.playbook_channel('sales-enablement', 'Sales enablement', 'send', 80, p, 'Tier 1 accounts', 1, '100 accounts: custom hypothesis, direct mail, founder note, dinner invite');
+  PERFORM pg_temp.playbook_channel('sales-enablement', 'Sales enablement', 'send', 80, p, 'Tier 2 accounts', 2, '400 accounts: vertical pages, ads, webinars');
+  PERFORM pg_temp.playbook_channel('sales-enablement', 'Sales enablement', 'send', 80, p, 'Tier 3 accounts', 3, '1,500 accounts: programmatic LinkedIn, Google, retargeting');
+  PERFORM pg_temp.playbook_channel('sales-enablement', 'Sales enablement', 'send', 80, NULL, 'Sales collateral', 3,
+    'Sample report, security note, battlecards, pricing and ROI, demo script, partner kit');
+END $$;
+
+-- Verify 1: the verticals, in order, with their HubSpot mapping.
+SELECT name, slug, sort_order, hubspot_tracks FROM public.verticals WHERE is_active ORDER BY sort_order, name;
+
+-- Verify 2: every playbook channel and whether it was added or already there
+-- (32 top-level channels + 12 sub-channels; a re-run shows all "already there").
+SELECT COALESCE(parent || ' › ', '') || name AS channel, result FROM _playbook_channels ORDER BY ord;
+
 -- ---------- POST: re-mirror existing auth accounts ----------
 -- handle_new_user only fires on INSERT into auth.users, so anyone who signed
 -- in before this reset must be backfilled into public.users here.

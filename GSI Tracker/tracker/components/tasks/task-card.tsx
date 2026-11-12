@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Calendar, MessageSquare, CheckSquare, Layers, DollarSign, Target, Repeat, Crown, Link as LinkIcon } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
-import { useAllChannelOwners, useChannels, useFunctions } from '@/lib/hooks/use-data'
+import { useAllChannelOwners, useChannels, useFunctions, useProducts } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { updateTask } from '@/lib/actions'
 import { useQueryClient } from '@tanstack/react-query'
@@ -231,6 +231,8 @@ export function TaskCard({ task, onClick, compact, onSubtaskClick }: TaskCardPro
   const verticalTag = taskScope === 'all'
     ? tagIds.filter(id => verticals.find(v => v.id === id)?.slug !== 'lyzr').map(id => verticals.find(v => v.id === id)?.name).filter(Boolean).join(' · ') || undefined
     : undefined
+  const { data: products } = useProducts()
+  const productTag = productNames(task, products)
 
   // Effective owners with inheritance: task -> sub-channel -> channel
   const own = ownEntries(task)
@@ -268,6 +270,11 @@ export function TaskCard({ task, onClick, compact, onSubtaskClick }: TaskCardPro
         {verticalTag && (
           <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md border border-blue-200 bg-blue-50 text-blue-700 truncate max-w-[8rem]" title={`Tagged ${verticalTag}: also shows in the ${verticalTag} view`}>
             {verticalTag}
+          </span>
+        )}
+        {productTag && (
+          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md border border-violet-200 bg-violet-50 text-violet-700 truncate max-w-[8rem]" title={`Product: ${productTag}`}>
+            {productTag}
           </span>
         )}
         <span className="flex-1" />
@@ -312,11 +319,23 @@ export function TaskCard({ task, onClick, compact, onSubtaskClick }: TaskCardPro
   )
 }
 
+// Names of a task's product tags (migration 034), or undefined when none.
+// Lyzr (brand-level) is every task's default, so cards only name real products.
+function productNames(task: Task, products?: { id: string; name: string; slug: string }[]) {
+  if (!task.product_ids?.length || !products?.length) return undefined
+  return task.product_ids
+    .map(id => products.find(p => p.id === id))
+    .filter(p => p && p.slug !== 'lyzr')
+    .map(p => p!.name).join(' · ') || undefined
+}
+
 // Table row version
 export function TaskRow({ task, onClick, selectable, selected, onSelectChange, parentLabel, showVerticalColumn }: TaskRowProps) {
   const { verticals } = useVertical()
   const rowTagIds = task.vertical_ids?.length ? task.vertical_ids : (task.channel?.vertical_id ? [task.channel.vertical_id] : [])
   const verticalName = rowTagIds.map(id => verticals.find(v => v.id === id)?.name).filter(Boolean).join(' · ')
+  const { data: products } = useProducts()
+  const productName = productNames(task, products)
   const { data: allChannels } = useChannels('all')
   const { data: functions } = useFunctions()
   const parentChannel = task.channel?.parent_channel_id ? allChannels?.find(c => c.id === task.channel!.parent_channel_id) : null
@@ -407,7 +426,7 @@ export function TaskRow({ task, onClick, selectable, selected, onSelectChange, p
         <td className="py-3 px-4 text-xs text-zinc-500">{domainName ? <Badge variant="outline" className="text-[10px] border-emerald-200 bg-emerald-50 text-emerald-700">{domainName}</Badge> : <span className="text-zinc-300">unlinked</span>}</td>
       )}
       {showVerticalColumn && (
-        <td className="py-3 px-4 text-xs text-zinc-500">{verticalName ? <Badge variant="outline" className="text-[10px] border-blue-200 bg-blue-50 text-blue-700">{verticalName}</Badge> : '-'}</td>
+        <td className="py-3 px-4 text-xs text-zinc-500">{verticalName ? <Badge variant="outline" className="text-[10px] border-blue-200 bg-blue-50 text-blue-700">{verticalName}</Badge> : '-'}{productName && <Badge variant="outline" className="ml-1 text-[10px] border-violet-200 bg-violet-50 text-violet-700">{productName}</Badge>}</td>
       )}
     </tr>
   )

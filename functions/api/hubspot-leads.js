@@ -8,7 +8,13 @@
 //   2. its HubSpot owner is one of the GSI owner emails below
 //   3. "GSI" appears in its searchable text or any source-detail property
 //
-// POST { extraCompanies?: string[], from?: "YYYY-MM-DD", to?: "YYYY-MM-DD" }
+// PRODUCT-TRACK PULL (per Kailash 2026-11-12): when the body carries `tracks`,
+// the GSI rule is skipped and the pull is every contact whose HubSpot
+// "Product track" (product_track) is one of those values. The tracker maps
+// each product / vertical to its tracks (products.hubspot_tracks,
+// verticals.hubspot_tracks).
+//
+// POST { extraCompanies?: string[], tracks?: string[], from?: "YYYY-MM-DD", to?: "YYYY-MM-DD" }
 // -> { leads: [{ id, name, email, company, source, created, status,
 //                lastActivity, lifecycle, owner, via: [...] }] }
 
@@ -35,6 +41,7 @@ const PROPS = [
   'lsa_lead_score', 'lsa_lead_score_category', 'lsa_lead_source',
   'lyzr_lead_score', 'lyzr_lead_score_category', 'hubspotscore',
   'lead_source', 'lead_source_category',
+  'product_track',
 ]
 
 async function requireUser(request, env) {
@@ -124,6 +131,9 @@ export async function onRequestPost({ request, env }) {
     if (!token) return new Response(JSON.stringify({ error: 'HUBSPOT_ACCESS_TOKEN not configured on Pages project' }), { status: 503, headers })
 
     const body = await request.json().catch(() => ({}))
+    const tracks = Array.isArray(body.tracks)
+      ? [...new Set(body.tracks.map(t => String(t).trim()).filter(Boolean))].slice(0, 25)
+      : []
     const extra = (body.extraCompanies || []).map(c => String(c).trim()).filter(Boolean)
     const companies = [...new Set([...DEFAULT_COMPANIES, ...extra])]
     const { from, to } = body
@@ -131,14 +141,17 @@ export async function onRequestPost({ request, env }) {
 
     const { byId: ownerNames, idByEmail, error: ownerError } = await fetchOwners(token)
     const found = new Map() // id -> { raw, via[] }
+    const trackMode = tracks.length > 0
 
     // Every search this pull needs, as a flat resumable list. No rule has a
     // page cap any more: when this invocation runs out of subrequest budget it
     // returns a cursor and the browser calls straight back to continue, so the
     // pull is limited only by how many leads actually match.
-    const ownerIds = OWNER_EMAILS.map(e => idByEmail[e]).filter(Boolean)
+    const ownerIds = trackMode ? [] : OWNER_EMAILS.map(e => idByEmail[e]).filter(Boolean)
     const warnings = []
-    if (ownerError) {
+    if (trackMode) {
+      if (ownerError) warnings.push(`Owner names are blank: ${ownerError}.`)
+    } else if (ownerError) {
       // Without the owners list we cannot resolve owner emails to ids, so the
       // "owned by a GSI owner" rule cannot run and owner names stay blank.
       warnings.push(`Rule 2 (leads owned by the GSI owners) was skipped: ${ownerError}. Grant the HubSpot private app the crm.objects.owners.read scope.`)
@@ -146,7 +159,12 @@ export async function onRequestPost({ request, env }) {
       warnings.push('None of the 5 GSI owner emails matched a HubSpot owner, so rule 2 matched nothing.')
     }
     const tasks = []
-    for (let i = 0; i < companies.length; i += 5) {
+    if (trackMode) {
+      tasks.push({ tag: 'track', body: {
+        filterGroups: [{ filters: [{ propertyName: 'product_track', operator: 'IN', values: tracks }, ...dates] }],
+      } })
+    }
+    for (let i = 0; !trackMode && i < companies.length; i += 5) {
       const batch = companies.slice(i, i + 5) // HubSpot allows 5 filterGroups per search
       tasks.push({ tag: 'company', body: {
         filterGroups: batch.map(name => ({
@@ -159,8 +177,8 @@ export async function onRequestPost({ request, env }) {
         filterGroups: [{ filters: [{ propertyName: 'hubspot_owner_id', operator: 'IN', values: ownerIds }, ...dates] }],
       } })
     }
-    tasks.push({ tag: 'gsi', body: { query: 'GSI', filterGroups: dates.length ? [{ filters: dates }] : undefined } })
-    for (const prop of [
+    if (!trackMode) tasks.push({ tag: 'gsi', body: { query: 'GSI', filterGroups: dates.length ? [{ filters: dates }] : undefined } })
+    for (const prop of trackMode ? [] : [
       'hs_analytics_source_data_1', 'hs_analytics_source_data_2',
       'hs_latest_source_data_1', 'hs_latest_source_data_2',
       // Paid-ads leads carry "LinkedIn Ads - GSI & SI" here, not in the
@@ -214,6 +232,7 @@ export async function onRequestPost({ request, env }) {
         scoreCategory: p.lsa_lead_score_category || p.lyzr_lead_score_category || '',
         leadSource: p.lead_source || p.lsa_lead_source || '',
         sourceCategory: p.lead_source_category || '',
+        productTrack: p.product_track || '',
         via,
       }
     })

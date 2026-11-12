@@ -105,8 +105,8 @@ function getPrimaryOwnerName(task: Task): string {
 }
 
 export default function TrackerPage() {
-  const { verticalId, taskScope } = useVertical()
-  const { data: tasks, isLoading, refetch } = useTasks({ verticalId: taskScope })
+  const { verticalId, taskScope, product } = useVertical()
+  const { data: tasks, isLoading, refetch } = useTasks({ verticalId: taskScope, product })
   const { data: categories } = useCategories(taskScope)
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all')

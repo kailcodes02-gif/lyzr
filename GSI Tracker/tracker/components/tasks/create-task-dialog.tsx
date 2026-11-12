@@ -14,8 +14,9 @@ import { Button } from '@/components/ui/button'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { useCategories, useChannels, useUsers, useKnownEmails, useCampaigns, useCurrentUser, buildChannelTree } from '@/lib/hooks/use-data'
+import { useCategories, useChannels, useUsers, useKnownEmails, useCampaigns, useCurrentUser, useProducts, buildChannelTree } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
+import { mergeChannelsByName } from '@/lib/task-channels'
 import { createTask, assignTaskByEmail, addChecklistItem } from '@/lib/actions'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -55,16 +56,18 @@ export function CreateTaskDialog({
   open, onOpenChange, defaultChannelId, defaultCategoryId, defaultVerticalId, defaultTitle, defaultDescription, defaultCampaignId, defaultDueDate, defaultPriority, defaultOwnerEmails, parentTaskId, nestingLevel = 0, onSuccess
 }: CreateTaskDialogProps) {
   const queryClient = useQueryClient()
-  // Vertical: a vertical board (GSI, …) tags the task with itself; on the Lyzr
-  // board or the company view the user must pick one — nothing is preselected.
-  const { verticalId: currentVerticalId, verticals, vertical: currentVertical } = useVertical()
+  // Vertical and product start from the view you're in (GSI view → GSI,
+  // Opencontroller view → Opencontroller). Otherwise both default to Lyzr:
+  // brand-level work, not specific to a vertical or product.
+  const { verticalId: currentVerticalId, verticals, vertical: currentVertical, product: currentProduct } = useVertical()
   const onLyzrBoard = currentVerticalId === 'all' || currentVertical?.slug === 'lyzr'
+  const lyzrVerticalId = verticals.find(v => v.slug === 'lyzr')?.id || ''
   const { data: allChannelsForDefault } = useChannels('all')
   const [pickedVertical, setPickedVertical] = useState<string>(
     defaultVerticalId || (onLyzrBoard ? '' : currentVerticalId)
   )
   // Sub-tasks inherit the parent's tags (migration 032), so they never ask.
-  const showVerticalPicker = !defaultVerticalId && !parentTaskId && onLyzrBoard
+  const showVerticalPicker = !defaultVerticalId && !parentTaskId
   const [isPending, startTransition] = useTransition()
   const [campaignId, setCampaignId] = useState<string>(defaultCampaignId || '')
   // Sub-tasks default to the parent's channel but may live on another one
@@ -72,6 +75,13 @@ export function CreateTaskDialog({
   const [otherChannel, setOtherChannel] = useState(false)
   const lockedChannel = !!defaultChannelId && !(parentTaskId && otherChannel)
   const { data: campaigns } = useCampaigns(pickedVertical || 'all')
+  // Product tag (migration 034): '' = Lyzr (brand-level, the database's default).
+  // Sub-tasks take their parent's products, so they don't ask.
+  const { data: products } = useProducts()
+  const startProduct = currentProduct && currentProduct.slug !== 'lyzr' ? currentProduct.id : ''
+  const [productId, setProductId] = useState(startProduct)
+  const choosableProducts = useMemo(() => (products || []).filter(p => p.slug !== 'lyzr'), [products])
+  const productGroups = useMemo(() => [...new Set(choosableProducts.map(p => p.group_name))], [choosableProducts])
 
   const priorityLabels = {
     P0: 'P0 (Critical)',
@@ -88,11 +98,15 @@ export function CreateTaskDialog({
     other: 'Other'
   }
 
-  // '' = not chosen yet. A sub-task stays '' and inherits the parent's tags.
-  const effectiveVertical = pickedVertical || defaultVerticalId || (onLyzrBoard ? '' : currentVerticalId)
-  // Every vertical has its own copy of the channels, so the dropdown lists
-  // the chosen vertical's — not every vertical's "Content".
-  const { data: channels } = useChannels('all')
+  // A sub-task stays '' and inherits the parent's tags; a top-level task
+  // with nothing picked is a Lyzr task.
+  const effectiveVertical = pickedVertical || defaultVerticalId || (parentTaskId ? '' : (onLyzrBoard ? lyzrVerticalId : currentVerticalId))
+  // One board: every channel is open to every task. Same-named copies (each
+  // vertical was seeded with its own "Content") show once.
+  const { data: rawChannels } = useChannels('all')
+  const channels = useMemo(
+    () => mergeChannelsByName((rawChannels || []).filter(c => c.is_active || c.slug === 'no-channel'), effectiveVertical || lyzrVerticalId).channels,
+    [rawChannels, effectiveVertical, lyzrVerticalId])
   const { data: users } = useUsers()
   
   // Recurrence state
@@ -212,9 +226,9 @@ export function CreateTaskDialog({
 
 
   const onSubmit = (data: FormData) => {
-    if (showVerticalPicker && !pickedVertical) { toast.error('Pick which vertical this task is for'); return }
     if (!data.channel_id) {
-      const bucket = (channels || []).find(c => c.slug === 'no-channel' && !c.parent_channel_id && c.is_active)
+      // One shared "No channel" (Lyzr's, migration 032); the other verticals' copies are switched off.
+      const bucket = (rawChannels || []).find(c => c.slug === 'no-channel' && !c.parent_channel_id && c.is_active)
       if (!bucket) { toast.error('Pick a channel — the “No channel” option needs database update 027 first'); return }
       data = { ...data, channel_id: bucket.id }
     }
@@ -256,6 +270,7 @@ export function CreateTaskDialog({
           ...data,
           // The tag: the vertical this was created from/for. Empty = sub-task, inherits the parent's.
           vertical_ids: effectiveVertical ? [effectiveVertical] : [],
+          product_ids: productId ? [productId] : [],
           parent_task_id: parentTaskId,
           nesting_level: nestingLevel,
           budget_allocated: budget.trim() === '' ? null : Number(budget),
@@ -303,7 +318,7 @@ export function CreateTaskDialog({
         setChecklistDraft('')
         setTargets([]); setTargetType(''); setTargetValue('')
         setLinks([]); setLinkLabel(''); setLinkUrl('')
-        setFrequency(''); setBudget('')
+        setFrequency(''); setBudget(''); setProductId(startProduct)
         setIsRecurring(false)
         setRecurrence(DEFAULT_RECURRENCE)
         onOpenChange(false)
@@ -344,20 +359,19 @@ export function CreateTaskDialog({
               <Row label="Where" hint="Which vertical and channel this task belongs to">
                 <div className="flex flex-wrap gap-2 w-full">
                   {showVerticalPicker && (
-                    <select value={pickedVertical}
-                      onChange={e => { setPickedVertical(e.target.value); if (!lockedChannel) { setPickedTop(''); setValue('channel_id', '') } }}
-                      className={selectCls}>
-                      <option value="">Vertical…</option>
-                      {verticals.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                    <select value={pickedVertical || lyzrVerticalId}
+                      onChange={e => setPickedVertical(e.target.value)}
+                      className={selectCls} aria-label="Vertical">
+                      {verticals.map(v => <option key={v.id} value={v.id}>{v.slug === 'lyzr' ? 'Lyzr (no specific vertical)' : v.name}</option>)}
                     </select>
                   )}
                   {!lockedChannel && (
                     <>
-                      <select value={pickedTop} disabled={showVerticalPicker && !pickedVertical}
+                      <select value={pickedTop}
                         onChange={e => { setPickedTop(e.target.value); setValue('channel_id', e.target.value || '') }}
-                        className={selectCls}>
-                        <option value="">{showVerticalPicker && !pickedVertical ? 'Pick a vertical first' : 'No channel'}</option>
-                        {(channels || []).filter(c => !c.parent_channel_id && c.slug !== 'no-channel' && c.vertical_id === effectiveVertical)
+                        className={selectCls} aria-label="Channel">
+                        <option value="">No channel</option>
+                        {(channels || []).filter(c => !c.parent_channel_id && c.slug !== 'no-channel')
                           .sort((a, b) => a.sort_order - b.sort_order)
                           .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
@@ -375,6 +389,19 @@ export function CreateTaskDialog({
                   )}
                 </div>
                 {errors.channel_id && <p className="text-red-600 text-xs mt-1 w-full">Pick a channel — every task lives in one.</p>}
+              </Row>
+            )}
+
+            {!parentTaskId && !!products?.length && (
+              <Row label="Product" hint="Which Lyzr product this task is about. Lyzr = brand-level, no specific product. Add more from the task later.">
+                <select value={productId} onChange={e => setProductId(e.target.value)} className={selectCls} aria-label="Product">
+                  <option value="">Lyzr (no specific product)</option>
+                  {productGroups.map(g => (
+                    <optgroup key={g} label={g}>
+                      {choosableProducts.filter(p => p.group_name === g).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </optgroup>
+                  ))}
+                </select>
               </Row>
             )}
 

@@ -24,11 +24,11 @@ import { toZonedTime } from 'date-fns-tz'
 const IST = 'Asia/Kolkata'
 
 export default function DashboardPage() {
-  const { mode, verticalId, taskScope, vertical, resolving } = useVertical()
+  const { mode, verticalId, taskScope, vertical, resolving, product } = useVertical()
   const router = useRouter()
   const href = useSpaceHref()
   const { data: user, isLoading: userLoading } = useCurrentUser()
-  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: taskScope })
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: taskScope, product })
   const { data: mentions } = useMentionsForUser()
   const { data: budgets } = useBudgetPeriods(verticalId)
   const { data: activities } = useRecentActivity(20, verticalId)

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { VerticalContext, type VerticalMode } from '@/lib/hooks/use-vertical'
-import { useCategories, useChannels, useCurrentUser, useMyVerticalIds, useVerticals } from '@/lib/hooks/use-data'
+import { useCategories, useChannels, useCurrentUser, useMyVerticalIds, useProducts, useVerticals } from '@/lib/hooks/use-data'
 import { keyFor, usePersisted } from '@/lib/hooks/use-persisted'
 import { maskForPreview, useViewAs } from '@/lib/hooks/use-view-as'
 import { withVertical } from '@/lib/hooks/use-space-href'
@@ -12,9 +12,10 @@ import { ALL_FLAGS_ON, resolveFlags } from '@/lib/vertical-flags'
 import type { Vertical } from '@/lib/types/database'
 
 // Routes that live at the workspace level and never need ?v=.
-const WORKSPACE_PREFIXES = ['/projects', '/workspace', '/functions', '/function', '/admin', '/notifications', '/guide', '/campaign', '/campaigns', '/my-board', '/members', '/me/accounts']
+// The Sales pipeline is standalone: it picks its own vertical / product.
+const WORKSPACE_PREFIXES = ['/projects', '/workspace', '/functions', '/function', '/admin', '/notifications', '/guide', '/campaign', '/campaigns', '/my-board', '/members', '/me/accounts', '/leads']
 // Routes that only make sense inside one vertical (no ?v=all).
-const SPACE_ONLY = ['/dashboard', '/weekly', '/budgets', '/leads', '/resources', '/settings', '/channel', '/category']
+const SPACE_ONLY = ['/dashboard', '/weekly', '/budgets', '/resources', '/settings', '/channel', '/category']
 
 const normalize = (p: string) => (p.replace(/\/$/, '') || '/')
 
@@ -58,6 +59,27 @@ export function VerticalProvider({ children }: { children: ReactNode }) {
   const legacy = verticals.length === 1 && verticals[0].id === 'all'
 
   const [lastSlug, setLastSlug] = usePersisted<string | null>(keyFor(user?.id, 'vertical:last'), null)
+
+  // ---------- product view ----------
+  const { data: productsData } = useProducts()
+  const products = useMemo(() => productsData || [], [productsData])
+  const [productSlug, setProductSlug] = usePersisted<string>(keyFor(user?.id, 'product:view'), 'all')
+  const pParam = params.get('p')
+  // A shared link (?p=opencontroller) switches the view once, then the param is dropped.
+  useEffect(() => {
+    // Wait for the account, so the remembered view can't overwrite the link's.
+    if (!pParam || !products.length || !user?.id) return
+    if (pParam === 'all' || products.some(p => p.slug === pParam)) setProductSlug(pParam)
+    else toast.error(`Unknown product "${pParam}"`)
+    const next = new URLSearchParams(params.toString())
+    next.delete('p')
+    const qs = next.toString()
+    router.replace(`${pathname}${qs ? `?${qs}` : ''}`)
+  }, [pParam, products, params, pathname, router, setProductSlug, user?.id])
+  const product = useMemo(
+    () => (productSlug !== 'all' && products.find(p => p.slug === productSlug)) || null,
+    [products, productSlug])
+  const setProduct = useCallback((slug: string | 'all') => setProductSlug(slug), [setProductSlug])
 
   // "View as" preview only ever narrows what a real admin sees.
   const viewAs = useViewAs()
@@ -155,7 +177,10 @@ export function VerticalProvider({ children }: { children: ReactNode }) {
     ownedVerticalIds,
     resolving,
     setVertical,
-  }), [mode, vertical, verticals, legacy, isAdmin, ownedVerticalIds, resolving, setVertical])
+    products,
+    product,
+    setProduct,
+  }), [mode, vertical, verticals, legacy, isAdmin, ownedVerticalIds, resolving, setVertical, products, product, setProduct])
 
   return <VerticalContext.Provider value={value}>{children}</VerticalContext.Provider>
 }

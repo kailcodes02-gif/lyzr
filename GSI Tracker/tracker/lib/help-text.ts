@@ -3,7 +3,8 @@
 
 export const HELP: Record<string, string> = {
   // Taxonomy
-  vertical: 'There is ONE board — Lyzr — and every task lives on it. A vertical (GSI, SI…) is a tag on tasks, and its board is just the Lyzr board filtered to that tag. Create a task in a vertical’s view and it is tagged for you; tag a task with several verticals and it shows in each view. Channels are shared: any task can use any channel.',
+  vertical: 'There is ONE board and every task lives on it. A vertical (GSI, Emerging Partner, Hyperscalers, FDE Collective) is a tag on tasks; Lyzr means not vertical-specific. Pick a vertical in the menu at the top to filter the board to it. A task added in that view is tagged for you; a task with several verticals shows in each. Channels are shared by every view.',
+  product: 'Which Lyzr product a task is about (Opencontroller, Madison, Optimus…), from the lyzr.ai menu. Lyzr means brand-level: no specific product, and it is every task’s default until a product is picked. Pick a product in the menu at the top to filter the board to it.',
   category: 'A group is only a folder for channels (Paid, Organic, Events). Nothing is owned or assigned at this level; it organises the channel list and can carry a budget.',
   channel: 'A marketing motion with owners, targets, budget and tasks (Paid Ads, Email, Content). Channels can have sub-channels.',
   sub_channel: 'A channel nested under a parent (LinkedIn Ads under Paid Ads). It has everything a channel has and inherits the parent function.',
@@ -26,13 +27,13 @@ export const HELP: Record<string, string> = {
 
   // Views
   workspace_home: 'The company view, for admins and leadership: every vertical and domain at a glance, the campaign banner, your day and recent activity.',
-  space_dashboard: 'Lyzr is the one real board — every task is on it. A vertical’s dashboard is the same board filtered to its tag: same tasks, same channels, just scoped. Anything created here gets the vertical’s tag automatically.',
+  space_dashboard: 'The one board, filtered by the Vertical and Product menus at the top. All verticals and All products show every task. Anything created here gets the view’s vertical and product automatically.',
   calendar: 'Tasks by due date. Use the arrows or pick any range; filter by owner, channel and status.',
   tracker: 'Results view: tasks that went live or finished, with their results (result achieved, money spent, proof link).',
   weekly: 'Planned versus delivered: everything due in the period, split into done, not done and overdue carried in from earlier.',
   owners: 'Each person with open, overdue and live counts. Click through for their tasks, mentions, calendar and activity.',
   budgets: 'Budget periods at vertical, group or channel level, and how much tasks have planned against each.',
-  leads_pipeline: 'Read-only HubSpot lead pull, email-interaction CSVs and lead imports, with per-lead outreach tracking. Enabled per vertical.',
+  leads_pipeline: 'Read-only HubSpot lead pull with per-lead outreach tracking. Pick whose pipeline: GSI uses its built-in rule (plus the email report and CSV import); every other vertical or product pulls the HubSpot contacts whose Product track matches it.',
   history: 'Every logged change, who made it and when.',
   functions_view: 'One domain across all verticals: its channels, tasks and weekly results everywhere it runs.',
   resources: 'Curated links for this vertical: sheets, asset folders, live pages.',

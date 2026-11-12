@@ -58,11 +58,11 @@ function OwnerDetailContent() {
   // show the signed-in person rather than an empty "awaiting sign-in" profile.
   const email = params.get('email') || me?.email || ''
   const initialTab = params.get('tab') || 'assigned'
-  const { verticalId, taskScope } = useVertical()
+  const { verticalId, taskScope, product } = useVertical()
   const href = useSpaceHref()
 
   const { data: users, isLoading: usersLoading } = useUsers()
-  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: taskScope })
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: taskScope, product })
   const { data: activities } = useRecentActivity(200, verticalId)
   const { data: channelOwners } = useAllChannelOwners()
 

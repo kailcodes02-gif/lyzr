@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import {
-  BookOpen, FolderKanban, ListTodo, RotateCcw, Table2, Users, X, Zap,
+  BookOpen, FolderKanban, LineChart, ListTodo, RotateCcw, Table2, Users, X, Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { LyzrSail } from '@/components/ui/lyzr-logo'
@@ -66,23 +66,24 @@ const STEPS: Step[] = [
   },
   {
     icon: <LyzrSail className="w-8 h-5" />,
-    title: 'One board — verticals are tags',
+    title: 'One board — vertical and product are filters',
     body: (
-      <>This is <strong>Lyzr</strong> — the one board where <strong>every task lives</strong>. Each
-      task carries a vertical tag; <strong>GSI</strong> and the others are just this board filtered
-      to their tag. Create a task in a vertical’s view and it’s tagged for you; it still shows here.
-      Channels are shared by everyone. Switch views at the top of the sidebar.</>
+      <>There is <strong>one board</strong> where <strong>every task lives</strong>. Each task has a
+      vertical (GSI, Emerging Partner, Hyperscalers, FDE Collective) and a product (Opencontroller,
+      Madison, Optimus…). <strong>Lyzr</strong> means brand-level: no specific vertical or product.
+      The two menus at the <strong>top of the page</strong> filter the board; a task you add there is
+      tagged for you. Channels are shared by every view.</>
     ),
     href: '/dashboard/?v=lyzr',
-    place: 'Lyzr',
+    place: 'Board',
     introKey: 'space_dashboard',
   },
   {
     icon: <FolderKanban className="w-6 h-6 text-orange-500" />,
     title: 'Projects: where work happens',
     body: (
-      <>Every channel is a <strong>project</strong>. It opens on <strong>Everything</strong> — the Lyzr
-      board with every task. Pick a project on the left and see its work as a <strong>Board</strong>
+      <>Every channel is a <strong>project</strong> (Projects sits under <strong>More</strong> in the
+      sidebar). It opens on <strong>Everything</strong>: every task. Pick a project on the left and see its work as a <strong>Board</strong>
       (drag cards between columns), a <strong>Table</strong>, or a compact <strong>List</strong>.
       Colours tell you where things stand: <strong>green</strong> live or done, <strong>yellow</strong>
       in progress, <strong>red</strong> blocked or overdue.</>
@@ -99,7 +100,8 @@ const STEPS: Step[] = [
       doing. Add details inline if you like: <strong>@priya</strong> for the owner,
       <strong> #content</strong> for the channel, <strong>!p1</strong> for priority and a date at the end
       such as <strong>fri</strong> or <strong>12 nov</strong>. Leave them out and it is yours, Medium,
-      in <strong>No channel</strong>. <strong>More options</strong> opens the full form.</>
+      in <strong>No channel</strong>. It takes the vertical and product of the view you are in, or
+      <strong> Lyzr</strong> for both. <strong>More options</strong> opens the full form.</>
     ),
   },
   {
@@ -129,14 +131,26 @@ const STEPS: Step[] = [
     introKey: 'campaign',
   },
   {
+    icon: <LineChart className="w-6 h-6 text-blue-600" />,
+    title: 'Sales pipeline: leads for any vertical or product',
+    body: (
+      <>A page of its own in the sidebar. <strong>Pipeline for</strong> picks whose leads to pull from
+      HubSpot, read-only. <strong>GSI</strong> keeps its built-in rule; every other vertical or product
+      pulls the contacts whose HubSpot <strong>Product track</strong> matches it (Opencontroller,
+      Open Cowork, Agent Studio…). Track outreach per lead right in the table.</>
+    ),
+    href: '/leads/',
+    place: 'Sales pipeline',
+    introKey: 'leads_pipeline',
+  },
+  {
     icon: <Table2 className="w-6 h-6 text-blue-600" />,
     title: 'For admins and leadership: the company view',
     body: (
       <>Admins and leadership start on <strong>Company home</strong> and get the company pages.
       <strong> All Tasks</strong> is the leadership view: every task in every vertical in one table;
       the tiles on top (Done, Not done, Live, Blocked, Overdue, Critical) filter it. The company pages
-      sit under <strong>More</strong> in the sidebar. Everyone else starts on My Board with a shorter
-      sidebar.</>
+      sit under <strong>More</strong> in the sidebar. Everyone else starts on My Board.</>
     ),
     href: '/workspace/tasks/',
     place: 'All Tasks',
@@ -164,7 +178,7 @@ const STEPS: Step[] = [
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[12px]">
           <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-2.5 space-y-1.5">
             <p className="font-semibold text-zinc-900">1. This page: Guide</p>
-            <p className="text-zinc-600">Sidebar › <strong>Guide</strong>, then the button at the top right:</p>
+            <p className="text-zinc-600">Sidebar › <strong>More</strong> › <strong>Guide</strong>, then the button at the top right:</p>
             <span className="inline-flex items-center gap-1 rounded-md bg-orange-500 px-2 py-1 text-[11px] font-medium text-white">
               <BookOpen className="w-3 h-3" /> Guide walkthrough
             </span>

@@ -23,20 +23,17 @@ import { taskInScope, mergeChannelsByName } from '@/lib/task-channels'
 
 function ChannelContent() {
   const channelId = useSearchParams().get('id') || ''
-  const { verticalId, vertical, flags, taskScope } = useVertical()
+  const { verticalId, vertical, flags, taskScope, product } = useVertical()
   const href = useSpaceHref()
-  const { data: categories, isLoading: catsLoading } = useCategories(verticalId)
-  // The Lyzr board shows every vertical's tasks, and every vertical has its
-  // own copy of the seeded channels — so there, same-named channels merge
-  // into one and this page covers tasks from all of them.
-  const isLyzrBoard = vertical?.slug === 'lyzr'
-  const { data: rawChannels, isLoading: channelsLoading } = useChannels(isLyzrBoard ? 'all' : verticalId)
-  const merged = useMemo(
-    () => isLyzrBoard ? mergeChannelsByName(rawChannels || [], verticalId) : null,
-    [rawChannels, isLyzrBoard, verticalId])
+  // One board: every view lists every channel. Each vertical has its own copy
+  // of the seeded channels, so same-named channels merge into one (this
+  // view's copy where it has one) and this page covers tasks from all of them.
+  const { data: categories, isLoading: catsLoading } = useCategories('all')
+  const { data: rawChannels, isLoading: channelsLoading } = useChannels('all')
+  const merged = useMemo(() => mergeChannelsByName(rawChannels || [], verticalId), [rawChannels, verticalId])
   const allChannels: Channel[] | undefined = merged ? merged.channels : rawChannels
   const twinsOf = (id: string) => merged?.twins.get(id) || [id]
-  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: taskScope })
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: taskScope, product })
   const { data: budgets } = useBudgetPeriods(verticalId)
 
   const [createOpen, setCreateOpen] = useState(false)

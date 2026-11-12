@@ -20,7 +20,7 @@ import {
   CheckSquare, MessageSquare, Link as LinkIcon, Upload,
   AlertTriangle, Pencil, Target, Repeat, Eye, Lightbulb, Check, X, History,
 } from 'lucide-react'
-import { useTask, useUsers, useTasks, useCurrentUser, useKnownEmails, useChannels, useCampaigns, useMyBadges, useTaskSuggestions, useTaskHistory } from '@/lib/hooks/use-data'
+import { useTask, useUsers, useTasks, useCurrentUser, useKnownEmails, useChannels, useCampaigns, useMyBadges, useTaskSuggestions, useTaskHistory, useProducts } from '@/lib/hooks/use-data'
 import {
   updateTask, deleteTask, addChecklistItem, toggleChecklistItem,
   deleteChecklistItem, addComment, createMention, updateAssignments, uploadResultFile,
@@ -555,6 +555,10 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                     queryClient.invalidateQueries({ queryKey: ['task', taskId] })
                   }} />
                 </div>
+                <ProductTags task={task} canEdit={canEdit} onChanged={() => {
+                  queryClient.invalidateQueries({ queryKey: ['tasks'] })
+                  queryClient.invalidateQueries({ queryKey: ['task', taskId] })
+                }} />
                 <div>
                   <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1">Result URL</p>
                   <Input
@@ -1760,6 +1764,71 @@ function VerticalTags({ task, canEdit, onChanged }: { task: Task; canEdit: boole
           </button>
         )
       })}
+    </div>
+  )
+}
+
+// The task's product tags (migration 034). Optional: none = not about a
+// specific product. Hidden until the products catalogue exists.
+function ProductTags({ task, canEdit, onChanged }: { task: Task; canEdit: boolean; onChanged: () => void }) {
+  const { data: products } = useProducts()
+  const [pending, startTransition] = useTransition()
+  const [open, setOpen] = useState(false)
+  if (!products?.length) return null
+  // Lyzr = brand-level, no specific product. It's the database default and is
+  // dropped automatically once a real product is tagged, so it isn't a toggle.
+  const lyzrId = products.find(p => p.slug === 'lyzr')?.id
+  const current = (task.product_ids || []).filter(id => id !== lyzrId)
+  const choosable = products.filter(p => p.slug !== 'lyzr')
+  const toggle = (id: string) => {
+    const next = current.includes(id) ? current.filter(p => p !== id) : [...current, id]
+    startTransition(async () => {
+      try {
+        await updateTask(task.id, { product_ids: next })
+        onChanged()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Could not change the product')
+      }
+    })
+  }
+  const chosen = choosable.filter(p => current.includes(p.id))
+  const groups = [...new Set(choosable.map(p => p.group_name))]
+  return (
+    <div>
+      <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1" title="Which Lyzr product this task is about. Lyzr = brand-level, no specific product.">Product</p>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {chosen.length === 0 && <span className="text-[11px] px-2 py-1 rounded-md border border-amber-200 bg-amber-50 text-amber-800" title="Brand-level: not about one product">Lyzr</span>}
+        {chosen.map(p => (
+          <span key={p.id} className="text-[11px] px-2 py-1 rounded-md border border-violet-300 bg-violet-50 text-violet-700">{p.name}</span>
+        ))}
+        {canEdit && (
+          <button type="button" onClick={() => setOpen(o => !o)} className="text-[11px] px-2 py-1 rounded-md border border-dashed border-zinc-300 text-zinc-500 hover:border-zinc-400">
+            {open ? 'Done' : chosen.length ? 'Change' : '+ Add product'}
+          </button>
+        )}
+      </div>
+      {canEdit && open && (
+        <div className="mt-2 space-y-2 rounded-md border border-zinc-200 p-2">
+          <p className="text-[11px] text-zinc-400">Untick everything to make it a Lyzr (brand-level) task.</p>
+          {groups.map(g => (
+            <div key={g}>
+              <p className="text-[10px] text-zinc-400 uppercase tracking-wider mb-1">{g}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {choosable.filter(p => p.group_name === g).map(p => {
+                  const on = current.includes(p.id)
+                  return (
+                    <button key={p.id} type="button" disabled={pending} onClick={() => toggle(p.id)} title={p.description || undefined}
+                      className={cn('text-[11px] px-2 py-1 rounded-md border transition-colors',
+                        on ? 'border-violet-300 bg-violet-50 text-violet-700' : 'border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300')}>
+                      {p.name}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -21,7 +21,7 @@ import { taskInScope } from '@/lib/task-channels'
 
 function CategoryContent() {
   const slug = useSearchParams().get('slug') || ''
-  const { verticalId } = useVertical()
+  const { verticalId, product } = useVertical()
   const href = useSpaceHref()
   const { data: categories, isLoading: catsLoading } = useCategories(verticalId)
   
@@ -29,7 +29,7 @@ function CategoryContent() {
   const categoryId = category?.id
 
   const { data: channels, isLoading: channelsLoading } = useChannels(verticalId, categoryId)
-  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId })
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId, product })
   const { data: budgets } = useBudgetPeriods(verticalId)
 
   const [createOpen, setCreateOpen] = useState(false)

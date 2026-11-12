@@ -13,14 +13,25 @@ import { format, startOfWeek, startOfMonth } from 'date-fns'
 import { usePersisted, keyForVertical, writeRaw } from '@/lib/hooks/use-persisted'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { resolveRange, type DateRangeValue } from '@/lib/date-range'
-import { useVertical } from '@/lib/hooks/use-vertical'
 import { SortBar, SortableTh, applySorts, toggleSortLevel, type SortLevel, type SortColumn } from './sort-bar'
 import { MultiSelect } from './multi-select'
 import { useLeadTracking, TrackCells, TrackCellHeaders, stageRank, type Tracking } from './track-cells'
 
 // READ-ONLY pull from HubSpot via the Pages Function (token stays server-side).
-// The pull rule (built into the server): ~90 GSI/SI companies + leads owned by
-// the 5 GSI owner emails + anything with "GSI" in source/searchable properties.
+// Two pull rules, picked by the Sales pipeline's "Pipeline for" menu:
+//  * GSI (tracks = []): the built-in rule on the server: ~90 GSI/SI companies +
+//    leads owned by the 5 GSI owner emails + anything with "GSI" in
+//    source/searchable properties.
+//  * Any other vertical or product: every contact whose HubSpot "Product
+//    track" is one of its mapped tracks (hubspot_tracks, migrations 034/035).
+export type PipelineChoice = {
+  key: string
+  label: string
+  // [] = the GSI rule
+  tracks: string[]
+  // Persisted pulls and filters are kept per pipeline under this id.
+  scopeId: string
+}
 
 type Lead = {
   id: string; name: string; email: string; company: string; source: string
@@ -28,6 +39,7 @@ type Lead = {
   leadScore?: string | number; scoreCategory?: string
   leadSource?: string; sourceCategory?: string
   via?: string[]
+  productTrack?: string
 }
 
 // A pull is reused for an hour; after that the next visit refreshes it once.
@@ -61,15 +73,15 @@ function scoreChipClass(cat: string) {
   return 'bg-blue-50 text-blue-700 border-blue-200'
 }
 
-export function HubSpotLeads() {
+export function HubSpotLeads({ pipeline }: { pipeline: PipelineChoice }) {
+  const trackMode = pipeline.tracks.length > 0
   const supabase = createClient()
   const queryClient = useQueryClient()
   const { data: me } = useCurrentUser()
   const { byRef, save } = useLeadTracking()
   // Pulled leads are customer PII — every persisted key is scoped to the
   // signed-in user, and all of them are purged on sign-out.
-  const { verticalId } = useVertical()
-  const k = (name: string) => keyForVertical(me?.id, verticalId, name)
+  const k = (name: string) => keyForVertical(me?.id, pipeline.scopeId, name)
 
   // --- extra companies (stored in our DB, extend the built-in rule) ---
   const { data: companies, error: companiesError } = useQuery({
@@ -132,7 +144,9 @@ export function HubSpotLeads() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
           body: JSON.stringify({
-            extraCompanies: (companies || []).map(c => c.name),
+            ...(trackMode
+              ? { tracks: pipeline.tracks }
+              : { extraCompanies: (companies || []).map(c => c.name) }),
             tzOffsetMinutes: -new Date().getTimezoneOffset(),
             cursor,
             ...rangeDates(),
@@ -140,7 +154,9 @@ export function HubSpotLeads() {
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
-        for (const l of (data.leads || []) as Lead[]) {
+        for (const raw of (data.leads || []) as Lead[]) {
+          // A product pull is labelled by the track that matched, not a rule.
+          const l = trackMode && raw.productTrack ? { ...raw, via: [raw.productTrack] } : raw
           const prev = merged.get(l.id)
           if (prev) {
             for (const v of l.via || []) if (!(prev.via || []).includes(v)) (prev.via = prev.via || []).push(v)
@@ -303,8 +319,23 @@ export function HubSpotLeads() {
 
   return (
     <div className="space-y-4">
+      {trackMode && (
+        <Card className="bg-white border-zinc-200">
+          <CardContent className="p-4 space-y-1">
+            <p className="text-xs font-semibold text-zinc-600 uppercase tracking-wider flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-violet-600" /> {pipeline.label}: pull rule
+            </p>
+            <p className="text-[11px] text-zinc-500">
+              Every HubSpot contact whose <b className="font-medium text-zinc-700">Product track</b> is{' '}
+              {pipeline.tracks.map((t, i) => <span key={t}>{i ? ' or ' : ''}<b className="font-medium text-zinc-700">{t}</b></span>)},
+              created in the date range. To pull more, set Product track on the contact in HubSpot.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Companies */}
-      <Card className="bg-white border-zinc-200">
+      {!trackMode && <Card className="bg-white border-zinc-200">
         <CardContent className="p-4 space-y-2">
           <p className="text-xs font-semibold text-zinc-600 uppercase tracking-wider flex items-center gap-1.5">
             <Building2 className="w-3.5 h-3.5 text-blue-600" /> Extra companies (on top of the built-in rule)
@@ -339,7 +370,7 @@ export function HubSpotLeads() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
       {warnings.length > 0 && (
         <Card className="bg-amber-50 border-amber-300">
@@ -377,7 +408,7 @@ export function HubSpotLeads() {
             </span>
             <Input value={fSearch} onChange={e => setFSearch(e.target.value)} placeholder="Search name / email / company…"
               className="h-8 w-56 text-xs bg-zinc-50 border-zinc-300 text-zinc-800" />
-            <MultiSelect label="Via" options={['company', 'owner', 'gsi']} selected={fVia} onChange={setFVia} width="w-[150px]" />
+            <MultiSelect label={trackMode ? 'Track' : 'Via'} options={trackMode ? pipeline.tracks : ['company', 'owner', 'gsi']} selected={fVia} onChange={setFVia} width="w-[150px]" />
             <MultiSelect label="Company" options={opts.companies} selected={fCompany} onChange={setFCompany} />
             <MultiSelect label="Lead source" options={opts.sources} selected={fSource} onChange={setFSource} />
             <MultiSelect label="Score category" options={opts.scoreCats} selected={fScoreCat} onChange={setFScoreCat} width="w-[180px]" />
@@ -402,7 +433,7 @@ export function HubSpotLeads() {
         <CardContent className="p-0 overflow-x-auto">
           {sorted.length === 0 ? (
             <p className="text-center text-sm text-zinc-500 py-14">
-              {leads.length ? 'No leads match the current filters.' : 'No leads pulled yet — pick a date range and hit “Pull from HubSpot”. The built-in GSI rule applies automatically.'}
+              {leads.length ? 'No leads match the current filters.' : `No leads pulled yet — pick a date range and hit “Pull from HubSpot”. ${trackMode ? `It pulls contacts with Product track ${pipeline.tracks.join(' or ')}.` : 'The built-in GSI rule applies automatically.'}`}
             </p>
           ) : (
             <table className="w-full text-xs min-w-[1720px]">
@@ -429,7 +460,7 @@ export function HubSpotLeads() {
                       <div className="flex flex-col gap-0.5">
                         {(lead.via || []).map(v => (
                           <span key={v} className={`inline-flex w-fit rounded px-1 py-0.5 text-[9px] font-bold uppercase ${
-                            v === 'company' ? 'bg-blue-50 text-blue-700' : v === 'owner' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
+                            v === 'company' ? 'bg-blue-50 text-blue-700' : v === 'owner' ? 'bg-amber-50 text-amber-700' : trackMode ? 'bg-violet-50 text-violet-700' : 'bg-emerald-50 text-emerald-700'
                           }`}>{v}</span>
                         ))}
                       </div>

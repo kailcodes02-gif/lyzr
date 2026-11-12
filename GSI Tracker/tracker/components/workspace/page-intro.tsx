@@ -153,12 +153,12 @@ const INTROS: Intro[] = [
   },
   {
     key: 'space_dashboard', path: '/dashboard', icon: <LayoutDashboard className="w-5 h-5 text-blue-600" />,
-    title: 'Dashboard — one board, many views',
-    lead: 'Lyzr is the one board where every task lives. A vertical’s dashboard is that board filtered to its tag — same tasks, just scoped.',
+    title: 'Board — one board, filtered by vertical and product',
+    lead: 'Every task lives on this one board. The Vertical and Product menus at the top filter it; Lyzr in either means brand-level, not specific.',
     features: [
       { name: 'KPIs', what: 'Your open tasks, going live this week, overdue and budget.' },
-      { name: 'Channels', what: 'The Lyzr board lists every channel once (same-named channels from each vertical merge into one); a vertical board lists only its own.' },
-      { name: 'New task', what: 'On a vertical board the task is tagged with that vertical automatically; on the Lyzr board you pick the vertical.' },
+      { name: 'Channels', what: 'Every view lists every channel once, in the sidebar; same-named channels from different verticals merge into one.' },
+      { name: 'New task', what: 'Starts with the vertical and product of the view you are in, or Lyzr for both; change them in the form.' },
       { name: 'Recent activity', what: 'The latest changes, newest first.' },
     ],
   },
@@ -202,10 +202,12 @@ const INTROS: Intro[] = [
   },
   {
     key: 'leads_pipeline', path: '/leads', icon: <Upload className="w-5 h-5 text-blue-600" />,
-    title: 'Leads Pipeline — the HubSpot pull',
-    lead: 'Read-only lead data pulled from HubSpot, plus CSV imports.',
+    title: 'Sales pipeline — the HubSpot pull',
+    lead: 'Read-only lead data from HubSpot, for one vertical or product at a time.',
     features: [
-      { name: 'HubSpot pull', what: 'Companies and contacts, refreshed on demand — never written back.' },
+      { name: 'Pipeline for', what: 'GSI uses its built-in rule; every other vertical or product pulls contacts by their HubSpot Product track. Greyed out = not mapped yet.' },
+      { name: 'HubSpot pull', what: 'Contacts for a date range, refreshed on demand — never written back.' },
+      { name: 'GSI extras', what: 'Email Interactions (Instantly) and Task CSV Import show when GSI is picked.' },
       { name: 'Outreach tracking', what: 'Per-lead notes on who reached out and what happened.' },
     ],
   },

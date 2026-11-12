@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import {
   BookOpen, Building2, Folder, Layers, GitBranch, ListTodo, CheckSquare, Home, LayoutDashboard, Calendar,
-  LineChart, UserCircle, CalendarRange, DollarSign, Upload, History, Workflow, Settings, Crown, ShieldCheck,
+  LineChart, UserCircle, CalendarRange, DollarSign, History, Workflow, Settings, Crown, ShieldCheck,
   Users, Table2, Filter, Repeat, ArrowRight, Sparkles, Eye, FolderKanban, Columns3, List, Inbox, Rocket, Zap, Target,
   Plus, Check, ClipboardCheck, MoreHorizontal,
 } from 'lucide-react'
@@ -19,10 +19,9 @@ import { startTour } from '@/components/workspace/welcome-tour'
 // Product guide: visual, short, complete. Every block links to the real screen.
 
 const LEVELS = [
-  { icon: Building2, color: 'text-blue-600 bg-blue-50 border-blue-200', name: 'Vertical', k: 'vertical', eg: 'Lyzr (primary) · GSI' },
-  { icon: Folder, color: 'text-zinc-600 bg-zinc-100 border-zinc-200', name: 'Group', k: 'group', eg: 'Paid · Organic · Events' },
-  { icon: Layers, color: 'text-blue-700 bg-blue-50 border-blue-200', name: 'Channel (project)', k: 'channel', eg: 'Paid Ads · Email · No channel' },
-  { icon: GitBranch, color: 'text-violet-700 bg-violet-50 border-violet-200', name: 'Sub-channel', k: 'sub_channel', eg: 'LinkedIn Ads · Webinar' },
+  { icon: Folder, color: 'text-zinc-600 bg-zinc-100 border-zinc-200', name: 'Group', k: 'group', eg: 'LinkedIn · Paid media · Events' },
+  { icon: Layers, color: 'text-blue-700 bg-blue-50 border-blue-200', name: 'Channel (project)', k: 'channel', eg: 'Podcasts · Webinars · No channel' },
+  { icon: GitBranch, color: 'text-violet-700 bg-violet-50 border-violet-200', name: 'Sub-channel', k: 'sub_channel', eg: 'Founder voices › Siva (CEO)' },
   { icon: ListTodo, color: 'text-emerald-700 bg-emerald-50 border-emerald-200', name: 'Task', k: 'task', eg: 'Run Q4 ABM campaign' },
   { icon: GitBranch, color: 'text-emerald-700 bg-emerald-50 border-emerald-200', name: 'Sub-task', k: 'sub_activity', eg: 'Write the 5-email sequence' },
   { icon: CheckSquare, color: 'text-amber-700 bg-amber-50 border-amber-200', name: 'Checklist', k: 'checklist', eg: 'Draft · Review · Schedule' },
@@ -39,11 +38,14 @@ const ROLES = [
 
 type View = { icon: React.ComponentType<{ className?: string }>; name: string; k: string; href: string; mode: 'company' | 'vertical' | 'everyone'; text?: string }
 const VIEWS: View[] = [
-  { icon: FolderKanban, name: 'Projects', k: 'projects', href: '/projects/', mode: 'everyone', text: 'Where work happens: every channel as a project on a Board, Table or List. Opens on Everything — the Lyzr board.' },
   { icon: Sparkles, name: 'My Board', k: 'my_board', href: '/my-board/', mode: 'everyone', text: 'Your home: add a task in one line, what is due this week (tick to finish), the weekly check-in, then your inbox and channels.' },
+  { icon: LayoutDashboard, name: 'Board', k: 'space_dashboard', href: '/dashboard/', mode: 'vertical', text: 'The one board: KPIs, channels and recent activity, filtered by the Vertical and Product menus at the top.' },
   { icon: ListTodo, name: 'My Tasks', k: 'member', href: '/my-tasks/', mode: 'everyone', text: 'Everything with your name on it: assigned to you, inherited through your channels, or mentioning you.' },
-  { icon: Zap, name: 'Campaigns', k: 'campaign', href: '/campaigns/', mode: 'everyone', text: 'Launches, thunderclaps and big pushes, each with its banner and its tasks.' },
   { icon: Calendar, name: 'Calendar', k: 'calendar', href: '/calendar/', mode: 'everyone' },
+  { icon: CalendarRange, name: 'Weekly review', k: 'weekly', href: '/weekly/', mode: 'vertical' },
+  { icon: Zap, name: 'Campaigns', k: 'campaign', href: '/campaigns/', mode: 'everyone', text: 'Launches, thunderclaps and big pushes, each with its banner and its tasks.' },
+  { icon: LineChart, name: 'Sales pipeline', k: 'leads_pipeline', href: '/leads/', mode: 'everyone' },
+  { icon: FolderKanban, name: 'Projects', k: 'projects', href: '/projects/', mode: 'everyone', text: 'Every channel as a project on a Board, Table or List. Opens on Everything: every task. Under More.' },
   { icon: Home, name: 'Company home', k: 'workspace_home', href: '/', mode: 'company' },
   { icon: Table2, name: 'All Tasks', k: 'tracker', href: '/workspace/tasks/', mode: 'company', text: 'The leadership view: every task in every vertical in one table; the summary tiles filter it.' },
   { icon: GitBranch, name: 'Overview', k: 'overview', href: '/overview/', mode: 'company' },
@@ -52,18 +54,15 @@ const VIEWS: View[] = [
   { icon: Workflow, name: 'Domains', k: 'functions_view', href: '/functions/', mode: 'company' },
   { icon: Users, name: 'Members', k: 'people_map', href: '/members/', mode: 'company', text: 'Every person and every role; the people map; owners per vertical, domain and channel.' },
   { icon: History, name: 'History', k: 'history', href: '/history/', mode: 'company' },
-  { icon: LayoutDashboard, name: 'Dashboard', k: 'space_dashboard', href: '/dashboard/', mode: 'vertical' },
-  { icon: LineChart, name: 'Tracker', k: 'tracker', href: '/tracker/', mode: 'vertical', text: 'Results: tasks that went live or finished, with what they achieved, cost and a proof link.' },
-  { icon: CalendarRange, name: 'Weekly Review', k: 'weekly', href: '/weekly/', mode: 'vertical' },
+  { icon: Table2, name: 'Tracker', k: 'tracker', href: '/tracker/', mode: 'vertical', text: 'Results: tasks that went live or finished, with what they achieved, cost and a proof link.' },
   { icon: DollarSign, name: 'Budgets', k: 'budgets', href: '/budgets/', mode: 'vertical' },
-  { icon: Upload, name: 'Leads Pipeline', k: 'leads_pipeline', href: '/leads/', mode: 'vertical' },
-  { icon: Settings, name: 'Vertical Settings', k: 'vertical_owner', href: '/settings/', mode: 'vertical', text: 'Owners, channel tree, resources and feature switches for one vertical.' },
+  { icon: Settings, name: 'Vertical settings', k: 'vertical_owner', href: '/settings/', mode: 'vertical', text: 'Owners, resources and feature switches for one vertical. Pick the vertical at the top first.' },
 ]
 
 const MODE_TAG: Record<View['mode'], { label: string; cls: string }> = {
   everyone: { label: 'everyone', cls: 'bg-emerald-50 text-emerald-700' },
   company: { label: 'admins & leadership', cls: 'bg-violet-50 text-violet-700' },
-  vertical: { label: 'inside a vertical', cls: 'bg-blue-50 text-blue-700' },
+  vertical: { label: 'follows the view', cls: 'bg-blue-50 text-blue-700' },
 }
 
 function Section({ n, title, tip, children }: { n: number; title: string; tip?: string; children: React.ReactNode }) {
@@ -80,7 +79,9 @@ const Note = ({ children }: { children: React.ReactNode }) => <div className="ro
 export default function GuidePage() {
   const { verticals } = useVertical()
   const lyzrSlug = verticals.find(v => v.slug === 'lyzr')?.slug || 'lyzr'
-  const otherSlug = verticals.find(v => v.slug !== 'lyzr')?.slug || 'gsi'
+  const otherSlug = verticals.find(v => v.slug === 'gsi')?.slug || verticals.find(v => v.slug !== 'lyzr')?.slug || 'gsi'
+  const { products } = useVertical()
+  const demoProduct = products.find(p => p.slug === 'opencontroller') || products.find(p => p.slug !== 'lyzr')
   const linkFor = (v: View) => v.mode === 'vertical' ? withVertical(v.href, lyzrSlug) : v.href
 
   return (
@@ -105,7 +106,7 @@ export default function GuidePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-600">
               <div className="space-y-1.5">
                 <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center">1</span> <Plus className="w-4 h-4 text-orange-500" /> Add it the moment it comes up</p>
-                <p>Press <Kbd>N</Kbd> anywhere, or <strong>New task</strong> at the top, or the box on your home page. Type one line and press Enter. Only the title is needed: no owner means you, no channel means &ldquo;No channel&rdquo;, no priority means Medium.</p>
+                <p>Press <Kbd>N</Kbd> anywhere, or <strong>New task</strong> at the top, or the box on your home page. Type one line and press Enter. Only the title is needed: no owner means you, no channel means &ldquo;No channel&rdquo;, no priority means Medium. The vertical and product come from the view you are in, or Lyzr for both.</p>
               </div>
               <div className="space-y-1.5">
                 <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center">2</span> <Check className="w-4 h-4 text-emerald-600" /> Tick it off where you see it</p>
@@ -132,22 +133,30 @@ export default function GuidePage() {
       </Section>
 
       {/* 2 */}
-      <Section n={2} title="One board. Verticals are tags.">
+      <Section n={2} title="One board. Vertical and product are filters." tip="product">
         <Card className="bg-white border-zinc-200">
-          <CardContent className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-600">
-            <div className="space-y-1.5">
-              <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><LyzrSail className="w-5 h-3.5" /> Lyzr sees everything</p>
-              <p><strong>Every task lives on the Lyzr board</strong> — it is the only board there is. Each task carries a vertical tag (Lyzr = not vertical-specific), and every page here shows all of them.</p>
-              <Link href={withVertical('/dashboard/', lyzrSlug)} className="text-blue-600 hover:underline inline-flex items-center gap-1">Open the Lyzr board <ArrowRight className="w-3 h-3" /></Link>
+          <CardContent className="p-5 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-600">
+              <div className="space-y-1.5">
+                <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><LyzrSail className="w-5 h-3.5" /> One board, every task</p>
+                <p>There is <strong>one board</strong> and every task lives on it. Every task has a <strong>vertical</strong> and a <strong>product</strong>. <strong>Lyzr</strong> in either means brand-level: not specific to one vertical or product. It is the default.</p>
+                <Link href={withVertical('/dashboard/', lyzrSlug)} className="text-blue-600 hover:underline inline-flex items-center gap-1">Open the board <ArrowRight className="w-3 h-3" /></Link>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><Building2 className="w-4 h-4 text-blue-600" /> Two menus at the top</p>
+                <p><strong>Vertical</strong> (GSI, Emerging Partner, Hyperscalers, FDE Collective) and <strong>Product</strong> (Opencontroller, Madison, Optimus… from the lyzr.ai menu) filter the board on every page. Each option shows its open count; red means overdue. Your product choice is remembered.</p>
+                <div className="flex flex-wrap gap-x-3 gap-y-1">
+                  <Link href={withVertical('/dashboard/', otherSlug)} className="text-blue-600 hover:underline inline-flex items-center gap-1">GSI view <ArrowRight className="w-3 h-3" /></Link>
+                  {demoProduct && <Link href={withVertical('/dashboard/', lyzrSlug, { p: demoProduct.slug })} className="text-blue-600 hover:underline inline-flex items-center gap-1">{demoProduct.name} view <ArrowRight className="w-3 h-3" /></Link>}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><ListTodo className="w-4 h-4 text-emerald-600" /> Tagged for you</p>
+                <p>A task added in a view gets that view&apos;s vertical and product. Change both in the task&apos;s drawer, under <strong>Vertical</strong> and <strong>Product</strong>; a task with two products shows in both views. Picking a real product removes Lyzr by itself.</p>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><Building2 className="w-4 h-4 text-blue-600" /> A vertical is a view</p>
-              <p>GSI&apos;s board is the Lyzr board <strong>filtered to tasks tagged GSI</strong> — nothing lives only there. Create a task in the GSI view and it&apos;s tagged GSI automatically; tag a task with two verticals and it shows in both views.</p>
-              <Link href={withVertical('/dashboard/', otherSlug)} className="text-blue-600 hover:underline inline-flex items-center gap-1">Open the GSI view <ArrowRight className="w-3 h-3" /></Link>
-            </div>
-            <div className="space-y-1.5">
-              <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><ListTodo className="w-4 h-4 text-emerald-600" /> Create from anywhere</p>
-              <p>Channels are <strong>shared</strong>: any task can sit in any channel, whatever it&apos;s tagged. A channel created from a vertical&apos;s view simply lists first there. Change a task&apos;s tags any time in its drawer, under <strong>Vertical</strong>.</p>
+            <div className="rounded-lg bg-zinc-50 p-3 text-xs text-zinc-600">
+              <strong className="text-zinc-800">Channels are shared.</strong> Every view lists every channel in the sidebar, including the Opencontroller GTM playbook&apos;s: LinkedIn voices, paid media, content, events, analysts, partners and sales enablement. Any task can sit in any channel, whatever it is tagged.
             </div>
           </CardContent>
         </Card>
@@ -170,7 +179,7 @@ export default function GuidePage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5 text-xs text-zinc-600">
               <Note><strong className="text-zinc-800">Groups are only folders.</strong> Nothing is owned at that level. Channels and sub-channels are where owners, targets and tasks live — in Projects each channel is a project.</Note>
-              <Note><strong className="text-zinc-800">&ldquo;No channel&rdquo;.</strong> Every vertical has one built in. A task created without picking a channel lands there, so nothing needs a channel just to be written down.</Note>
+              <Note><strong className="text-zinc-800">&ldquo;No channel&rdquo;.</strong> One, shared by every view. A task created without picking a channel lands there, so nothing needs a channel just to be written down.</Note>
               <Note><strong className="text-zinc-800">Domains</strong> tie the same channel across verticals: GSI Content and Lyzr Content roll up to one Content domain owner.</Note>
             </div>
           </CardContent>
@@ -191,7 +200,7 @@ export default function GuidePage() {
               ))}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-zinc-600">
-              <Note><strong className="text-zinc-800 inline-flex items-center gap-1"><LyzrSail className="w-4 h-3" /> Everything</strong> — the Lyzr board: every task in every vertical. Projects opens here.</Note>
+              <Note><strong className="text-zinc-800 inline-flex items-center gap-1"><LyzrSail className="w-4 h-3" /> Everything</strong> — every task in every vertical and product. Projects opens here.</Note>
               <Note><strong className="text-zinc-800 inline-flex items-center gap-1"><Inbox className="w-3.5 h-3.5" /> My tasks · Today</strong> — just your work, and what&apos;s due today or overdue.</Note>
               <Note><strong className="text-zinc-800 inline-flex items-center gap-1"><ListTodo className="w-3.5 h-3.5" /> + Add task</strong> — type what needs doing at the top of any view and press Enter. No project picked = Lyzr&apos;s &ldquo;No channel&rdquo;.</Note>
             </div>
@@ -232,15 +241,23 @@ export default function GuidePage() {
       </Section>
 
       {/* 6 */}
-      <Section n={6} title="Who sees what">
+      <Section n={6} title="Getting around">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Card className="bg-white border-zinc-200"><CardContent className="p-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-semibold"><Filter className="w-4 h-4 text-blue-600" /> Top bar</div>
+            <p className="text-xs text-zinc-600">The <strong>Vertical</strong> and <strong>Product</strong> menus that filter the board, then <strong>New task</strong> (or <Kbd>N</Kbd>), the <strong>Assistant</strong> and your notifications.</p>
+          </CardContent></Card>
+          <Card className="bg-white border-zinc-200"><CardContent className="p-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-semibold"><Layers className="w-4 h-4 text-blue-600" /> Sidebar, the same for everyone</div>
+            <p className="text-xs text-zinc-600">Home, Board, My Tasks, Calendar, Weekly review, Campaigns and Sales pipeline, then every channel. Projects, Tracker, Overview, Owners, Budgets, History and the Guide sit under <strong className="inline-flex items-center gap-0.5"><MoreHorizontal className="w-3 h-3" /> More</strong>, which opens by itself when you are on one of them.</p>
+          </CardContent></Card>
+          <Card className="bg-white border-zinc-200"><CardContent className="p-4 space-y-2">
             <div className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="w-4 h-4 text-violet-600" /> Admins and leadership</div>
-            <p className="text-xs text-zinc-600">Start on <strong>Company home</strong> — the across-company view. The sidebar shows the everyday pages (My Board, My Tasks, Projects, Calendar, Weekly); the company pages — All Tasks (the leadership view), Overview, Owners, Campaigns, Domains, Members, History, Guide — sit under <strong className="inline-flex items-center gap-0.5"><MoreHorizontal className="w-3 h-3" /> More</strong>, which opens by itself when you are on one of them.</p>
+            <p className="text-xs text-zinc-600">Home is <strong>Company home</strong>, the across-company view, with My Board next to it. More also holds the company pages: All tasks (the leadership view), Company weekly, Domains and Members.</p>
           </CardContent></Card>
           <Card className="bg-white border-zinc-200"><CardContent className="p-4 space-y-2">
             <div className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="w-4 h-4 text-emerald-600" /> Everyone else, vertical owners included</div>
-            <p className="text-xs text-zinc-600">Start on <strong>My Board</strong> — just their own work — with a short sidebar: My Board, Projects, My Tasks, Campaigns, Calendar, Guide. The switcher reads &ldquo;My work&rdquo;.</p>
+            <p className="text-xs text-zinc-600">Home is <strong>My Board</strong>: just their own work. Vertical owners also get <strong>Vertical settings</strong> under More while their vertical is picked at the top.</p>
           </CardContent></Card>
         </div>
         <p className="text-[11px] text-zinc-500">Admins can preview any role with <strong>View as</strong> in the account menu at the bottom of the sidebar.</p>
@@ -311,22 +328,41 @@ export default function GuidePage() {
       </Section>
 
       {/* 10 */}
-      <Section n={10} title="Filters and dates, the same everywhere">
+      <Section n={10} title="Sales pipeline: leads by vertical or product" tip="leads_pipeline">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <Card className="bg-white border-zinc-200"><CardContent className="p-4 space-y-1">
+            <div className="text-sm font-semibold flex items-center gap-1.5"><LineChart className="w-4 h-4 text-blue-600" /> Pick whose pipeline</div>
+            <p className="text-xs text-zinc-600">The page stands on its own. <strong>Pipeline for</strong> at the top picks a vertical or a product; opened from a product view, it starts on that product.</p>
+          </CardContent></Card>
+          <Card className="bg-white border-zinc-200"><CardContent className="p-4 space-y-1">
+            <div className="text-sm font-semibold flex items-center gap-1.5"><Building2 className="w-4 h-4 text-blue-600" /> GSI</div>
+            <p className="text-xs text-zinc-600">The built-in rule: the GSI/SI target companies, leads owned by the GSI team and anything with &ldquo;GSI&rdquo; in its source. Email Interactions and Task CSV Import sit next to it.</p>
+          </CardContent></Card>
+          <Card className="bg-white border-zinc-200"><CardContent className="p-4 space-y-1">
+            <div className="text-sm font-semibold flex items-center gap-1.5"><Target className="w-4 h-4 text-violet-600" /> Everything else</div>
+            <p className="text-xs text-zinc-600">Every HubSpot contact whose <strong>Product track</strong> matches: Opencontroller, Open Cowork, Agent Studio and so on. Greyed out means nothing is mapped in HubSpot yet.</p>
+          </CardContent></Card>
+        </div>
+        <p className="text-[11px] text-zinc-500">Read-only: nothing is ever written to HubSpot. A pull is kept for an hour, then refreshed on your next visit. <Link href="/leads/" className="text-blue-600 hover:underline">Open the Sales pipeline</Link></p>
+      </Section>
+
+      {/* 11 */}
+      <Section n={11} title="Filters and dates, the same everywhere">
         <Card className="bg-white border-zinc-200">
           <CardContent className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-600">
             <div className="space-y-1"><p className="text-sm font-semibold text-zinc-900 inline-flex items-center gap-1"><Calendar className="w-4 h-4 text-blue-600" /> Date range <InfoTip k="date_range" /></p><p>Presets (this week, last month, quarter, last 30 days) or two days on the calendar. The arrows step by the same length.</p></div>
-            <div className="space-y-1"><p className="text-sm font-semibold text-zinc-900 inline-flex items-center gap-1"><Filter className="w-4 h-4 text-blue-600" /> Filter bar</p><p>Owner (including people not signed in yet, and Unassigned), status, priority, vertical, domain, channel and search.</p></div>
+            <div className="space-y-1"><p className="text-sm font-semibold text-zinc-900 inline-flex items-center gap-1"><Filter className="w-4 h-4 text-blue-600" /> Filter bar</p><p>On top of the Vertical and Product menus: owner (including people not signed in yet, and Unassigned), status, priority, vertical, domain, channel and search.</p></div>
             <div className="space-y-1"><p className="text-sm font-semibold text-zinc-900 inline-flex items-center gap-1"><Sparkles className="w-4 h-4 text-blue-600" /> Saved views <InfoTip k="saved_views" /></p><p>On the Tracker, save the current filters and sort under a name and reload them later.</p></div>
           </CardContent>
         </Card>
       </Section>
 
-      {/* 11 */}
-      <Section n={11} title="Setting things up (admins)">
+      {/* 12 */}
+      <Section n={12} title="Setting things up (admins)">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           {[
-            { n: 1, t: 'Verticals', d: 'Workspace settings › Verticals. Clone a template for the full channel tree, or start empty. Lyzr is permanent and always first.', k: 'template' },
-            { n: 2, t: 'Channels & structure', d: 'Groups, channels and sub-channels per vertical. “No channel” is created automatically.', k: 'channel' },
+            { n: 1, t: 'Verticals and products', d: 'Workspace settings › Verticals. Lyzr is permanent and always first. Products follow the lyzr.ai menu; each can map to HubSpot Product track values for the Sales pipeline.', k: 'template' },
+            { n: 2, t: 'Channels & structure', d: 'Groups, channels and sub-channels, shared by every view. One “No channel” is created automatically.', k: 'channel' },
             { n: 3, t: 'People and roles', d: 'Members page: admins, leadership, vertical, domain and channel owners.', k: 'vertical_owner' },
             { n: 4, t: 'Task fields', d: 'Extra questions a channel’s tasks ask (e.g. Venue, Daily budget). Four steps; drag to reorder.', k: 'feature_flags' },
           ].map(s => (
@@ -341,8 +377,8 @@ export default function GuidePage() {
         <Link href="/admin/" className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1">Open Workspace settings <ArrowRight className="w-3 h-3" /></Link>
       </Section>
 
-      {/* 12 */}
-      <Section n={12} title="The assistant (top right)" tip="assistant">
+      {/* 13 */}
+      <Section n={13} title="The assistant (top right)" tip="assistant">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Card className="bg-white border-zinc-200"><CardContent className="p-4 space-y-1">
             <div className="text-sm font-semibold">“Assign the Q4 ABM email on GSI Email to Anju, due Friday”</div>

@@ -2,10 +2,11 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { useQuery } from '@tanstack/react-query'
+import { useCallback } from 'react'
 import type {
   User, Category, Channel,
   ChannelOwner, ChannelResource, ChannelLearning, ChannelTarget,
-  Vertical, VerticalOwner, Fn, FunctionOwner, VerticalResource, TaxonomyTemplate,
+  Vertical, VerticalOwner, Fn, FunctionOwner, VerticalResource, TaxonomyTemplate, Product,
   EffectiveChannelOwner, Campaign, CampaignOwner, CampaignParticipant, VerticalMember, TaskSuggestion,
 } from '@/lib/types/database'
 import { taskChannelIds } from '@/lib/task-channels'
@@ -31,6 +32,25 @@ export function useCurrentUser() {
         .eq('id', authUser.id)
         .single()
       return data as User | null
+    },
+  })
+}
+
+// ============ PRODUCTS (tags, migration 034) ============
+
+// Empty until 034 is applied (the query errors → treated as no products),
+// so the product pickers simply don't show.
+export function useProducts(includeInactive = false) {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['products', includeInactive],
+    staleTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      let q = supabase.from('products').select('*').order('sort_order').order('name')
+      if (!includeInactive) q = q.eq('is_active', true)
+      const { data, error } = await q
+      if (error) return [] as Product[]
+      return data as Product[]
     },
   })
 }
@@ -552,6 +572,9 @@ async function verticalChannelIds(supabase: ReturnType<typeof createClient>, ver
 }
 const taskHasVertical = (t: { vertical_ids?: string[] }, v: string, fallback: () => boolean) =>
   t.vertical_ids?.length ? t.vertical_ids.includes(v) : fallback()
+// A task with no product tags (before migration 034) counts as Lyzr.
+export const taskHasProduct = (t: { product_ids?: string[] }, p: string, pIsLyzr: boolean) =>
+  t.product_ids?.length ? t.product_ids.includes(p) : pIsLyzr
 
 export function useTasks(filters?: {
   channelId?: string
@@ -561,11 +584,22 @@ export function useTasks(filters?: {
   createdBy?: string
   parentTaskId?: string | null
   verticalId?: VerticalScope
+  // Product view: only tasks tagged with this product. Applied to the cached
+  // list, so switching products never refetches. null/undefined = all.
+  product?: Product | null
 }) {
   const supabase = createClient()
+  const { product, ...rest } = filters || {}
+  const productId = product?.id
+  const productIsLyzr = product?.slug === 'lyzr'
+  const select = useCallback(
+    (tasks: Task[]) => productId ? tasks.filter(t => taskHasProduct(t, productId, productIsLyzr)) : tasks,
+    [productId, productIsLyzr])
   return useQuery({
-    queryKey: ['tasks', filters],
+    queryKey: ['tasks', filters ? rest : undefined],
+    select,
     queryFn: async () => {
+      const filters = rest
       let query = supabase
         .from('tasks')
         .select(`

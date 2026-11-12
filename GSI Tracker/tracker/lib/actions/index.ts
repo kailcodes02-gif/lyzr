@@ -74,6 +74,8 @@ export async function createTask(data: {
   channel_id: string
   /** Vertical tags; empty/omitted = Lyzr (the database normalises). */
   vertical_ids?: string[]
+  /** Product tags; optional (migration 034). */
+  product_ids?: string[]
   title: string
   description?: string
   priority: TaskPriority
@@ -136,6 +138,8 @@ export async function createTask(data: {
       channel_id: data.channel_id,
       // Empty leaves it to the trigger (parent's tags for a sub-task, else Lyzr).
       ...(data.vertical_ids?.length ? { vertical_ids: data.vertical_ids } : {}),
+      // Empty leaves it to the trigger (a sub-task takes its parent's products).
+      ...(data.product_ids?.length ? { product_ids: data.product_ids } : {}),
       title: data.title,
       description: data.description || null,
       priority: data.priority,
@@ -225,6 +229,7 @@ export async function updateTask(
     tracker_fields: Record<string, unknown>
     campaign_id: string | null
     vertical_ids: string[]
+    product_ids: string[]
   }>,
   opts?: { overrideBlockers?: boolean }
 ) {

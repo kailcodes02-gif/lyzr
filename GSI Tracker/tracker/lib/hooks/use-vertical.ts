@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext } from 'react'
-import type { Vertical, VerticalSettings } from '@/lib/types/database'
+import type { Product, Vertical, VerticalSettings } from '@/lib/types/database'
 import { DEFAULT_FLAGS } from '@/lib/vertical-flags'
 
 export type VerticalMode = 'workspace' | 'space'
@@ -23,6 +23,11 @@ export interface VerticalContextValue {
   ownedVerticalIds: Set<string>
   resolving: boolean
   setVertical: (slug: string | 'all', path?: string) => void
+  // Product view: a filter on the same board, remembered per person.
+  // null = every product. Pass `product` to useTasks.
+  products: Product[]
+  product: Product | null
+  setProduct: (slug: string | 'all') => void
 }
 
 export const VerticalContext = createContext<VerticalContextValue>({
@@ -38,6 +43,9 @@ export const VerticalContext = createContext<VerticalContextValue>({
   ownedVerticalIds: new Set(),
   resolving: true,
   setVertical: () => {},
+  products: [],
+  product: null,
+  setProduct: () => {},
 })
 
 export function useVertical() {

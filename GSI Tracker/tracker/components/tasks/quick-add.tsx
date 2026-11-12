@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { CalendarDays, Flag, Hash, Loader2, Plus, SlidersHorizontal, User } from 'lucide-react'
+import { Building2, CalendarDays, Flag, Hash, Loader2, Package, Plus, SlidersHorizontal, User } from 'lucide-react'
 import { useChannels, useCurrentUser, useKnownEmails, useUsers } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { assignTaskByEmail, createTask } from '@/lib/actions'
@@ -23,7 +23,7 @@ export function QuickAdd({ autoFocus, onCreated, className }: {
   className?: string
 }) {
   const queryClient = useQueryClient()
-  const { mode, vertical, verticals } = useVertical()
+  const { mode, vertical, verticals, product } = useVertical()
   const { data: me } = useCurrentUser()
   const { data: users } = useUsers()
   const { data: knownEmails } = useKnownEmails()
@@ -39,6 +39,8 @@ export function QuickAdd({ autoFocus, onCreated, className }: {
   // the main board (same default as the API).
   const lyzr = verticals.find(v => v.slug === 'lyzr')
   const targetVertical = mode === 'space' && vertical ? vertical : lyzr || null
+  // Same for products: the product view you're in, else Lyzr (the database default).
+  const targetProduct = product && product.slug !== 'lyzr' ? product : null
 
   const people = useMemo(() => {
     const map = new Map<string, { email: string; name: string | null; userId?: string }>()
@@ -78,7 +80,8 @@ export function QuickAdd({ autoFocus, onCreated, className }: {
     if (!parsed.title) { toast.error('Type what needs doing first'); return }
     if (unknownOwner) { toast.error(`Who is @${unknownOwner.token}? Use their email name, e.g. @priya or @priya.sharma`); return }
     if (channelMissing) { toast.error(`No single channel matches #${parsed.channel}. Type more of its name, or drop it.`); return }
-    const vId = channel?.vertical_id || targetVertical?.id
+    // Channels are shared by every vertical: the tag comes from the view, not the channel.
+    const vId = targetVertical?.id || channel?.vertical_id
     const bucket = channel || (channels || []).find(c => c.slug === 'no-channel' && !c.parent_channel_id && c.is_active && c.vertical_id === vId)
       || (channels || []).find(c => c.slug === 'no-channel' && !c.parent_channel_id && c.is_active)
     if (!bucket) { toast.error('No "No channel" bucket found. Use More options to pick a channel.'); return }
@@ -93,6 +96,7 @@ export function QuickAdd({ autoFocus, onCreated, className }: {
           title: parsed.title,
           channel_id: bucket.id,
           vertical_ids: vId ? [vId] : [],
+          product_ids: targetProduct ? [targetProduct.id] : [],
           priority: (parsed.priority || 'P2') as TaskPriority,
           due_date: parsed.dueDate || undefined,
           assignments: assignments.filter(a => a.userId).map(a => ({ user_id: a.userId!, role: a.role })),
@@ -149,7 +153,9 @@ export function QuickAdd({ autoFocus, onCreated, className }: {
               : chip(<User className="w-3 h-3" />, 'You')}
             {channelMissing
               ? chip(<Hash className="w-3 h-3" />, `no match for #${parsed.channel}`, 'bad')
-              : chip(<Hash className="w-3 h-3" />, channel ? channel.name : `${targetVertical?.name || ''} · No channel`.replace(/^ · /, ''))}
+              : chip(<Hash className="w-3 h-3" />, channel ? channel.name : 'No channel')}
+            {chip(<Building2 className="w-3 h-3" />, targetVertical && targetVertical.slug !== 'lyzr' ? targetVertical.name : 'Lyzr')}
+            {targetProduct && chip(<Package className="w-3 h-3" />, targetProduct.name)}
             {chip(<Flag className="w-3 h-3" />, parsed.priority || 'P2', 'ok', { color: PRIORITY_COLORS[parsed.priority || 'P2'] })}
             {parsed.dueLabel && chip(<CalendarDays className="w-3 h-3" />, parsed.dueLabel)}
           </>
@@ -172,7 +178,6 @@ export function QuickAdd({ autoFocus, onCreated, className }: {
           defaultPriority={parsed.priority || undefined}
           defaultOwnerEmails={owners.every(o => o.email) && owners.length ? owners.map(o => o.email!) : undefined}
           defaultChannelId={channel?.id}
-          defaultVerticalId={channel?.vertical_id}
           onSuccess={() => { setFullOpen(false); setText('') }}
         />
       )}

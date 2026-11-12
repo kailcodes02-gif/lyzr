@@ -1,7 +1,7 @@
 'use client'
 
 import { useTasks, useChannels, useCurrentUser } from '@/lib/hooks/use-data'
-import { usePersisted, keyForVertical } from '@/lib/hooks/use-persisted'
+import { usePersisted, keyFor, keyForVertical } from '@/lib/hooks/use-persisted'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { InfoTip } from '@/components/ui/info-tip'
@@ -20,7 +20,7 @@ import { importLeads } from '@/lib/actions'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import Papa from 'papaparse'
-import { HubSpotLeads } from '@/components/leads/hubspot-leads'
+import { HubSpotLeads, type PipelineChoice } from '@/components/leads/hubspot-leads'
 import { EmailInteractions } from '@/components/leads/email-interactions'
 
 import {
@@ -93,9 +93,8 @@ function autoSuggestMapping(headers: string[]): Record<string, LeadField | ''> {
   return result
 }
 
-function CsvImportSection() {
+function CsvImportSection({ verticalId }: { verticalId: string }) {
   const queryClient = useQueryClient()
-  const { verticalId } = useVertical()
   const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId })
   useChannels(verticalId)
 
@@ -665,45 +664,90 @@ export default function LeadsPage() {
   )
 }
 
+// The Sales pipeline stands alone: pick whose pipeline to pull. GSI uses its
+// built-in HubSpot rule (plus the Instantly email report and CSV import);
+// every other vertical and product pulls the HubSpot contacts whose
+// "Product track" matches its mapping.
 function LeadsTabs() {
   const { data: me } = useCurrentUser()
-  const { verticalId, vertical, flags, resolving } = useVertical()
+  const { verticals, vertical: viewVertical, products, product: viewProduct } = useVertical()
+  const gsi = verticals.find(v => v.slug === 'gsi')
+  const choices = useMemo(() => {
+    const list: (PipelineChoice & { group: string; mapped: boolean })[] = []
+    if (gsi) list.push({ key: 'gsi', label: 'GSI', tracks: [], scopeId: gsi.id, group: 'Verticals', mapped: true })
+    for (const v of verticals) {
+      if (v.slug === 'lyzr' || v.slug === 'gsi') continue
+      const tracks = v.hubspot_tracks || []
+      list.push({ key: `v:${v.slug}`, label: v.name, tracks, scopeId: `pipeline:v:${v.slug}`, group: 'Verticals', mapped: tracks.length > 0 })
+    }
+    const allTracks = [...new Set(products.flatMap(p => p.hubspot_tracks || []))]
+    if (allTracks.length) list.push({ key: 'p:all', label: 'Every product', tracks: allTracks, scopeId: 'pipeline:p:all', group: 'Products', mapped: true })
+    for (const p of products) {
+      if (p.slug === 'lyzr') continue
+      const tracks = p.hubspot_tracks || []
+      list.push({ key: `p:${p.slug}`, label: p.name, tracks, scopeId: `pipeline:p:${p.slug}`, group: 'Products', mapped: tracks.length > 0 })
+    }
+    return list
+  }, [gsi, verticals, products])
+  // Opened from a vertical or product view, start on that one when it's mapped.
+  const fromView = (viewProduct && choices.find(c => c.key === `p:${viewProduct.slug}` && c.mapped))
+    || (viewVertical && choices.find(c => (c.key === `v:${viewVertical.slug}` || (viewVertical.slug === 'gsi' && c.key === 'gsi')) && c.mapped))
+  const [pickedKey, setPickedKey] = usePersisted<string>(keyFor(me?.id, 'pipeline:pick'), '')
+  const pipeline = choices.find(c => c.key === pickedKey && c.mapped) || fromView || choices.find(c => c.mapped) || null
+  const isGsi = pipeline?.key === 'gsi'
   // Persisted with the rest of the view state — otherwise a refresh silently
   // returns you to HubSpot while your Email Interactions filters sit unused.
-  const [tab, setTab] = usePersisted<'hubspot' | 'email' | 'csv'>(keyForVertical(me?.id, verticalId, 'leads:tab'), 'hubspot')
-  if (!resolving && !flags.leads_pipeline) {
-    return (
-      <div className="pl-12 lg:pl-0 py-16 text-center space-y-2">
-        <h1 className="text-xl font-semibold text-zinc-900">Leads Pipeline is not enabled for {vertical?.name || 'this vertical'}</h1>
-        <p className="text-sm text-zinc-500 max-w-md mx-auto">The HubSpot pull rule, Instantly tag and lead CSV import are configured for GSI today. An admin can switch this on in Vertical Settings once an integration exists for this vertical.</p>
-      </div>
-    )
-  }
+  const [tab0, setTab] = usePersisted<'hubspot' | 'email' | 'csv'>(keyForVertical(me?.id, gsi?.id || 'all', 'leads:tab'), 'hubspot')
+  const tab = isGsi ? tab0 : 'hubspot'
+  const groups = [...new Set(choices.map(c => c.group))]
   return (
     <div className="space-y-5">
       <div className="pl-12 lg:pl-0 flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 inline-flex items-center gap-2">Leads Pipeline <InfoTip k="leads_pipeline" /></h1>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 inline-flex items-center gap-2">Sales pipeline <InfoTip k="leads_pipeline" /></h1>
           <p className="text-sm text-zinc-500 mt-1">
-            Pull target-account leads from HubSpot (read-only) and track your outreach here.
+            Pull leads from HubSpot (read-only) for one vertical or product, and track your outreach here.
           </p>
         </div>
-        <div className="flex bg-zinc-100 border border-zinc-200 rounded-lg p-0.5">
-          <button onClick={() => setTab('hubspot')}
-            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === 'hubspot' ? 'bg-white shadow text-zinc-900' : 'text-zinc-600 hover:text-zinc-900'}`}>
-            HubSpot Leads
-          </button>
-          <button onClick={() => setTab('email')}
-            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === 'email' ? 'bg-white shadow text-zinc-900' : 'text-zinc-600 hover:text-zinc-900'}`}>
-            Email Interactions
-          </button>
-          <button onClick={() => setTab('csv')}
-            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === 'csv' ? 'bg-white shadow text-zinc-900' : 'text-zinc-600 hover:text-zinc-900'}`}>
-            Task CSV Import
-          </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <label className="text-xs text-zinc-500" htmlFor="pipeline-for">Pipeline for</label>
+          <select id="pipeline-for" value={pipeline?.key || ''} onChange={e => setPickedKey(e.target.value)}
+            className="h-8 rounded-md border border-zinc-300 bg-white px-2 text-xs font-medium text-zinc-800">
+            {groups.map(g => (
+              <optgroup key={g} label={g}>
+                {choices.filter(c => c.group === g).map(c => (
+                  <option key={c.key} value={c.key} disabled={!c.mapped}>
+                    {c.label}{c.key === 'gsi' ? ' (built-in rule)' : c.mapped ? '' : ' (not mapped in HubSpot yet)'}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          {isGsi && (
+            <div className="flex bg-zinc-100 border border-zinc-200 rounded-lg p-0.5">
+              <button onClick={() => setTab('hubspot')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === 'hubspot' ? 'bg-white shadow text-zinc-900' : 'text-zinc-600 hover:text-zinc-900'}`}>
+                HubSpot Leads
+              </button>
+              <button onClick={() => setTab('email')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === 'email' ? 'bg-white shadow text-zinc-900' : 'text-zinc-600 hover:text-zinc-900'}`}>
+                Email Interactions
+              </button>
+              <button onClick={() => setTab('csv')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === 'csv' ? 'bg-white shadow text-zinc-900' : 'text-zinc-600 hover:text-zinc-900'}`}>
+                Task CSV Import
+              </button>
+            </div>
+          )}
         </div>
       </div>
-      {tab === 'hubspot' ? <HubSpotLeads /> : tab === 'email' ? <EmailInteractions /> : <CsvImportSection />}
+      {!pipeline ? (
+        <p className="py-16 text-center text-sm text-zinc-500">
+          No pipeline to show yet. GSI needs its vertical; other verticals and products need their HubSpot Product track mapping (database update 034 and 035).
+        </p>
+      ) : tab === 'hubspot' ? <HubSpotLeads key={pipeline.key} pipeline={pipeline} />
+        : tab === 'email' ? <EmailInteractions scopeId={gsi?.id} />
+        : <CsvImportSection verticalId={gsi?.id || 'all'} />}
     </div>
   )
 }

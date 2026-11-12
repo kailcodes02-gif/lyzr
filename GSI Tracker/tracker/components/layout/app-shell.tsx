@@ -4,10 +4,10 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import {
-  Calendar, LayoutDashboard, ListTodo, ChevronDown, ChevronRight, ChevronsUpDown,
-  Bell, LogOut, Zap, Sparkles, Link2, GitBranch, DollarSign, Upload, Menu, X, Settings, LineChart, UserCircle,
-  CalendarRange, History, BookOpen, Layers, Building2, Crown, Table2, Workflow, Home, Eye, FolderOpen, FolderKanban,
-  MoreHorizontal, Plus, Search,
+  Calendar, LayoutDashboard, ListTodo, ChevronDown, ChevronRight,
+  Bell, LogOut, Zap, Sparkles, Link2, GitBranch, DollarSign, Menu, X, Settings, LineChart, UserCircle,
+  CalendarRange, History, BookOpen, Layers, Building2, Table2, Workflow, Home, Eye, FolderOpen, FolderKanban,
+  MoreHorizontal, Plus, Search, Package,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -180,96 +180,127 @@ function ChannelList({ channels, slug, empty }: { channels: Channel[]; slug: str
   )
 }
 
-// Vertical switcher (space mode) / "Workspace" badge (workspace mode).
-function VerticalSwitcher() {
-  const { mode, vertical, verticals, ownedVerticalIds, setVertical } = useVertical()
-  const pathname = usePathname()
-  const { isLeadership } = useMyBadges()
-  const label = mode === 'space' && vertical ? vertical.name : isLeadership ? 'Company' : 'My work'
+// Open / overdue counts per vertical and per product, for the view menus.
+function useViewCounts() {
+  const { data: tasks } = useTasks({ verticalId: 'all' })
+  const { products } = useVertical()
+  return useMemo(() => {
+    const byVertical = new Map<string, { open: number; overdue: number }>()
+    const byProduct = new Map<string, { open: number; overdue: number }>()
+    const lyzrProduct = products.find(p => p.slug === 'lyzr')?.id
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const bump = (m: Map<string, { open: number; overdue: number }>, k: string | undefined, overdue: boolean) => {
+      if (!k) return
+      const c = m.get(k) || { open: 0, overdue: 0 }
+      c.open++; if (overdue) c.overdue++
+      m.set(k, c)
+    }
+    for (const t of tasks || []) {
+      if (!OPEN_STATUSES.has(t.status) || t.parent_task_id) continue
+      const overdue = !!t.due_date && new Date(t.due_date) < today
+      for (const v of t.vertical_ids || []) bump(byVertical, v, overdue)
+      for (const p of t.product_ids?.length ? t.product_ids : [lyzrProduct]) bump(byProduct, p, overdue)
+    }
+    return { byVertical, byProduct }
+  }, [tasks, products])
+}
+
+function CountPill({ c }: { c?: { open: number; overdue: number } }) {
+  if (!c || c.open === 0) return null
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-100 text-left transition-colors">
-        {mode === 'space' ? <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" /> : <Home className="w-3.5 h-3.5 text-violet-600 shrink-0" />}
-        <span className="flex-1 text-xs font-semibold text-zinc-800 truncate">{label}</span>
-        <ChevronsUpDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-60 bg-white border-zinc-300">
-        <DropdownMenuItem onClick={() => setVertical('all')} className="text-zinc-700">
-          <Home className="w-4 h-4 mr-2 text-violet-600" /> {isLeadership ? 'Company (all verticals)' : 'My work (all my verticals)'}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator className="bg-zinc-200/70" />
-        {verticals.map(v => (
-          <DropdownMenuItem
-            key={v.id}
-            onClick={() => setVertical(v.slug, mode === 'space' ? pathname : '/dashboard/')}
-            className={cn('text-zinc-700', vertical?.id === v.id && 'bg-zinc-100 font-medium')}
-          >
-            <Building2 className="w-4 h-4 mr-2 text-blue-600" />
-            <span className="flex-1 truncate">{v.name}</span>
-            {v.slug === 'lyzr'
-              ? <Crown className="w-3.5 h-3.5 text-amber-500" aria-label="The main board — every task lives here" />
-              : <span className="text-[10px] text-zinc-400">view</span>}
-          </DropdownMenuItem>
-        ))}
-        {verticals.length === 0 && (
-          <DropdownMenuItem disabled className="text-zinc-400 text-xs">No verticals yet</DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full shrink-0', c.overdue > 0 ? 'bg-red-50 text-red-600' : 'bg-zinc-100 text-zinc-500')}
+      title={`${c.open} open, ${c.overdue} overdue`}>
+      {c.overdue > 0 ? `${c.overdue}!` : c.open}
+    </span>
   )
 }
 
-function VerticalRows({ onNavigate }: { onNavigate: () => void }) {
-  const { verticals, ownedVerticalIds } = useVertical()
-  const { data: tasks } = useTasks({ verticalId: 'all' })
-  const { data: channels } = useChannels('all')
-  const counts = useMemo(() => {
-    const byVertical = new Map<string, { open: number; overdue: number }>()
-    const chVertical = new Map((channels || []).map(c => [c.id, c.vertical_id]))
-    const today = new Date(); today.setHours(0, 0, 0, 0)
-    for (const t of tasks || []) {
-      const vs = t.vertical_ids?.length ? t.vertical_ids : [t.channel?.vertical_id || chVertical.get(t.channel_id)]
-      for (const v of vs) {
-        if (!v) continue
-        const c = byVertical.get(v) || { open: 0, overdue: 0 }
-        if (OPEN_STATUSES.has(t.status)) {
-          c.open++
-          if (t.due_date && new Date(t.due_date) < today) c.overdue++
-        }
-        byVertical.set(v, c)
-      }
-    }
-    return byVertical
-  }, [tasks, channels])
-
-  // Lyzr is the one main board (every task); each other vertical is a view of
-  // it, filtered to the tasks tagged with that vertical.
+// The board's two filters, in the top bar: which vertical, which product.
+// Lyzr in either menu means "brand-level / not specific"; "All" shows everything.
+function ViewFilters() {
+  const { mode, vertical, verticals, setVertical, products, product, setProduct, ownedVerticalIds } = useVertical()
+  const pathname = usePathname()
+  const { byVertical, byProduct } = useViewCounts()
+  const lyzr = verticals.find(v => v.slug === 'lyzr')
+  const onBoard = mode === 'space' && !!vertical
+  const vLabel = !onBoard || vertical?.slug === 'lyzr' ? 'All verticals' : vertical!.name
+  const groups = [...new Set(products.filter(p => p.slug !== 'lyzr').map(p => p.group_name))]
+  const lyzrProduct = products.find(p => p.slug === 'lyzr')
+  const pickVertical = (slug: string) => setVertical(slug, onBoard ? pathname : '/dashboard/')
+  const trigger = 'h-8 inline-flex items-center gap-1.5 rounded-lg border px-2.5 text-xs transition-colors max-w-[11rem]'
   return (
-    <div className="space-y-0.5">
-      {verticals.map(v => {
-        const c = counts.get(v.id)
-        const main = v.slug === 'lyzr'
-        return (
-          <Link
-            key={v.id}
-            href={withVertical('/dashboard/', v.slug)}
-            onClick={onNavigate}
-            title={main ? 'The main board: every task across Lyzr' : `${v.name} view: the Lyzr board filtered to tasks tagged ${v.name}`}
-            className={cn('flex items-center gap-2 py-1.5 rounded-md text-[13px] text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100',
-              main ? 'px-3 font-medium text-zinc-800' : 'ml-5 pl-3 pr-3 border-l border-zinc-200 rounded-l-none')}
-          >
-            {main ? <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-label="The main board" /> : <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
-            <span className="truncate flex-1">{v.name}{main ? <span className="ml-1.5 text-[10px] font-normal text-zinc-400">main board</span> : <span className="ml-1.5 text-[10px] text-zinc-400">view</span>}</span>
-            {!main && ownedVerticalIds.has(v.id) && <span className="text-[9px] rounded-full bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-px shrink-0" title="You own this vertical">owner</span>}
-            {c && c.open > 0 && (
-              <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full', c.overdue > 0 ? 'bg-red-50 text-red-600' : 'bg-zinc-100 text-zinc-500')}
-                title={`${c.open} open, ${c.overdue} overdue`}>
-                {c.overdue > 0 ? `${c.overdue}!` : c.open}
+    <div className="flex items-center gap-1.5 min-w-0" data-tour="view-filters">
+      <DropdownMenu>
+        <DropdownMenuTrigger className={cn(trigger, onBoard && vertical?.slug !== 'lyzr' ? 'border-blue-300 bg-blue-50 text-blue-800' : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50')}
+          aria-label="Vertical view">
+          <Building2 className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate font-medium">{vLabel}</span>
+          <ChevronDown className="w-3 h-3 shrink-0 opacity-60" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-64 bg-white border-zinc-300">
+          <p className="px-2 pt-1.5 pb-1 brand-label text-[10px] text-zinc-500">Vertical</p>
+          {lyzr && (
+            <DropdownMenuItem onClick={() => pickVertical('lyzr')} className={cn('text-zinc-700', onBoard && vertical?.slug === 'lyzr' && 'bg-zinc-100 font-medium')}>
+              <Layers className="w-4 h-4 mr-2 text-zinc-500" />
+              <span className="flex-1">All verticals</span>
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator className="bg-zinc-200/70" />
+          {verticals.map(v => (
+            <DropdownMenuItem key={v.id} onClick={() => pickVertical(v.slug)}
+              className={cn('text-zinc-700', onBoard && vertical?.id === v.id && v.slug !== 'lyzr' && 'bg-zinc-100 font-medium')}>
+              <Building2 className={cn('w-4 h-4 mr-2', v.slug === 'lyzr' ? 'text-amber-500' : 'text-blue-600')} />
+              <span className="flex-1 truncate">
+                {v.slug === 'lyzr' ? 'Lyzr' : v.name}
+                {v.slug === 'lyzr' && <span className="ml-1.5 text-[10px] text-zinc-400">brand, no vertical</span>}
               </span>
+              {ownedVerticalIds.has(v.id) && <span className="text-[9px] rounded-full bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-px mr-1">owner</span>}
+              <CountPill c={byVertical.get(v.id)} />
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {products.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger className={cn(trigger, product ? 'border-violet-300 bg-violet-50 text-violet-800' : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50')}
+            aria-label="Product view">
+            <Package className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate font-medium">{product ? product.name : 'All products'}</span>
+            <ChevronDown className="w-3 h-3 shrink-0 opacity-60" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-64 max-h-[70vh] overflow-y-auto bg-white border-zinc-300">
+            <DropdownMenuItem onClick={() => setProduct('all')} className={cn('text-zinc-700', !product && 'bg-zinc-100 font-medium')}>
+              <Layers className="w-4 h-4 mr-2 text-zinc-500" /> <span className="flex-1">All products</span>
+            </DropdownMenuItem>
+            {lyzrProduct && (
+              <DropdownMenuItem onClick={() => setProduct('lyzr')} className={cn('text-zinc-700', product?.slug === 'lyzr' && 'bg-zinc-100 font-medium')}>
+                <Package className="w-4 h-4 mr-2 text-amber-500" />
+                <span className="flex-1">Lyzr <span className="ml-1 text-[10px] text-zinc-400">brand, no product</span></span>
+                <CountPill c={byProduct.get(lyzrProduct.id)} />
+              </DropdownMenuItem>
             )}
-          </Link>
-        )
-      })}
+            {groups.map(g => (
+              <div key={g}>
+                <DropdownMenuSeparator className="bg-zinc-200/70" />
+                <p className="px-2 pt-1 pb-0.5 brand-label text-[10px] text-zinc-500">{g}</p>
+                {products.filter(p => p.group_name === g).map(p => (
+                  <DropdownMenuItem key={p.id} onClick={() => setProduct(p.slug)}
+                    className={cn('text-zinc-700', product?.id === p.id && 'bg-zinc-100 font-medium')}>
+                    <Package className="w-4 h-4 mr-2 text-violet-500" />
+                    <span className="flex-1 truncate">{p.name}</span>
+                    <CountPill c={byProduct.get(p.id)} />
+                  </DropdownMenuItem>
+                ))}
+              </div>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+      {product && (
+        <button onClick={() => setProduct('all')} className="text-[11px] text-zinc-400 hover:text-zinc-700 px-1" title="Show every product again">
+          Clear
+        </button>
+      )}
     </div>
   )
 }
@@ -308,68 +339,47 @@ export function AppSidebar() {
   const viewAs = useViewAs()
   const realAdmin = user?.role === 'admin'
   const { isLeadership } = useMyBadges()
-  const { mode, slug, verticalId, vertical, flags, canManage } = useVertical()
-  // Channels follow the board: a vertical board lists its own channels; the
-  // Lyzr board (every task) lists every channel, same names merged into one.
-  const isLyzrBoard = mode === 'space' && vertical?.slug === 'lyzr'
-  const { data: allSpaceChannels } = useChannels(mode === 'space' ? 'all' : verticalId)
-  const spaceChannels = useMemo(
-    () => isLyzrBoard
-      ? mergeChannelsByName(allSpaceChannels || [], verticalId).channels
-      : (allSpaceChannels || []).filter(c => c.vertical_id === verticalId),
-    [allSpaceChannels, verticalId, isLyzrBoard])
+  const { mode, slug, verticalId, vertical, verticals, flags, canManage } = useVertical()
+  // One board. Board pages carry the current vertical view; from company-level
+  // pages they open the whole board (Lyzr). Every view lists every channel,
+  // same-named channels merged into one.
+  const lyzrSlug = verticals.find(v => v.slug === 'lyzr')?.slug || verticals[0]?.slug || 'all'
+  const boardSlug = mode === 'space' ? slug : lyzrSlug
+  const listSlug = mode === 'space' ? slug : 'all'
+  const homeVerticalId = mode === 'space' ? verticalId : (verticals.find(v => v.slug === 'lyzr')?.id || '')
+  const { data: allChannels } = useChannels('all')
+  const boardChannels = useMemo(
+    () => mergeChannelsByName((allChannels || []).filter(c => c.is_active), homeVerticalId).channels,
+    [allChannels, homeVerticalId])
   const [mobileOpen, setMobileOpen] = useState(false)
   const close = () => setMobileOpen(false)
 
-  // The company-wide pages are for admins and leadership; everyone else gets
-  // a short list built around their own work (Home shows them My Board).
-  const companyNav: NavItem[] = [
-    { href: '/', icon: Home, label: 'Company home', match: '/' },
-    { href: '/my-board/', icon: Sparkles, label: 'My Board', match: '/my-board' },
-    { href: withVertical('/my-tasks/', 'all'), icon: ListTodo, label: 'My Tasks', match: '/my-tasks' },
-    { href: '/projects/', icon: FolderKanban, label: 'Projects', match: '/projects' },
-    { href: withVertical('/calendar/', 'all'), icon: Calendar, label: 'Calendar', match: '/calendar' },
-    { href: '/workspace/weekly/', icon: CalendarRange, label: 'Weekly', match: '/workspace/weekly' },
-  ]
-  const companyMore: NavItem[] = [
-    { href: '/workspace/tasks/', icon: Table2, label: 'All Tasks', match: '/workspace/tasks' },
-    { href: withVertical('/overview/', 'all'), icon: GitBranch, label: 'Overview', match: '/overview' },
-    { href: withVertical('/owners/', 'all'), icon: UserCircle, label: 'Owners', match: '/owners' },
+  const mainNav: NavItem[] = [
+    { href: '/', icon: Home, label: isLeadership ? 'Company home' : 'My Board', match: '/' },
+    ...(isLeadership ? [{ href: '/my-board/', icon: Sparkles, label: 'My Board', match: '/my-board' }] : []),
+    { href: withVertical('/dashboard/', boardSlug), icon: LayoutDashboard, label: 'Board', match: '/dashboard' },
+    { href: withVertical('/my-tasks/', listSlug), icon: ListTodo, label: 'My Tasks', match: '/my-tasks' },
+    { href: withVertical('/calendar/', listSlug), icon: Calendar, label: 'Calendar', match: '/calendar' },
+    { href: withVertical('/weekly/', boardSlug), icon: CalendarRange, label: 'Weekly review', match: '/weekly' },
     { href: '/campaigns/', icon: Zap, label: 'Campaigns', match: '/campaigns' },
-    { href: '/functions/', icon: Workflow, label: 'Domains', match: '/functions' },
-    { href: '/members/', icon: UserCircle, label: 'Members', match: '/members' },
-    { href: withVertical('/history/', 'all'), icon: History, label: 'History', match: '/history' },
+    { href: '/leads/', icon: LineChart, label: 'Sales pipeline', match: '/leads' },
+  ]
+  const moreNav: NavItem[] = [
+    { href: '/projects/', icon: FolderKanban, label: 'Projects', match: '/projects' },
+    { href: withVertical('/tracker/', boardSlug), icon: Table2, label: 'Tracker', match: '/tracker' },
+    { href: withVertical('/overview/', listSlug), icon: GitBranch, label: 'Overview', match: '/overview' },
+    { href: withVertical('/owners/', listSlug), icon: UserCircle, label: 'Owners', match: '/owners' },
+    { href: withVertical('/budgets/', boardSlug), icon: DollarSign, label: 'Budgets', match: '/budgets' },
+    { href: withVertical('/history/', listSlug), icon: History, label: 'History', match: '/history' },
+    ...(isLeadership ? [
+      { href: '/workspace/tasks/', icon: Table2, label: 'All tasks', match: '/workspace/tasks' },
+      { href: '/workspace/weekly/', icon: CalendarRange, label: 'Company weekly', match: '/workspace/weekly' },
+      { href: '/functions/', icon: Workflow, label: 'Domains', match: '/functions' },
+      { href: '/members/', icon: UserCircle, label: 'Members', match: '/members' },
+    ] : []),
+    ...(mode === 'space' && flags.resources ? [{ href: withVertical('/resources/', slug), icon: FolderOpen, label: `${vertical?.name || ''} Resources`.trim(), match: '/resources' }] : []),
+    ...(mode === 'space' && canManage ? [{ href: withVertical('/settings/', slug), icon: Settings, label: 'Vertical settings', match: '/settings' }] : []),
     { href: '/guide/', icon: BookOpen, label: 'Guide', match: '/guide' },
-  ]
-  const personalNav: NavItem[] = [
-    { href: '/', icon: Sparkles, label: 'My Board', match: '/' },
-    { href: '/projects/', icon: FolderKanban, label: 'Projects', match: '/projects' },
-    { href: withVertical('/my-tasks/', 'all'), icon: ListTodo, label: 'My Tasks', match: '/my-tasks' },
-    { href: '/campaigns/', icon: Zap, label: 'Campaigns', match: '/campaigns' },
-    { href: withVertical('/calendar/', 'all'), icon: Calendar, label: 'Calendar', match: '/calendar' },
-    { href: '/guide/', icon: BookOpen, label: 'Guide', match: '/guide' },
-  ]
-  const workspaceNav = isLeadership ? companyNav : personalNav
-  const workspaceMore = isLeadership ? companyMore : []
-
-  const spaceNav: NavItem[] = [
-    { href: withVertical('/dashboard/', slug), icon: LayoutDashboard, label: 'Dashboard', match: '/dashboard' },
-    { href: withVertical('/my-tasks/', slug), icon: ListTodo, label: 'My Tasks', match: '/my-tasks' },
-    { href: '/projects/', icon: FolderKanban, label: 'Projects', match: '/projects' },
-    { href: withVertical('/calendar/', slug), icon: Calendar, label: 'Calendar', match: '/calendar' },
-    { href: withVertical('/weekly/', slug), icon: CalendarRange, label: 'Weekly Review', match: '/weekly' },
-  ]
-  const spaceMore: NavItem[] = [
-    { href: '/campaigns/', icon: Zap, label: 'Campaigns', match: '/campaigns' },
-    { href: withVertical('/overview/', slug), icon: GitBranch, label: 'Overview', match: '/overview' },
-    { href: withVertical('/tracker/', slug), icon: LineChart, label: 'Tracker', match: '/tracker' },
-    { href: withVertical('/owners/', slug), icon: UserCircle, label: 'Owners', match: '/owners' },
-    { href: withVertical('/budgets/', slug), icon: DollarSign, label: 'Budgets', match: '/budgets' },
-    ...(flags.leads_pipeline ? [{ href: withVertical('/leads/', slug), icon: Upload, label: 'Leads Pipeline', match: '/leads' }] : []),
-    { href: withVertical('/history/', slug), icon: History, label: 'History', match: '/history' },
-    ...(flags.resources ? [{ href: withVertical('/resources/', slug), icon: FolderOpen, label: `${vertical?.name || ''} Resources`.trim(), match: '/resources' }] : []),
-    ...(canManage ? [{ href: withVertical('/settings/', slug), icon: Settings, label: 'Vertical Settings', match: '/settings' }] : []),
-    { href: withVertical('/guide/', slug), icon: BookOpen, label: 'Guide', match: '/guide' },
   ]
 
   // Clear lead data written by the earlier, un-scoped version of persistence.
@@ -394,31 +404,15 @@ export function AppSidebar() {
             <p className="brand-label text-[10px] text-zinc-600">Marketing Ops</p>
           </div>
         </div>
-        <VerticalSwitcher />
       </div>
 
       {/* Nav */}
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-        {mode === 'workspace' ? (
-          <>
-            <NavList items={workspaceNav} more={workspaceMore} onNavigate={close} />
-            <div>
-              <p className="px-3 brand-label text-zinc-600 mb-2">Boards</p>
-              <VerticalRows onNavigate={close} />
-            </div>
-            <MyFunctionRows onNavigate={close} />
-          </>
-        ) : (
-          <>
-            <NavList items={spaceNav} more={spaceMore} onNavigate={close} />
-            <ChannelList channels={spaceChannels || []} slug={slug} empty={
-              <p className="px-3 text-xs text-zinc-400">
-                No channels yet.{canManage ? ' Add them in Vertical Settings.' : ''}
-              </p>
-            } />
-            <MyFunctionRows onNavigate={close} />
-          </>
-        )}
+        <NavList items={mainNav} more={moreNav} onNavigate={close} />
+        <ChannelList channels={boardChannels} slug={boardSlug} empty={
+          <p className="px-3 text-xs text-zinc-400">No channels yet.{realAdmin ? ' Add them in Admin.' : ''}</p>
+        } />
+        <MyFunctionRows onNavigate={close} />
       </div>
 
       {/* User */}
@@ -542,7 +536,7 @@ export function AppHeader() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
   const { data: user } = useCurrentUser()
-  const { mode, vertical } = useVertical()
+  const pathname = usePathname()
   const viewAs = useViewAs()
   const unreadCount = notifications?.length || 0
   const previewing = user?.role === 'admin' && viewAs !== 'admin'
@@ -560,16 +554,11 @@ export function AppHeader() {
     )}
     <header className="sticky top-0 z-30 h-14 border-b border-zinc-200 bg-white/85 backdrop-blur-xl flex items-center justify-between px-4 lg:px-6">
       <div className="lg:hidden w-10" />
-      <div className="flex-1 flex items-center gap-2 text-xs text-zinc-500 pl-2">
-        {mode === 'space' && vertical ? (
-          <>
-            <Link href="/" className="hover:text-zinc-800">Company</Link>
-            <span className="text-zinc-300">›</span>
-            <span className="font-medium text-zinc-800">{vertical.name}</span>
-          </>
-        ) : (
-          <span className="font-medium text-zinc-800">Company</span>
-        )}
+      <div className="flex-1 flex items-center gap-2 pl-2 min-w-0">
+        {/* The Sales pipeline picks its own vertical / product, so the board filters stay off there. */}
+        {normalize(pathname) === '/leads'
+          ? <span className="text-xs font-medium text-zinc-800">Sales pipeline</span>
+          : <ViewFilters />}
       </div>
       <div className="flex items-center gap-2">
         <Button size="sm" className="h-8 bg-orange-500 hover:bg-orange-600 text-white border-0" onClick={() => setQuickOpen(true)} aria-label="New task" title="New task (N)">

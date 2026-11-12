@@ -17,9 +17,9 @@ import { CheckSquare, MessageSquare, Clock, Activity, User as UserIcon, Plus } f
 import { format } from 'date-fns'
 
 export default function MyTasksPage() {
-  const { verticalId, taskScope } = useVertical()
+  const { verticalId, taskScope, product } = useVertical()
   const { data: user, isLoading: userLoading } = useCurrentUser()
-  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: taskScope })
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: taskScope, product })
   const { data: mentions } = useMentionsForUser()
   const { data: activities } = useRecentActivity(50, verticalId)
   const { data: channelOwners } = useAllChannelOwners()
