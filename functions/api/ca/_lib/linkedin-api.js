@@ -388,6 +388,32 @@ export function compactForm(f) {
   }
   return { n: f.name || `Form ${f.id}`, q }
 }
+/** Counts-only probe of why leadFormResponses comes back empty (no lead data is logged: the workflow log is public). */
+export async function probeLeads(token, version, accounts, li, now, t = null) {
+  const out = []
+  const tryq = async (label, path) => {
+    try { const r = await liGet(token, version, path, t); out.push(`${label}: ${(r.elements || []).length} returned${r.paging && r.paging.total != null ? `, total ${r.paging.total}` : ''}`) }
+    catch (e) { out.push(`${label}: HTTP ${e.liStatus || '?'} ${String(e.message || '').split(': ').slice(1).join(': ').slice(0, 120)}`) }
+  }
+  try {
+    const u = await liGet(token, version, '/adAccountUsers?q=authenticatedUser', t)
+    out.push('connected user roles: ' + ((u.elements || []).map((e) => `${idOf(e.account)}=${e.role}`).join(', ') || 'none'))
+  } catch (e) { out.push(`roles: HTTP ${e.liStatus || '?'}`) }
+  out.push('form states: ' + Object.entries(li.form_states || {}).map(([k, v]) => `${k} ${v}`).join(', '))
+  const acc = accounts[0]
+  const own = accountOwner(acc)
+  const base = `/leadFormResponses?q=owner&owner=${own}&count=10`
+  await tryq('sponsored', `${base}&leadType=(leadType:SPONSORED)`)
+  await tryq('sponsored, last 89 days', `${base}&leadType=(leadType:SPONSORED)&submittedAtTimeRange=(start:${now - 89 * 864e5},end:${now})`)
+  await tryq('sponsored, test leads only', `${base}&leadType=(leadType:SPONSORED)&limitedToTestLeads=true`)
+  if (li.probe_form) {
+    const f = li.probe_form
+    if (f.v != null) await tryq(`form ${f.id} v${f.v}`, `${base}&leadType=(leadType:SPONSORED)&versionedLeadGenFormUrn=${enc(`urn:li:versionedLeadGenForm:(urn:li:leadGenForm:${f.id},${f.v})`)}`)
+    else out.push(`form ${f.id}: no versionId on the form`)
+  }
+  return out.join(' | ')
+}
+
 /** One leadFormResponse -> the lead shape the Lead pages read. */
 export function mapLead(e, forms, meta) {
   const formId = (String(e.versionedLeadGenFormUrn || '').match(/leadGenForm:(\d+)/) || [])[1] || ''
@@ -716,7 +742,11 @@ export async function runSync(env, user, body = {}, { now = Date.now() } = {}) {
             const res = await liGet(token, version, `/leadForms?q=owner&owner=${ow.owner}&count=100&start=${c.li.start}`, t)
             const els = res.elements || []
             c.li.forms_seen += els.length
-            for (const f of els) stage.forms[String(f.id)] = compactForm(f)
+            for (const f of els) {
+              stage.forms[String(f.id)] = compactForm(f)
+              const st = String(f.state || 'UNKNOWN'); c.li.form_states = c.li.form_states || {}; c.li.form_states[st] = (c.li.form_states[st] || 0) + 1
+              if (!ow.forms_only && st === 'PUBLISHED' && !c.li.probe_form && f.id != null) c.li.probe_form = { id: String(f.id), v: f.versionId ?? f.version ?? null }
+            }
             if (els.length < 100) { if (ow.forms_only) { c.li.oi++; c.li.stage = 'forms' } else c.li.stage = 'responses'; c.li.start = 0 } else c.li.start += 100
           } else {
             const res = await liGet(token, version, `/leadFormResponses?q=owner&owner=${ow.owner}&leadType=(leadType:SPONSORED)&limitedToTestLeads=false&count=100&start=${c.li.start}`, t)
@@ -734,7 +764,10 @@ export async function runSync(env, user, body = {}, { now = Date.now() } = {}) {
       if (c.li.oi >= c.li.owners.length) {
         c.lead_forms = c.li.forms_seen
         if (!c.li.forms_seen) warn(c, `LinkedIn returned no lead forms for ${c.li.owners.map((x) => x.label).join(' or ')}. The forms may sit in an ad account that is not selected in Admin, or the person who connected may not have access to them.`)
-        else if (!c.li.responses_seen) warn(c, `LinkedIn returned ${c.li.forms_seen} lead forms but no responses. If Campaign Manager shows leads in the last 90 days, the person who connected needs the Lead Gen Forms Manager role on the company page and Account Manager or Campaign Manager on the ad account, then run the pull again.`)
+        else if (!c.li.responses_seen) {
+          warn(c, `LinkedIn returned ${c.li.forms_seen} lead forms but no responses.`)
+          if (room(8)) warn(c, 'Lead diagnosis: ' + await probeLeads(token, version, accounts, c.li, now, t))
+        }
         // dedupe: the same response read via the ad account and the company page counts once
         const seen = new Set()
         stage.rows = stage.rows.filter((r) => { const k = (r.extra && r.extra.lead_id) || `${r.email}|${r.submitted_at}|${r.form}`; if (seen.has(k)) return false; seen.add(k); return true })
