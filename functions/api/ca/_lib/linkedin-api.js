@@ -96,6 +96,7 @@ export const dateRange = (a, b) => `(start:${restliDate(a)},end:${restliDate(b)}
 const enc = encodeURIComponent
 export const accountsList = (ids) => `List(${ids.map((id) => enc(`urn:li:sponsoredAccount:${id}`)).join(',')})`
 const accountOwner = (id) => `(sponsoredAccount:${enc(`urn:li:sponsoredAccount:${id}`)})`
+const orgOwner = (urn) => `(organization:${enc(urn)})`
 const b64u = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 const fromB64u = (s) => Uint8Array.from(atob(String(s).replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
 const same = (a, b) => { a = String(a); b = String(b); if (a.length !== b.length) return false; let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0 }
@@ -439,10 +440,10 @@ function progressOf(c, accounts) {
   if (c.phase === 'meta') return { phase: 'meta', done: c.ai, total: accounts.length }
   if (c.phase === 'perf') return { phase: 'perf', done: c.perf_i, total: splitRange(c.from, c.to).length }
   if (c.phase === 'demo') return { phase: 'demo', done: c.demo ? c.demo.di : 0, total: c.demo ? c.demo.wins.length : monthWindows(c.from, c.to).length }
-  if (c.phase === 'leads') return { phase: 'leads', done: c.li.ai, total: accounts.length }
+  if (c.phase === 'leads') return { phase: 'leads', done: c.li.oi || 0, total: c.li.owners ? c.li.owners.length : accounts.length }
   return { phase: 'done', done: 1, total: 1 }
 }
-const reply = (c, accounts, done) => ({ done, cursor: done ? undefined : c, progress: progressOf(c, accounts), from: c.from, to: c.to, perf_rows: c.perf_rows, demo_windows: c.demo_windows, leads: c.leads, scope: c.scope || '', warnings: c.warnings })
+const reply = (c, accounts, done) => ({ done, cursor: done ? undefined : c, progress: progressOf(c, accounts), from: c.from, to: c.to, perf_rows: c.perf_rows, demo_windows: c.demo_windows, leads: c.leads, lead_forms: c.lead_forms ?? null, scope: c.scope || '', warnings: c.warnings })
 /** Why lead-form leads were not pulled, in words an editor can act on; null when the scope is there. */
 export function leadsSkipNote(o) {
   if (hasLeadsScope(o)) return null
@@ -693,28 +694,50 @@ export async function runSync(env, user, body = {}, { now = Date.now() } = {}) {
       if (c.li.ai === 0 && c.li.stage === 'forms' && c.li.start === 0) stage = { forms: {}, rows: [] }
       else { t.calls++; const s = await getDoc(env, STAGE_DOC); stage = (s && s.content) || { forms: {}, rows: [] } }
       await loadMeta()
+      // Forms can be owned by the ad account or by the company page the account belongs to; read both.
+      if (!c.li.owners) {
+        const owners = []
+        for (const acc of accounts) {
+          owners.push({ label: `ad account ${acc}`, owner: accountOwner(acc) })
+          try {
+            const a = await liGet(token, version, `/adAccounts/${acc}`, t)
+            const ref = String(a.reference || '')
+            if (/^urn:li:organization:\d+$/.test(ref)) owners.push({ label: `company page ${ref.split(':').pop()}`, owner: orgOwner(ref) })
+          } catch { /* the ad-account owner alone still runs */ }
+        }
+        c.li.owners = owners.filter((x, i) => owners.findIndex((y) => y.owner === x.owner) === i)
+        c.li.oi = 0; c.li.stage = 'forms'; c.li.start = 0; c.li.forms_seen = 0; c.li.responses_seen = 0
+      }
       while (room(4)) {
-        const acc = accounts[c.li.ai]
-        if (!acc) break
+        const ow = c.li.owners[c.li.oi]
+        if (!ow) break
         try {
           if (c.li.stage === 'forms') {
-            const res = await liGet(token, version, `/leadForms?q=owner&owner=${accountOwner(acc)}&count=100&start=${c.li.start}`, t)
+            const res = await liGet(token, version, `/leadForms?q=owner&owner=${ow.owner}&count=100&start=${c.li.start}`, t)
             const els = res.elements || []
+            c.li.forms_seen += els.length
             for (const f of els) stage.forms[String(f.id)] = compactForm(f)
             if (els.length < 100) { c.li.stage = 'responses'; c.li.start = 0 } else c.li.start += 100
           } else {
-            const res = await liGet(token, version, `/leadFormResponses?q=owner&owner=${accountOwner(acc)}&leadType=(leadType:SPONSORED)&limitedToTestLeads=false&count=100&start=${c.li.start}`, t)
+            const res = await liGet(token, version, `/leadFormResponses?q=owner&owner=${ow.owner}&leadType=(leadType:SPONSORED)&limitedToTestLeads=false&count=100&start=${c.li.start}`, t)
             const els = res.elements || []
+            c.li.responses_seen += els.length
             for (const e of els) if (!e.testLead) stage.rows.push(mapLead(e, stage.forms, meta))
-            if (els.length < 100) { c.li.ai++; c.li.stage = 'forms'; c.li.start = 0 } else c.li.start += 100
+            if (els.length < 100) { c.li.oi++; c.li.stage = 'forms'; c.li.start = 0 } else c.li.start += 100
           }
         } catch (e) {
-          if (e.liStatus !== 403 && e.liStatus !== 401) throw e
-          warn(c, `Lead forms of ad account ${acc} could not be read (${e.message}). The Lead Sync API product must be on the LinkedIn app and the person who connected needs a manager role on the account.`)
-          c.li.ai++; c.li.stage = 'forms'; c.li.start = 0
+          if (e.liStatus !== 403 && e.liStatus !== 401 && e.liStatus !== 400) throw e
+          warn(c, `Lead forms of ${ow.label} could not be read (${e.message}). The Lead Sync API product must be on the LinkedIn app and the person who connected needs a manager role on the account.`)
+          c.li.oi++; c.li.stage = 'forms'; c.li.start = 0
         }
       }
-      if (c.li.ai >= accounts.length) {
+      if (c.li.oi >= c.li.owners.length) {
+        c.lead_forms = c.li.forms_seen
+        if (!c.li.forms_seen) warn(c, `LinkedIn returned no lead forms for ${c.li.owners.map((x) => x.label).join(' or ')}. The forms may sit in an ad account that is not selected in Admin, or the person who connected may not have access to them.`)
+        else if (!c.li.responses_seen) warn(c, `LinkedIn returned ${c.li.forms_seen} lead forms but no responses. LinkedIn keeps lead-form responses for 90 days, so leads older than that only come from a CSV export.`)
+        // dedupe: the same response read via the ad account and the company page counts once
+        const seen = new Set()
+        stage.rows = stage.rows.filter((r) => { const k = (r.extra && r.extra.lead_id) || `${r.email}|${r.submitted_at}|${r.form}`; if (seen.has(k)) return false; seen.add(k); return true })
         stage.rows.sort((x, y) => (x.submitted_at < y.submitted_at ? 1 : -1))
         t.calls++
         await putDoc(env, LEADS_DOC, { source: 'api', file_name: 'LinkedIn API', uploaded_by: 'linkedin-api', uploaded_at: new Date(now).toISOString(), rows: stage.rows }, { by: 'linkedin-api' })

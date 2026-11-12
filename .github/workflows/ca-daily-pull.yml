@@ -54,7 +54,7 @@ jobs:
           body='{}'
           for i in $(seq 1 120); do
             res=$(/tmp/call.sh linkedin-api/sync "$body")
-            echo "$res" | jq -c '{done, skipped, perf_rows, demo_windows, leads, progress, warnings}'
+            echo "$res" | jq -c '{done, skipped, perf_rows, demo_windows, leads, lead_forms, scope, progress, warnings}'
             if [ "$(echo "$res" | jq -r '.skipped // empty')" != "" ]; then echo "LinkedIn skipped: $(echo "$res" | jq -r '.skipped')"; exit 0; fi
             [ "$(echo "$res" | jq -r '.done')" = "true" ] && exit 0
             body=$(echo "$res" | jq -c '{cursor: .cursor}')
