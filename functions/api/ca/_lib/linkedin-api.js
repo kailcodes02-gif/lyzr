@@ -702,7 +702,7 @@ export async function runSync(env, user, body = {}, { now = Date.now() } = {}) {
           try {
             const a = await liGet(token, version, `/adAccounts/${acc}`, t)
             const ref = String(a.reference || '')
-            if (/^urn:li:organization:\d+$/.test(ref)) owners.push({ label: `company page ${ref.split(':').pop()}`, owner: orgOwner(ref) })
+            if (/^urn:li:organization:\d+$/.test(ref)) owners.push({ label: `company page ${ref.split(':').pop()}`, owner: orgOwner(ref), forms_only: true })   // sponsored responses are only listed by ad account
           } catch { /* the ad-account owner alone still runs */ }
         }
         c.li.owners = owners.filter((x, i) => owners.findIndex((y) => y.owner === x.owner) === i)
@@ -717,7 +717,7 @@ export async function runSync(env, user, body = {}, { now = Date.now() } = {}) {
             const els = res.elements || []
             c.li.forms_seen += els.length
             for (const f of els) stage.forms[String(f.id)] = compactForm(f)
-            if (els.length < 100) { c.li.stage = 'responses'; c.li.start = 0 } else c.li.start += 100
+            if (els.length < 100) { if (ow.forms_only) { c.li.oi++; c.li.stage = 'forms' } else c.li.stage = 'responses'; c.li.start = 0 } else c.li.start += 100
           } else {
             const res = await liGet(token, version, `/leadFormResponses?q=owner&owner=${ow.owner}&leadType=(leadType:SPONSORED)&limitedToTestLeads=false&count=100&start=${c.li.start}`, t)
             const els = res.elements || []
@@ -734,7 +734,7 @@ export async function runSync(env, user, body = {}, { now = Date.now() } = {}) {
       if (c.li.oi >= c.li.owners.length) {
         c.lead_forms = c.li.forms_seen
         if (!c.li.forms_seen) warn(c, `LinkedIn returned no lead forms for ${c.li.owners.map((x) => x.label).join(' or ')}. The forms may sit in an ad account that is not selected in Admin, or the person who connected may not have access to them.`)
-        else if (!c.li.responses_seen) warn(c, `LinkedIn returned ${c.li.forms_seen} lead forms but no responses. LinkedIn keeps lead-form responses for 90 days, so leads older than that only come from a CSV export.`)
+        else if (!c.li.responses_seen) warn(c, `LinkedIn returned ${c.li.forms_seen} lead forms but no responses. If Campaign Manager shows leads in the last 90 days, the person who connected needs the Lead Gen Forms Manager role on the company page and Account Manager or Campaign Manager on the ad account, then run the pull again.`)
         // dedupe: the same response read via the ad account and the company page counts once
         const seen = new Set()
         stage.rows = stage.rows.filter((r) => { const k = (r.extra && r.extra.lead_id) || `${r.email}|${r.submitted_at}|${r.form}`; if (seen.has(k)) return false; seen.add(k); return true })
