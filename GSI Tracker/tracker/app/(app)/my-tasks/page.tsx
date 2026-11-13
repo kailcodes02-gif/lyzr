@@ -17,9 +17,9 @@ import { CheckSquare, MessageSquare, Clock, Activity, User as UserIcon, Plus } f
 import { format } from 'date-fns'
 
 export default function MyTasksPage() {
-  const { verticalId, taskScope, product } = useVertical()
+  const { verticalId, taskScope, product, campaign } = useVertical()
   const { data: user, isLoading: userLoading } = useCurrentUser()
-  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: taskScope, product })
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: taskScope, product, campaign })
   const { data: mentions } = useMentionsForUser()
   const { data: activities } = useRecentActivity(50, verticalId)
   const { data: channelOwners } = useAllChannelOwners()
@@ -133,10 +133,10 @@ export default function MyTasksPage() {
                   All
                 </TabsTrigger>
                 <TabsTrigger value="primary" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
-                  Primary
+                  I own
                 </TabsTrigger>
                 <TabsTrigger value="secondary" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
-                  Secondary
+                  Contributing
                 </TabsTrigger>
               </TabsList>
             </div>

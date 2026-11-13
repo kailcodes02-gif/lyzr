@@ -14,7 +14,7 @@ import { DollarSign, Landmark, Layers, Tag, HelpCircle } from 'lucide-react'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 
 export default function BudgetsPage() {
-  const { verticalId, vertical, product } = useVertical()
+  const { verticalId, vertical, product, campaign } = useVertical()
   const { data: budgets, isLoading: budgetsLoading } = useBudgetPeriods(verticalId)
   const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId, product })
   const { data: categories } = useCategories(verticalId)

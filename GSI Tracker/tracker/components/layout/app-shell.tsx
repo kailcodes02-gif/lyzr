@@ -29,10 +29,10 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { TIER_CONFIG, type Channel } from '@/lib/types/database'
+import { CAMPAIGN_KIND, TIER_CONFIG, type Channel } from '@/lib/types/database'
 import { purgePersisted, purgeLegacyKeys } from '@/lib/hooks/use-persisted'
 import { OPEN_STATUSES } from '@/lib/week-logic'
-import { mergeChannelsByName } from '@/lib/task-channels'
+import { mergeChannelsByName, taskChannelIds } from '@/lib/task-channels'
 
 const normalize = (p: string) => (p.replace(/\/$/, '') || '/')
 
@@ -147,7 +147,7 @@ function NavList({ items, more = [], onNavigate }: { items: NavItem[]; more?: Na
 }
 
 // Channel list with a filter once it gets long, and a fold.
-function ChannelList({ channels, slug, empty }: { channels: Channel[]; slug: string; empty: React.ReactNode }) {
+function ChannelList({ channels, slug, empty, title = 'Channels' }: { channels: Channel[]; slug: string; empty: React.ReactNode; title?: string }) {
   const [open, setOpen] = useStoredFlag('nav-channels-open', true)
   const [q, setQ] = useState('')
   const tree = buildChannelTree(channels)
@@ -157,7 +157,7 @@ function ChannelList({ channels, slug, empty }: { channels: Channel[]; slug: str
   return (
     <div>
       <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-3 mb-2 brand-label text-zinc-600 hover:text-zinc-900">
-        <span>Channels{channels.length ? ` (${tree.length})` : ''}</span>
+        <span>{title}{channels.length ? ` (${tree.length})` : ''}</span>
         {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
       </button>
       {open && (
@@ -180,13 +180,14 @@ function ChannelList({ channels, slug, empty }: { channels: Channel[]; slug: str
   )
 }
 
-// Open / overdue counts per vertical and per product, for the view menus.
+// Open / overdue counts per vertical, product and campaign, for the view menus.
 function useViewCounts() {
   const { data: tasks } = useTasks({ verticalId: 'all' })
   const { products } = useVertical()
   return useMemo(() => {
     const byVertical = new Map<string, { open: number; overdue: number }>()
     const byProduct = new Map<string, { open: number; overdue: number }>()
+    const byCampaign = new Map<string, { open: number; overdue: number }>()
     const lyzrProduct = products.find(p => p.slug === 'lyzr')?.id
     const today = new Date(); today.setHours(0, 0, 0, 0)
     const bump = (m: Map<string, { open: number; overdue: number }>, k: string | undefined, overdue: boolean) => {
@@ -200,8 +201,9 @@ function useViewCounts() {
       const overdue = !!t.due_date && new Date(t.due_date) < today
       for (const v of t.vertical_ids || []) bump(byVertical, v, overdue)
       for (const p of t.product_ids?.length ? t.product_ids : [lyzrProduct]) bump(byProduct, p, overdue)
+      if (t.campaign_id) bump(byCampaign, t.campaign_id, overdue)
     }
-    return { byVertical, byProduct }
+    return { byVertical, byProduct, byCampaign }
   }, [tasks, products])
 }
 
@@ -215,12 +217,16 @@ function CountPill({ c }: { c?: { open: number; overdue: number } }) {
   )
 }
 
-// The board's two filters, in the top bar: which vertical, which product.
-// Lyzr in either menu means "brand-level / not specific"; "All" shows everything.
+// The board's three filters, in the top bar: which vertical, which product,
+// which campaign. Lyzr in the first two means "brand-level / not specific";
+// "All" shows everything.
 function ViewFilters() {
-  const { mode, vertical, verticals, setVertical, products, product, setProduct, ownedVerticalIds } = useVertical()
+  const { mode, vertical, verticals, setVertical, products, product, setProduct, ownedVerticalIds, campaigns, campaign, setCampaign } = useVertical()
+  const { ownedProductIds } = useMyBadges()
   const pathname = usePathname()
-  const { byVertical, byProduct } = useViewCounts()
+  const { byVertical, byProduct, byCampaign } = useViewCounts()
+  const openCampaigns = campaigns.filter(c => c.status === 'live' || c.status === 'upcoming')
+  const closedCampaigns = campaigns.filter(c => c.status !== 'live' && c.status !== 'upcoming')
   const lyzr = verticals.find(v => v.slug === 'lyzr')
   const onBoard = mode === 'space' && !!vertical
   const vLabel = !onBoard || vertical?.slug === 'lyzr' ? 'All verticals' : vertical!.name
@@ -254,7 +260,7 @@ function ViewFilters() {
                 {v.slug === 'lyzr' ? 'Lyzr' : v.name}
                 {v.slug === 'lyzr' && <span className="ml-1.5 text-[10px] text-zinc-400">brand, no vertical</span>}
               </span>
-              {ownedVerticalIds.has(v.id) && <span className="text-[9px] rounded-full bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-px mr-1">owner</span>}
+              {ownedVerticalIds.has(v.id) && <span className="text-[9px] rounded-full bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-px mr-1">head</span>}
               <CountPill c={byVertical.get(v.id)} />
             </DropdownMenuItem>
           ))}
@@ -288,6 +294,7 @@ function ViewFilters() {
                     className={cn('text-zinc-700', product?.id === p.id && 'bg-zinc-100 font-medium')}>
                     <Package className="w-4 h-4 mr-2 text-violet-500" />
                     <span className="flex-1 truncate">{p.name}</span>
+                    {ownedProductIds.has(p.id) && <span className="text-[9px] rounded-full bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-px mr-1">head</span>}
                     <CountPill c={byProduct.get(p.id)} />
                   </DropdownMenuItem>
                 ))}
@@ -296,8 +303,47 @@ function ViewFilters() {
           </DropdownMenuContent>
         </DropdownMenu>
       )}
-      {product && (
-        <button onClick={() => setProduct('all')} className="text-[11px] text-zinc-400 hover:text-zinc-700 px-1" title="Show every product again">
+      {campaigns.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger className={cn(trigger, campaign ? 'border-orange-300 bg-orange-50 text-orange-800' : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50')}
+            aria-label="Campaign view">
+            <Zap className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate font-medium">{campaign ? campaign.name : 'All campaigns'}</span>
+            <ChevronDown className="w-3 h-3 shrink-0 opacity-60" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-72 max-h-[70vh] overflow-y-auto bg-white border-zinc-300">
+            <DropdownMenuItem onClick={() => setCampaign('all')} className={cn('text-zinc-700', !campaign && 'bg-zinc-100 font-medium')}>
+              <Layers className="w-4 h-4 mr-2 text-zinc-500" /> <span className="flex-1">All campaigns</span>
+            </DropdownMenuItem>
+            {openCampaigns.length > 0 && <DropdownMenuSeparator className="bg-zinc-200/70" />}
+            {openCampaigns.map(c => (
+              <DropdownMenuItem key={c.id} onClick={() => setCampaign(c.id)} className={cn('text-zinc-700', campaign?.id === c.id && 'bg-zinc-100 font-medium')}>
+                <span className="mr-2 text-sm" aria-hidden>{CAMPAIGN_KIND[c.kind].emoji}</span>
+                <span className="flex-1 truncate">{c.name}<span className="ml-1.5 text-[10px] text-zinc-400">{c.status}</span></span>
+                <CountPill c={byCampaign.get(c.id)} />
+              </DropdownMenuItem>
+            ))}
+            {closedCampaigns.length > 0 && (
+              <>
+                <DropdownMenuSeparator className="bg-zinc-200/70" />
+                <p className="px-2 pt-1 pb-0.5 brand-label text-[10px] text-zinc-500">Finished</p>
+                {closedCampaigns.slice(0, 12).map(c => (
+                  <DropdownMenuItem key={c.id} onClick={() => setCampaign(c.id)} className={cn('text-zinc-500', campaign?.id === c.id && 'bg-zinc-100 font-medium')}>
+                    <span className="mr-2 text-sm opacity-60" aria-hidden>{CAMPAIGN_KIND[c.kind].emoji}</span>
+                    <span className="flex-1 truncate">{c.name}</span>
+                  </DropdownMenuItem>
+                ))}
+              </>
+            )}
+            <DropdownMenuSeparator className="bg-zinc-200/70" />
+            <DropdownMenuItem className="p-0">
+              <Link href="/campaigns/" className="flex items-center w-full px-2 py-1.5 text-xs text-blue-600">Open Campaigns and Thunderclaps</Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+      {(product || campaign) && (
+        <button onClick={() => { setProduct('all'); setCampaign('all') }} className="text-[11px] text-zinc-400 hover:text-zinc-700 px-1" title="Show every product and campaign again">
           Clear
         </button>
       )}
@@ -339,7 +385,7 @@ export function AppSidebar() {
   const viewAs = useViewAs()
   const realAdmin = user?.role === 'admin'
   const { isLeadership } = useMyBadges()
-  const { mode, slug, verticalId, vertical, verticals, flags, canManage } = useVertical()
+  const { mode, slug, verticalId, vertical, verticals, flags, canManage, taskScope, product, campaign } = useVertical()
   // One board. Board pages carry the current vertical view; from company-level
   // pages they open the whole board (Lyzr). Every view lists every channel,
   // same-named channels merged into one.
@@ -348,9 +394,28 @@ export function AppSidebar() {
   const listSlug = mode === 'space' ? slug : 'all'
   const homeVerticalId = mode === 'space' ? verticalId : (verticals.find(v => v.slug === 'lyzr')?.id || '')
   const { data: allChannels } = useChannels('all')
-  const boardChannels = useMemo(
-    () => mergeChannelsByName((allChannels || []).filter(c => c.is_active), homeVerticalId).channels,
+  const merged = useMemo(
+    () => mergeChannelsByName((allChannels || []).filter(c => c.is_active), homeVerticalId),
     [allChannels, homeVerticalId])
+  // With a vertical, product or campaign picked, the list narrows to the
+  // channels that hold tasks in that view (parents stay so the tree still
+  // reads). With no filter, every channel shows.
+  const filtered = (mode === 'space' && vertical?.slug !== 'lyzr') || !!product || !!campaign
+  const { data: viewTasks } = useTasks({ verticalId: taskScope, product, campaign })
+  const boardChannels = useMemo(() => {
+    if (!filtered) return merged.channels
+    const keptOf = new Map<string, string>()
+    for (const [kept, ids] of merged.twins) for (const id of ids) keptOf.set(id, kept)
+    const parentOf = new Map(merged.channels.map(c => [c.id, c.parent_channel_id]))
+    const show = new Set<string>()
+    for (const t of viewTasks || []) {
+      for (const raw of taskChannelIds(t)) {
+        let id: string | null | undefined = keptOf.get(raw) || raw
+        while (id && !show.has(id)) { show.add(id); id = parentOf.get(id) }
+      }
+    }
+    return merged.channels.filter(c => show.has(c.id))
+  }, [filtered, merged, viewTasks])
   const [mobileOpen, setMobileOpen] = useState(false)
   const close = () => setMobileOpen(false)
 
@@ -409,8 +474,10 @@ export function AppSidebar() {
       {/* Nav */}
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
         <NavList items={mainNav} more={moreNav} onNavigate={close} />
-        <ChannelList channels={boardChannels} slug={boardSlug} empty={
-          <p className="px-3 text-xs text-zinc-400">No channels yet.{realAdmin ? ' Add them in Admin.' : ''}</p>
+        <ChannelList channels={boardChannels} slug={boardSlug} title={filtered ? 'Channels with tasks here' : 'Channels'} empty={
+          filtered
+            ? <p className="px-3 text-xs text-zinc-400">No tasks in this view yet, so no channels to show. Add one with <kbd className="rounded border border-zinc-200 bg-white px-1 text-[10px]">N</kbd> and its channel appears here.</p>
+            : <p className="px-3 text-xs text-zinc-400">No channels yet.{realAdmin ? ' Add them in Admin.' : ''}</p>
         } />
         <MyFunctionRows onNavigate={close} />
       </div>

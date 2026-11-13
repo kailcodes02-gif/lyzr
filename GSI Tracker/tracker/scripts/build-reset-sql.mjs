@@ -46,6 +46,7 @@ const ORDER = [
   '033_saved_views_unique.sql',
   '034_product_tags.sql',
   '035_verticals_and_playbook_channels.sql',
+  '036_one_channel_tree_heads_activity.sql',
 ]
 
 let m001 = mig('001_initial_schema.sql')

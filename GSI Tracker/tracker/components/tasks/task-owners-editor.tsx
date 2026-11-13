@@ -30,11 +30,11 @@ export function TaskOwnersEditor({ task, onChanged }: { task: Task; onChanged: (
   }
 
   const add = (role: 'primary' | 'secondary') =>
-    run(() => addTaskOwner(task.id, email, role).then(() => setEmail('')), 'Failed to add owner')
+    run(() => addTaskOwner(task.id, email, role).then(() => setEmail('')), 'Failed to add person')
 
   return (
     <div className="mb-4">
-      <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-2" title="Owner = assignee: the people responsible for completing the task. The first (crowned) person is the main owner. The assigner — whoever gave out the task — shows on the right.">Owners (assignees)</p>
+      <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-2" title="Owner: the one person accountable for delivering the task (crowned). Contributors help. Whoever created it shows as Requested by.">Owner and contributors</p>
       <div className="flex flex-wrap gap-2 mb-2">
         {task.assignments?.map(a => (
           <div key={a.user_id} className={`flex items-center gap-2 rounded-lg px-3 py-1.5 ${a.role === 'primary' ? 'bg-amber-50 border border-amber-200' : 'bg-zinc-100'}`}>
@@ -64,7 +64,7 @@ export function TaskOwnersEditor({ task, onChanged }: { task: Task; onChanged: (
           </div>
         ))}
         {!task.assignments?.length && !pending.length && (
-          <span className="text-xs text-zinc-400 italic">Unassigned — inherits the channel&apos;s owners</span>
+          <span className="text-xs text-zinc-400 italic">No owner yet — the channel head picks it up</span>
         )}
       </div>
       <div className="flex items-center gap-2">
@@ -80,10 +80,10 @@ export function TaskOwnersEditor({ task, onChanged }: { task: Task; onChanged: (
           {knownEmails?.map(e => <option key={e} value={e} />)}
         </datalist>
         <Button size="sm" disabled={busy || !email.trim()} onClick={() => add('secondary')}
-          className="h-7 bg-blue-600 hover:bg-blue-500 text-white text-xs">Add secondary</Button>
+          className="h-7 bg-blue-600 hover:bg-blue-500 text-white text-xs">Add contributor</Button>
         <Button size="sm" variant="outline" disabled={busy || !email.trim()} onClick={() => add('primary')}
           className="h-7 text-xs border-amber-300 text-amber-700 hover:bg-amber-50">
-          <Crown className="w-3 h-3 mr-1" /> Make primary
+          <Crown className="w-3 h-3 mr-1" /> Make owner
         </Button>
       </div>
     </div>

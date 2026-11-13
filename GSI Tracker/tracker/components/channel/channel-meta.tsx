@@ -79,7 +79,7 @@ export function ChannelOwnerChips({ channelId }: { channelId: string }) {
             >
               {isPrimary && <Crown className="w-3 h-3" />}
               {label}
-              <span className="text-[9px] uppercase tracking-wide opacity-70">{isPrimary ? 'Primary' : 'Secondary'}</span>
+              <span className="text-[9px] uppercase tracking-wide opacity-70">{isPrimary ? 'Lead head' : 'Head'}</span>
               {isAdmin && editing && (
                 <span className="flex items-center gap-0.5 ml-0.5">
                   {!isPrimary && (

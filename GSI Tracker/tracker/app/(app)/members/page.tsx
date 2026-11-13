@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Crown, ShieldCheck, Eye, Users, Building2, Workflow, Layers, Plus, X, Search } from 'lucide-react'
+import { Crown, ShieldCheck, Eye, Users, Building2, Workflow, Layers, Plus, X, Search, Package } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
@@ -12,18 +12,21 @@ import { InfoTip } from '@/components/ui/info-tip'
 import { OwnersEditor } from '@/components/vertical/owners-editor'
 import { PeopleMap } from '@/components/members/people-map'
 import {
-  useAllChannelOwners, useAllFunctionOwners, useAllVerticalMembers, useAllVerticalOwners, useBadgeEmails, useChannels,
-  useFunctions, useKnownEmails, useMyBadges, useUsers,
+  useAllChannelOwners, useAllFunctionOwners, useAllProductOwners, useAllVerticalMembers, useAllVerticalOwners, useBadgeEmails, useChannels,
+  useFunctions, useKnownEmails, useMyBadges, useProducts, useUsers,
 } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import {
-  addChannelOwner, addFunctionOwner, addVerticalMember, addVerticalOwner, removeChannelOwner, removeFunctionOwner,
-  removeVerticalMember, removeVerticalOwner, setBadge, setPrimaryChannelOwner, setPrimaryFunctionOwner, setPrimaryVerticalOwner,
+  addChannelOwner, addFunctionOwner, addProductOwner, addVerticalMember, addVerticalOwner, removeChannelOwner, removeFunctionOwner,
+  removeProductOwner, removeVerticalMember, removeVerticalOwner, setBadge, setPrimaryChannelOwner, setPrimaryFunctionOwner,
+  setPrimaryProductOwner, setPrimaryVerticalOwner,
 } from '@/lib/actions'
 import { cn } from '@/lib/utils'
 
-// Roles & members. Admins assign anything; vertical owners manage their
-// vertical's members and channel owners; channel owners set owners below them.
+// Designations. Admin is the only role; vertical head, product head, domain
+// head and channel head are designations one person can stack. Admins assign
+// anything; vertical heads manage their vertical's members and channel heads;
+// channel heads set heads below them. Anyone can create tasks anywhere.
 
 // Channel/membership chips collapse past four per person — heavy owners
 // otherwise drown the row.
@@ -50,6 +53,8 @@ export default function MembersPage() {
   const { data: admins } = useBadgeEmails('admin')
   const { data: leaders } = useBadgeEmails('leadership')
   const { data: vOwners } = useAllVerticalOwners()
+  const { data: pOwners } = useAllProductOwners()
+  const { data: products } = useProducts()
   const { data: members } = useAllVerticalMembers()
   const { data: chOwners } = useAllChannelOwners()
   const { data: fnOwners } = useAllFunctionOwners()
@@ -61,24 +66,25 @@ export default function MembersPage() {
   const [badgeEmail, setBadgeEmail] = useState('')
   const isAdmin = badges.isAdmin
 
-  const refresh = () => ['users', 'badgeEmails', 'verticalOwners', 'verticalMembers', 'channelOwners', 'functionOwners', 'myVerticalIds', 'knownEmails'].forEach(k => qc.invalidateQueries({ queryKey: [k] }))
+  const refresh = () => ['users', 'badgeEmails', 'verticalOwners', 'productOwners', 'verticalMembers', 'channelOwners', 'functionOwners', 'myVerticalIds', 'knownEmails'].forEach(k => qc.invalidateQueries({ queryKey: [k] }))
   const nameOf = (e: string) => users?.find(u => u.email.toLowerCase() === e.toLowerCase())?.display_name || e.split('@')[0]
   const chName = (id: string) => { const c = channels?.find(x => x.id === id); if (!c) return id; const p = c.parent_channel_id ? channels?.find(x => x.id === c.parent_channel_id) : null; return p ? `${p.name} › ${c.name}` : c.name }
   const vName = (id: string) => verticals.find(v => v.id === id)?.name || ''
+  const pName = (id: string) => products?.find(p => p.id === id)?.name || ''
 
   // Every person we know about: signed in or referenced anywhere.
   const people = useMemo(() => {
     const set = new Set<string>()
     users?.forEach(u => u.email !== 'preview@lyzr.ai' && set.add(u.email.toLowerCase()))
     ;[...(admins || []), ...(leaders || [])].forEach(e => set.add(e))
-    ;[...(vOwners || []), ...(members || []), ...(chOwners || []), ...(fnOwners || [])].forEach(r => set.add(r.email.toLowerCase()))
+    ;[...(vOwners || []), ...(pOwners || []), ...(members || []), ...(chOwners || []), ...(fnOwners || [])].forEach(r => set.add(r.email.toLowerCase()))
     // name@lyzr.ai and name@lyzr.com are one person: keep the signed-in spelling, else the .ai one
     const twin = (x: string) => x.endsWith('@lyzr.ai') ? x.replace(/@lyzr\.ai$/, '@lyzr.com') : x.endsWith('@lyzr.com') ? x.replace(/@lyzr\.com$/, '@lyzr.ai') : x
     const signedIn = new Set((users || []).map(u => u.email.toLowerCase()))
     for (const e of [...set]) { const t = twin(e); if (t !== e && set.has(t)) { if (signedIn.has(t) || (!signedIn.has(e) && t.endsWith('@lyzr.ai'))) set.delete(e) } }
     return [...set].sort().filter(e => !q || e.includes(q.toLowerCase()) || nameOf(e).toLowerCase().includes(q.toLowerCase()))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [users, admins, leaders, vOwners, members, chOwners, fnOwners, q])
+  }, [users, admins, leaders, vOwners, pOwners, members, chOwners, fnOwners, q])
 
   const toggleBadge = (kind: 'admin' | 'leadership', email: string, on: boolean) => setBadge(kind, email, on).then(refresh).then(() => toast.success('Updated')).catch(e => toast.error(e?.message || 'Failed'))
 
@@ -95,8 +101,8 @@ export default function MembersPage() {
   return (
     <div className="p-4 lg:p-8 space-y-6 max-w-7xl mx-auto bg-zinc-50 text-zinc-900 min-h-screen">
       <div className="pl-12 lg:pl-0">
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><Users className="w-6 h-6 text-blue-600" /> Members &amp; roles</h1>
-        <p className="text-sm text-zinc-500 mt-1">One person can hold several badges. Admins assign anything; vertical owners manage their vertical; channel owners set owners below them.</p>
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><Users className="w-6 h-6 text-blue-600" /> Members &amp; designations</h1>
+        <p className="text-sm text-zinc-500 mt-1">Admin is the only role. Vertical head, product head, domain head and channel head are designations, and one person can hold several. Anyone signed in can create tasks anywhere; heads edit what sits in their remit.</p>
       </div>
 
 
@@ -105,6 +111,7 @@ export default function MembersPage() {
           <TabsTrigger value="people" className="text-xs">People</TabsTrigger>
           <TabsTrigger value="map" className="text-xs">People map</TabsTrigger>
           <TabsTrigger value="verticals" className="text-xs">Verticals</TabsTrigger>
+          <TabsTrigger value="products" className="text-xs">Products</TabsTrigger>
           <TabsTrigger value="domains" className="text-xs">Domains</TabsTrigger>
           <TabsTrigger value="channels" className="text-xs">Channels</TabsTrigger>
         </TabsList>
@@ -129,6 +136,7 @@ export default function MembersPage() {
                 const isA = (admins || []).some(same) || u?.role === 'admin'
                 const isL = (leaders || []).some(same)
                 const vo = (vOwners || []).filter(r => same(r.email))
+                const po = (pOwners || []).filter(r => same(r.email))
                 const vm = (members || []).filter(r => same(r.email) && !vo.some(o => o.vertical_id === r.vertical_id))
                 const fo = (fnOwners || []).filter(r => same(r.email))
                 const co = (chOwners || []).filter(r => same(r.email) && r.source === 'channel')
@@ -141,13 +149,14 @@ export default function MembersPage() {
                     <div className="flex flex-wrap gap-1 flex-1 min-w-0 items-center">
                       {isA && <Badge tone="bg-red-50 border-red-200 text-red-700"><ShieldCheck className="w-3 h-3" /> Admin {isAdmin && <button onClick={() => toggleBadge('admin', e, false)} className="hover:text-red-900"><X className="w-3 h-3" /></button>}</Badge>}
                       {isL && <Badge tone="bg-violet-50 border-violet-200 text-violet-700"><Eye className="w-3 h-3" /> Leadership {isAdmin && <button onClick={() => toggleBadge('leadership', e, false)} className="hover:text-violet-900"><X className="w-3 h-3" /></button>}</Badge>}
-                      {vo.map(r => <Badge key={r.vertical_id} tone="bg-amber-50 border-amber-200 text-amber-800"><Crown className="w-3 h-3" /> {vName(r.vertical_id)} owner</Badge>)}
+                      {vo.map(r => <Badge key={r.vertical_id} tone="bg-amber-50 border-amber-200 text-amber-800"><Crown className="w-3 h-3" /> {vName(r.vertical_id)} head</Badge>)}
+                      {po.map(r => <Badge key={`p${r.product_id}`} tone="bg-violet-50 border-violet-200 text-violet-800"><Package className="w-3 h-3" /> {pName(r.product_id)} head</Badge>)}
                       <ChipList chips={[
-                        ...fo.map(r => <Badge key={`f${r.function_id}`} tone="bg-emerald-50 border-emerald-200 text-emerald-800"><Workflow className="w-3 h-3" /> {functions?.find(f => f.id === r.function_id)?.name} domain</Badge>),
-                        ...co.map(r => <Badge key={`c${r.channel_id}`} tone="bg-blue-50 border-blue-200 text-blue-800"><Layers className="w-3 h-3" /> {vName(channels?.find(c => c.id === r.channel_id)?.vertical_id || '')} › {chName(r.channel_id)}</Badge>),
+                        ...fo.map(r => <Badge key={`f${r.function_id}`} tone="bg-emerald-50 border-emerald-200 text-emerald-800"><Workflow className="w-3 h-3" /> {functions?.find(f => f.id === r.function_id)?.name} domain head</Badge>),
+                        ...co.map(r => <Badge key={`c${r.channel_id}`} tone="bg-blue-50 border-blue-200 text-blue-800"><Layers className="w-3 h-3" /> {chName(r.channel_id)} head</Badge>),
                         ...vm.map(r => <Badge key={`v${r.vertical_id}`} tone="bg-zinc-100 border-zinc-200 text-zinc-600"><Building2 className="w-3 h-3" /> {vName(r.vertical_id)} member</Badge>),
                       ]} />
-                      {!isA && !isL && !vo.length && !fo.length && !co.length && !vm.length && <span className="text-[11px] text-zinc-400">member only</span>}
+                      {!isA && !isL && !vo.length && !po.length && !fo.length && !co.length && !vm.length && <span className="text-[11px] text-zinc-400">member only</span>}
                       {isAdmin && !isA && <button onClick={() => toggleBadge('admin', e, true)} className="text-[10px] text-zinc-400 hover:text-red-700">+ admin</button>}
                       {isAdmin && !isL && <button onClick={() => toggleBadge('leadership', e, true)} className="text-[10px] text-zinc-400 hover:text-violet-700">+ leadership</button>}
                     </div>
@@ -167,11 +176,11 @@ export default function MembersPage() {
             <Card key={v.id} className="bg-white border-zinc-200">
               <CardHeader className="py-3">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2"><Building2 className="w-4 h-4 text-blue-600" /> {v.name}</CardTitle>
-                <CardDescription className="text-xs">Owners manage the vertical. Members can create tasks in it. <InfoTip k="vertical_member" /></CardDescription>
+                <CardDescription className="text-xs">Heads get the vertical home and edit any task tagged with it. Members is a label for who works here; anyone can create tasks. <InfoTip k="vertical_member" /></CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
-                  <p className="text-[11px] uppercase tracking-wider text-zinc-500 mb-1">Owners <InfoTip k="vertical_owner" /></p>
+                  <p className="text-[11px] uppercase tracking-wider text-zinc-500 mb-1">Heads <InfoTip k="vertical_owner" /></p>
                   <OwnersEditor owners={(vOwners || []).filter(o => o.vertical_id === v.id)} canEdit={isAdmin}
                     queryKeys={[['verticalOwners'], ['myVerticalIds'], ['knownEmails']]}
                     onAdd={(email, primary) => addVerticalOwner(v.id, email, primary)} onRemove={email => removeVerticalOwner(v.id, email)} onPromote={email => setPrimaryVerticalOwner(v.id, email)} />
@@ -179,12 +188,30 @@ export default function MembersPage() {
                 <div>
                   <p className="text-[11px] uppercase tracking-wider text-zinc-500 mb-1">Members</p>
                   <OwnersEditor owners={(members || []).filter(m => m.vertical_id === v.id).map((m, i) => ({ email: m.email, user_id: m.user_id, sort_order: i + 1 }))} canEdit={canManageVertical(v.id)}
-                    queryKeys={[['verticalMembers']]} emptyText="No explicit members (owners of channels here count automatically)"
+                    queryKeys={[['verticalMembers']]} emptyText="No explicit members (heads of channels here count automatically)"
                     onAdd={email => addVerticalMember(v.id, email)} onRemove={email => removeVerticalMember(v.id, email)} onPromote={async () => {}} />
                 </div>
               </CardContent>
             </Card>
           ))}
+        </TabsContent>
+
+        {/* ---- Products: heads ---- */}
+        <TabsContent value="products" className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {(products || []).filter(p => p.slug !== 'lyzr').map(p => (
+            <Card key={p.id} className="bg-white border-zinc-200">
+              <CardHeader className="py-3">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2"><Package className="w-4 h-4 text-violet-600" /> {p.name} <span className="text-[10px] font-normal text-zinc-400">{p.group_name}</span> <InfoTip k="product_head" /></CardTitle>
+                <CardDescription className="text-xs">Heads get the product home and edit any task tagged {p.name}, in any vertical or channel.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <OwnersEditor owners={(pOwners || []).filter(o => o.product_id === p.id)} canEdit={isAdmin}
+                  queryKeys={[['productOwners'], ['knownEmails']]} emptyText="No head yet"
+                  onAdd={(email, primary) => addProductOwner(p.id, email, primary)} onRemove={email => removeProductOwner(p.id, email)} onPromote={email => setPrimaryProductOwner(p.id, email)} />
+              </CardContent>
+            </Card>
+          ))}
+          {(products || []).length === 0 && <p className="text-sm text-zinc-500">No products yet.</p>}
         </TabsContent>
 
         {/* ---- Domains ---- */}
@@ -216,7 +243,7 @@ export default function MembersPage() {
                       <div className="flex items-start gap-3">
                         <div className="w-44 shrink-0 text-sm text-zinc-800">{chName(ch.id)}</div>
                         <OwnersEditor owners={(chOwners || []).filter(o => o.channel_id === ch.id && o.source === 'channel')} canEdit
-                          queryKeys={[['channelOwners'], ['knownEmails']]} emptyText="inherits domain owner"
+                          queryKeys={[['channelOwners'], ['knownEmails']]} emptyText="inherits domain head"
                           onAdd={(email, primary) => addChannelOwner(ch.id, email, primary)} onRemove={email => removeChannelOwner(ch.id, email)} onPromote={email => setPrimaryChannelOwner(ch.id, email)} />
                       </div>
                       {list.filter(c => c.parent_channel_id === ch.id).map(sub => (
@@ -233,7 +260,7 @@ export default function MembersPage() {
               </Card>
             )
           })}
-          {!isAdmin && badges.ownedVerticalIds.size === 0 && badges.ownedChannelIds.size === 0 && <p className="text-sm text-zinc-500">You do not own a vertical or channel, so there is nothing to arrange here.</p>}
+          {!isAdmin && badges.ownedVerticalIds.size === 0 && badges.ownedChannelIds.size === 0 && <p className="text-sm text-zinc-500">You do not head a vertical or channel, so there is nothing to arrange here.</p>}
         </TabsContent>
       </Tabs>
     </div>

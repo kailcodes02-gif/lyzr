@@ -21,7 +21,7 @@ import { taskInScope } from '@/lib/task-channels'
 
 function CategoryContent() {
   const slug = useSearchParams().get('slug') || ''
-  const { verticalId, product } = useVertical()
+  const { verticalId, product, campaign } = useVertical()
   const href = useSpaceHref()
   const { data: categories, isLoading: catsLoading } = useCategories(verticalId)
   

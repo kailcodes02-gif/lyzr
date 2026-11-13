@@ -92,10 +92,10 @@ export function CreateTaskDialog({
   }
 
   const roleLabels = {
-    primary: 'Primary',
-    secondary: 'Secondary',
-    tertiary: 'Tertiary',
-    other: 'Other'
+    primary: 'Owner',
+    secondary: 'Contributor',
+    tertiary: 'Contributor',
+    other: 'Contributor'
   }
 
   // A sub-task stays '' and inherits the parent's tags; a top-level task
@@ -414,7 +414,7 @@ export function CreateTaskDialog({
               </Row>
             )}
 
-            <Row label="Owner" hint="Who is doing it. The first person is the main owner; add helpers below them.">
+            <Row label="Owner" hint="Who is accountable for delivering it: one Owner. Add Contributors below them. You are recorded as Requested by.">
               <div className="w-full space-y-1.5">
                 {ownerRows.map((a, i) => (
                   <div key={i} className="flex items-center gap-2">
@@ -432,8 +432,8 @@ export function CreateTaskDialog({
                       <Select value={a.role} onValueChange={(val) => updateAssignment(i, 'role', (val || 'other') as any)}>
                         <SelectTrigger className="w-24 bg-white border-zinc-300 h-8 px-2 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-white border border-zinc-300">
-                          <SelectItem value="primary">Primary owner</SelectItem>
-                          <SelectItem value="secondary">Secondary</SelectItem>
+                          <SelectItem value="primary">Owner</SelectItem>
+                          <SelectItem value="secondary">Contributor</SelectItem>
                         </SelectContent>
                       </Select>
                     )}

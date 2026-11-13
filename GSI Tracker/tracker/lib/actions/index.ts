@@ -1822,8 +1822,8 @@ export async function updateVertical(args: {
 
 async function upsertOwnerRow(
   supabase: ReturnType<typeof createClient>,
-  table: 'vertical_owners' | 'function_owners',
-  keyCol: 'vertical_id' | 'function_id',
+  table: 'vertical_owners' | 'function_owners' | 'product_owners',
+  keyCol: 'vertical_id' | 'function_id' | 'product_id',
   keyVal: string,
   email: string,
   makePrimary: boolean,
@@ -1849,8 +1849,8 @@ async function upsertOwnerRow(
 
 async function removeOwnerRow(
   supabase: ReturnType<typeof createClient>,
-  table: 'vertical_owners' | 'function_owners',
-  keyCol: 'vertical_id' | 'function_id',
+  table: 'vertical_owners' | 'function_owners' | 'product_owners',
+  keyCol: 'vertical_id' | 'function_id' | 'product_id',
   keyVal: string,
   email: string,
 ) {
@@ -1862,8 +1862,8 @@ async function removeOwnerRow(
 
 async function promoteOwnerRow(
   supabase: ReturnType<typeof createClient>,
-  table: 'vertical_owners' | 'function_owners',
-  keyCol: 'vertical_id' | 'function_id',
+  table: 'vertical_owners' | 'function_owners' | 'product_owners',
+  keyCol: 'vertical_id' | 'function_id' | 'product_id',
   keyVal: string,
   email: string,
 ) {
@@ -1897,6 +1897,29 @@ export async function setPrimaryVerticalOwner(verticalId: string, email: string)
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
   return promoteOwnerRow(supabase, 'vertical_owners', 'vertical_id', verticalId, email)
+}
+
+// ============ PRODUCT HEADS ============
+
+export async function addProductOwner(productId: string, email: string, makePrimary: boolean) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  return upsertOwnerRow(supabase, 'product_owners', 'product_id', productId, email, makePrimary)
+}
+
+export async function removeProductOwner(productId: string, email: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  return removeOwnerRow(supabase, 'product_owners', 'product_id', productId, email)
+}
+
+export async function setPrimaryProductOwner(productId: string, email: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  return promoteOwnerRow(supabase, 'product_owners', 'product_id', productId, email)
 }
 
 // ============ VERTICAL RESOURCES ============

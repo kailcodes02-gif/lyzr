@@ -23,7 +23,7 @@ import { taskInScope, mergeChannelsByName } from '@/lib/task-channels'
 
 function ChannelContent() {
   const channelId = useSearchParams().get('id') || ''
-  const { verticalId, vertical, flags, taskScope, product } = useVertical()
+  const { verticalId, vertical, flags, taskScope, product, campaign } = useVertical()
   const href = useSpaceHref()
   // One board: every view lists every channel. Each vertical has its own copy
   // of the seeded channels, so same-named channels merge into one (this
@@ -33,7 +33,7 @@ function ChannelContent() {
   const merged = useMemo(() => mergeChannelsByName(rawChannels || [], verticalId), [rawChannels, verticalId])
   const allChannels: Channel[] | undefined = merged ? merged.channels : rawChannels
   const twinsOf = (id: string) => merged?.twins.get(id) || [id]
-  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: taskScope, product })
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: taskScope, product, campaign })
   const { data: budgets } = useBudgetPeriods(verticalId)
 
   const [createOpen, setCreateOpen] = useState(false)

@@ -58,11 +58,11 @@ function OwnerDetailContent() {
   // show the signed-in person rather than an empty "awaiting sign-in" profile.
   const email = params.get('email') || me?.email || ''
   const initialTab = params.get('tab') || 'assigned'
-  const { verticalId, taskScope, product } = useVertical()
+  const { verticalId, taskScope, product, campaign } = useVertical()
   const href = useSpaceHref()
 
   const { data: users, isLoading: usersLoading } = useUsers()
-  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: taskScope, product })
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ verticalId: taskScope, product, campaign })
   const { data: activities } = useRecentActivity(200, verticalId)
   const { data: channelOwners } = useAllChannelOwners()
 
@@ -206,10 +206,10 @@ function OwnerDetailContent() {
                   All
                 </TabsTrigger>
                 <TabsTrigger value="primary" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
-                  Primary
+                  Owns
                 </TabsTrigger>
                 <TabsTrigger value="secondary" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
-                  Secondary
+                  Contributing
                 </TabsTrigger>
               </TabsList>
             </div>

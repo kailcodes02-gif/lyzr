@@ -581,7 +581,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                   />
                 </div>
                 <div>
-                  <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1" title="Who gave out the task — set automatically from who created it. Completing it is the owners' (assignees') job.">Assigner</p>
+                  <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1" title="Who asked for this task. Set from who created it and never changes. Delivering it is the Owner's job.">Requested by</p>
                   <div className="flex items-center gap-1.5 text-sm text-zinc-700">
                     {task.creator && (
                       <Avatar className="w-4 h-4"><AvatarImage src={task.creator.avatar_url || ''} /><AvatarFallback className="bg-zinc-200 text-zinc-600 text-[8px]">{(task.creator.display_name || task.creator.email)[0].toUpperCase()}</AvatarFallback></Avatar>
@@ -1872,7 +1872,7 @@ function TaskEditBar({ task, canEdit, isOwnerish, editMode, setEditMode, onChang
             <Lightbulb className="w-3.5 h-3.5 mr-1" /> Suggest an edit
           </Button>
         )}
-        {!canEdit && <span className="text-[11px] text-zinc-500 inline-flex items-center gap-1">Owners edit this task; you can comment or suggest. <InfoTip k="suggest_edit" /></span>}
+        {!canEdit && <span className="text-[11px] text-zinc-500 inline-flex items-center gap-1">The owner, contributors and heads edit this task; you can comment or suggest. <InfoTip k="suggest_edit" /></span>}
         {pending.length > 0 && <span className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">{pending.length} pending suggestion{pending.length === 1 ? '' : 's'}</span>}
       </div>
 

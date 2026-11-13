@@ -72,6 +72,15 @@ export interface VerticalOwner {
   created_at: string
 }
 
+/** Product heads (migration 036): may edit any task tagged with their product. */
+export interface ProductOwner {
+  product_id: string
+  email: string
+  user_id: string | null
+  sort_order: number
+  created_at: string
+}
+
 export interface Fn {
   id: string
   name: string
@@ -376,6 +385,16 @@ export interface ActivityLog {
   from_value: unknown
   to_value: unknown
   created_at: string
+  // Snapshot at the time of the entry (migration 036), so History can be
+  // filtered by channel / vertical / product / campaign / person.
+  channel_id?: string | null
+  vertical_ids?: string[]
+  product_ids?: string[]
+  campaign_id?: string | null
+  people?: string[]
+  entity_type?: 'task' | 'channel' | 'vertical' | 'product' | 'function' | 'campaign' | 'member' | 'badge' | string | null
+  entity_id?: string | null
+  label?: string | null
   // Joined
   actor?: User
   task?: Task

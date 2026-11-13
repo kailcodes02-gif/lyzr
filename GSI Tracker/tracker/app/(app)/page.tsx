@@ -6,13 +6,15 @@ import { format, isBefore, isToday, parseISO, startOfDay } from 'date-fns'
 import { toZonedTime } from 'date-fns-tz'
 import { Plus, CheckSquare, AlertCircle, Radio, CalendarRange, Activity, Calendar, Building2, Table2, ClipboardCheck } from 'lucide-react'
 import {
-  useCurrentUser, useTasks, useVerticals, useAllVerticalOwners, useUsers, useChannels, useRecentActivity, useMentionsForUser, useMyBadges,
+  useCurrentUser, useTasks, useVerticals, useAllVerticalOwners, useUsers, useChannels, useRecentActivity, useMentionsForUser,
 } from '@/lib/hooks/use-data'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { KpiTile } from '@/components/ui/kpi-tile'
 import { InfoTip } from '@/components/ui/info-tip'
 import { VerticalCard } from '@/components/workspace/vertical-card'
 import { MyBoard } from '@/components/workspace/my-board'
+import { CompanyLanes, HomeViewChips, MyChannelsHome, ProductHome, VerticalHome, useHomeViews } from '@/components/workspace/head-views'
+import { keyFor, usePersisted } from '@/lib/hooks/use-persisted'
 import { CampaignBanner } from '@/components/campaigns/campaign-banner'
 import { DomainGrid } from '@/components/workspace/domain-grid'
 import { InboxCard } from '@/components/workspace/inbox-card'
@@ -31,14 +33,30 @@ const IST = 'Asia/Kolkata'
 
 export default function HomePage() {
   const { data: user, isLoading } = useCurrentUser()
-  const { isAdmin, resolving } = useVertical()
-  const { isLeadership } = useMyBadges()
+  const { resolving, verticals, products } = useVertical()
+  const { views, defaultKey, isAdmin, products: allProducts } = useHomeViews()
+  // The view you picked last is remembered per person; "Your views" lists
+  // every designation you hold (company, vertical, product, channels, board).
+  const [picked, setPicked] = usePersisted<string>(keyFor(user?.id, 'home:view'), '')
   if (isLoading || resolving) return <div className="p-8 animate-pulse"><div className="h-8 w-1/4 bg-zinc-200 rounded" /></div>
   if (!user) return null
-  // The company-wide home is for admins and leadership; everyone else,
-  // vertical owners included, starts on their own board.
-  if (isAdmin || isLeadership) return <WorkspaceHomePage />
-  return <MyBoard showFullWorkspaceLink />
+  const valid = (k: string) => views.some(v => v.key === k) || (isAdmin && k.startsWith('product:') && products.some(p => `product:${p.id}` === k))
+  const current = picked && valid(picked) ? picked : defaultKey
+  const [kind, id] = current.includes(':') ? current.split(':') : [current, undefined]
+  const vertical = kind === 'vertical' ? verticals.find(v => v.id === id) : undefined
+  const product = kind === 'product' ? products.find(p => p.id === id) : undefined
+  const chips = <HomeViewChips views={views} current={current} onPick={setPicked} allProducts={isAdmin ? allProducts : undefined} />
+  const body = vertical ? <VerticalHome vertical={vertical} />
+    : product ? <ProductHome product={product} />
+    : kind === 'channels' ? <MyChannelsHome />
+    : kind === 'company' ? <WorkspaceHomePage />
+    : <MyBoard showFullWorkspaceLink={isAdmin} />
+  return (
+    <div className="bg-zinc-50 min-h-screen">
+      <div className="px-4 lg:px-8 pt-4 lg:pt-6 pb-0 max-w-7xl mx-auto pl-16 lg:pl-8 -mb-2">{chips}</div>
+      {body}
+    </div>
+  )
 }
 
 function WorkspaceHomePage() {
@@ -151,6 +169,9 @@ function WorkspaceHomePage() {
       </div>
 
       <CampaignBanner verticalId="all" />
+
+      {/* Swim lanes: the one board cut by vertical and by product */}
+      <CompanyLanes tasks={all} />
 
       <DomainGrid tasks={all} />
 

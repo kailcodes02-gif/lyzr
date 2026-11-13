@@ -10,8 +10,9 @@ import { useEffect, useState } from 'react'
 export const VIEW_AS_OPTIONS = [
   { value: 'admin', label: 'Admin (everything)' },
   { value: 'leadership', label: 'Leadership' },
-  { value: 'vertical_owner', label: 'Vertical owner' },
-  { value: 'channel_owner', label: 'Channel owner' },
+  { value: 'vertical_owner', label: 'Vertical head' },
+  { value: 'product_owner', label: 'Product head' },
+  { value: 'channel_owner', label: 'Channel head' },
   { value: 'member', label: 'Member' },
 ] as const
 
@@ -62,6 +63,7 @@ export function maskForPreview(va: ViewAs) {
     isAdmin: va === 'admin',
     isLeadership: va === 'admin' || va === 'leadership',
     verticalOwnership: va === 'admin' || va === 'vertical_owner',
+    productOwnership: va === 'admin' || va === 'product_owner',
     channelOwnership: va === 'admin' || va === 'vertical_owner' || va === 'channel_owner',
   }
 }

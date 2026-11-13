@@ -4,7 +4,7 @@ import Link from 'next/link'
 import {
   BookOpen, Building2, Folder, Layers, GitBranch, ListTodo, CheckSquare, Home, LayoutDashboard, Calendar,
   LineChart, UserCircle, CalendarRange, DollarSign, History, Workflow, Settings, Crown, ShieldCheck,
-  Users, Table2, Filter, Repeat, ArrowRight, Sparkles, Eye, FolderKanban, Columns3, List, Inbox, Rocket, Zap, Target,
+  Users, Table2, Filter, Repeat, ArrowRight, Sparkles, Eye, FolderKanban, Columns3, List, Inbox, Rocket, Zap, Target, Package,
   Plus, Check, ClipboardCheck, MoreHorizontal,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -28,12 +28,13 @@ const LEVELS = [
 ]
 
 const ROLES = [
-  { icon: ShieldCheck, name: 'Admin', k: 'admin', can: ['Everything in Workspace settings', 'Give every role on Members', 'Edit any task'], where: 'Members' },
-  { icon: Eye, name: 'Leadership', k: 'leadership', can: ['The company view: Company home, All Tasks, Weekly, Owners', 'Read-only unless they press Edit'], where: 'Members' },
-  { icon: Crown, name: 'Vertical owner', k: 'vertical_owner', can: ['Channels and sub-channels of their vertical', 'Budgets, task fields, resources', 'Members and channel owners'], where: 'Members · Vertical Settings' },
-  { icon: Workflow, name: 'Domain owner', k: 'function_owner', can: ['Default owner of that domain’s channel in every vertical', 'One roll-up view across verticals'], where: 'Members › Domains' },
-  { icon: Users, name: 'Channel owner', k: 'channel_owner', can: ['Owns the channel’s tasks', 'Adds sub-channels and sets owners below', 'Unowned tasks on it show under them'], where: 'Members › Channels' },
-  { icon: UserCircle, name: 'Member', k: 'vertical_member', can: ['See everything', 'Create tasks in verticals they belong to', 'Edit own tasks; suggest edits on others'], where: 'Members › Verticals' },
+  { icon: ShieldCheck, name: 'Admin (the only role)', k: 'admin', can: ['Everything in Workspace settings', 'Gives every designation on Members', 'Edits any task; can open any home view'], where: 'Members' },
+  { icon: Eye, name: 'Leadership', k: 'leadership', can: ['Company home with lanes per vertical, brand and product', 'All Tasks, Company weekly, Owners', 'Edits only what they own or head'], where: 'Members' },
+  { icon: Crown, name: 'Vertical head', k: 'vertical_owner', can: ['Vertical home: bird’s-eye of the vertical, lanes per product', 'Edits any task tagged with the vertical', 'Members, budgets, task fields, resources'], where: 'Members › Verticals' },
+  { icon: Package, name: 'Product head', k: 'product_head', can: ['Product home: that product alone, across every vertical and channel', 'Edits any task tagged with the product'], where: 'Members › Products' },
+  { icon: Users, name: 'Channel head', k: 'channel_owner', can: ['My channels: every task in their channels across verticals and products', 'Edits and reassigns those tasks; picks up unowned ones', 'Adds sub-channels and heads below'], where: 'Members › Channels' },
+  { icon: Workflow, name: 'Domain head', k: 'function_owner', can: ['Default head of that domain’s channels', 'One roll-up view across the tree'], where: 'Members › Domains' },
+  { icon: UserCircle, name: 'Member', k: 'member', can: ['See everything', 'Create tasks anywhere, with any vertical and product', 'Edit tasks they own, contribute to or requested; suggest on others'], where: 'Automatic on sign-in' },
 ]
 
 type View = { icon: React.ComponentType<{ className?: string }>; name: string; k: string; href: string; mode: 'company' | 'vertical' | 'everyone'; text?: string }
@@ -133,7 +134,7 @@ export default function GuidePage() {
       </Section>
 
       {/* 2 */}
-      <Section n={2} title="One board. Vertical and product are filters." tip="product">
+      <Section n={2} title="One board. Vertical, product and campaign are filters." tip="product">
         <Card className="bg-white border-zinc-200">
           <CardContent className="p-5 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-600">
@@ -143,8 +144,8 @@ export default function GuidePage() {
                 <Link href={withVertical('/dashboard/', lyzrSlug)} className="text-blue-600 hover:underline inline-flex items-center gap-1">Open the board <ArrowRight className="w-3 h-3" /></Link>
               </div>
               <div className="space-y-1.5">
-                <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><Building2 className="w-4 h-4 text-blue-600" /> Two menus at the top</p>
-                <p><strong>Vertical</strong> (GSI, Emerging Partner, Hyperscalers, FDE Collective) and <strong>Product</strong> (Opencontroller, Madison, Optimus… from the lyzr.ai menu) filter the board on every page. Each option shows its open count; red means overdue. Your product choice is remembered.</p>
+                <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><Building2 className="w-4 h-4 text-blue-600" /> Three menus at the top</p>
+                <p><strong>Vertical</strong> (GSI, Emerging Partner, Hyperscalers, FDE Collective), <strong>Product</strong> (Opencontroller, Madison, Optimus… from the lyzr.ai menu) and <strong>Campaign</strong> (a launch, thunderclap or campaign) filter the board on every page. Each option shows its open count; red means overdue. Your product and campaign choices are remembered.</p>
                 <div className="flex flex-wrap gap-x-3 gap-y-1">
                   <Link href={withVertical('/dashboard/', otherSlug)} className="text-blue-600 hover:underline inline-flex items-center gap-1">GSI view <ArrowRight className="w-3 h-3" /></Link>
                   {demoProduct && <Link href={withVertical('/dashboard/', lyzrSlug, { p: demoProduct.slug })} className="text-blue-600 hover:underline inline-flex items-center gap-1">{demoProduct.name} view <ArrowRight className="w-3 h-3" /></Link>}
@@ -156,7 +157,7 @@ export default function GuidePage() {
               </div>
             </div>
             <div className="rounded-lg bg-zinc-50 p-3 text-xs text-zinc-600">
-              <strong className="text-zinc-800">Channels are shared.</strong> Every view lists every channel in the sidebar, including the Opencontroller GTM playbook&apos;s: LinkedIn voices, paid media, content, events, analysts, partners and sales enablement. Any task can sit in any channel, whatever it is tagged.
+              <strong className="text-zinc-800">Channels are shared, and one tree.</strong> With no filter the sidebar lists every channel: Ads, OOH, Paid Organic, Outbound, Inbound, LinkedIn Organic, Content, Technical Content, PR, Newsletter, Webinar, Podcast, Video &amp; Content, Designs, Communities, Analyst relationship, Champions, Referral, Events and Workshops &amp; Cohorts, each with its sub-channels. Pick a vertical, product or campaign and it narrows to the channels that hold tasks in that view. Any task can sit in any channel, whatever it is tagged.
             </div>
           </CardContent>
         </Card>
@@ -245,22 +246,22 @@ export default function GuidePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Card className="bg-white border-zinc-200"><CardContent className="p-4 space-y-2">
             <div className="flex items-center gap-2 text-sm font-semibold"><Filter className="w-4 h-4 text-blue-600" /> Top bar</div>
-            <p className="text-xs text-zinc-600">The <strong>Vertical</strong> and <strong>Product</strong> menus that filter the board, then <strong>New task</strong> (or <Kbd>N</Kbd>), the <strong>Assistant</strong> and your notifications.</p>
+            <p className="text-xs text-zinc-600">The <strong>Vertical</strong>, <strong>Product</strong> and <strong>Campaign</strong> menus that filter the board, then <strong>New task</strong> (or <Kbd>N</Kbd>), the <strong>Assistant</strong> and your notifications.</p>
           </CardContent></Card>
           <Card className="bg-white border-zinc-200"><CardContent className="p-4 space-y-2">
             <div className="flex items-center gap-2 text-sm font-semibold"><Layers className="w-4 h-4 text-blue-600" /> Sidebar, the same for everyone</div>
             <p className="text-xs text-zinc-600">Home, Board, My Tasks, Calendar, Weekly review, Campaigns and Sales pipeline, then every channel. Projects, Tracker, Overview, Owners, Budgets, History and the Guide sit under <strong className="inline-flex items-center gap-0.5"><MoreHorizontal className="w-3 h-3" /> More</strong>, which opens by itself when you are on one of them.</p>
           </CardContent></Card>
           <Card className="bg-white border-zinc-200"><CardContent className="p-4 space-y-2">
-            <div className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="w-4 h-4 text-violet-600" /> Admins and leadership</div>
-            <p className="text-xs text-zinc-600">Home is <strong>Company home</strong>, the across-company view, with My Board next to it. More also holds the company pages: All tasks (the leadership view), Company weekly, Domains and Members.</p>
+            <div className="flex items-center gap-2 text-sm font-semibold"><Home className="w-4 h-4 text-violet-600" /> Home: your views</div>
+            <p className="text-xs text-zinc-600">Home opens on the widest view you hold, and <strong>Your views</strong> at the top lets you switch: <strong>Company home</strong> (admins and leadership, lanes by vertical and product), a <strong>vertical home</strong> per vertical you head (lanes per product inside it), a <strong>product home</strong> per product you head (lanes per channel and vertical), <strong>My channels</strong> (channel heads, every task in their channels), and <strong>My Board</strong> (everyone). Admins can open any product home.</p>
           </CardContent></Card>
           <Card className="bg-white border-zinc-200"><CardContent className="p-4 space-y-2">
-            <div className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="w-4 h-4 text-emerald-600" /> Everyone else, vertical owners included</div>
-            <p className="text-xs text-zinc-600">Home is <strong>My Board</strong>: just their own work. Vertical owners also get <strong>Vertical settings</strong> under More while their vertical is picked at the top.</p>
+            <div className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="w-4 h-4 text-emerald-600" /> Click a lane</div>
+            <p className="text-xs text-zinc-600">Every lane card opens the board already filtered to it. Vertical heads also get <strong>Vertical settings</strong> under More while their vertical is picked at the top; the company pages (All tasks, Company weekly, Domains, Members) sit under More for admins and leadership.</p>
           </CardContent></Card>
         </div>
-        <p className="text-[11px] text-zinc-500">Admins can preview any role with <strong>View as</strong> in the account menu at the bottom of the sidebar.</p>
+        <p className="text-[11px] text-zinc-500">Admins can preview any designation with <strong>View as</strong> in the account menu at the bottom of the sidebar.</p>
       </Section>
 
       {/* 7 */}
@@ -300,9 +301,9 @@ export default function GuidePage() {
           ))}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-zinc-600">
-          <Note><strong className="text-zinc-800">Roles stack.</strong> One person can own a vertical, own a domain and be a plain member somewhere else, all at once.</Note>
-          <Note><strong className="text-zinc-800">Everyone can read everything.</strong> Roles only change what you can <em>change</em>. People who haven&apos;t signed in yet can still be named; it attaches on their first Microsoft sign-in.</Note>
-          <Note><strong className="text-zinc-800">Editing a task.</strong> Its owners, the channel and vertical owners above it, and admins edit. Everyone else presses &ldquo;Suggest an edit&rdquo;; every change is logged in the task&apos;s History.</Note>
+          <Note><strong className="text-zinc-800">Designations stack.</strong> One person can head a vertical, head a product and head two channels at once; each gives them a home view.</Note>
+          <Note><strong className="text-zinc-800">Everyone can read and create.</strong> Designations only change what you can <em>change</em> on other people&apos;s tasks. People who haven&apos;t signed in yet can still be named; it attaches on their first sign-in.</Note>
+          <Note><strong className="text-zinc-800">On a task: three names.</strong> <strong>Requested by</strong> (who asked, never changes), the <strong>Owner</strong> (one person, accountable) and <strong>Contributors</strong> (helpers). The owner, contributors, requester, the heads of its channel, vertical and product, and admins edit it. Everyone else suggests. Every change is logged.</Note>
         </div>
       </Section>
 
@@ -321,8 +322,8 @@ export default function GuidePage() {
           ))}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-zinc-600">
-          <Note><strong className="text-zinc-800">Who sees the banner.</strong> Everyone in the company, or only one vertical. It shows on their home pages until the campaign ends.</Note>
-          <Note><strong className="text-zinc-800">Leads and tasks.</strong> Type names to pick the leads. Add the first tasks while creating it; link more later from any task.</Note>
+          <Note><strong className="text-zinc-800">A tag, not a board.</strong> A task keeps its channel, vertical and product and links to one campaign. The <strong>Campaign</strong> menu at the top filters every board page to it; <strong>Show on board</strong> on a card does the same.</Note>
+          <Note><strong className="text-zinc-800">Thunderclaps by month.</strong> Campaigns › Thunderclaps lists them month by month with who has done their bit and which channels carry a task for it. Many can be live at once.</Note>
           <Note><strong className="text-zinc-800">Optional banner button,</strong> e.g. &ldquo;Open the launch doc&rdquo;. <Link href="/campaigns/" className="text-blue-600 hover:underline inline-flex items-center gap-1">Open Campaigns <ArrowRight className="w-3 h-3" /></Link></Note>
         </div>
       </Section>

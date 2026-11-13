@@ -85,7 +85,7 @@ function TaskLine({ t, depth, onClick, subs }: { t: Task; depth: number; onClick
 }
 
 export function TreeOverview() {
-  const { verticalId, verticals, mode, product } = useVertical()
+  const { verticalId, verticals, mode, product, campaign } = useVertical()
   const { data: tasks, isLoading } = useTasks({ verticalId, product })
   const { data: channels } = useChannels(verticalId)
   const { data: categories } = useCategories(verticalId)

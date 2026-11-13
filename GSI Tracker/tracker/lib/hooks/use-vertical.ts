@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext } from 'react'
-import type { Product, Vertical, VerticalSettings } from '@/lib/types/database'
+import type { Campaign, Product, Vertical, VerticalSettings } from '@/lib/types/database'
 import { DEFAULT_FLAGS } from '@/lib/vertical-flags'
 
 export type VerticalMode = 'workspace' | 'space'
@@ -28,6 +28,10 @@ export interface VerticalContextValue {
   products: Product[]
   product: Product | null
   setProduct: (slug: string | 'all') => void
+  // Campaign view: a third filter on the same board (launch, thunderclap, campaign).
+  campaigns: Campaign[]
+  campaign: Campaign | null
+  setCampaign: (id: string | 'all') => void
 }
 
 export const VerticalContext = createContext<VerticalContextValue>({
@@ -46,6 +50,9 @@ export const VerticalContext = createContext<VerticalContextValue>({
   products: [],
   product: null,
   setProduct: () => {},
+  campaigns: [],
+  campaign: null,
+  setCampaign: () => {},
 })
 
 export function useVertical() {

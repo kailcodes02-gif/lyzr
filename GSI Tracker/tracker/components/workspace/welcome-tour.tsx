@@ -66,13 +66,14 @@ const STEPS: Step[] = [
   },
   {
     icon: <LyzrSail className="w-8 h-5" />,
-    title: 'One board — vertical and product are filters',
+    title: 'One board — vertical, product and campaign are filters',
     body: (
       <>There is <strong>one board</strong> where <strong>every task lives</strong>. Each task has a
       vertical (GSI, Emerging Partner, Hyperscalers, FDE Collective) and a product (Opencontroller,
-      Madison, Optimus…). <strong>Lyzr</strong> means brand-level: no specific vertical or product.
-      The two menus at the <strong>top of the page</strong> filter the board; a task you add there is
-      tagged for you. Channels are shared by every view.</>
+      Madison, Optimus…), and can link to a campaign. <strong>Lyzr</strong> means brand-level: no specific
+      vertical or product. The three menus at the <strong>top of the page</strong> filter the board; a task
+      you add there is tagged for you. One channel tree is shared by every view: with no filter the sidebar
+      shows every channel, with a filter only the channels that hold tasks in that view.</>
     ),
     href: '/dashboard/?v=lyzr',
     place: 'Board',
@@ -106,12 +107,13 @@ const STEPS: Step[] = [
   },
   {
     icon: <ListTodo className="w-6 h-6 text-emerald-600" />,
-    title: 'My Board: your own page',
+    title: 'Home: your views',
     body: (
-      <><strong>My Board</strong> is your personal home: what is due or overdue this week, with a circle
-      to tick each one done. Once a week press <strong>Check in</strong>: two minutes, one key per task
-      (done, started, move the date, blocked), and you get a summary to paste in Slack.
-      <strong> My Tasks</strong> is the full list of everything with your name on it.</>
+      <>Home opens on the widest view you hold and <strong>Your views</strong> switches between them:
+      <strong> Company home</strong> for admins and leadership, a <strong>vertical home</strong> or
+      <strong> product home</strong> if you head one, <strong>My channels</strong> if you head channels,
+      and <strong>My Board</strong> for everyone: what is due this week, a circle to tick each one done,
+      and <strong>Check in</strong> once a week. Every lane card opens the board filtered to it.</>
     ),
     href: '/my-board/',
     place: 'My Board',
@@ -119,12 +121,13 @@ const STEPS: Step[] = [
   },
   {
     icon: <Zap className="w-6 h-6 text-orange-500" />,
-    title: 'Campaigns: launches and thunderclaps',
+    title: 'Campaigns: a tag on tasks, not a board',
     body: (
       <>A <strong>launch</strong> is a release everyone rallies behind, a <strong>thunderclap</strong>
-      is one day where everyone posts at once, and a <strong>campaign</strong> is a multi-week push.
-      Each shows as a banner on home pages — for the whole company or one vertical — and groups the
-      tasks that make it happen.</>
+      is one day a month where everyone posts at once, and a <strong>campaign</strong> is a multi-week
+      push. A task keeps its channel, vertical and product and links to one campaign. The
+      <strong> Campaign</strong> menu at the top filters the board to it; the <strong>Thunderclaps</strong>
+      tab shows them month by month with who is done and which channels carry a task.</>
     ),
     href: '/campaigns/',
     place: 'Campaigns',
@@ -160,9 +163,11 @@ const STEPS: Step[] = [
     icon: <Users className="w-6 h-6 text-blue-600" />,
     title: 'Members: people and roles',
     body: (
-      <>The <strong>Members</strong> page shows who is who: admins, leadership, vertical owners,
-      domain and channel owners. Admins assign any role here; vertical owners manage their vertical;
-      channel owners assign owners below themselves.</>
+      <>The <strong>Members</strong> page shows who is who. <strong>Admin</strong> is the only role;
+      <strong> vertical head</strong>, <strong>product head</strong>, <strong>domain head</strong> and
+      <strong> channel head</strong> are designations one person can stack, each with its own home view.
+      Anyone can create tasks anywhere; heads edit what sits in their remit. On a task: Requested by,
+      one Owner, and Contributors.</>
     ),
     href: '/members/',
     place: 'Members',

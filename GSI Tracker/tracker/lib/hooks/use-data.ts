@@ -7,7 +7,7 @@ import type {
   User, Category, Channel,
   ChannelOwner, ChannelResource, ChannelLearning, ChannelTarget,
   Vertical, VerticalOwner, Fn, FunctionOwner, VerticalResource, TaxonomyTemplate, Product,
-  EffectiveChannelOwner, Campaign, CampaignOwner, CampaignParticipant, VerticalMember, TaskSuggestion,
+  EffectiveChannelOwner, Campaign, CampaignOwner, CampaignParticipant, VerticalMember, TaskSuggestion, ProductOwner,
 } from '@/lib/types/database'
 import { taskChannelIds } from '@/lib/task-channels'
 import { maskForPreview, useViewAs } from '@/lib/hooks/use-view-as'
@@ -172,6 +172,19 @@ export function useAllVerticalMembers() {
   })
 }
 
+export function useAllProductOwners() {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['productOwners', 'all'],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('product_owners').select('*').order('sort_order')
+      if (error) throw error
+      return data as ProductOwner[]
+    },
+  })
+}
+
 export function useBadgeEmails(kind: 'admin' | 'leadership') {
   const supabase = createClient()
   return useQuery({
@@ -191,6 +204,7 @@ export function useMyBadges() {
   const { data: me } = useCurrentUser()
   const { data: leadership } = useBadgeEmails('leadership')
   const { data: vOwners } = useAllVerticalOwners()
+  const { data: pOwners } = useAllProductOwners()
   const { data: members } = useAllVerticalMembers()
   const { data: chOwners } = useAllChannelOwners()
   const { data: fnOwners } = useAllFunctionOwners()
@@ -206,6 +220,7 @@ export function useMyBadges() {
     isAdmin,
     isLeadership: mask.isLeadership && (realAdmin || (!!email && (leadership || []).includes(email))),
     ownedVerticalIds: new Set(mask.verticalOwnership ? mine(vOwners).map(r => r.vertical_id) : []),
+    ownedProductIds: new Set(mask.productOwnership ? mine(pOwners).map(r => r.product_id) : []),
     memberVerticalIds: new Set(mine(members).map(r => r.vertical_id)),
     ownedChannelIds: new Set(mask.channelOwnership ? mine(chOwners).filter(o => o.source === 'channel').map(r => r.channel_id) : []),
     effectiveChannelIds: new Set(mask.channelOwnership ? mine(chOwners).map(r => r.channel_id) : []),
@@ -339,19 +354,20 @@ export function useAllFunctionOwners() {
 
 // ============ TAXONOMY ============
 
-export function useCategories(verticalId: VerticalScope = 'all') {
+// One channel tree for every view (migration 036): the vertical argument is
+// kept for callers but no longer narrows the list.
+export function useCategories(_verticalId: VerticalScope = 'all') {
   const supabase = createClient()
   return useQuery({
-    queryKey: ['categories', verticalId],
+    queryKey: ['categories', 'all'],
     // Taxonomy rarely changes; keep it fresh for 10 minutes to avoid refetches on every nav.
     staleTime: 10 * 60 * 1000,
     queryFn: async () => {
-      let query = supabase
+      const query = supabase
         .from('categories')
         .select('*')
         .eq('is_active', true)
         .order('sort_order')
-      if (verticalId !== 'all') query = query.eq('vertical_id', verticalId)
       const { data, error } = await query
       if (error) throw error
       return data as Category[]
@@ -359,10 +375,10 @@ export function useCategories(verticalId: VerticalScope = 'all') {
   })
 }
 
-export function useChannels(verticalId: VerticalScope = 'all', categoryId?: string) {
+export function useChannels(_verticalId: VerticalScope = 'all', categoryId?: string) {
   const supabase = createClient()
   return useQuery({
-    queryKey: ['channels', verticalId, categoryId],
+    queryKey: ['channels', 'all', categoryId],
     staleTime: 10 * 60 * 1000,
     queryFn: async () => {
       let query = supabase
@@ -370,7 +386,6 @@ export function useChannels(verticalId: VerticalScope = 'all', categoryId?: stri
         .select('*')
         .eq('is_active', true)
         .order('sort_order')
-      if (verticalId !== 'all') query = query.eq('vertical_id', verticalId)
       if (categoryId) query = query.eq('category_id', categoryId)
       const { data, error } = await query
       if (error) throw error
@@ -587,14 +602,22 @@ export function useTasks(filters?: {
   // Product view: only tasks tagged with this product. Applied to the cached
   // list, so switching products never refetches. null/undefined = all.
   product?: Product | null
+  // Campaign view: only tasks linked to this campaign (same, client-side).
+  campaign?: Campaign | null
 }) {
   const supabase = createClient()
-  const { product, ...rest } = filters || {}
+  const { product, campaign, ...rest } = filters || {}
   const productId = product?.id
   const productIsLyzr = product?.slug === 'lyzr'
+  const campaignId = campaign?.id
   const select = useCallback(
-    (tasks: Task[]) => productId ? tasks.filter(t => taskHasProduct(t, productId, productIsLyzr)) : tasks,
-    [productId, productIsLyzr])
+    (tasks: Task[]) => {
+      let out = tasks
+      if (productId) out = out.filter(t => taskHasProduct(t, productId, productIsLyzr))
+      if (campaignId) out = out.filter(t => t.campaign_id === campaignId)
+      return out
+    },
+    [productId, productIsLyzr, campaignId])
   return useQuery({
     queryKey: ['tasks', filters ? rest : undefined],
     select,
@@ -791,7 +814,7 @@ export function useRecentActivity(limit = 20, verticalId: VerticalScope = 'all')
     queryFn: async () => {
       const { data, error } = await supabase
         .from('activity_log')
-        .select('*, actor:users!actor_id(id, display_name, avatar_url), task:tasks(id, title, channel_id, vertical_ids)')
+        .select('*, actor:users!actor_id(id, display_name, avatar_url), task:tasks(id, title, channel_id, vertical_ids, product_ids, campaign_id)')
         .order('created_at', { ascending: false })
         // Over-fetch when scoping so a busy sibling vertical cannot starve the list.
         .limit(verticalId === 'all' ? limit : limit * 4)
@@ -802,6 +825,7 @@ export function useRecentActivity(limit = 20, verticalId: VerticalScope = 'all')
         // Deleted tasks keep their channel in the log entry's from_value.
         const chOf = (r: { task?: { channel_id?: string } | null; from_value?: unknown }) => r.task?.channel_id || (r.from_value as { channel_id?: string } | null)?.channel_id
         rows = rows.filter(r => {
+          if (r.vertical_ids?.length) return r.vertical_ids.includes(verticalId)
           if (r.task) return taskHasVertical(r.task as { vertical_ids?: string[] }, verticalId, () => !r.task?.channel_id || ids.has(r.task.channel_id))
           const c = chOf(r); return !c || ids.has(c)
         }).slice(0, limit)

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { VerticalContext, type VerticalMode } from '@/lib/hooks/use-vertical'
-import { useCategories, useChannels, useCurrentUser, useMyVerticalIds, useProducts, useVerticals } from '@/lib/hooks/use-data'
+import { useCampaigns, useCategories, useChannels, useCurrentUser, useMyVerticalIds, useProducts, useVerticals } from '@/lib/hooks/use-data'
 import { keyFor, usePersisted } from '@/lib/hooks/use-persisted'
 import { maskForPreview, useViewAs } from '@/lib/hooks/use-view-as'
 import { withVertical } from '@/lib/hooks/use-space-href'
@@ -80,6 +80,25 @@ export function VerticalProvider({ children }: { children: ReactNode }) {
     () => (productSlug !== 'all' && products.find(p => p.slug === productSlug)) || null,
     [products, productSlug])
   const setProduct = useCallback((slug: string | 'all') => setProductSlug(slug), [setProductSlug])
+
+  // ---------- campaign view ----------
+  const { data: campaignsData } = useCampaigns('all', { includeClosed: true })
+  const campaigns = useMemo(() => campaignsData || [], [campaignsData])
+  const [campaignId, setCampaignId] = usePersisted<string>(keyFor(user?.id, 'campaign:view'), 'all')
+  const cParam = params.get('c')
+  useEffect(() => {
+    if (!cParam || !campaigns.length || !user?.id) return
+    if (cParam === 'all' || campaigns.some(c => c.id === cParam)) setCampaignId(cParam)
+    else toast.error('Unknown campaign in the link')
+    const next = new URLSearchParams(params.toString())
+    next.delete('c')
+    const qs = next.toString()
+    router.replace(`${pathname}${qs ? `?${qs}` : ''}`)
+  }, [cParam, campaigns, params, pathname, router, setCampaignId, user?.id])
+  const campaign = useMemo(
+    () => (campaignId !== 'all' && campaigns.find(c => c.id === campaignId)) || null,
+    [campaigns, campaignId])
+  const setCampaign = useCallback((id: string | 'all') => setCampaignId(id), [setCampaignId])
 
   // "View as" preview only ever narrows what a real admin sees.
   const viewAs = useViewAs()
@@ -180,7 +199,10 @@ export function VerticalProvider({ children }: { children: ReactNode }) {
     products,
     product,
     setProduct,
-  }), [mode, vertical, verticals, legacy, isAdmin, ownedVerticalIds, resolving, setVertical, products, product, setProduct])
+    campaigns,
+    campaign,
+    setCampaign,
+  }), [mode, vertical, verticals, legacy, isAdmin, ownedVerticalIds, resolving, setVertical, products, product, setProduct, campaigns, campaign, setCampaign])
 
   return <VerticalContext.Provider value={value}>{children}</VerticalContext.Provider>
 }
