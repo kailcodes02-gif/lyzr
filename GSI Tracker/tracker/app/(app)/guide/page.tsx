@@ -156,6 +156,12 @@ export default function GuidePage() {
                 <p>A task added in a view gets that view&apos;s vertical and product. Change both in the task&apos;s drawer, under <strong>Vertical</strong> and <strong>Product</strong>; a task with two products shows in both views. Picking a real product removes Lyzr by itself.</p>
               </div>
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs text-zinc-600">
+              <Note><strong className="text-zinc-800">Every task has a vertical and a product.</strong> If it is not about one in particular, both are <strong>Lyzr</strong>, the brand. That is the default, so nothing is ever left untagged and every filter is complete.</Note>
+              <Note><strong className="text-zinc-800">A channel is optional.</strong> Leave it out and the task sits in <strong>No channel</strong>; it still shows on the board, in every filter and on its owner&apos;s My Tasks.</Note>
+              <Note><strong className="text-zinc-800">Channels need no head.</strong> Many will not have one. A task with no owner on a headless channel simply waits on the board until someone takes it.</Note>
+              <Note><strong className="text-zinc-800">Self-assign freely.</strong> Anyone can create a task and make themselves the owner; you are then both Requested by and Owner.</Note>
+            </div>
             <div className="rounded-lg bg-zinc-50 p-3 text-xs text-zinc-600">
               <strong className="text-zinc-800">Channels are shared, and one tree.</strong> With no filter the sidebar lists every channel: Ads, OOH, Paid Organic, Outbound, Inbound, LinkedIn Organic, Content, Technical Content, PR, Newsletter, Webinar, Podcast, Video &amp; Content, Designs, Communities, Analyst relationship, Champions, Referral, Events and Workshops &amp; Cohorts, each with its sub-channels. Pick a vertical, product or campaign and it narrows to the channels that hold tasks in that view. Any task can sit in any channel, whatever it is tagged.
             </div>

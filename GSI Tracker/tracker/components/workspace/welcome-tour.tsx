@@ -100,9 +100,10 @@ const STEPS: Step[] = [
       <>Press <strong>N</strong> on any page (or <strong>New task</strong> at the top) and type what needs
       doing. Add details inline if you like: <strong>@priya</strong> for the owner,
       <strong> #content</strong> for the channel, <strong>!p1</strong> for priority and a date at the end
-      such as <strong>fri</strong> or <strong>12 nov</strong>. Leave them out and it is yours, Medium,
-      in <strong>No channel</strong>. It takes the vertical and product of the view you are in, or
-      <strong> Lyzr</strong> for both. <strong>More options</strong> opens the full form.</>
+      such as <strong>fri</strong> or <strong>12 nov</strong>. Leave them out and it is yours (self-assigned),
+      Medium, in <strong>No channel</strong>, which is fine. It takes the vertical and product of the view
+      you are in, or <strong>Lyzr</strong> for both: every task always has one of each, so no filter ever
+      misses it. <strong>More options</strong> opens the full form.</>
     ),
   },
   {
