@@ -25,9 +25,11 @@ export const HELP: Record<string, string> = {
   vertical_owner: 'Vertical head: a bird’s-eye view of one vertical and every product inside it. Edits any task tagged with the vertical; manages its members, budgets, task fields and resources. Set by an admin.',
   product_head: 'Product head: the leadership view of one product alone, across every vertical and channel. Edits any task tagged with the product. Set by an admin on Members › Products.',
   function_owner: 'Domain head: default head for every channel of that domain, unless the channel names its own heads.',
-  channel_owner: 'Channel head: works across every vertical and product. Sees every task in the channels they head in one place (My channels), edits and reassigns them, and picks up tasks with no owner.',
-  member: 'Everyone who signs in. Members see everything, create tasks anywhere with any vertical and product tag, and edit the tasks they own, contribute to or requested. On other tasks they comment or suggest an edit.',
-  task_owner: 'Three names on every task. Requested by: who asked for it, set from who created it, never changes. Owner: the one person accountable for delivering it (crowned); nudges and check-ins go to them. Contributors: anyone helping; the task shows on their My Tasks under Contributing. Making someone else the owner moves the old owner to contributor.',
+  channel_owner: 'Channel head: works across every vertical and product. Sees every task in the channels they head in one place (My channels), edits and reassigns them, and picks up tasks assigned to nobody.',
+  member: 'Everyone who signs in. Members see everything, create tasks anywhere with any vertical and product tag, and edit the tasks assigned to them, the ones they contribute to and the ones they assigned. On other tasks they comment or suggest an edit.',
+  task_owner: 'Three names on every task. Assigned by: who created it and is asking for it; never changes. Assigned to: who has to get it done. Usually one person; with more, the starred one is the primary and replies on priority and due date. Contributors: people pitching in, not accountable. If you give yourself a task it shows as Self-assigned.',
+  ask_reply: 'Every assigned task carries two pairs. Requested priority and due date: what Assigned by asked for. Replied priority and due date: what Assigned to came back with, because they know their calendar. The task runs on the reply. If the two differ it is flagged Needs alignment until either side updates their value.',
+  my_space: 'Your home base and the page behind your link: your tasks by priority, calendar or week, what you assigned to others and what they replied, and your notifications. Share your link so teammates can see your load and add tasks for you.',
   pending_owner: 'This person has not signed in yet. Their ownership and assignments attach automatically the first time they sign in with Microsoft.',
 
   // Views

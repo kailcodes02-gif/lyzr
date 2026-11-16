@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import {
-  BookOpen, FolderKanban, LineChart, ListTodo, RotateCcw, Table2, Users, X, Zap,
-} from 'lucide-react'
+  BookOpen, FolderKanban, LineChart, ListTodo, RotateCcw, Table2, Users, X, Zap, UserCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { LyzrSail } from '@/components/ui/lyzr-logo'
 import { useCurrentUser } from '@/lib/hooks/use-data'
@@ -95,16 +94,41 @@ const STEPS: Step[] = [
   },
   {
     icon: <ListTodo className="w-6 h-6 text-emerald-600" />,
-    title: 'Adding a task: one line, Enter',
+    title: 'Adding a task: three short steps',
     body: (
-      <>Press <strong>N</strong> on any page (or <strong>New task</strong> at the top) and type what needs
-      doing. Add details inline if you like: <strong>@priya</strong> for the owner,
-      <strong> #content</strong> for the channel, <strong>!p1</strong> for priority and a date at the end
-      such as <strong>fri</strong> or <strong>12 nov</strong>. Leave them out and it is yours (self-assigned),
-      Medium, in <strong>No channel</strong>, which is fine. It takes the vertical and product of the view
-      you are in, or <strong>Lyzr</strong> for both: every task always has one of each, so no filter ever
-      misses it. <strong>More options</strong> opens the full form.</>
+      <><strong>New task</strong> asks for very little. <strong>Step 1:</strong> the task name and who it is
+      <strong> assigned to</strong> (pick <strong>Me</strong> for your own; add more people and star the
+      primary). <strong>Step 2:</strong> the <strong>due date</strong> and <strong>priority</strong>, both
+      required. <strong>Step 3</strong> is optional: description, sub-tasks, contributors, campaign.
+      Vertical and product default to <strong>Lyzr</strong> and the channel to <strong>No channel</strong>;
+      change them only when the task is for one in particular. In a hurry, press <strong>N</strong> and type
+      one line: it is yours, due today, Medium.</>
     ),
+  },
+  {
+    icon: <ListTodo className="w-6 h-6 text-orange-500" />,
+    title: 'Asked and replied: two priorities, two dates',
+    body: (
+      <>When someone assigns you a task it lands in <strong>Needs your reply</strong>. <strong>Accept</strong> what
+      was asked, or <strong>propose your own</strong> priority and due date, because you know your calendar.
+      Whoever assigned it is told straight away. Both stay on the task everywhere: <strong>requested</strong>
+      {' '}and <strong>replied</strong> priority, <strong>requested</strong> and <strong>replied</strong> due date.
+      If they differ the task is flagged <strong>Needs alignment</strong>; sort it out in the task&apos;s
+      <strong> Chat</strong> (use @ to mention someone). The board and calendar run on the replied values.</>
+    ),
+  },
+  {
+    icon: <UserCircle className="w-6 h-6 text-blue-600" />,
+    title: 'My space, and your own link',
+    body: (
+      <><strong>My space</strong> is your home base: your tasks by priority, on a calendar or by week, what
+      you <strong>assigned to others</strong> and what they replied, and a bell for everything that changed.
+      It also has <strong>your link</strong>, such as <em>lyzr.ai/marketing-tracker/?u=yourname</em>. Share it
+      with the team: they see how loaded you are and can <strong>add a task for you</strong> from it.
+      Open <strong>People</strong> to do the same on anyone else&apos;s page. Everyone signs in once first.</>
+    ),
+    href: '/u/',
+    place: 'My space',
   },
   {
     icon: <ListTodo className="w-6 h-6 text-emerald-600" />,
@@ -167,8 +191,8 @@ const STEPS: Step[] = [
       <>The <strong>Members</strong> page shows who is who. <strong>Admin</strong> is the only role;
       <strong> vertical head</strong>, <strong>product head</strong>, <strong>domain head</strong> and
       <strong> channel head</strong> are designations one person can stack, each with its own home view.
-      Anyone can create tasks anywhere; heads edit what sits in their remit. On a task: Requested by,
-      one Owner, and Contributors.</>
+      Anyone can create tasks anywhere; heads edit what sits in their remit. On a task: Assigned by,
+      Assigned to (one primary person, more if needed) and Contributors.</>
     ),
     href: '/members/',
     place: 'Members',

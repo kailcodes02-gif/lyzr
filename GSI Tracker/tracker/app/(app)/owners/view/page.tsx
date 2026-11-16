@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { format, parseISO } from 'date-fns'
-import { ArrowLeft, CheckSquare, MessageSquare, Calendar as CalendarIcon, Activity, Clock } from 'lucide-react'
+import { ArrowLeft, Plus, ExternalLink, CheckSquare, MessageSquare, Calendar as CalendarIcon, Activity, Clock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useUsers, useTasks, useRecentActivity, useAllChannelOwners, useCurrentUser } from '@/lib/hooks/use-data'
 import { useSpaceHref } from '@/lib/hooks/use-space-href'
@@ -20,6 +20,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Calendar as DayPicker } from '@/components/ui/calendar'
 import { TaskView } from '@/components/tasks/task-view'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
+import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
+import { personPath } from '@/lib/person-link'
 import type { Mention, Task } from '@/lib/types/database'
 
 type MentionWithTask = Mention & {
@@ -85,6 +87,7 @@ function OwnerDetailContent() {
   const { data: mentions, isLoading: mentionsLoading } = useMentionsByUserId(owner?.id)
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
   const [filters, setFilters] = useState<TaskFilters>(EMPTY_FILTERS)
   const { data: allChannels } = useChannels('all')
   const fctx = filterContextFrom(allChannels)
@@ -119,9 +122,11 @@ function OwnerDetailContent() {
 
   const assignedTasks = applyTaskFilters(tasks?.filter(t => ownsTask(t) || inheritsTask(t)) ?? [], filters, fctx)
 
-  const getTasksByRole = (role?: string) => {
-    if (!role) return assignedTasks
-    return assignedTasks.filter(t => ownsTask(t, role))
+  // assigned = primary or alongside someone; contributing = every other role.
+  const getTasksByRole = (kind?: 'assigned' | 'contributing') => {
+    if (!kind) return assignedTasks
+    const on = (t: Task) => ownsTask(t, 'primary') || ownsTask(t, 'secondary')
+    return assignedTasks.filter(t => kind === 'assigned' ? on(t) : ownsTask(t) && !on(t))
   }
 
   const mentionedTaskIds = new Set((mentions ?? []).map(m => m.task_id))
@@ -179,12 +184,20 @@ function OwnerDetailContent() {
           </h1>
           <p className="text-sm text-zinc-500 truncate">{owner.email}</p>
         </div>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Link href={personPath(owner)} className="inline-flex items-center gap-1.5 h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-700 hover:bg-zinc-50">
+            <ExternalLink className="w-3.5 h-3.5" /> Open their page
+          </Link>
+          <button onClick={() => setCreateOpen(true)} className="inline-flex items-center gap-1.5 h-9 rounded-md bg-orange-500 hover:bg-orange-600 px-3 text-sm font-medium text-white cursor-pointer">
+            <Plus className="w-4 h-4" /> Add a task for {(owner.display_name || owner.email).split(/[ @.]/)[0]}
+          </button>
+        </div>
       </div>
 
       <Tabs defaultValue={initialTab} className="w-full">
         <TabsList className="bg-white border border-zinc-200 p-1 rounded-lg">
           <TabsTrigger value="assigned" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
-            <CheckSquare className="w-4 h-4 mr-2" /> Assigned to me
+            <CheckSquare className="w-4 h-4 mr-2" /> Tasks
           </TabsTrigger>
           <TabsTrigger value="mentioned" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
             <MessageSquare className="w-4 h-4 mr-2" /> Mentioned ({mentionedTasks.length})
@@ -205,10 +218,10 @@ function OwnerDetailContent() {
                 <TabsTrigger value="all" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
                   All
                 </TabsTrigger>
-                <TabsTrigger value="primary" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
-                  Owns
+                <TabsTrigger value="assignedto" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
+                  Assigned to
                 </TabsTrigger>
-                <TabsTrigger value="secondary" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
+                <TabsTrigger value="contributing" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
                   Contributing
                 </TabsTrigger>
               </TabsList>
@@ -217,11 +230,11 @@ function OwnerDetailContent() {
             <TabsContent value="all" className="mt-0">
               <TaskView tasks={getTasksByRole()} onTaskClick={t => setSelectedTaskId(t.id)} showChannelColumn />
             </TabsContent>
-            <TabsContent value="primary" className="mt-0">
-              <TaskView tasks={getTasksByRole('primary')} onTaskClick={t => setSelectedTaskId(t.id)} showChannelColumn />
+            <TabsContent value="assignedto" className="mt-0">
+              <TaskView tasks={getTasksByRole('assigned')} onTaskClick={t => setSelectedTaskId(t.id)} showChannelColumn />
             </TabsContent>
-            <TabsContent value="secondary" className="mt-0">
-              <TaskView tasks={getTasksByRole('secondary')} onTaskClick={t => setSelectedTaskId(t.id)} showChannelColumn />
+            <TabsContent value="contributing" className="mt-0">
+              <TaskView tasks={getTasksByRole('contributing')} onTaskClick={t => setSelectedTaskId(t.id)} showChannelColumn />
             </TabsContent>
           </Tabs>
         </TabsContent>
@@ -386,6 +399,11 @@ function OwnerDetailContent() {
           }}
           onTaskIdChange={setSelectedTaskId}
         />
+      )}
+      {createOpen && (
+        <CreateTaskDialog open={createOpen} onOpenChange={setCreateOpen}
+          forPerson={{ email: owner.email, name: owner.display_name || owner.email.split('@')[0] }}
+          onSuccess={() => setCreateOpen(false)} />
       )}
     </div>
   )

@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { rememberReturnTo } from '@/lib/return-to'
+import { deepLinkTarget } from '@/lib/embed'
 
 // Static build has no middleware: the auth gate lives client-side. Data was
 // never protected by the old middleware anyway — Supabase RLS is the boundary;
@@ -14,12 +16,18 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const supabase = createClient()
     let cancelled = false
+    // Arrived through the public lyzr.ai link with ?u= or ?page=: that is
+    // where this visit is headed, signed in or not.
+    const deep = deepLinkTarget()
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (cancelled) return
       if (!session) {
+        // Come back to this page (e.g. someone's shared link) after sign-in.
+        rememberReturnTo(deep)
         router.replace('/login')
       } else {
+        if (deep) router.replace(deep)
         setReady(true)
       }
     })

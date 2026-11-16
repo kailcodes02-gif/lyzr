@@ -8,7 +8,7 @@ export type AssignmentRole = 'primary' | 'secondary' | 'tertiary' | 'other'
 export type MentionSurface = 'task_description' | 'task_comment' | 'checklist_item' | 'blocked_description' | 'insight'
 export type BudgetPeriodType = 'one_time' | 'monthly' | 'quarterly' | 'half_yearly' | 'annual' | 'custom'
 export type BudgetScopeType = 'global' | 'vertical' | 'category' | 'channel'
-export type NotificationType = 'assigned' | 'mentioned' | 'comment' | 'status_change' | 'dependency_completed' | 'subtask_completed' | 'parent_blocked' | 'budget_overrun_warning' | 'overdue'
+export type NotificationType = 'assigned' | 'mentioned' | 'comment' | 'status_change' | 'dependency_completed' | 'subtask_completed' | 'parent_blocked' | 'budget_overrun_warning' | 'overdue' | 'task_reply'
   | 'task_edited' | 'checklist' | 'subtask_added' | 'suggestion' | 'suggestion_resolved' | 'campaign_ask' | 'task_created'
 export type FieldType = 'text' | 'long_text' | 'number' | 'currency' | 'date' | 'date_range' | 'dropdown' | 'multi_select' | 'checkbox' | 'url' | 'email' | 'phone' | 'person' | 'file'
 export type FieldSurface = 'planning' | 'tracker'
@@ -21,6 +21,8 @@ export interface User {
   role: UserRole
   created_at: string
   alt_email?: string | null
+  /** Short name in the person's link (/u/?who=handle). Migration 038. */
+  handle?: string | null
 }
 
 // ============ VERTICALS & FUNCTIONS ============
@@ -299,6 +301,15 @@ export interface Task {
   recurring_template_id?: string | null
   tracker_frozen_at?: string | null
   campaign_id?: string | null
+  // Ask and reply (migration 038). priority / due_date above are the values
+  // the task runs on: the reply once there is one, the ask until then.
+  requested_priority?: TaskPriority | null
+  requested_due_date?: string | null
+  replied_priority?: TaskPriority | null
+  replied_due_date?: string | null
+  replied_at?: string | null
+  replied_by?: string | null
+  reply_note?: string | null
   // Joined
   channel?: Channel
   creator?: User

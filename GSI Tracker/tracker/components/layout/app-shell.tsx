@@ -21,6 +21,7 @@ import { LyzrSail } from '@/components/ui/lyzr-logo'
 import { setViewAs, useViewAs, viewAsLabel, VIEW_AS_OPTIONS } from '@/lib/hooks/use-view-as'
 import { startTour } from '@/components/workspace/welcome-tour'
 import { QuickAddDialog, isTypingTarget } from '@/components/tasks/quick-add'
+import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -422,6 +423,7 @@ export function AppSidebar() {
   const mainNav: NavItem[] = [
     { href: '/', icon: Home, label: isLeadership ? 'Company home' : 'My Board', match: '/' },
     ...(isLeadership ? [{ href: '/my-board/', icon: Sparkles, label: 'My Board', match: '/my-board' }] : []),
+    { href: '/u/', icon: UserCircle, label: 'My space', match: '/u' },
     { href: withVertical('/dashboard/', boardSlug), icon: LayoutDashboard, label: 'Board', match: '/dashboard' },
     { href: withVertical('/my-tasks/', listSlug), icon: ListTodo, label: 'My Tasks', match: '/my-tasks' },
     { href: withVertical('/calendar/', listSlug), icon: Calendar, label: 'Calendar', match: '/calendar' },
@@ -588,6 +590,8 @@ export function AppHeader() {
   const router = useRouter()
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [quickOpen, setQuickOpen] = useState(false)
+  // The button opens the guided three-step form; N keeps the one-line quick add.
+  const [formOpen, setFormOpen] = useState(false)
   const [openedTaskId, setOpenedTaskId] = useState<string | null>(null)
   const { data: notifications } = useNotifications()
 
@@ -628,11 +632,12 @@ export function AppHeader() {
           : <ViewFilters />}
       </div>
       <div className="flex items-center gap-2">
-        <Button size="sm" className="h-8 bg-orange-500 hover:bg-orange-600 text-white border-0" onClick={() => setQuickOpen(true)} aria-label="New task" title="New task (N)">
+        <Button size="sm" className="h-8 bg-orange-500 hover:bg-orange-600 text-white border-0" onClick={() => setFormOpen(true)} aria-label="New task" title="New task. Press N for the one-line quick add.">
           <Plus className="w-4 h-4 sm:mr-1" /><span className="hidden sm:inline text-xs">New task</span>
-          <kbd className="hidden md:inline ml-1.5 text-[10px] rounded bg-white/20 px-1">N</kbd>
         </Button>
         <QuickAddDialog open={quickOpen} onOpenChange={setQuickOpen} onCreated={setOpenedTaskId} />
+        {/* On My Tasks the form first asks whether the task is for you or someone else. */}
+        {formOpen && <CreateTaskDialog open onOpenChange={setFormOpen} askWho={normalize(pathname) === '/my-tasks'} onSuccess={() => setFormOpen(false)} />}
         {openedTaskId && (
           <TaskDetailDrawer taskId={openedTaskId} open onOpenChange={o => { if (!o) setOpenedTaskId(null) }} onTaskIdChange={setOpenedTaskId} />
         )}

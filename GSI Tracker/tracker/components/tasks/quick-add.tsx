@@ -98,7 +98,8 @@ export function QuickAdd({ autoFocus, onCreated, className }: {
           vertical_ids: vId ? [vId] : [],
           product_ids: targetProduct ? [targetProduct.id] : [],
           priority: (parsed.priority || 'P2') as TaskPriority,
-          due_date: parsed.dueDate || undefined,
+          // Every task carries a due date: nothing typed means today.
+          due_date: parsed.dueDate || new Date().toLocaleDateString('en-CA'),
           assignments: assignments.filter(a => a.userId).map(a => ({ user_id: a.userId!, role: a.role })),
         })) as { id: string }
         for (const a of assignments.filter(x => !x.userId)) {

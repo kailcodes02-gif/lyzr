@@ -1619,7 +1619,8 @@ export async function setSecondaryChannelOwner(channelId: string, email: string)
 
 // ============ TASK OWNERS (add/remove at activity & sub-activity level) ============
 
-export async function addTaskOwner(taskId: string, email: string, role: 'primary' | 'secondary') {
+// role: primary = Assigned to (the primary person), secondary = also Assigned to, other = Contributor.
+export async function addTaskOwner(taskId: string, email: string, role: 'primary' | 'secondary' | 'other') {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
@@ -2288,4 +2289,33 @@ export async function deleteNotifications(ids: string[]) {
   const supabase = await createClient()
   const { error } = await supabase.from('notifications').delete().in('id', ids)
   if (error) throw error
+}
+
+// ============ ASK AND REPLY (migration 038) ============
+
+// The person a task is assigned to answers the ask: the same values to accept
+// it, their own to propose a different priority or date. The task then runs on
+// the reply; whoever assigned it is notified by the database.
+export async function replyToTask(taskId: string, priority: TaskPriority, dueDate: string, note?: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  if (!dueDate) throw new Error('Pick a due date')
+  const { data, error } = await supabase.rpc('reply_to_task', { t: taskId, p: priority, d: dueDate, note: note?.trim() || null })
+  if (error) {
+    if (/reply_to_task|schema cache|PGRST202/i.test(error.message)) throw new Error('Replies need database update 038. Ask an admin to run it.')
+    throw new Error(error.message)
+  }
+  return data
+}
+
+// Change the short name in your own link (/u/?who=name).
+export async function setMyHandle(handle: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('set_my_handle', { h: handle })
+  if (error) {
+    if (/set_my_handle|schema cache|PGRST202/i.test(error.message)) throw new Error('Link names need database update 038. Ask an admin to run it.')
+    throw new Error(error.message)
+  }
+  return data as string
 }

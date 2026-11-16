@@ -158,9 +158,9 @@ export default function GuidePage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs text-zinc-600">
               <Note><strong className="text-zinc-800">Every task has a vertical and a product.</strong> If it is not about one in particular, both are <strong>Lyzr</strong>, the brand. That is the default, so nothing is ever left untagged and every filter is complete.</Note>
-              <Note><strong className="text-zinc-800">A channel is optional.</strong> Leave it out and the task sits in <strong>No channel</strong>; it still shows on the board, in every filter and on its owner&apos;s My Tasks.</Note>
-              <Note><strong className="text-zinc-800">Channels need no head.</strong> Many will not have one. A task with no owner on a headless channel simply waits on the board until someone takes it.</Note>
-              <Note><strong className="text-zinc-800">Self-assign freely.</strong> Anyone can create a task and make themselves the owner; you are then both Requested by and Owner.</Note>
+              <Note><strong className="text-zinc-800">A channel is optional.</strong> Leave it out and the task sits in <strong>No channel</strong>; it still shows on the board, in every filter and on its assignee&apos;s My Tasks.</Note>
+              <Note><strong className="text-zinc-800">Channels need no head.</strong> Many will not have one. A task assigned to nobody on a headless channel simply waits on the board until someone takes it.</Note>
+              <Note><strong className="text-zinc-800">Self-assign freely.</strong> Pick <strong>Me</strong> under Assign to. The task shows as Self-assigned and needs no reply.</Note>
             </div>
             <div className="rounded-lg bg-zinc-50 p-3 text-xs text-zinc-600">
               <strong className="text-zinc-800">Channels are shared, and one tree.</strong> With no filter the sidebar lists every channel: Ads, OOH, Paid Organic, Outbound, Inbound, LinkedIn Organic, Content, Technical Content, PR, Newsletter, Webinar, Podcast, Video &amp; Content, Designs, Communities, Analyst relationship, Champions, Referral, Events and Workshops &amp; Cohorts, each with its sub-channels. Pick a vertical, product or campaign and it narrows to the channels that hold tasks in that view. Any task can sit in any channel, whatever it is tagged.
@@ -239,9 +239,23 @@ export default function GuidePage() {
             <p className="text-xs text-zinc-600"><strong className="text-zinc-800">Traffic light:</strong> green = live or done, yellow = in progress, red = blocked (and red dates are overdue), grey = not started.</p>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs text-zinc-600">
               <Note><strong className="text-zinc-800 inline-flex items-center gap-1">Priority <InfoTip k="priority" /></strong><br />Critical, High, Medium, Low, Backlog.</Note>
-              <Note><strong className="text-zinc-800">Owners</strong><br />A main owner plus helpers, reviewers or FYI. Sub-tasks have their own owner — new ones start with the parent&apos;s. No owner = the channel&apos;s owners.</Note>
+              <Note><strong className="text-zinc-800 inline-flex items-center gap-1">People <InfoTip k="task_owner" /></strong><br />Assigned by, Assigned to (a primary, plus more if needed) and Contributors. Sub-tasks start with the parent&apos;s people.</Note>
               <Note><strong className="text-zinc-800 inline-flex items-center gap-1"><Repeat className="w-3 h-3" /> Repeat <InfoTip k="recurring" /></strong><br />Every N days, weeks or months; ends never, on a date, or after N times.</Note>
               <Note><strong className="text-zinc-800 inline-flex items-center gap-1">Plan → Results <InfoTip k="tracker_fields" /></strong><br />Plan: how often, importance tier, target. Results (once live): result achieved, money spent, proof link.</Note>
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-4 space-y-3">
+              <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><ClipboardCheck className="w-4 h-4 text-amber-700" /> Asked and replied <InfoTip k="ask_reply" /></p>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs text-zinc-600">
+                <Note><strong className="text-zinc-800">1. You assign.</strong> New task: name and who, then due date and priority. Both are required. That is the <strong>request</strong>.</Note>
+                <Note><strong className="text-zinc-800">2. They reply.</strong> It sits in their <strong>Needs your reply</strong> until they <strong>Accept</strong> or <strong>Propose</strong> their own priority and date, with a short why.</Note>
+                <Note><strong className="text-zinc-800">3. You are told.</strong> The bell shows what they said. The task now runs on the reply; boards and calendars follow it.</Note>
+                <Note><strong className="text-zinc-800">4. Both stay visible.</strong> Requested and replied priority, requested and replied due date. If they differ: <strong>Needs alignment</strong>. Talk in the task&apos;s Chat, then either side updates.</Note>
+              </div>
+              <p className="text-xs text-zinc-600">Changing priority or due date on the task later follows the same rule: if it is assigned to you, that is your reply; if you assigned it, that is a new request and they reply again.</p>
+            </div>
+            <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-4 space-y-2">
+              <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><UserCircle className="w-4 h-4 text-blue-600" /> My space and your link <InfoTip k="my_space" /></p>
+              <p className="text-xs text-zinc-600"><Link href="/u/" className="text-blue-600 hover:underline font-medium">My space</Link> is your home base: your tasks by priority, calendar or week; <strong>Assigned by me</strong> with what people replied; <strong>People</strong>; and a bell for every reply and change. It carries <strong>your link</strong>, such as <code className="rounded bg-white border border-zinc-200 px-1">lyzr.ai/marketing-tracker/?u=yourname</code>. Share it: teammates see what you have on and when, and use <strong>Add a task for you</strong> right there. Rename the end of your link from My space. Everyone signs in once before they can open a link or add a task.</p>
             </div>
           </CardContent>
         </Card>
@@ -309,7 +323,7 @@ export default function GuidePage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-zinc-600">
           <Note><strong className="text-zinc-800">Designations stack.</strong> One person can head a vertical, head a product and head two channels at once; each gives them a home view.</Note>
           <Note><strong className="text-zinc-800">Everyone can read and create.</strong> Designations only change what you can <em>change</em> on other people&apos;s tasks. People who haven&apos;t signed in yet can still be named; it attaches on their first sign-in.</Note>
-          <Note><strong className="text-zinc-800">On a task: three names.</strong> <strong>Requested by</strong> (who asked, never changes), the <strong>Owner</strong> (one person, accountable) and <strong>Contributors</strong> (helpers). The owner, contributors, requester, the heads of its channel, vertical and product, and admins edit it. Everyone else suggests. Every change is logged.</Note>
+          <Note><strong className="text-zinc-800">On a task: three names.</strong> <strong>Assigned by</strong> (who created it and asks for it, never changes), <strong>Assigned to</strong> (who gets it done; with several people the starred one is the primary) and <strong>Contributors</strong> (pitching in). All of them, plus heads, can edit the task.</Note>
         </div>
       </Section>
 

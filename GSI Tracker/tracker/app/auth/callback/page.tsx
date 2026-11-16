@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { takeReturnTo } from '@/lib/return-to'
 import { forgetLocalSession, reportToOpener, signInPopupOpener } from '@/lib/embed-auth'
 
 // PKCE landing page (static build — no server route): exchanges the ?code
@@ -60,7 +61,7 @@ function CallbackContent() {
         window.close()
         return
       }
-      router.replace('/')
+      router.replace(takeReturnTo())
     }
     finish()
   }, [searchParams, router])

@@ -40,6 +40,8 @@ import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { toZonedTime, format as formatTz } from 'date-fns-tz'
 import { TaskOwnersEditor } from './task-owners-editor'
+import { AskReplyGrid, ReplyBox } from './ask-reply'
+import { askState, needsMyReply } from '@/lib/ask'
 import { useVertical } from '@/lib/hooks/use-vertical'
 import { withVertical } from '@/lib/hooks/use-space-href'
 import { suggestTaskEdit, resolveTaskSuggestion, withdrawTaskSuggestion, bulkSetPrimaryAssignee } from '@/lib/actions'
@@ -522,10 +524,18 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                 )}
               </SheetHeader>
 
+              {/* Ask and reply: what was requested vs what the assignee came back with */}
+              {askState(task).tracked && !askState(task).self && (
+                <div className="mt-4 space-y-2">
+                  {(needsMyReply(task, currentUser?.id) || (isAdmin && askState(task).awaiting)) && <ReplyBox task={task} />}
+                  <AskReplyGrid task={task} />
+                </div>
+              )}
+
               {/* Meta */}
               <div className="grid grid-cols-2 gap-4 py-4 border-y border-zinc-200 my-4">
                 <div>
-                  <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1">Due Date</p>
+                  <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1" title="The date the task runs on. If you assigned it, changing this is a new ask. If it is assigned to you, changing it is your reply.">Due date</p>
                   <Input
                     type="date"
                     value={task.due_date || ''}
@@ -581,7 +591,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskIdChange }:
                   />
                 </div>
                 <div>
-                  <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1" title="Who asked for this task. Set from who created it and never changes. Delivering it is the Owner's job.">Requested by</p>
+                  <p className="text-[11px] text-zinc-500 uppercase tracking-wider mb-1" title="Who created this task and is asking for it. Set once and never changes.">Assigned by</p>
                   <div className="flex items-center gap-1.5 text-sm text-zinc-700">
                     {task.creator && (
                       <Avatar className="w-4 h-4"><AvatarImage src={task.creator.avatar_url || ''} /><AvatarFallback className="bg-zinc-200 text-zinc-600 text-[8px]">{(task.creator.display_name || task.creator.email)[0].toUpperCase()}</AvatarFallback></Avatar>
@@ -1113,10 +1123,10 @@ function SubtaskInlineRow({ sub, parentPriority, onChanged }: {
           value={subOwnerId}
           disabled={busy}
           onChange={e => e.target.value && run(() => bulkSetPrimaryAssignee([sub.id], e.target.value), 'Owner update failed')}
-          title={subOwnerId ? 'Owner' : 'This sub-task has no owner yet — pick one'}
+          title={subOwnerId ? 'Assigned to' : 'This sub-task is assigned to nobody yet. Pick someone.'}
           className={cn('text-[11px] rounded-md border px-1 py-0.5 max-w-[8rem]', subOwnerId ? 'border-zinc-300 bg-white text-zinc-700' : 'border-amber-300 bg-amber-50 text-amber-800')}
         >
-          {!subOwnerId && <option value="">No owner</option>}
+          {!subOwnerId && <option value="">Unassigned</option>}
           {(subUsers || []).filter(u => u.email !== 'preview@lyzr.ai').map(u => <option key={u.id} value={u.id}>{u.display_name || u.email}</option>)}
         </select>
 
@@ -1872,7 +1882,7 @@ function TaskEditBar({ task, canEdit, isOwnerish, editMode, setEditMode, onChang
             <Lightbulb className="w-3.5 h-3.5 mr-1" /> Suggest an edit
           </Button>
         )}
-        {!canEdit && <span className="text-[11px] text-zinc-500 inline-flex items-center gap-1">The owner, contributors and heads edit this task; you can comment or suggest. <InfoTip k="suggest_edit" /></span>}
+        {!canEdit && <span className="text-[11px] text-zinc-500 inline-flex items-center gap-1">The people on this task and heads edit it; you can comment or suggest. <InfoTip k="suggest_edit" /></span>}
         {pending.length > 0 && <span className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">{pending.length} pending suggestion{pending.length === 1 ? '' : 's'}</span>}
       </div>
 

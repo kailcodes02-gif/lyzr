@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TaskView } from '@/components/tasks/task-view'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
+import { NeedsReplyStrip } from '@/components/tasks/ask-reply'
+import { needsMyReply, awaitingTheirReply } from '@/lib/ask'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -63,14 +65,20 @@ export default function MyTasksPage() {
   // Tasks I wrote up (the reporter), whoever owns them now.
   const myCreatedTasks = applyTaskFilters((tasks || []).filter(t => t.created_by === user.id), filters, fctx)
 
-  // Split by role (direct assignments only — inherited tasks have no role)
-  const getTasksByRole = (role?: string) => {
-    if (!role) return applyTaskFilters(myAssignedTasks, filters, fctx)
+  // Split by what I am on the task: assigned to me (primary or alongside
+  // someone), or contributing. Inherited tasks have no role.
+  const ASSIGNED = ['primary', 'secondary']
+  const getTasksByRole = (kind?: 'assigned' | 'contributing') => {
+    if (!kind) return applyTaskFilters(myAssignedTasks, filters, fctx)
+    const hit = (role: string) => kind === 'assigned' ? ASSIGNED.includes(role) : !ASSIGNED.includes(role)
     return applyTaskFilters(myAssignedTasks, filters, fctx).filter(t =>
-      t.assignments?.some(a => a.user_id === user.id && a.role === role) ||
-      (t.pending_assignments || []).some(p => !p.resolved_user_id && p.email.toLowerCase() === myEmail && p.role === role)
+      t.assignments?.some(a => a.user_id === user.id && hit(a.role)) ||
+      (t.pending_assignments || []).some(p => !p.resolved_user_id && p.email.toLowerCase() === myEmail && hit(p.role))
     )
   }
+  // Waiting on me to accept or propose; and what I am waiting on from others.
+  const needsReply = (tasks || []).filter(t => needsMyReply(t, user.id))
+  const waitingOnOthers = (tasks || []).filter(t => awaitingTheirReply(t, user.id)).length
 
   // Mentioned tasks: tasks where user is mentioned in `mentions` table
   const mentionedTaskIds = mentions?.map(m => m.task_id) || []
@@ -96,12 +104,14 @@ export default function MyTasksPage() {
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
             <UserIcon className="w-6 h-6 text-blue-600" /> My Tasks
           </h1>
-          <p className="text-sm text-zinc-500 mt-1">Manage your campaigns, assignments, and mentions</p>
+          <p className="text-sm text-zinc-500 mt-1">What is assigned to you, what you assigned to others, and where you were mentioned</p>
         </div>
         <Button onClick={() => setCreateOpen(true)} className="bg-blue-600 hover:bg-blue-500 text-white self-start">
-          <Plus className="w-4 h-4 mr-2" /> New Task
+          <Plus className="w-4 h-4 mr-2" /> New task
         </Button>
       </div>
+
+      <NeedsReplyStrip tasks={needsReply} onOpen={setSelectedTaskId} />
 
 
       {/* Main Tabs */}
@@ -109,10 +119,10 @@ export default function MyTasksPage() {
         <div className="overflow-x-auto -mx-1 px-1">
           <TabsList className="bg-white border border-zinc-200 p-1 rounded-lg inline-flex w-auto min-w-max">
             <TabsTrigger value="assigned" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
-              <CheckSquare className="w-4 h-4 mr-2" /> Assigned to Me
+              <CheckSquare className="w-4 h-4 mr-2" /> Assigned to me
             </TabsTrigger>
             <TabsTrigger value="created" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900" title="Tasks you gave out (you created them), whoever owns them now">
-              <Plus className="w-4 h-4 mr-2" /> Assigned by Me ({myCreatedTasks.length})
+              <Plus className="w-4 h-4 mr-2" /> Assigned by me ({myCreatedTasks.length}){waitingOnOthers > 0 && <span className="ml-1.5 rounded-full bg-amber-100 text-amber-800 text-[10px] px-1.5" title="Still waiting for a reply">{waitingOnOthers} awaiting</span>}
             </TabsTrigger>
             <TabsTrigger value="mentioned" className="text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900">
               <MessageSquare className="w-4 h-4 mr-2" /> Mentioned ({myMentionedTasks.length})
@@ -132,10 +142,10 @@ export default function MyTasksPage() {
                 <TabsTrigger value="all" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
                   All
                 </TabsTrigger>
-                <TabsTrigger value="primary" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
-                  I own
+                <TabsTrigger value="assigned" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
+                  Assigned to me
                 </TabsTrigger>
-                <TabsTrigger value="secondary" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
+                <TabsTrigger value="contributing" className="text-xs text-zinc-600 data-[state=active]:bg-zinc-200/70 data-[state=active]:text-zinc-900 py-1">
                   Contributing
                 </TabsTrigger>
               </TabsList>
@@ -144,11 +154,11 @@ export default function MyTasksPage() {
             <TabsContent value="all" className="mt-0">
               <TaskView tasks={getTasksByRole()} onTaskClick={(t) => setSelectedTaskId(t.id)} showChannelColumn />
             </TabsContent>
-            <TabsContent value="primary" className="mt-0">
-              <TaskView tasks={getTasksByRole('primary')} onTaskClick={(t) => setSelectedTaskId(t.id)} showChannelColumn />
+            <TabsContent value="assigned" className="mt-0">
+              <TaskView tasks={getTasksByRole('assigned')} onTaskClick={(t) => setSelectedTaskId(t.id)} showChannelColumn />
             </TabsContent>
-            <TabsContent value="secondary" className="mt-0">
-              <TaskView tasks={getTasksByRole('secondary')} onTaskClick={(t) => setSelectedTaskId(t.id)} showChannelColumn />
+            <TabsContent value="contributing" className="mt-0">
+              <TaskView tasks={getTasksByRole('contributing')} onTaskClick={(t) => setSelectedTaskId(t.id)} showChannelColumn />
             </TabsContent>
           </Tabs>
 
@@ -257,6 +267,7 @@ export default function MyTasksPage() {
         <CreateTaskDialog
           open={createOpen}
           onOpenChange={setCreateOpen}
+          askWho
           onSuccess={() => setCreateOpen(false)}
         />
       )}

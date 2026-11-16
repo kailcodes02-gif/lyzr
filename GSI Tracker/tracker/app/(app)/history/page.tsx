@@ -25,6 +25,7 @@ const ACTION_LABELS: Record<string, string> = {
   edited: 'edited',
   status_changed: 'changed status of',
   commented: 'commented on',
+  replied: 'replied with their priority and date on',
   imported_leads: 'imported leads via',
   deleted: 'deleted',
   channel_created: 'created channel',

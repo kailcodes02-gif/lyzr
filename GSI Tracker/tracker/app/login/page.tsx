@@ -4,6 +4,7 @@ import { createClient, isFramed } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { LyzrSail } from '@/components/ui/lyzr-logo'
+import { takeReturnTo } from '@/lib/return-to'
 import {
   forgetLocalSession, isEmbedAuthMessage, markAsSignInPopup, openSignInPopup, reportToOpener, signInPopupOpener,
 } from '@/lib/embed-auth'
@@ -30,7 +31,7 @@ function LoginContent() {
     const { error } = await createClient().auth.signInWithPassword({ email: email.trim().toLowerCase(), password })
     setBusy(false)
     if (error) { setFailed(error.message === 'Invalid login credentials' ? 'Wrong email or password.' : error.message); return }
-    router.replace('/')
+    router.replace(takeReturnTo())
   }
 
   // Already signed in? Straight to the app — or, as the pop-up, straight
@@ -50,7 +51,7 @@ function LoginContent() {
         signIn(popupProvider)
         return
       }
-      if (session) router.replace('/')
+      if (session) router.replace(takeReturnTo())
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, popupProvider])
@@ -64,7 +65,7 @@ function LoginContent() {
       if (msg.type === 'gsi-auth-error') { setWaiting(false); router.replace(`/login?error=${msg.error}`); return }
       const { error } = await createClient().auth.setSession({ access_token: msg.access_token, refresh_token: msg.refresh_token })
       if (error) { setWaiting(false); setFailed(error.message); return }
-      router.replace('/')
+      router.replace(takeReturnTo())
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)

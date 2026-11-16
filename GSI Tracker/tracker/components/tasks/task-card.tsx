@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { AskPills } from './ask-reply'
 import { Calendar, MessageSquare, CheckSquare, Layers, DollarSign, Target, Repeat, Crown, Link as LinkIcon } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -49,7 +50,7 @@ function OwnerBadges({ entries, inherited, tiny }: { entries: OwnerEntry[]; inhe
             </Avatar>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs capitalize">
-            {e.label} · {e.primary ? 'primary' : 'secondary'}{e.pending ? ' · not signed in' : ''}{inherited ? ' · via channel' : ''}
+            {e.label} · {e.primary ? 'primary' : 'on this task'}{e.pending ? ' · not signed in' : ''}{inherited ? ' · via channel' : ''}
           </TooltipContent>
         </Tooltip>
       ))}
@@ -266,6 +267,7 @@ export function TaskCard({ task, onClick, compact, onSubtaskClick }: TaskCardPro
         >
           {task.priority}
         </span>
+        <AskPills task={task} />
         <GradeStar task={task} />
         {verticalTag && (
           <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md border border-blue-200 bg-blue-50 text-blue-700 truncate max-w-[8rem]" title={`Tagged ${verticalTag}: also shows in the ${verticalTag} view`}>
@@ -391,6 +393,7 @@ export function TaskRow({ task, onClick, selectable, selected, onSelectChange, p
         <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color: priorityColor }}>
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: priorityColor }} />{task.priority}
         </span>
+        <AskPills task={task} className="ml-1.5" />
       </td>
       <td className="py-3 px-4">
         <Badge

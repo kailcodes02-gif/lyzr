@@ -88,6 +88,7 @@ export default function NotificationsPage() {
     parent_blocked: <ShieldAlert className="w-4 h-4 text-red-600" />,
     budget_overrun_warning: <ShieldAlert className="w-4 h-4 text-orange-600" />,
     overdue: <AlertCircle className="w-4 h-4 text-red-600" />,
+    task_reply: <CheckSquare className="w-4 h-4 text-amber-600" />,
     task_edited: <Pencil className="w-4 h-4 text-zinc-600" />,
     task_created: <Layers className="w-4 h-4 text-blue-600" />,
     subtask_added: <Layers className="w-4 h-4 text-violet-600" />,
@@ -100,7 +101,13 @@ export default function NotificationsPage() {
   const getNotificationText = (type: string, payload: any) => {
     switch (type) {
       case 'assigned':
-        return `You have been assigned to task "${payload.task_title}" as ${payload.role || 'owner'}.`
+        return payload.role === 'primary' || !payload.role
+          ? `${actorName(payload) || 'Someone'} assigned you "${payload.task_title}". Accept it, or reply with your own priority and date.`
+          : `${actorName(payload) || 'Someone'} added you to "${payload.task_title}" as ${payload.role === 'secondary' ? 'a co-assignee' : 'a contributor'}.`
+      case 'task_reply':
+        return payload.accepted
+          ? `${actorName(payload) || 'They'} accepted "${payload.task_title}" as asked (${payload.replied_priority}, due ${payload.replied_due_date}).`
+          : `${actorName(payload) || 'They'} replied on "${payload.task_title}": asked ${payload.requested_priority} due ${payload.requested_due_date || 'no date'}, replied ${payload.replied_priority} due ${payload.replied_due_date}.${payload.note ? ` "${payload.note}"` : ''}`
       case 'mentioned':
         return `You were mentioned in a ${payload.surface?.replace('_', ' ') || 'field'} by another user.`
       case 'comment':
