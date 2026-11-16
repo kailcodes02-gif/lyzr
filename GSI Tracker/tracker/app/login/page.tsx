@@ -18,6 +18,20 @@ function LoginContent() {
   const router = useRouter()
   const [failed, setFailed] = useState<string | null>(null)
   const [waiting, setWaiting] = useState(false)
+  // Guests without a Lyzr Microsoft account sign in with email + password.
+  const [emailOpen, setEmailOpen] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const signInWithEmail = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setFailed(null); setBusy(true)
+    const { error } = await createClient().auth.signInWithPassword({ email: email.trim().toLowerCase(), password })
+    setBusy(false)
+    if (error) { setFailed(error.message === 'Invalid login credentials' ? 'Wrong email or password.' : error.message); return }
+    router.replace('/')
+  }
 
   // Already signed in? Straight to the app — or, as the pop-up, straight
   // back to the iframe that asked.
@@ -137,6 +151,24 @@ function LoginContent() {
           <p className="mt-6 text-xs text-center text-zinc-500">
             Sign in with your Lyzr Microsoft account (name@lyzr.com)
           </p>
+
+          <div className="mt-5 pt-5 border-t border-zinc-100">
+            {!emailOpen ? (
+              <button type="button" onClick={() => setEmailOpen(true)} className="w-full text-xs text-zinc-600 hover:text-zinc-900 underline underline-offset-2 cursor-pointer">
+                Guest? Sign in with email and password
+              </button>
+            ) : (
+              <form onSubmit={signInWithEmail} className="space-y-2.5">
+                <input type="email" required autoFocus autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email"
+                  className="w-full h-10 px-3 text-sm rounded-lg border border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-200" />
+                <input type="password" required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password"
+                  className="w-full h-10 px-3 text-sm rounded-lg border border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-200" />
+                <button type="submit" disabled={busy} className="w-full h-10 rounded-lg bg-zinc-900 text-white text-sm font-medium hover:bg-zinc-800 disabled:opacity-60 cursor-pointer">
+                  {busy ? 'Signing in…' : 'Sign in'}
+                </button>
+              </form>
+            )}
+          </div>
         </div>
       </div>
     </div>
