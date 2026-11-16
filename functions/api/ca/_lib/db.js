@@ -96,8 +96,11 @@ export function db(env) {
       return returning ? (Array.isArray(data) ? data : []) : null
     },
     async upsert(table, rows, onConflict, { returning = false } = {}) {
-      const body = Array.isArray(rows) ? rows : [rows]
+      let body = Array.isArray(rows) ? rows : [rows]
       if (!body.length) return null
+      // Postgres rejects one upsert that touches the same key twice ("ON CONFLICT DO UPDATE command cannot
+      // affect row a second time"), e.g. one email reply associated with two contacts. Merge such rows first.
+      if (onConflict) body = dedupeByKey(body, String(onConflict).split(',').map((k) => k.trim()))
       const u = url(table, onConflict ? { on_conflict: onConflict } : {})
       const data = await call('POST', u, {
         body,
@@ -123,6 +126,18 @@ export function inChunks(ids, size = 150) {
   for (let i = 0; i < ids.length; i += size) {
     const part = ids.slice(i, i + size).map((v) => `"${String(v).replace(/"/g, '')}"`)
     out.push(`in.(${part.join(',')})`)
+  }
+  return out
+}
+
+/** Rows with the same values in `keys` merged into one (later fields win); first-seen order kept. */
+export function dedupeByKey(rows, keys) {
+  const at = new Map()
+  const out = []
+  for (const r of rows) {
+    const k = JSON.stringify(keys.map((c) => (r == null ? null : r[c] ?? null)))
+    if (at.has(k)) out[at.get(k)] = { ...out[at.get(k)], ...r }
+    else { at.set(k, out.length); out.push(r) }
   }
   return out
 }
