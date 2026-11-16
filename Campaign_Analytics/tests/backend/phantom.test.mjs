@@ -126,15 +126,16 @@ function phantomApi({ url, jsonRes }) {
 }
 
 // ---- tests -----------------------------------------------------------------
-test('phantom sync: 401 without a token or with a wrong cron secret, 403 for viewers, 503 without the key', async () => {
+test('phantom sync: 401 without a token or with a wrong cron secret, 403 for viewers, skipped (done, not an error) without the key', async () => {
   const w = world()
   assert.equal((await run(sync.onRequestPost, req('POST', 'phantom/sync', { token: null, body: {} }), w)).status, 401)
   assert.equal((await run(sync.onRequestPost, req('POST', 'phantom/sync', { token: null, cron: 'wrong-secret-12', body: {} }), w)).status, 401)
   assert.equal((await run(sync.onRequestPost, req('POST', 'phantom/sync', { token: 'tok-viewer', body: {} }), w)).status, 403)
   const noKey = world({ env: { PHANTOMBUSTER_API_KEY: '' } })
   const r = await run(sync.onRequestPost, req('POST', 'phantom/sync', { body: {} }), noKey)
-  assert.equal(r.status, 503)
-  assert.match(r.body.error, /PHANTOMBUSTER_API_KEY/)
+  assert.equal(r.status, 200)
+  assert.equal(r.body.done, true)
+  assert.match(r.body.skipped, /PHANTOMBUSTER_API_KEY/)
   assert.equal(noKey.calls.filter((c) => c.url.startsWith(PB)).length, 0, 'no PhantomBuster call without the key')
 })
 

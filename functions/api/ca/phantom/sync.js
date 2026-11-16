@@ -164,7 +164,8 @@ export const onRequestPost = handle(async ({ request, env }) => {
   if (!user) return json({ error: 'Sign in required' }, 401)
   if (!user.isEditor) return json({ error: 'Only editors can sync PhantomBuster' }, 403)
   const key = env.PHANTOMBUSTER_API_KEY
-  if (!key) return json({ error: 'PhantomBuster not configured (PHANTOMBUSTER_API_KEY)' }, 503)
+  // Not set up is not a failure: the daily pull carries on and the page says what is missing.
+  if (!key) return json({ done: true, skipped: 'PHANTOMBUSTER_API_KEY is not set', agents: 0, runs: 0, warnings: ['PhantomBuster is not connected: add the PHANTOMBUSTER_API_KEY secret in Cloudflare Pages to pull it.'] })
   const d = db(env)
   const body = await readJson(request)
   const warnings = []

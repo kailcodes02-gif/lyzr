@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "all | linkedin | instantly | hubspot | messages | phantom | deals"
+        description: "all | keys | linkedin | instantly | hubspot | messages | phantom | deals"
         default: "all"
         required: false
 
@@ -47,6 +47,10 @@ jobs:
           chmod +x /tmp/call.sh
       - name: Check secret
         run: test -n "$CA_CRON_SECRET" || { echo "CA_CRON_SECRET is not set"; exit 1; }
+      - name: Check API keys
+        # One free live call per service; prints ok or the HTTP status per key (never the key itself).
+        run: |
+          curl -sS "$BASE/health?check=keys" -H "X-CA-Cron: $CA_CRON_SECRET" | jq -c '.checks // .'
       - name: LinkedIn API
         if: ${{ contains(fromJSON('["all","linkedin"]'), env.ONLY) }}
         run: |
@@ -103,7 +107,7 @@ jobs:
           body='{}'
           for i in $(seq 1 120); do
             res=$(/tmp/call.sh phantom/sync "$body")
-            echo "$res" | jq -c '{done, agents, runs, progress, warnings}'
+            echo "$res" | jq -c '{done, skipped, agents, runs, progress, warnings}'
             [ "$(echo "$res" | jq -r '.done')" = "true" ] && exit 0
             body=$(echo "$res" | jq -c '{cursor: .cursor}')
           done
