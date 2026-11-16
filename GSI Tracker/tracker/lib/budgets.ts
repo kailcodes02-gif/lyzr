@@ -1,12 +1,13 @@
 // Budget maths (migration 039).
 //
 // A budget is an amount against a campaign, channel, product or vertical.
-// "Planned" is what the tasks in that scope carry in their Budget field,
-// counted by due date into the budget's current window; "spent" is what those
-// tasks reported in their results. Budgets of different kinds overlap by
+// "Assigned" is the budget's amount. "Spent" is the running sum of the spend
+// entries logged against it, counted by the date on each entry into the
+// budget's current window. "Planned" is what the tasks in that scope carry in
+// their Budget field, by due date. Budgets of different kinds overlap by
 // design (one task, several budgets), so they are never summed together.
 import { endOfMonth, endOfQuarter, endOfYear, format, startOfMonth, startOfQuarter, startOfYear } from 'date-fns'
-import type { Budget, BudgetCadence, BudgetScope, Channel, Task } from '@/lib/types/database'
+import type { Budget, BudgetCadence, BudgetScope, BudgetSpend, Channel, Task } from '@/lib/types/database'
 import { taskChannelIds } from '@/lib/task-channels'
 
 export const SCOPE_LABEL: Record<BudgetScope, { one: string; many: string }> = {
@@ -87,24 +88,32 @@ export interface BudgetRollup {
   /** Every task in scope and in the window. */
   inScope: number
   planned: number
+  /** Spend entries dated inside the window, newest first. */
+  entries: BudgetSpend[]
+  /** Sum of those entries. */
   spent: number
-  /** Amount minus planned. */
+  /** Everything ever logged against this budget, all periods. */
+  spentToDate: number
+  /** Assigned minus spent. */
   left: number
-  /** Planned as a share of the amount. */
+  /** Spent as a share of the assigned amount. */
   pct: number
 }
 
-export function rollup(b: Budget, month: Date, tasks: Task[], familyOf: (id: string) => Set<string>): BudgetRollup | null {
+export function rollup(b: Budget, month: Date, tasks: Task[], familyOf: (id: string) => Set<string>, spends: BudgetSpend[] = []): BudgetRollup | null {
   const w = windowFor(b, month)
   if (!w) return null
   const scoped = tasks.filter(t => t.status !== 'cancelled' && taskInScope(b, t, familyOf)).filter(t => {
     const d = taskDate(t)
     return (!w.start || d >= w.start) && (!w.end || d <= w.end)
   })
-  const withMoney = scoped.filter(t => Number(t.budget_allocated) > 0 || taskSpend(t) > 0)
+  const withMoney = scoped.filter(t => Number(t.budget_allocated) > 0)
     .sort((x, y) => Number(y.budget_allocated || 0) - Number(x.budget_allocated || 0))
   const planned = withMoney.reduce((s, t) => s + Number(t.budget_allocated || 0), 0)
-  const spent = withMoney.reduce((s, t) => s + taskSpend(t), 0)
-  const pct = b.amount > 0 ? Math.round((planned / b.amount) * 100) : planned > 0 ? 999 : 0
-  return { budget: b, window: w, tasks: withMoney, inScope: scoped.length, planned, spent, left: b.amount - planned, pct }
+  const mine = spends.filter(e => e.budget_id === b.id)
+  const entries = mine.filter(e => (!w.start || e.spent_on >= w.start) && (!w.end || e.spent_on <= w.end))
+  const spent = entries.reduce((s, e) => s + e.amount, 0)
+  const spentToDate = mine.reduce((s, e) => s + e.amount, 0)
+  const pct = b.amount > 0 ? Math.round((spent / b.amount) * 100) : spent > 0 ? 999 : 0
+  return { budget: b, window: w, tasks: withMoney, inScope: scoped.length, planned, entries, spent, spentToDate, left: b.amount - spent, pct }
 }

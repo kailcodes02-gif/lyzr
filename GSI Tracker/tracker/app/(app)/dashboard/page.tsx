@@ -355,7 +355,7 @@ export default function DashboardPage() {
                 })
               ) : (
                 <div className="text-center p-4 text-zinc-500 text-sm">
-                  No budgets defined for the active period.
+                  Budgets and what has been spent against them are on the Budgets tab in the sidebar.
                 </div>
               )}
             </CardContent>

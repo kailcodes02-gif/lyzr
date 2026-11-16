@@ -7,7 +7,7 @@ import type {
   User, Category, Channel,
   ChannelOwner, ChannelResource, ChannelLearning, ChannelTarget,
   Vertical, VerticalOwner, Fn, FunctionOwner, VerticalResource, TaxonomyTemplate, Product,
-  EffectiveChannelOwner, Campaign, CampaignOwner, CampaignParticipant, VerticalMember, TaskSuggestion, ProductOwner, Budget,
+  EffectiveChannelOwner, Campaign, CampaignOwner, CampaignParticipant, VerticalMember, TaskSuggestion, ProductOwner, Budget, BudgetSpend,
 } from '@/lib/types/database'
 import { taskChannelIds } from '@/lib/task-channels'
 import { maskForPreview, useViewAs } from '@/lib/hooks/use-view-as'
@@ -788,9 +788,16 @@ export function useBudgets() {
   return useQuery({
     queryKey: ['budgets'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('budgets').select('*').order('created_at', { ascending: false })
-      if (error) return { rows: [] as Budget[], ready: false }
-      return { rows: (data || []).map(b => ({ ...b, amount: Number(b.amount) })) as Budget[], ready: true }
+      const [b, s] = await Promise.all([
+        supabase.from('budgets').select('*').order('created_at', { ascending: false }),
+        supabase.from('budget_spends').select('*').order('spent_on', { ascending: false }).order('created_at', { ascending: false }),
+      ])
+      if (b.error) return { rows: [] as Budget[], spends: [] as BudgetSpend[], ready: false }
+      return {
+        rows: (b.data || []).map(r => ({ ...r, amount: Number(r.amount) })) as Budget[],
+        spends: (s.data || []).map(r => ({ ...r, amount: Number(r.amount) })) as BudgetSpend[],
+        ready: true,
+      }
     },
   })
 }

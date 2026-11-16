@@ -38,6 +38,8 @@ const ACTION_LABELS: Record<string, string> = {
   budget_set: 'set a budget for',
   budget_changed: 'changed the budget for',
   budget_removed: 'removed a budget from',
+  spend_logged: 'logged spend against the budget for',
+  spend_removed: 'removed a spend entry from the budget for',
   campaign_status: 'changed the status of campaign',
 }
 

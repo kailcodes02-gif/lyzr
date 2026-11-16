@@ -190,11 +190,6 @@ function ChannelContent() {
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-bold tracking-tight text-zinc-900">{channel.name}</h1>
               <TierBadge tier={channel.tier} />
-              {channel.budget_note && !channelBudget && (
-                <Badge variant="outline" className="border-zinc-300 bg-zinc-100/50 text-zinc-600 text-[11px]">
-                  {channel.budget_note}
-                </Badge>
-              )}
             </div>
             <ChannelDescription channelId={channel.id} goal={channel.goal} />
             <ScopeBudget scopeType="channel" scopeId={channel.id} className="mt-2" />

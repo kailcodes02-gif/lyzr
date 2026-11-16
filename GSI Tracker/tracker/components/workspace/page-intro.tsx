@@ -197,9 +197,10 @@ const INTROS: Intro[] = [
     lead: 'Money against a campaign, a channel, a product or a vertical.',
     features: [
       { name: 'Four kinds', what: 'Campaigns and thunderclaps, channels, products, verticals. One-time, or every month, quarter or year.' },
-      { name: 'Planned', what: 'Fill in Budget on a task and it counts toward every budget it falls under, by its due date.' },
+      { name: 'Assigned vs spent', what: 'Open a budget and log what was actually paid: amount, date, what for. The total and what is left update straight away.' },
+      { name: 'Planned', what: 'Fill in Budget on a task and it shows as planned under every budget it falls under.' },
       { name: 'They overlap', what: 'One task can count toward several budgets, so each kind has its own total.' },
-      { name: 'Who sets them', what: 'Admins, leadership and the head of that thing. Everyone else reads.' },
+      { name: 'Who edits', what: 'Admins, leadership and the head of that thing set budgets and log spend. Everyone else reads.' },
     ],
   },
   {

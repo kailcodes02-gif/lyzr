@@ -2325,7 +2325,7 @@ export async function setMyHandle(handle: string) {
 // thing the budget is for. A refusal comes back as a row-level security error.
 function budgetError(message: string) {
   const m = message.toLowerCase()
-  if (m.includes('row-level security') || m.includes('permission denied')) return new Error('Only admins, leadership and the head of this can set its budget.')
+  if (m.includes('row-level security') || m.includes('permission denied')) return new Error('Only admins, leadership and the head of this can set its budget or log spend.')
   if (m.includes('schema cache') || m.includes('does not exist')) return new Error('Budgets need database update 039. Ask an admin to run it.')
   return new Error(message)
 }
@@ -2361,6 +2361,27 @@ export async function saveBudget(input: {
 export async function deleteBudget(id: string) {
   const supabase = await createClient()
   const { data, error } = await supabase.from('budgets').delete().eq('id', id).select('id')
+  if (error) throw budgetError(error.message)
+  if (!data?.length) throw budgetError('row-level security')
+}
+
+// Log money actually spent against a budget (negative = a refund or correction).
+export async function addBudgetSpend(input: { budget_id: string; amount: number; spent_on: string; note?: string | null }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  if (!Number.isFinite(input.amount) || input.amount === 0) throw new Error('Enter the amount spent')
+  if (!input.spent_on) throw new Error('Pick the date it was spent')
+  const { data, error } = await supabase.from('budget_spends')
+    .insert({ budget_id: input.budget_id, amount: input.amount, spent_on: input.spent_on, note: input.note?.trim() || null, created_by: user.id }).select()
+  if (error) throw budgetError(error.message)
+  if (!data?.length) throw budgetError('row-level security')
+  return data[0]
+}
+
+export async function deleteBudgetSpend(id: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase.from('budget_spends').delete().eq('id', id).select('id')
   if (error) throw budgetError(error.message)
   if (!data?.length) throw budgetError('row-level security')
 }

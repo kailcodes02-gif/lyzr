@@ -515,3 +515,14 @@ export interface Budget {
   created_at: string
   updated_at: string
 }
+
+// Actual money spent, logged against a budget as dated entries.
+export interface BudgetSpend {
+  id: string
+  budget_id: string
+  amount: number
+  spent_on: string
+  note: string | null
+  created_by: string | null
+  created_at: string
+}
