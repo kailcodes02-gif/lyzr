@@ -102,11 +102,18 @@ export function db(env) {
       // affect row a second time"), e.g. one email reply associated with two contacts. Merge such rows first.
       if (onConflict) body = dedupeByKey(body, String(onConflict).split(',').map((k) => k.trim()))
       const u = url(table, onConflict ? { on_conflict: onConflict } : {})
-      const data = await call('POST', u, {
-        body,
-        prefer: `resolution=merge-duplicates,${returning ? 'return=representation' : 'return=minimal'}`,
-      })
-      return returning ? (Array.isArray(data) ? data : []) : null
+      // PostgREST also needs every row of one request to carry the same columns ("All object keys must
+      // match"). Rows with a different column set go in their own request, so a missing column keeps its
+      // stored value instead of being nulled.
+      const out = []
+      for (const group of groupByColumns(body)) {
+        const data = await call('POST', u, {
+          body: group,
+          prefer: `resolution=merge-duplicates,${returning ? 'return=representation' : 'return=minimal'}`,
+        })
+        if (returning && Array.isArray(data)) out.push(...data)
+      }
+      return returning ? out : null
     },
     async update(table, params, patch, { returning = false } = {}) {
       const data = await call('PATCH', url(table, params), { body: patch, prefer: returning ? 'return=representation' : 'return=minimal' })
@@ -140,4 +147,15 @@ export function dedupeByKey(rows, keys) {
     else { at.set(k, out.length); out.push(r) }
   }
   return out
+}
+
+/** Rows split by their exact column set (one PostgREST request each). */
+export function groupByColumns(rows) {
+  const m = new Map()
+  for (const r of rows) {
+    const k = Object.keys(r).sort().join(',')
+    if (!m.has(k)) m.set(k, [])
+    m.get(k).push(r)
+  }
+  return [...m.values()]
 }
