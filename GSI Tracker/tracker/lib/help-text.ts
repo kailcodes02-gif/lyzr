@@ -39,7 +39,7 @@ export const HELP: Record<string, string> = {
   tracker: 'Results view: tasks that went live or finished, with their results (result achieved, money spent, proof link).',
   weekly: 'Planned versus delivered: everything due in the period, split into done, not done and overdue carried in from earlier.',
   owners: 'Each person with open, overdue and live counts. Click through for their tasks, mentions, calendar and activity.',
-  budgets: 'Budget periods at vertical, group or channel level, and how much tasks have planned against each.',
+  budgets: 'Money set against a campaign or thunderclap, a channel, a product or a vertical: one-time, or every month, quarter or year. Planned is what tasks in that scope carry in their Budget field, counted by due date. The kinds overlap (one task can count toward several), so they are never added together. Admins, leadership and heads set them; everyone can read.',
   leads_pipeline: 'Read-only HubSpot lead pull with per-lead outreach tracking. Pick whose pipeline: GSI uses its built-in rule (plus the email report and CSV import); every other vertical or product pulls the HubSpot contacts whose Product track matches it.',
   history: 'Every logged change: tasks, heads and members, channels, campaigns and thunderclap ticks. Filter by who did it, who it involves, a head’s remit, channel, vertical, product or campaign.',
   functions_view: 'One domain across all verticals: its channels, tasks and weekly results everywhere it runs.',

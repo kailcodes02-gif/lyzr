@@ -49,6 +49,7 @@ const ORDER = [
   '036_one_channel_tree_heads_activity.sql',
   '037_guest_logins.sql',
   '038_ask_and_reply_personal_links.sql',
+  '039_budgets_anywhere.sql',
 ]
 
 let m001 = mig('001_initial_schema.sql')

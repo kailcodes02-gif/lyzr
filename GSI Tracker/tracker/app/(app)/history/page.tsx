@@ -11,7 +11,7 @@ import { ALL_TIME, inRange, resolveRange, type DateRangeValue } from '@/lib/date
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardContent } from '@/components/ui/card'
-import { History as HistoryIcon, Layers, Package, Building2, Zap, Crown, UserCircle } from 'lucide-react'
+import { History as HistoryIcon, Layers, Package, Building2, Zap, Crown, UserCircle, Landmark } from 'lucide-react'
 import { format } from 'date-fns'
 import type { ActivityLog } from '@/lib/types/database'
 
@@ -35,6 +35,9 @@ const ACTION_LABELS: Record<string, string> = {
   channel_merged: 'merged a channel into',
   campaign_created: 'created campaign',
   campaign_edited: 'edited campaign',
+  budget_set: 'set a budget for',
+  budget_changed: 'changed the budget for',
+  budget_removed: 'removed a budget from',
   campaign_status: 'changed the status of campaign',
 }
 
@@ -55,7 +58,7 @@ function verb(log: ActivityLog): string {
 }
 
 const ENTITY_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
-  channel: Layers, vertical: Building2, product: Package, campaign: Zap, function: Crown, member: Building2, badge: UserCircle,
+  budget: Landmark, channel: Layers, vertical: Building2, product: Package, campaign: Zap, function: Crown, member: Building2, badge: UserCircle,
 }
 
 // A deleted task's title and place survive in its 'deleted' entry.

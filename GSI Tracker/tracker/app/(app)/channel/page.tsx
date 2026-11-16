@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { TaskView } from '@/components/tasks/task-view'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
+import { ScopeBudget } from '@/components/budgets/scope-budget'
 import { Plus, DollarSign, ListTodo, ChevronDown, ChevronRight, BarChart3, Calendar, Users, Lightbulb, Target } from 'lucide-react'
 import Link from 'next/link'
 import { TierBadge, ChannelOwnerChips, ChannelResourcesCard, ChannelLearningsCard, ChannelTargetsCard, ChannelTargetChips, ChannelDescription } from '@/components/channel/channel-meta'
@@ -196,6 +197,7 @@ function ChannelContent() {
               )}
             </div>
             <ChannelDescription channelId={channel.id} goal={channel.goal} />
+            <ScopeBudget scopeType="channel" scopeId={channel.id} className="mt-2" />
             <div className="mt-2">
               <ChannelTargetChips channelId={channel.id} />
             </div>

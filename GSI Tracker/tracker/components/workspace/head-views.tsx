@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { KpiTile } from '@/components/ui/kpi-tile'
 import { InfoTip } from '@/components/ui/info-tip'
 import { QuickAdd } from '@/components/tasks/quick-add'
+import { ScopeBudget } from '@/components/budgets/scope-budget'
 import { CampaignBanner } from '@/components/campaigns/campaign-banner'
 import { verticalStats } from '@/components/workspace/vertical-card'
 import { useAllChannelOwners, useChannels, useCurrentUser, useMyBadges, useTasks } from '@/lib/hooks/use-data'
@@ -241,6 +242,7 @@ export function VerticalHome({ vertical }: { vertical: Vertical }) {
         {(ownedVerticalIds.has(vertical.id) || isAdmin) && <Link href={withVertical('/settings/', vertical.slug)} className="inline-flex items-center gap-1 h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-700 hover:bg-zinc-100">Settings</Link>}
       </Header>
       <QuickAdd />
+      <ScopeBudget scopeType="vertical" scopeId={vertical.id} />
       <Kpis tasks={all} />
       <CampaignBanner verticalId={vertical.id} compact canCreate={false} />
       <LaneGrid title={`Products inside ${vertical.name}`} icon={<Package className="w-4 h-4 text-violet-600" />} lanes={lanes} tip="product" />
@@ -286,6 +288,7 @@ export function ProductHome({ product }: { product: Product }) {
         {product.url && <a href={product.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-700 hover:bg-zinc-100">lyzr.ai page</a>}
       </Header>
       <QuickAdd />
+      <ScopeBudget scopeType="product" scopeId={product.id} />
       <Kpis tasks={all} />
       <LaneGrid title="By channel" icon={<Layers className="w-4 h-4 text-blue-600" />} lanes={byChannel} tip="channel" empty={`No ${product.name} task yet. Press N, pick ${product.name} as the product, and its channel shows up here.`} />
       <LaneGrid title="By vertical" icon={<Building2 className="w-4 h-4 text-blue-600" />} lanes={byVertical} tip="vertical" />

@@ -430,13 +430,13 @@ export function AppSidebar() {
     { href: withVertical('/weekly/', boardSlug), icon: CalendarRange, label: 'Weekly review', match: '/weekly' },
     { href: '/campaigns/', icon: Zap, label: 'Campaigns', match: '/campaigns' },
     { href: '/leads/', icon: LineChart, label: 'Sales pipeline', match: '/leads' },
+    { href: '/budgets/', icon: DollarSign, label: 'Budgets', match: '/budgets' },
   ]
   const moreNav: NavItem[] = [
     { href: '/projects/', icon: FolderKanban, label: 'Projects', match: '/projects' },
     { href: withVertical('/tracker/', boardSlug), icon: Table2, label: 'Tracker', match: '/tracker' },
     { href: withVertical('/overview/', listSlug), icon: GitBranch, label: 'Overview', match: '/overview' },
     { href: withVertical('/owners/', listSlug), icon: UserCircle, label: 'Owners', match: '/owners' },
-    { href: withVertical('/budgets/', boardSlug), icon: DollarSign, label: 'Budgets', match: '/budgets' },
     { href: withVertical('/history/', listSlug), icon: History, label: 'History', match: '/history' },
     ...(isLeadership ? [
       { href: '/workspace/tasks/', icon: Table2, label: 'All tasks', match: '/workspace/tasks' },

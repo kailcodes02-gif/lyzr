@@ -7,7 +7,7 @@ import type {
   User, Category, Channel,
   ChannelOwner, ChannelResource, ChannelLearning, ChannelTarget,
   Vertical, VerticalOwner, Fn, FunctionOwner, VerticalResource, TaxonomyTemplate, Product,
-  EffectiveChannelOwner, Campaign, CampaignOwner, CampaignParticipant, VerticalMember, TaskSuggestion, ProductOwner,
+  EffectiveChannelOwner, Campaign, CampaignOwner, CampaignParticipant, VerticalMember, TaskSuggestion, ProductOwner, Budget,
 } from '@/lib/types/database'
 import { taskChannelIds } from '@/lib/task-channels'
 import { maskForPreview, useViewAs } from '@/lib/hooks/use-view-as'
@@ -777,6 +777,34 @@ export function useBudgetPeriods(verticalId: VerticalScope = 'all') {
         allocated: 0, remaining: bp.total_budget, task_count: 0,
         ...bp, ...byId.get(bp.id), budget_period_id: bp.id,
       })) as BudgetPeriodSummary[]
+    },
+  })
+}
+
+// Budgets set against campaigns, channels, products and verticals (migration
+// 039). Empty, with ready=false, until that migration is applied.
+export function useBudgets() {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['budgets'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('budgets').select('*').order('created_at', { ascending: false })
+      if (error) return { rows: [] as Budget[], ready: false }
+      return { rows: (data || []).map(b => ({ ...b, amount: Number(b.amount) })) as Budget[], ready: true }
+    },
+  })
+}
+
+// Who owns each campaign (they may set its budget).
+export function useAllCampaignOwners() {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['campaignOwners', 'all'],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('campaign_owners').select('campaign_id, email, user_id')
+      if (error) return []
+      return data as { campaign_id: string; email: string; user_id: string | null }[]
     },
   })
 }

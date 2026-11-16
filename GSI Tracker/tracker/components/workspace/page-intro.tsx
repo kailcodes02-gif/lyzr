@@ -193,11 +193,13 @@ const INTROS: Intro[] = [
   },
   {
     key: 'budgets', path: '/budgets', icon: <DollarSign className="w-5 h-5 text-emerald-600" />,
-    title: 'Budgets — periods and allocations',
-    lead: 'Monthly budgets at any level of the channel tree.',
+    title: 'Budgets, set anywhere',
+    lead: 'Money against a campaign, a channel, a product or a vertical.',
     features: [
-      { name: 'Periods', what: 'Budgets are set per month, at vertical, group or channel level.' },
-      { name: 'Roll-up', what: 'Spend recorded on tasks rolls up against the right budget automatically.' },
+      { name: 'Four kinds', what: 'Campaigns and thunderclaps, channels, products, verticals. One-time, or every month, quarter or year.' },
+      { name: 'Planned', what: 'Fill in Budget on a task and it counts toward every budget it falls under, by its due date.' },
+      { name: 'They overlap', what: 'One task can count toward several budgets, so each kind has its own total.' },
+      { name: 'Who sets them', what: 'Admins, leadership and the head of that thing. Everyone else reads.' },
     ],
   },
   {

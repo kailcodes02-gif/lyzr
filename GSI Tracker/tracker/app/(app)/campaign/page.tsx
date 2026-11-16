@@ -16,6 +16,7 @@ import { InfoTip } from '@/components/ui/info-tip'
 import { TaskView } from '@/components/tasks/task-view'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
+import { ScopeBudget } from '@/components/budgets/scope-budget'
 import { CampaignDialog } from '@/components/campaigns/campaign-dialog'
 import { campaignProgress } from '@/components/campaigns/campaign-banner'
 import { useCampaign, useCurrentUser, useTasks, useUsers } from '@/lib/hooks/use-data'
@@ -95,6 +96,7 @@ function CampaignPageInner() {
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{c.name}</h1>
               {c.headline && <p className="text-sm text-zinc-600 mt-1">{c.headline}</p>}
               {c.description && <p className="text-sm text-zinc-700 mt-2 whitespace-pre-wrap">{c.description}</p>}
+              <ScopeBudget scopeType="campaign" scopeId={c.id} className="mt-3" />
             </div>
             <div className="flex items-center gap-2 shrink-0 flex-wrap">
               {canManage ? (

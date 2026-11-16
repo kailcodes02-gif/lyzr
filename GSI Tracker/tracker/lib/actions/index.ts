@@ -2319,3 +2319,48 @@ export async function setMyHandle(handle: string) {
   }
   return data as string
 }
+
+// ============ BUDGETS (migration 039) ============
+// The database decides who may write: admins, leadership, and the head of the
+// thing the budget is for. A refusal comes back as a row-level security error.
+function budgetError(message: string) {
+  const m = message.toLowerCase()
+  if (m.includes('row-level security') || m.includes('permission denied')) return new Error('Only admins, leadership and the head of this can set its budget.')
+  if (m.includes('schema cache') || m.includes('does not exist')) return new Error('Budgets need database update 039. Ask an admin to run it.')
+  return new Error(message)
+}
+
+export async function saveBudget(input: {
+  id?: string
+  scope_type: 'campaign' | 'channel' | 'product' | 'vertical'
+  scope_id: string
+  name?: string | null
+  amount: number
+  cadence: 'one_time' | 'monthly' | 'quarterly' | 'yearly'
+  starts_on?: string | null
+  ends_on?: string | null
+  notes?: string | null
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  if (!(input.amount >= 0)) throw new Error('Enter an amount')
+  const row = {
+    scope_type: input.scope_type, scope_id: input.scope_id, name: input.name?.trim() || null, amount: input.amount,
+    cadence: input.cadence, starts_on: input.starts_on || null, ends_on: input.ends_on || null, notes: input.notes?.trim() || null,
+  }
+  const q = input.id
+    ? supabase.from('budgets').update(row).eq('id', input.id).select()
+    : supabase.from('budgets').insert({ ...row, created_by: user.id }).select()
+  const { data, error } = await q
+  if (error) throw budgetError(error.message)
+  if (!data?.length) throw budgetError('row-level security')
+  return data[0]
+}
+
+export async function deleteBudget(id: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase.from('budgets').delete().eq('id', id).select('id')
+  if (error) throw budgetError(error.message)
+  if (!data?.length) throw budgetError('row-level security')
+}

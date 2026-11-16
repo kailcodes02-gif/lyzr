@@ -495,3 +495,23 @@ export interface ChannelField {
   created_at: string
 }
 
+
+// ============ BUDGETS (migration 039) ============
+// One amount of money set against one thing. Horizontal: a task can count
+// toward its campaign's, channel's, product's and vertical's budget at once.
+export type BudgetScope = 'campaign' | 'channel' | 'product' | 'vertical'
+export type BudgetCadence = 'one_time' | 'monthly' | 'quarterly' | 'yearly'
+export interface Budget {
+  id: string
+  scope_type: BudgetScope
+  scope_id: string
+  name: string | null
+  amount: number
+  cadence: BudgetCadence
+  starts_on: string | null
+  ends_on: string | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}

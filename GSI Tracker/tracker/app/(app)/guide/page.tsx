@@ -253,6 +253,11 @@ export default function GuidePage() {
               </div>
               <p className="text-xs text-zinc-600">Changing priority or due date on the task later follows the same rule: if it is assigned to you, that is your reply; if you assigned it, that is a new request and they reply again.</p>
             </div>
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-4 space-y-2">
+              <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><DollarSign className="w-4 h-4 text-emerald-600" /> Budgets, anywhere <InfoTip k="budgets" /></p>
+              <p className="text-xs text-zinc-600"><Link href="/budgets/" className="text-blue-600 hover:underline font-medium">Budgets</Link> has its own tab in the sidebar. A budget is one amount set against one thing: a <strong>campaign or thunderclap</strong>, a <strong>channel</strong>, a <strong>product</strong> or a <strong>vertical</strong>. Make it <strong>one-time</strong> (a launch) or <strong>every month, quarter or year</strong> (a channel&apos;s running money). Set one from the Budgets tab, or straight from a campaign, channel, product home or vertical home with <strong>Set a budget</strong>.</p>
+              <p className="text-xs text-zinc-600"><strong className="text-zinc-800">Planned</strong> comes from tasks: fill in <strong>Budget</strong> on a task and it counts toward every budget it falls under, by its due date. The four kinds overlap on purpose, so each has its own total. <strong className="text-zinc-800">Who can set or change one:</strong> admins, leadership, and the head of that vertical, product, channel or campaign. Everyone else reads.</p>
+            </div>
             <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-4 space-y-2">
               <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2"><UserCircle className="w-4 h-4 text-blue-600" /> My space and your link <InfoTip k="my_space" /></p>
               <p className="text-xs text-zinc-600"><Link href="/u/" className="text-blue-600 hover:underline font-medium">My space</Link> is your home base: your tasks by priority, calendar or week; <strong>Assigned by me</strong> with what people replied; <strong>People</strong>; and a bell for every reply and change. It carries <strong>your link</strong>, such as <code className="rounded bg-white border border-zinc-200 px-1">lyzr.ai/marketing-tracker/?u=yourname</code>. Share it: teammates see what you have on and when, and use <strong>Add a task for you</strong> right there. Rename the end of your link from My space. Everyone signs in once before they can open a link or add a task.</p>
@@ -270,7 +275,7 @@ export default function GuidePage() {
           </CardContent></Card>
           <Card className="bg-white border-zinc-200"><CardContent className="p-4 space-y-2">
             <div className="flex items-center gap-2 text-sm font-semibold"><Layers className="w-4 h-4 text-blue-600" /> Sidebar, the same for everyone</div>
-            <p className="text-xs text-zinc-600">Home, Board, My Tasks, Calendar, Weekly review, Campaigns and Sales pipeline, then every channel. Projects, Tracker, Overview, Owners, Budgets, History and the Guide sit under <strong className="inline-flex items-center gap-0.5"><MoreHorizontal className="w-3 h-3" /> More</strong>, which opens by itself when you are on one of them.</p>
+            <p className="text-xs text-zinc-600">Home, My space, Board, My Tasks, Calendar, Weekly review, Campaigns, Sales pipeline and Budgets, then every channel. Projects, Tracker, Overview, Owners, History and the Guide sit under <strong className="inline-flex items-center gap-0.5"><MoreHorizontal className="w-3 h-3" /> More</strong>, which opens by itself when you are on one of them.</p>
           </CardContent></Card>
           <Card className="bg-white border-zinc-200"><CardContent className="p-4 space-y-2">
             <div className="flex items-center gap-2 text-sm font-semibold"><Home className="w-4 h-4 text-violet-600" /> Home: your views</div>

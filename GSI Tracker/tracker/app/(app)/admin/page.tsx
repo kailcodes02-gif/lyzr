@@ -676,8 +676,6 @@ const SECTIONS = [
     why: 'A domain ties the same discipline together across verticals — one “Events” domain covers the Events channel in GSI and everywhere else, so it can have one owner and one company-wide view.' },
   { value: 'custom_fields', label: 'Task fields', icon: Sliders, short: 'Extra questions a channel\u2019s tasks ask',
     why: 'Every task has a title, owner, due date and priority. Task fields add the extra details one channel needs — Events tasks might ask “Venue” and “Expected attendees”, Paid Ads tasks “Daily budget”. Build one in four steps; drag to reorder.' },
-  { value: 'budgets', label: 'Budgets', icon: Landmark, short: 'Money limits per period',
-    why: 'Set how much can be spent in a period — for the whole company, one vertical, one group or one channel. Budgets entered on tasks count against the matching limit, so you can see what is left.' },
   { value: 'hubspot', label: 'Integrations', icon: RefreshCw, short: 'API keys, HubSpot and other connections',
     why: 'Connections to outside tools. API keys let Lyzr agents, bots and scripts read and update the tracker through its API; HubSpot lead data is read-only and never written back.' },
 ] as const
