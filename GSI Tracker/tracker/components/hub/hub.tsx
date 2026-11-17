@@ -21,13 +21,14 @@ import {
   addDays, addMonths, addWeeks, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, startOfMonth, startOfWeek,
 } from 'date-fns'
 import {
-  Bell, CalendarDays, Check, ChevronLeft, ChevronRight, Copy, LayoutDashboard, Link2, ListTodo, Pencil, Plus, Search, Send, Users, X,
+  Bell, BookOpen, CalendarDays, Check, ChevronLeft, ChevronRight, Copy, LayoutDashboard, Link2, ListTodo, Pencil, Plus, Search, Send, Users, X,
 } from 'lucide-react'
 import { useCurrentUser, useNotifications, useTasks, useUsers } from '@/lib/hooks/use-data'
 import { markAllNotificationsRead, markNotificationsRead, setMyHandle } from '@/lib/actions'
 import { PRIORITY_COLORS, STATUS_CONFIG, type Notification, type Task, type TaskPriority, type User } from '@/lib/types/database'
 import { askState, awaitingTheirReply, needsMyReply, primaryAssignee, shortDate } from '@/lib/ask'
 import { copyText, findPerson, handleOf, personUrl } from '@/lib/person-link'
+import { startWhatsNew } from '@/components/workspace/welcome-tour'
 import { keyFor, usePersisted } from '@/lib/hooks/use-persisted'
 import { AskPills, NeedsReplyStrip, PriorityTag } from '@/components/tasks/ask-reply'
 import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
@@ -177,6 +178,9 @@ export function Hub() {
           </nav>
           <div className="mt-auto p-3 space-y-2 border-t border-zinc-100">
             <CopyLinkButton person={me} label="Copy my link" full />
+            <button onClick={startWhatsNew} className="w-full inline-flex items-center justify-center gap-2 h-9 rounded-lg text-sm font-medium text-zinc-700 hover:bg-zinc-100 cursor-pointer">
+              <BookOpen className="w-4 h-4" /> How this works
+            </button>
             <Link href="/" className="w-full inline-flex items-center justify-center gap-2 h-9 rounded-lg border border-zinc-300 bg-white hover:bg-zinc-50 text-sm font-medium text-zinc-800">
               <LayoutDashboard className="w-4 h-4" /> Open full dashboard
             </Link>

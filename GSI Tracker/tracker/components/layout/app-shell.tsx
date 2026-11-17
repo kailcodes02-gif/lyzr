@@ -19,7 +19,8 @@ import { signOut } from '@/lib/actions'
 import { AssistantDialog } from '@/components/assistant/assistant-dialog'
 import { LyzrSail } from '@/components/ui/lyzr-logo'
 import { setViewAs, useViewAs, viewAsLabel, VIEW_AS_OPTIONS } from '@/lib/hooks/use-view-as'
-import { startTour } from '@/components/workspace/welcome-tour'
+import { startTour, startWhatsNew } from '@/components/workspace/welcome-tour'
+import { MyLinkButton, useCopyMyLink } from '@/components/workspace/my-link'
 import { QuickAddDialog, isTypingTarget } from '@/components/tasks/quick-add'
 import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
@@ -417,6 +418,7 @@ export function AppSidebar() {
     }
     return merged.channels.filter(c => show.has(c.id))
   }, [filtered, merged, viewTasks])
+  const { copy: copyMyLink } = useCopyMyLink()
   const [mobileOpen, setMobileOpen] = useState(false)
   const close = () => setMobileOpen(false)
 
@@ -541,6 +543,12 @@ export function AppSidebar() {
               </>
             )}
             <DropdownMenuSeparator className="bg-zinc-200/70" />
+            <DropdownMenuItem onClick={() => { void copyMyLink() }} className="text-zinc-700 text-xs">
+              <Link2 className="w-4 h-4 mr-2" /> Copy my link
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={startWhatsNew} className="text-zinc-700 text-xs">
+              <Sparkles className="w-4 h-4 mr-2" /> What is new
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={startTour} className="text-zinc-700 text-xs">
               <BookOpen className="w-4 h-4 mr-2" /> Replay the welcome tour
             </DropdownMenuItem>
@@ -632,6 +640,11 @@ export function AppHeader() {
           : <ViewFilters />}
       </div>
       <div className="flex items-center gap-2">
+        <button type="button" onClick={startWhatsNew} title="A one-minute walkthrough of how the tracker works"
+          className="hidden md:inline-flex items-center gap-1.5 h-8 rounded-md px-2.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 cursor-pointer">
+          <BookOpen className="w-3.5 h-3.5" /> How it works
+        </button>
+        <MyLinkButton className="hidden sm:inline-flex" />
         <Button size="sm" className="h-8 bg-orange-500 hover:bg-orange-600 text-white border-0" onClick={() => setFormOpen(true)} aria-label="New task" title="New task. Press N for the one-line quick add.">
           <Plus className="w-4 h-4 sm:mr-1" /><span className="hidden sm:inline text-xs">New task</span>
         </Button>

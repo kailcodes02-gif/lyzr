@@ -10,6 +10,7 @@ import { TaskView } from '@/components/tasks/task-view'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail'
 import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
 import { NeedsReplyStrip } from '@/components/tasks/ask-reply'
+import { MyLinkButton } from '@/components/workspace/my-link'
 import { needsMyReply, awaitingTheirReply } from '@/lib/ask'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -106,9 +107,12 @@ export default function MyTasksPage() {
           </h1>
           <p className="text-sm text-zinc-500 mt-1">What is assigned to you, what you assigned to others, and where you were mentioned</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="bg-blue-600 hover:bg-blue-500 text-white self-start">
-          <Plus className="w-4 h-4 mr-2" /> New task
-        </Button>
+        <div className="flex items-center gap-2 self-start">
+          <MyLinkButton label="Copy my link" className="h-9" />
+          <Button onClick={() => setCreateOpen(true)} className="bg-blue-600 hover:bg-blue-500 text-white">
+            <Plus className="w-4 h-4 mr-2" /> New task
+          </Button>
+        </div>
       </div>
 
       <NeedsReplyStrip tasks={needsReply} onOpen={setSelectedTaskId} />

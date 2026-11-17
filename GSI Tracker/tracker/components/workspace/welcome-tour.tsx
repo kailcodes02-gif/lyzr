@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import {
-  BookOpen, FolderKanban, LineChart, ListTodo, RotateCcw, Table2, Users, X, Zap, UserCircle } from 'lucide-react'
+  BookOpen, FolderKanban, LineChart, ListTodo, RotateCcw, Table2, Users, X, Zap, UserCircle, DollarSign, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { LyzrSail } from '@/components/ui/lyzr-logo'
 import { useCurrentUser } from '@/lib/hooks/use-data'
 import { markIntroSeen } from '@/components/workspace/page-intro'
 import { useOnboardingFlags, useMarkOnboardingFlag, useSetOnboardingValues } from '@/lib/onboarding-flags'
 import { shouldAutoStartTour, tourShownFlags } from '@/lib/tour-logic'
+import { MyLinkLine } from '@/components/workspace/my-link'
 import { cn } from '@/lib/utils'
 
 // Guided walkthrough. A centered modal over a dimmed page: each step
@@ -22,9 +23,14 @@ import { cn } from '@/lib/utils'
 // last step points at. Pure explanation: it never writes task data.
 
 const STEP_KEY = 'gsi:tour:v3:step' // present = walkthrough in progress (survives reloads)
+// The short "what is new" walkthrough: opens once for every account that has
+// not seen it, including people who used up both showings of the full tour.
+const NEW_FLAG = 'tour:new:2026-11'
+type Kind = 'full' | 'new'
 
-let openFn: (() => void) | null = null
-export function startTour() { openFn?.() }
+let openFn: ((kind?: Kind) => void) | null = null
+export function startTour() { openFn?.('full') }
+export function startWhatsNew() { openFn?.('new') }
 
 // Page intros stay quiet while the walkthrough runs (two cards would fight).
 const active = { now: false, listeners: new Set<() => void>() }
@@ -50,6 +56,7 @@ type Step = {
   href?: string
   place?: string // short name shown on the Next button ("Next · Overview")
   introKey?: string // the page intro this step replaces (marked as seen)
+  fresh?: boolean // also part of the short "what is new" walkthrough
 }
 
 const STEPS: Step[] = [
@@ -94,6 +101,7 @@ const STEPS: Step[] = [
   },
   {
     icon: <ListTodo className="w-6 h-6 text-emerald-600" />,
+    fresh: true,
     title: 'Adding a task: three short steps',
     body: (
       <><strong>New task</strong> asks for very little. <strong>Step 1:</strong> the task name and who it is
@@ -107,6 +115,7 @@ const STEPS: Step[] = [
   },
   {
     icon: <ListTodo className="w-6 h-6 text-orange-500" />,
+    fresh: true,
     title: 'Asked and replied: two priorities, two dates',
     body: (
       <>When someone assigns you a task it lands in <strong>Needs your reply</strong>. <strong>Accept</strong> what
@@ -119,16 +128,35 @@ const STEPS: Step[] = [
   },
   {
     icon: <UserCircle className="w-6 h-6 text-blue-600" />,
+    fresh: true,
     title: 'My space, and your own link',
     body: (
       <><strong>My space</strong> is your home base: your tasks by priority, on a calendar or by week, what
       you <strong>assigned to others</strong> and what they replied, and a bell for everything that changed.
       It also has <strong>your link</strong>, such as <em>lyzr.ai/marketing-tracker/?u=yourname</em>. Share it
       with the team: they see how loaded you are and can <strong>add a task for you</strong> from it.
-      Open <strong>People</strong> to do the same on anyone else&apos;s page. Everyone signs in once first.</>
+      Open <strong>People</strong> to do the same on anyone else&apos;s page. Everyone signs in once first.
+      <span className="block mt-2 text-zinc-900 font-medium">This is your link. Copy it here, from <strong>My link</strong> at
+      the top of any page, or from My space:</span>
+      <MyLinkLine /></>
     ),
     href: '/u/',
     place: 'My space',
+  },
+  {
+    icon: <DollarSign className="w-6 h-6 text-emerald-600" />,
+    fresh: true,
+    title: 'Budgets: assigned against spent',
+    body: (
+      <><strong>Budgets</strong> in the sidebar holds every budget: against a <strong>campaign</strong>, a
+      <strong> channel</strong>, a <strong>product</strong> or a <strong>vertical</strong>, one-time or repeating
+      monthly, quarterly or yearly. Whoever runs it presses <strong>Log spend</strong> with the amount, date
+      and a note; the tracker keeps the running total, so each budget always shows <strong>assigned</strong>,
+      <strong> spent</strong> and <strong>left</strong>, and turns red when it goes over. Admins, leadership
+      and the head of that channel or campaign can set budgets and log spend. Everyone else can read them.</>
+    ),
+    href: '/budgets/',
+    place: 'Budgets',
   },
   {
     icon: <ListTodo className="w-6 h-6 text-emerald-600" />,
@@ -230,11 +258,23 @@ const STEPS: Step[] = [
   },
 ]
 
+const NEW_INTRO: Step = {
+  icon: <Sparkles className="w-6 h-6 text-orange-500" />,
+  title: 'What is new in the tracker',
+  body: (
+    <>Four things changed, and this takes a minute: a <strong>three-step New task</strong> form, tasks that
+    are <strong>asked and replied</strong> to, <strong>My space</strong> with your own shareable link, and
+    <strong> Budgets</strong> with assigned against spent. Press Next to see each one on its page.</>
+  ),
+}
+const NEW_STEPS: Step[] = [NEW_INTRO, ...STEPS.filter(s => s.fresh), STEPS[STEPS.length - 1]]
+const stepsOf = (k: Kind) => (k === 'new' ? NEW_STEPS : STEPS)
+
 const save = (k: string, v: string) => { try { window.localStorage.setItem(k, v) } catch { /* session only */ } }
 const drop = (k: string) => { try { window.localStorage.removeItem(k) } catch { /* nothing to drop */ } }
 const load = (k: string) => { try { return window.localStorage.getItem(k) } catch { return null } }
 
-export function WelcomeTour() {
+export function WelcomeTour({ hub }: { hub?: boolean } = {}) {
   const { data: user } = useCurrentUser()
   const { flags, ready } = useOnboardingFlags()
   const markFlag = useMarkOnboardingFlag()
@@ -242,18 +282,19 @@ export function WelcomeTour() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState(0)
+  const [kind, setKind] = useState<Kind>('full')
 
   // Entering a step: remember it (a reload or redirect resumes here), open
   // the page it explains, and stand in for that page's first-visit intro.
-  const goTo = (i: number, navigate = true) => {
-    const s = STEPS[i]
+  const goTo = (i: number, navigate = true, k: Kind = kind) => {
+    const s = stepsOf(k)[i]
     setStep(i)
-    save(STEP_KEY, String(i))
+    save(STEP_KEY, `${k}:${i}`)
     if (s.introKey) { markIntroSeen(s.introKey); void markFlag(`intro:${s.introKey}`) }
     if (navigate && s.href) router.push(s.href)
   }
 
-  const begin = () => { setOpen(true); setActive(true); goTo(0) }
+  const begin = (k: Kind = 'full') => { setKind(k); setOpen(true); setActive(true); goTo(0, true, k) }
 
   useEffect(() => {
     openFn = begin
@@ -270,19 +311,32 @@ export function WelcomeTour() {
     const t = window.setTimeout(() => {
       const resume = load(STEP_KEY)
       if (resume !== null) {
-        const i = Math.min(Math.max(0, Number(resume) || 0), STEPS.length - 1)
+        // "new:2" or "full:2"; a bare number is a walkthrough begun before kinds existed
+        const k: Kind = resume.startsWith('new:') ? 'new' : 'full'
+        const n = Number(resume.includes(':') ? resume.split(':')[1] : resume) || 0
+        const i = Math.min(Math.max(0, n), stepsOf(k).length - 1)
+        setKind(k)
         setOpen(true)
         setActive(true)
-        goTo(i, false) // stay on whatever page they are on until they press Next
+        goTo(i, false, k) // stay on whatever page they are on until they press Next
         return
       }
       // Auto-start twice per lifetime, decided by the account flags (any
       // device). Until they have loaded, show nothing: never guess.
       if (!ready) return
       const today = format(new Date(), 'yyyy-MM-dd') // local day (IST for the team)
-      if (!shouldAutoStartTour(flags, today)) return
-      void setValues(tourShownFlags(flags, today)) // counts on opening, not on finishing
-      begin()
+      // My space opens the short one only, and never on top of someone
+      // else's page: a person who followed a link came to add a task.
+      const onOwnHub = hub && !new URLSearchParams(window.location.search).get('who')
+      if (!hub && shouldAutoStartTour(flags, today)) {
+        void setValues({ ...tourShownFlags(flags, today), [NEW_FLAG]: today }) // counts on opening, not on finishing
+        begin('full') // the full tour covers what is new
+        return
+      }
+      if ((!hub || onOwnHub) && !flags?.[NEW_FLAG]) {
+        void setValues({ [NEW_FLAG]: today })
+        begin('new')
+      }
     }, 0)
     return () => window.clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -292,13 +346,14 @@ export function WelcomeTour() {
     setOpen(false)
     setActive(false)
     drop(STEP_KEY)
-    void markFlag('tour:v3') // remembered on the account: no replay on the next sign-in or device
+    if (kind === 'full') void markFlag('tour:v3') // remembered on the account: no replay on the next sign-in or device
   }
 
   if (!open) return null
-  const s = STEPS[step]
-  const last = step === STEPS.length - 1
-  const next = STEPS[step + 1]
+  const steps = stepsOf(kind)
+  const s = steps[Math.min(step, steps.length - 1)]
+  const last = step >= steps.length - 1
+  const next = steps[step + 1]
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -306,7 +361,7 @@ export function WelcomeTour() {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`Walkthrough step ${step + 1} of ${STEPS.length}: ${s.title}`}
+        aria-label={`Walkthrough step ${step + 1} of ${steps.length}: ${s.title}`}
         className="relative w-[min(480px,100%)] rounded-2xl border border-zinc-200 bg-white shadow-2xl shadow-zinc-900/20 overflow-hidden"
       >
       <div className="p-5 space-y-3">
@@ -325,7 +380,7 @@ export function WelcomeTour() {
       </div>
       <div className="flex items-center justify-between border-t border-zinc-200 bg-zinc-50 px-5 py-3">
         <div className="flex items-center gap-1.5">
-          {STEPS.map((_, i) => (
+          {steps.map((_, i) => (
             <button key={i} onClick={() => goTo(i)} aria-label={`Step ${i + 1}`}
               className={cn('h-1.5 rounded-full transition-all', i === step ? 'w-5 bg-orange-500' : 'w-1.5 bg-zinc-300 hover:bg-zinc-400')} />
           ))}
@@ -340,7 +395,7 @@ export function WelcomeTour() {
             ? <Button size="sm" className="text-xs bg-orange-500 hover:bg-orange-600 text-white" onClick={finish}>Done</Button>
             : (
               <Button size="sm" className="text-xs" onClick={() => goTo(step + 1)}>
-                Next{next?.place ? ` · ${next.place}` : ''} · {step + 2}/{STEPS.length}
+                Next{next?.place ? ` · ${next.place}` : ''} · {step + 2}/{steps.length}
               </Button>
             )}
         </div>
