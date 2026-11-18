@@ -13,7 +13,7 @@ import type { Vertical } from '@/lib/types/database'
 
 // Routes that live at the workspace level and never need ?v=.
 // The Sales pipeline is standalone: it picks its own vertical / product.
-const WORKSPACE_PREFIXES = ['/projects', '/workspace', '/functions', '/function', '/admin', '/notifications', '/guide', '/campaign', '/campaigns', '/my-board', '/members', '/me/accounts', '/leads']
+const WORKSPACE_PREFIXES = ['/projects', '/workspace', '/functions', '/function', '/admin', '/notifications', '/guide', '/campaign', '/campaigns', '/my-board', '/members', '/me/accounts', '/leads', '/u']
 // Routes that only make sense inside one vertical (no ?v=all).
 const SPACE_ONLY = ['/dashboard', '/weekly', '/budgets', '/resources', '/settings', '/channel', '/category']
 

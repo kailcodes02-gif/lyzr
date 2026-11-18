@@ -16,6 +16,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const supabase = createClient()
     let cancelled = false
+    let waiting: number | undefined
     // Arrived through the public lyzr.ai link with ?u= or ?page=: that is
     // where this visit is headed, signed in or not.
     const deep = deepLinkTarget()
@@ -27,15 +28,22 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         rememberReturnTo(deep)
         router.replace('/login')
       } else {
-        if (deep) router.replace(deep)
-        setReady(true)
+        if (!deep) { setReady(true); return }
+        // Headed somewhere else: keep the spinner up until we are there, so
+        // this page never flashes on the way to the one the link points at.
+        router.replace(deep)
+        waiting = window.setInterval(() => {
+          if (deepLinkTarget()) return
+          window.clearInterval(waiting)
+          if (!cancelled) setReady(true)
+        }, 30)
       }
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) router.replace('/login')
     })
-    return () => { cancelled = true; subscription.unsubscribe() }
+    return () => { cancelled = true; window.clearInterval(waiting); subscription.unsubscribe() }
   }, [router])
 
   if (!ready) {
